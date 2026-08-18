@@ -122,7 +122,7 @@ export default function DownPaymentCalculator() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Down Payment Calculator — How Much Cash Do You Need to Buy?"
         description="Free down payment calculator. Enter a home price to see your down payment, estimated closing costs, and the total cash you'll need at the table — plus how much you'd need at 3%, 5%, 10%, and 20% down."
@@ -323,6 +323,6 @@ export default function DownPaymentCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

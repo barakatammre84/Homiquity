@@ -187,7 +187,15 @@ export const VA_RESIDUAL_MATRIX: Record<VaRegion, Record<number, number>> = {
   west: { 1: 491, 2: 823, 3: 990, 4: 1117, 5: 1158 },
 };
 
-const VA_EXTRA_MEMBER_ADDITION = 80;
+/**
+ * The +$80 per family member beyond five (26-7 Ch. 4, Topic 9, Item 43).
+ * Exported so a test or a peer module can assert against THIS value rather
+ * than restating 80 — a restated literal is the drift this module exists to
+ * prevent. The engine resolves the same figure from the `VA_RESIDUAL_EXTRA_MEMBER`
+ * policy scalar (seeded at 80 in `server/scripts/seedLendingGrids.ts`), so the
+ * two paths agree by construction.
+ */
+export const VA_EXTRA_MEMBER_ADDITION = 80;
 /**
  * The +$80/member addition applies only "up to a family of seven" — the
  * handbook's own example (family of 8, Georgia, $150k) yields $1,199 and

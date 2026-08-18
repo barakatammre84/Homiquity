@@ -1,17 +1,16 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §3's CCR table, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
 
-Each routine's `SKILL.md` is its *job description*, and it runs in a **fresh session with no memory
-of any other run**. Those files live in two places, and the difference matters: the local-clock
-routines are defined in `~/.claude/scheduled-tasks/<id>/` on the founder's laptop, **which a cloud
-session cannot read**; every routine registered since 2026-08-17 is defined in-repo at
-`.claude/skills/<id>/SKILL.md`, where both fleets and every session can read it. **In-repo is the
-home for anything new** — a definition only one machine can see is one nobody can audit.
-**This file is the *contract*** — the shared clock, the shared facts, the shared lock, and the
-shared escalation path. Where a routine's own file disagrees with this one, **this file wins**, and
-the routine must say so in its report rather than silently following the stale copy.
+Each routine runs in a **fresh session with no memory of any other run**. Its job description
+lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
+`.claude/skills/<id>/` for the CCR-fired routines (§3a). A cloud session **cannot read the laptop
+copies**, so **in-repo is the home for anything new** — a definition only one machine can see is one
+nobody can audit. **This file is the *contract*** — the
+shared clock, the shared facts, the shared lock, and the shared escalation path.
+Where a routine's own file disagrees with this one, **this file wins**, and the routine must say so
+in its report rather than silently following the stale copy.
 
 Read this file, then [`REGISTER.md`](REGISTER.md), before doing anything else.
 
@@ -178,34 +177,15 @@ run history and stored tool approvals. Judge it by its description, not its slug
 launch. A gap in `reports/` may therefore mean "the laptop was shut", not "the routine broke" —
 Evening Triage distinguishes the two rather than assuming either.
 
-**A second fleet exists, and this clock is not it.** Claude-Code-Remote triggers run against this
-repo from the cloud, outside this scheduler, in fresh sessions. **Do not trust a count written
-here** — this fleet grew twice in the hour this paragraph was last rewritten, and two sessions
-had already recorded a stale "six" between them. **The authoritative list is `list_triggers`
-(Claude_Code_Remote MCP); read it rather than this paragraph.** Read live at **2026-08-18 19:53Z**
-it held **eight enabled** Homiquity triggers plus one retired-disabled (the Monday doc-hygiene sweep,
-folded into the 6-hourly steward that day; its row is gone from below). The paragraph had said nine —
-this is the drift it warns about, found in itself. The **Backend Data Engineer**, registered minutes
-later, makes nine: the first CCR routine to write server, schema and migration code rather than only
-client code or reports:
-
-| Fires (UTC) | Trigger | Posture |
-|---|---|---|
-| **daily 11:00** | **Backend Data Engineer** | **writes code — up to two backend PRs, never merges** |
-| daily 12:00 | Better.com competitive brief | report-only; may file one `design-standard` issue |
-| Mon 12:30 | logged-in Better deep-dive reminder | human-directed; sends a reminder, nothing else |
-| Wed 13:00 | UX audit vs the design standard | report-only, `read` access |
-| 1st 13:00 | financial-architecture audit | invokes `/financial-audit`; §6's Financial Audit row governs it |
-| daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
-| 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
-| daily 16:25 | **UI conformance sweep** | writes code — one conformance PR, never merges |
-| hourly, weekdays 08–20 | PR sync, review & **decide-or-close loop** | branch updates + digest + the §5 clock's ⛔ disposition list; proposes, never merges or closes |
-
-Where they touch the repo they are report-only or PR-lane and bound by this charter. **Two of them
-now write code** — the Backend Data Engineer at 11:00 and the UI conformance sweep at 16:25 — and
-they were deliberately put five hours apart in disjoint lanes (`server/**` vs `client/src/**`, §6).
-That separation is the thing to preserve when re-timing either one; the register is the backstop,
-not the schedule.
+**A second fleet exists, and this clock is not it.** Claude-Code-Remote triggers run against
+this repo from the cloud, outside this scheduler, in fresh sessions. They are tabled once, in
+**§3a** below — one home deliberately: that table and this note landed the same day from two
+sessions (#557 and the doc-accuracy founding) and were unified on merge rather than left as
+duplicate truths. **Do not trust a count written on this page.** This fleet grew three times in
+the hour these paragraphs were last rewritten; two sessions had already recorded a stale "six"
+between them, and a third row was retired the same evening. **The authoritative list is
+`list_triggers` (Claude_Code_Remote MCP) — read it rather than this page**, and per §11 a trigger
+added, re-timed or retired edits §3a in the same session.
 
 Audited and rewired 2026-08-18 —
 [logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Until
@@ -224,6 +204,50 @@ The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rai
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
 the register, and the acceptance questions on top. Radar's rails R1–R9 are **not** relaxed by
 anything here.
+
+### 3a. The CCR-scheduled fleet (cloud sessions — fire regardless of the laptop)
+
+These run as claude.ai Code triggers in **fresh cloud sessions**, cron in **UTC** (the table
+above is local time; the offset moves — verified local = UTC-3 on 2026-08-18). The CCR fleet
+cannot see `~/.claude/scheduled-tasks/` and the local fleet cannot see the trigger list, so
+**both lists live here** — the [2026-08-18 knowledge-file audit](../logs/2026-08-18-knowledge-file-audit.md)
+§4 found the two fleets blind to each other, and §11's rule extends to this table: re-timing or
+adding a CCR trigger edits this table in the same session. Where these touch the repo they are
+report-only or PR-lane and bound by this charter — the monthly financial audit runs under §6's
+Financial Audit territory row, Doc Accuracy under its own §6 row — and the quarterly knowledge
+audit reads both fleets. Trigger list read live 2026-08-18.
+
+| Fires (UTC) | Cron | Trigger | Cadence | Writes? | Produces |
+|---|---|---|---|---|---|
+| 11:00 | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | **yes — `server/**`, `shared/**` + same-PR migration** | ≤2 PRs + `BD-…` ledger |
+| 12:00 | `0 12 * * *` | Daily Better.com competitive review | daily | GitHub issues only (`design-standard`) | competitive brief |
+| Mon 12:30 | `30 12 * * 1` | Better logged-in deep-dive reminder | weekly | no | founder reminder |
+| Wed 13:00 | `0 13 * * 3` | Weekly UX audit vs Better standard | weekly | no — report only | top-issues report |
+| 1st 13:00 | `0 13 1 * *` | Monthly financial-architecture audit | monthly | via [`/financial-audit`](../../.claude/skills/financial-audit/SKILL.md) rails | ledgered `F-…` findings |
+| 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
+| 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
+| hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
+| 03:40 / 09:40 / 15:40 / 21:40 | `40 3,9,15,21 * * *` | **Doc Accuracy** (`doc-accuracy`) | every 6 h | yes — living `.md` only (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
+
+**Three of these cite a skill that is not on `origin/main` yet** — Doc Accuracy, the UI
+conformance sweep and the Backend Data Engineer each name a founding PR that has not merged. All
+three are written to say exactly that and stop, which is the correct shape for a routine whose
+dependency has not landed; it is still a standing debt, because a routine that cannot act is not a
+control (§0). **Two of them write code** (the other seven are report-, issue- or PR-lane only), so
+§6's territory rows and §5's claim register do real work here rather than being formalities.
+
+A retired row, kept as a deliberate record: a **weekly doc & memory hygiene sweep** (Mon 14:00,
+created 18:11Z) was disabled the same evening on discovering it duplicated Doc Accuracy, which had
+been created twelve minutes earlier with the better-specified prompt. Two doc-hygiene routines
+competing over the same `.md` corpus is the two-truths hazard both exist to prevent — see the
+[knowledge-file audit](../logs/2026-08-18-knowledge-file-audit.md) §4.
+
+Doc Accuracy's cadence is deliberately the suite's tightest: every fresh session — human or
+routine — orients from the docs, so doc drift compounds into every other lane's errors within
+hours (founder direction, 2026-08-18). Its ticks are diff-driven from its ledger's `last-swept
+SHA`, so an empty window is a cheap clean tick; same-day ticks extend one PR. Its report lands in
+`reports/` like every routine's (§7 counts it; §9 format binds it) and its proposed tickets go to
+Evening Triage like everyone's (§4).
 
 ---
 
@@ -395,6 +419,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | UI Conformance Sweep | `client/src/**` for **visual conformance only**, plus `knowledge-base/ui-conformance/**` and its report | `client/src/components/ui/**` (vendored primitives); any file in an open PR or carrying an open `refactor-radar/LEDGER.md` row; form state, Zod schemas and payload shapes (§14); the `URLA_FORM_REFACTOR_TRAP.md` prohibitions |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
 | Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
+| Doc Accuracy | living `.md` docs: `knowledge-base/**` (minus the peer registers at right) + root `README.md` + its own `knowledge-base/doc-accuracy/**`; ⛔-flagged per its rail D11: `CLAUDE.md` pointers, this file's §2/§3 factual rows, `.claude/skills\|agents/**` pointers, archive moves | every code path; `docs/**`; `data/regulatory/**`; `CTO_ROADMAP.md` (Triage's); dated `logs/`/`reports/`/`archive/` bodies (top banners only); peer cross-run memory (`financial-audit/LEDGER.md`, `refactor-radar/LEDGER.md`, `primary-engineer/LEDGER.md`, `compliance-watch/STATE_LADDER.md`, `feature-review/FINDINGS.md`); rule semantics anywhere (propose-only); its own `SKILL.md` |
 
 ### 6a. The design-system propagation sweep — who owns it
 
@@ -636,6 +661,16 @@ New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section 
   ratio in situ. Report the commands you actually ran. A rail that demands evidence the repo
   cannot produce trains routines to invent it — which is why "verify at 320px" is **not** a rail
   here, and `unprefixedMultiColGrid` is: the second one is checkable.
+- **A metric earns trust by being used, not by being written.** `arbitraryColorValues` passed
+  review, passed CI and was merged and deployed while 97% of what it counted were font sizes, not
+  colours — it died the first time someone measured a real surface with it. Review checks
+  plausibility; only use checks correctness. Before quoting a new metric's number as fact, run it
+  against one real target and verify its output by hand.
+- **A number a human retypes is a number that will be wrong.** Prefer generating a claim over
+  writing one: DESIGN_SYSTEM.md §0's adoption table is emitted by `pnpm guard:ui --write-table`
+  and the guard fails when the committed block drifts, because the hand-written version was wrong
+  within nine hours of being written. When a claim can be generated, generate it; when it cannot,
+  point at the command instead of restating its output.
 - **Never quote a design-adoption number from a doc.** Re-measure with `pnpm guard:ui`. Both
   predecessor design docs stated an adoption figure that had drifted in the flattering direction
   (57% claimed, 82% actual), which is exactly why those numbers now live in a baseline file

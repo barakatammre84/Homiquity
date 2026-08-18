@@ -81,7 +81,7 @@ export function LoanTeamCard({ applicationId }: { applicationId: string }) {
                 <p className="text-sm font-semibold text-foreground" data-testid="text-loan-team-name">
                   {name}
                 </p>
-                <Badge variant="secondary" className="text-[10px]" data-testid="badge-loan-team-role">
+                <Badge variant="secondary" className="text-xs" data-testid="badge-loan-team-role">
                   <Briefcase className="mr-1 h-2.5 w-2.5" />
                   {role}
                 </Badge>

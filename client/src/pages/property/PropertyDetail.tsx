@@ -215,328 +215,326 @@ export default function PropertyDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PageShell width="wide">
-        {/* Back Button */}
-        <Button asChild variant="ghost" className="mb-4 gap-2">
-          <Link href="/buy">
-            <ChevronLeft className="h-4 w-4" />
-            Back to Search
-          </Link>
-        </Button>
+    <PageShell width="wide">
+      {/* Back Button */}
+      <Button asChild variant="ghost" className="mb-4 gap-2">
+        <Link href="/buy">
+          <ChevronLeft className="h-4 w-4" />
+          Back to Search
+        </Link>
+      </Button>
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            {/* Property Image */}
-            <div className="relative mb-6 h-80 overflow-hidden rounded-xl bg-muted lg:h-96">
-              {property.images && property.images.length > 0 ? (
-                <img
-                  src={property.images[0]}
-                  alt={property.address}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <Home className="h-24 w-24 text-muted-foreground/30" />
-                </div>
-              )}
-              
-              {/* Action Buttons */}
-              <div className="absolute right-4 top-4 flex gap-2">
-                <Button variant="secondary" size="icon" aria-label="Save">
-                  <Heart className="h-4 w-4" />
-                </Button>
-                <Button variant="secondary" size="icon" aria-label="Share">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Property Header */}
-            <div className="mb-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h1 className="text-3xl font-bold">{formatCurrency(parseFloat(property.price))}</h1>
-                  <p className="mt-1 text-lg font-medium">{property.address}</p>
-                  <p className="flex items-center gap-1 text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    {property.city}, {property.state} {property.zipCode}
-                  </p>
-                </div>
-                
-                {qualification && (
-                  <Badge 
-                    className={`gap-1 px-3 py-1.5 text-base ${
-                      qualification.status === "within_guidelines" ? "bg-success" :
-                      qualification.status === "requires_review" ? "bg-warning" : "bg-destructive"
-                    }`}
-                  >
-                    {qualification.status === "within_guidelines" && <CheckCircle className="h-4 w-4" />}
-                    {qualification.status === "requires_review" && <AlertTriangle className="h-4 w-4" />}
-                    {qualification.status === "exceeds_guidelines" && <XCircle className="h-4 w-4" />}
-                    {qualification.status === "within_guidelines" ? "Within Guidelines" :
-                     qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Property Stats */}
-              <div className="mt-4 flex flex-wrap gap-6">
-                <div className="flex items-center gap-2">
-                  <Bed className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">{property.bedrooms}</span>
-                  <span className="text-muted-foreground">beds</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Bath className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">{property.bathrooms}</span>
-                  <span className="text-muted-foreground">baths</span>
-                </div>
-                {property.squareFeet && (
-                  <div className="flex items-center gap-2">
-                    <Square className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">{property.squareFeet.toLocaleString()}</span>
-                    <span className="text-muted-foreground">sqft</span>
-                  </div>
-                )}
-                {property.yearBuilt && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-muted-foreground">Built {property.yearBuilt}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Separator className="my-6" />
-
-            {/* Description */}
-            {property.description && (
-              <div className="mb-8">
-                <h2 className="mb-3 text-xl font-semibold">About This Property</h2>
-                <p className="leading-relaxed text-muted-foreground">{property.description}</p>
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Main Content */}
+        <div className="lg:col-span-2">
+          {/* Property Image */}
+          <div className="relative mb-6 h-80 overflow-hidden rounded-xl bg-muted lg:h-96">
+            {property.images && property.images.length > 0 ? (
+              <img
+                src={property.images[0]}
+                alt={property.address}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <Home className="h-24 w-24 text-muted-foreground/30" />
               </div>
             )}
-
-            {/* Features */}
-            {property.features && property.features.length > 0 && (
-              <div className="mb-8">
-                <h2 className="mb-3 text-xl font-semibold">Features</h2>
-                <div className="flex flex-wrap gap-2">
-                  {property.features.map((feature, i) => (
-                    <Badge key={i} variant="secondary">{feature}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            
+            {/* Action Buttons */}
+            <div className="absolute right-4 top-4 flex gap-2">
+              <Button variant="secondary" size="icon" aria-label="Save">
+                <Heart className="h-4 w-4" />
+              </Button>
+              <Button variant="secondary" size="icon" aria-label="Share">
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Sidebar - Qualification Details */}
-          <div className="space-y-6">
-            {/* No Pre-Approval Banner */}
-            {!hasPreApproval && (
-              <Card className="border-primary bg-primary/5">
-                <CardContent className="p-6 text-center">
-                  <Calculator className="mx-auto h-10 w-10 text-primary" />
-                  <h3 className="mt-3 text-lg font-semibold">Get Pre-Approved</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Complete a loan application to see personalized affordability calculations for this property
-                  </p>
-                  <Button asChild className="mt-4 w-full">
-                    <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
-                      Start Pre-Approval
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Monthly Payment Card */}
-            {qualification && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calculator className="h-5 w-5" />
-                    Your Monthly Payment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4 text-center">
-                    <p className="text-4xl font-bold text-primary">
-                      {formatCurrency(qualification.estimatedPayment)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">per month</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Principal & Interest</span>
-                      <span>{formatCurrency(qualification.paymentBreakdown.principal + qualification.paymentBreakdown.interest)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Property Taxes</span>
-                      <span>{formatCurrency(qualification.paymentBreakdown.taxes)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Home Insurance</span>
-                      <span>{formatCurrency(qualification.paymentBreakdown.insurance)}</span>
-                    </div>
-                    {qualification.paymentBreakdown.pmi > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">PMI</span>
-                        <span>{formatCurrency(qualification.paymentBreakdown.pmi)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator className="my-4" />
-
-                  {/* DTI Indicator */}
-                  <div className="mb-4">
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="font-medium">Debt-to-Income Ratio</span>
-                      <span className={
-                        qualification.dtiWithProperty > 43 
-                          ? "font-medium text-warning-subtle-foreground" 
-                          : "font-medium text-success-subtle-foreground"
-                      }>
-                        {qualification.dtiWithProperty.toFixed(1)}%
-                      </span>
-                    </div>
-                    <Progress 
-                      value={Math.min(qualification.dtiWithProperty, 50)} 
-                      className="h-2"
-                    />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Maximum allowed: 50% | Ideal: under 36%
-                    </p>
-                  </div>
-
-                  {/* Loan Details */}
-                  <div className="space-y-2 rounded-lg bg-muted/50 p-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <PiggyBank className="h-4 w-4" />
-                        Down Payment (5%)
-                      </span>
-                      <span className="font-medium">{formatCurrency(qualification.requiredDownPayment)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Building className="h-4 w-4" />
-                        Loan Amount
-                      </span>
-                      <span className="font-medium">{formatCurrency(qualification.loanAmount)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Percent className="h-4 w-4" />
-                        LTV Ratio
-                      </span>
-                      <span className="font-medium">{qualification.ltvRatio.toFixed(0)}%</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Qualification Status */}
-            {qualification && (
-              <Card className={
-                qualification.status === "within_guidelines" ? "border-border bg-success-subtle/50" :
-                qualification.status === "requires_review" ? "border-border bg-warning-subtle/50" : 
-                "border-border bg-destructive-subtle/50"
-              }>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    {qualification.status === "within_guidelines" && <CheckCircle className="h-5 w-5 text-success-subtle-foreground" />}
-                    {qualification.status === "requires_review" && <AlertTriangle className="h-5 w-5 text-warning-subtle-foreground" />}
-                    {qualification.status === "exceeds_guidelines" && <XCircle className="h-5 w-5 text-destructive" />}
-                    {qualification.status === "within_guidelines" ? "Within Guidelines" :
-                     qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    {qualification.reasons.map((reason, i) => (
-                      <li key={i} className="text-muted-foreground">{reason}</li>
-                    ))}
-                  </ul>
-                  
-                  {qualification.tips.length > 0 && (
-                    <div className="mt-4 rounded-lg bg-background/60 p-3">
-                      <p className="mb-1 text-xs font-medium">Tips:</p>
-                      <ul className="space-y-1 text-xs text-muted-foreground">
-                        {qualification.tips.map((tip, i) => (
-                          <li key={i}>{tip}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Agent Card */}
-            {agent && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Listing Agent</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-3">
-                    {agent.photoUrl && (
-                      <img
-                        src={agent.photoUrl}
-                        alt={agent.user?.firstName}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
-                    )}
-                    <div>
-                      <p className="font-medium">
-                        {agent.user?.firstName} {agent.user?.lastName}
-                      </p>
-                      {agent.brokerage && (
-                        <p className="text-sm text-muted-foreground">{agent.brokerage}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    {agent.phoneNumber && (
-                      <Button variant="outline" size="sm" className="flex-1 gap-1">
-                        <Phone className="h-4 w-4" />
-                        Call
-                      </Button>
-                    )}
-                    <Button size="sm" className="flex-1 gap-1">
-                      <Mail className="h-4 w-4" />
-                      Message
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* CTA */}
-            <Card className="bg-primary text-primary-foreground">
-              <CardContent className="p-6 text-center">
-                <TrendingUp className="mx-auto h-8 w-8" />
-                <h3 className="mt-2 text-lg font-semibold">Ready to Make an Offer?</h3>
-                <p className="mt-1 text-sm opacity-90">
-                  Get a detailed loan estimate for this property
+          {/* Property Header */}
+          <div className="mb-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">{formatCurrency(parseFloat(property.price))}</h1>
+                <p className="mt-1 text-lg font-medium">{property.address}</p>
+                <p className="flex items-center gap-1 text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  {property.city}, {property.state} {property.zipCode}
                 </p>
-                <Button asChild variant="secondary" className="mt-4 w-full">
+              </div>
+              
+              {qualification && (
+                <Badge 
+                  className={`gap-1 px-3 py-1.5 text-base ${
+                    qualification.status === "within_guidelines" ? "bg-success" :
+                    qualification.status === "requires_review" ? "bg-warning" : "bg-destructive"
+                  }`}
+                >
+                  {qualification.status === "within_guidelines" && <CheckCircle className="h-4 w-4" />}
+                  {qualification.status === "requires_review" && <AlertTriangle className="h-4 w-4" />}
+                  {qualification.status === "exceeds_guidelines" && <XCircle className="h-4 w-4" />}
+                  {qualification.status === "within_guidelines" ? "Within Guidelines" :
+                   qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
+                </Badge>
+              )}
+            </div>
+
+            {/* Property Stats */}
+            <div className="mt-4 flex flex-wrap gap-6">
+              <div className="flex items-center gap-2">
+                <Bed className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">{property.bedrooms}</span>
+                <span className="text-muted-foreground">beds</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Bath className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">{property.bathrooms}</span>
+                <span className="text-muted-foreground">baths</span>
+              </div>
+              {property.squareFeet && (
+                <div className="flex items-center gap-2">
+                  <Square className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">{property.squareFeet.toLocaleString()}</span>
+                  <span className="text-muted-foreground">sqft</span>
+                </div>
+              )}
+              {property.yearBuilt && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Built {property.yearBuilt}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator className="my-6" />
+
+          {/* Description */}
+          {property.description && (
+            <div className="mb-8">
+              <h2 className="mb-3 text-xl font-semibold">About This Property</h2>
+              <p className="leading-relaxed text-muted-foreground">{property.description}</p>
+            </div>
+          )}
+
+          {/* Features */}
+          {property.features && property.features.length > 0 && (
+            <div className="mb-8">
+              <h2 className="mb-3 text-xl font-semibold">Features</h2>
+              <div className="flex flex-wrap gap-2">
+                {property.features.map((feature, i) => (
+                  <Badge key={i} variant="secondary">{feature}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Sidebar - Qualification Details */}
+        <div className="space-y-6">
+          {/* No Pre-Approval Banner */}
+          {!hasPreApproval && (
+            <Card className="border-primary bg-primary/5">
+              <CardContent className="p-6 text-center">
+                <Calculator className="mx-auto h-10 w-10 text-primary" />
+                <h3 className="mt-3 text-lg font-semibold">Get Pre-Approved</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Complete a loan application to see personalized affordability calculations for this property
+                </p>
+                <Button asChild className="mt-4 w-full">
                   <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
-                    Get Loan Estimate
+                    Start Pre-Approval
                   </Link>
                 </Button>
               </CardContent>
             </Card>
-          </div>
+          )}
+
+          {/* Monthly Payment Card */}
+          {qualification && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  Your Monthly Payment
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 text-center">
+                  <p className="text-4xl font-bold text-primary">
+                    {formatCurrency(qualification.estimatedPayment)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">per month</p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Principal & Interest</span>
+                    <span>{formatCurrency(qualification.paymentBreakdown.principal + qualification.paymentBreakdown.interest)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Property Taxes</span>
+                    <span>{formatCurrency(qualification.paymentBreakdown.taxes)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Home Insurance</span>
+                    <span>{formatCurrency(qualification.paymentBreakdown.insurance)}</span>
+                  </div>
+                  {qualification.paymentBreakdown.pmi > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">PMI</span>
+                      <span>{formatCurrency(qualification.paymentBreakdown.pmi)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* DTI Indicator */}
+                <div className="mb-4">
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="font-medium">Debt-to-Income Ratio</span>
+                    <span className={
+                      qualification.dtiWithProperty > 43 
+                        ? "font-medium text-warning-subtle-foreground" 
+                        : "font-medium text-success-subtle-foreground"
+                    }>
+                      {qualification.dtiWithProperty.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={Math.min(qualification.dtiWithProperty, 50)} 
+                    className="h-2"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Maximum allowed: 50% | Ideal: under 36%
+                  </p>
+                </div>
+
+                {/* Loan Details */}
+                <div className="space-y-2 rounded-lg bg-muted/50 p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <PiggyBank className="h-4 w-4" />
+                      Down Payment (5%)
+                    </span>
+                    <span className="font-medium">{formatCurrency(qualification.requiredDownPayment)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Building className="h-4 w-4" />
+                      Loan Amount
+                    </span>
+                    <span className="font-medium">{formatCurrency(qualification.loanAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Percent className="h-4 w-4" />
+                      LTV Ratio
+                    </span>
+                    <span className="font-medium">{qualification.ltvRatio.toFixed(0)}%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Qualification Status */}
+          {qualification && (
+            <Card className={
+              qualification.status === "within_guidelines" ? "border-border bg-success-subtle/50" :
+              qualification.status === "requires_review" ? "border-border bg-warning-subtle/50" : 
+              "border-border bg-destructive-subtle/50"
+            }>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  {qualification.status === "within_guidelines" && <CheckCircle className="h-5 w-5 text-success-subtle-foreground" />}
+                  {qualification.status === "requires_review" && <AlertTriangle className="h-5 w-5 text-warning-subtle-foreground" />}
+                  {qualification.status === "exceeds_guidelines" && <XCircle className="h-5 w-5 text-destructive" />}
+                  {qualification.status === "within_guidelines" ? "Within Guidelines" :
+                   qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm">
+                  {qualification.reasons.map((reason, i) => (
+                    <li key={i} className="text-muted-foreground">{reason}</li>
+                  ))}
+                </ul>
+                
+                {qualification.tips.length > 0 && (
+                  <div className="mt-4 rounded-lg bg-background/60 p-3">
+                    <p className="mb-1 text-xs font-medium">Tips:</p>
+                    <ul className="space-y-1 text-xs text-muted-foreground">
+                      {qualification.tips.map((tip, i) => (
+                        <li key={i}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Agent Card */}
+          {agent && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Listing Agent</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  {agent.photoUrl && (
+                    <img
+                      src={agent.photoUrl}
+                      alt={agent.user?.firstName}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  )}
+                  <div>
+                    <p className="font-medium">
+                      {agent.user?.firstName} {agent.user?.lastName}
+                    </p>
+                    {agent.brokerage && (
+                      <p className="text-sm text-muted-foreground">{agent.brokerage}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  {agent.phoneNumber && (
+                    <Button variant="outline" size="sm" className="flex-1 gap-1">
+                      <Phone className="h-4 w-4" />
+                      Call
+                    </Button>
+                  )}
+                  <Button size="sm" className="flex-1 gap-1">
+                    <Mail className="h-4 w-4" />
+                    Message
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* CTA */}
+          <Card className="bg-primary text-primary-foreground">
+            <CardContent className="p-6 text-center">
+              <TrendingUp className="mx-auto h-8 w-8" />
+              <h3 className="mt-2 text-lg font-semibold">Ready to Make an Offer?</h3>
+              <p className="mt-1 text-sm opacity-90">
+                Get a detailed loan estimate for this property
+              </p>
+              <Button asChild variant="secondary" className="mt-4 w-full">
+                <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
+                  Get Loan Estimate
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-      </PageShell>
-    </div>
+      </div>
+    </PageShell>
   );
 }

@@ -22,6 +22,7 @@ import {
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { computeClosingCosts } from "./loanCosts";
+import { offerUpfrontMI } from "./mortgageInsurance";
 import { activeFeeSchedule } from "./platformFeeSchedule";
 import { resolveCompensation, type CompensationModel } from "@shared/compliance/loCompensation";
 import { classifyAsset, sumOpenMonthlyLiabilities } from "./decisionEngine";
@@ -406,6 +407,13 @@ export async function composeScenario(
     // monthly MI.
     const isVaPriced = app.isVeteran || offer.productType.toUpperCase() === "VA";
     const monthlyPMI = isVaPriced ? 0 : offer.estimatedMonthlyMI;
+    const isFhaPriced = !isVaPriced && offer.productType.toUpperCase() === "FHA";
+    // FHA up-front MIP rides the scenario's cash-to-close exactly as it rides
+    // the LE's prepaids (two surfaces, one schedule); VA-priced files carry
+    // none, matching the monthly-MI posture above.
+    const upfrontMI = isVaPriced
+      ? 0
+      : offerUpfrontMI({ productType: offer.productType, loanAmount });
 
     const costs = computeClosingCosts({
       // Same published schedule the Loan Estimate prices from, so a scenario's
@@ -416,6 +424,7 @@ export async function composeScenario(
       loanAmount,
       interestRate: offer.adjustedRate,
       monthlyPMI,
+      upfrontMortgageInsurance: upfrontMI,
       prepaidInterestDays: SCENARIO_PREPAID_INTEREST_DAYS,
       compensation,
       annualPropertyTaxes: scenario.annualPropertyTaxes ?? undefined,
@@ -441,7 +450,10 @@ export async function composeScenario(
       noteRatePct: offer.adjustedRate,
       termMonths: offer.loanTerm,
       monthlyMI: monthlyPMI,
-      propertyValue: scenario.purchasePrice,
+      // FHA MIP is life-of-loan — no 78% HPA auto-termination in the APR
+      // stream, the same treatment the LE and the advertised model apply
+      // (services/apr.ts advertisedAPR). Conventional keeps the termination.
+      propertyValue: isFhaPriced ? 0 : scenario.purchasePrice,
       prepaidFinanceCharges: costs.prepaidFinanceCharges,
     });
 
