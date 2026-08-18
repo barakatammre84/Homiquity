@@ -25,7 +25,7 @@ In that window:
 - The platform moved **Vercel → Railway**. All sixteen dormant definitions still hand the founder
   `set INTAKE_PAUSED=true in Vercel env + redeploy` as the incident runbook — a page aimed at a
   platform that 404s.
-- The repo was renamed `MortgageStream → Homiquity`, `npm → pnpm`, `kb/ → knowledge-base/`. Every
+- The repo was renamed to `Homiquity` (former name recorded — and banned — in root `CLAUDE.md`), `npm → pnpm`, `kb/ → knowledge-base/`. Every
   dormant routine writes its report to `kb/`, which does not exist.
 
 **The lesson is the rule: a routine that cannot be shown to have run is not a control.** §7 makes
@@ -170,8 +170,9 @@ Evening Triage distinguishes the two rather than assuming either.
 repo from the cloud, outside this scheduler, in fresh sessions. **Do not trust a count written
 here** — this fleet grew twice in the hour this paragraph was last rewritten, and two sessions
 had already recorded a stale "six" between them. **The authoritative list is `list_triggers`
-(Claude_Code_Remote MCP); read it rather than this paragraph.** As of **2026-08-18 18:25Z** it
-held eight Homiquity triggers:
+(Claude_Code_Remote MCP); read it rather than this paragraph.** As of **2026-08-18 19:10Z** it
+held nine Homiquity triggers — the newest, the UI conformance sweep, being the first CCR routine
+that writes code rather than only reporting:
 
 | Fires (UTC) | Trigger | Posture |
 |---|---|---|
@@ -182,6 +183,7 @@ held eight Homiquity triggers:
 | daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
 | Mon 14:00 | doc & memory hygiene sweep | report-only; docs-PR lane for its report |
 | 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
+| daily 16:25 | **UI conformance sweep** | writes code — one conformance PR, never merges |
 | hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest |
 
 Where they touch the repo they are report-only or PR-lane and bound by this charter. Note the
@@ -328,6 +330,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Vendor & Procurement | nothing | `.env`, Railway config, anything outbound |
 | Compliance Watch | `knowledge-base/compliance-watch/**` + its own report file | every code path; `docs/**` (read-only reference); anything outbound — it drafts, only the founder files or sends |
 | Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
+| UI Conformance Sweep | `client/src/**` for **visual conformance only**, plus `knowledge-base/ui-conformance/**` and its report | `client/src/components/ui/**` (vendored primitives); any file in an open PR or carrying an open `refactor-radar/LEDGER.md` row; form state, Zod schemas and payload shapes (§14); the `URLA_FORM_REFACTOR_TRAP.md` prohibitions |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
 | Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
 
@@ -338,8 +341,15 @@ at 2026-08-18 PageShell was at **17%** adoption, the icon registry and the `<Hea
 primitives were **built with zero call sites**, and the doc still described all three as future
 work. A standard nobody is assigned to propagate is a preference.
 
-- **Primary Engineer** and the **Wiring Audit** may take conformance batches within their existing
-  lanes — Wiring Audit on the capture path, Primary Engineer elsewhere.
+- **The [UI Conformance Sweep](../../.claude/skills/ui-conformance-sweep/SKILL.md) owns it**
+  (registered 2026-08-18, daily 16:25Z, CCR fleet). Its whole job is driving `guard:ui` down one
+  surface at a time, and its run is judged on that number moving. Cross-run memory —
+  converted surfaces, refusals, the count trend —
+  is [`ui-conformance/LEDGER.md`](../ui-conformance/LEDGER.md).
+- **Primary Engineer** and the **Wiring Audit** may still take conformance batches within their
+  existing lanes — Wiring Audit on the capture path, Primary Engineer elsewhere — but neither is
+  accountable for the rollout, which is why assigning it as a *"may"* left it undone for five
+  weeks.
 - **One surface area per PR, sized to a single CI cycle.** A 200-file mechanical sweep is
   unreviewable and gets rejected. Follow DESIGN_SYSTEM.md §16.
 - **`pnpm guard:ui` must go down, never up**, and the tightened baseline is committed in the same

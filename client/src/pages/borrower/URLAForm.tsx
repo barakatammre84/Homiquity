@@ -603,9 +603,14 @@ export default function URLAForm() {
             <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Editing for:</span>
+              {/* touch-target: `sm` is h-9 (36px), under the 44px floor. A mis-tap on
+                  this pair selects the WRONG BORROWER and every keystroke after it lands
+                  in that slice — the same cross-contamination class the refactor trap
+                  guards. The utility raises the hit area below 767px only. */}
               <Button
                 variant={activeSeq === 1 ? "default" : "outline"}
                 size="sm"
+                className="touch-target"
                 onClick={() => setActiveSeq(1)}
                 data-testid="button-borrower-primary"
               >
@@ -615,6 +620,7 @@ export default function URLAForm() {
                 <Button
                   variant={activeSeq === 2 ? "default" : "outline"}
                   size="sm"
+                  className="touch-target"
                   onClick={() => setActiveSeq(2)}
                   data-testid="button-borrower-co"
                 >
@@ -627,7 +633,7 @@ export default function URLAForm() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2"
+                  className="touch-target gap-2"
                   onClick={() => {
                     setHasCoBorrower(true);
                     setActiveSeq(2);
@@ -641,7 +647,7 @@ export default function URLAForm() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-2"
+                  className="touch-target gap-2"
                   disabled={removeCoBorrowerMutation.isPending}
                   onClick={() => {
                     // Confirm because this is now durable and irreversible. It
@@ -669,7 +675,14 @@ export default function URLAForm() {
         <Tabs value={activeStep} onValueChange={setActiveStep}>
           <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-8">
             <div className="mb-6 lg:sticky lg:top-6 lg:mb-0">
-              <TabsList className="flex h-auto w-full items-stretch justify-start gap-1 overflow-x-auto bg-transparent p-0 lg:flex-col lg:overflow-visible">
+              {/* Wraps on a phone; it used to be `overflow-x-auto`, a horizontally
+                  scrolling step rail that put steps 4–7 off-screen with no affordance
+                  that they existed (DESIGN_SYSTEM.md §12.3 — no horizontal scrolling on
+                  a capture screen). Below lg the triggers are badge-only so all seven
+                  fit; their labels stay in the DOM as `sr-only` so each tab keeps its
+                  accessible name, and the active step's label is rendered beside the
+                  step counter below. lg is unchanged: the vertical rail with labels. */}
+              <TabsList className="flex h-auto w-full flex-wrap items-stretch justify-start gap-1 bg-transparent p-0 lg:flex-col lg:flex-nowrap">
                 {STEPS.map((step, index) => {
                   const complete = step.isComplete(stepContext);
                   return (
@@ -677,7 +690,7 @@ export default function URLAForm() {
                       key={step.id}
                       value={step.id}
                       data-testid={`tab-${step.id}`}
-                      className="h-auto shrink-0 justify-start gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                      className="h-auto shrink-0 justify-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-none lg:justify-start"
                     >
                       {complete ? (
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success-subtle-foreground">
@@ -692,7 +705,7 @@ export default function URLAForm() {
                           {index + 1}
                         </span>
                       )}
-                      <span className="flex min-w-0 flex-col">
+                      <span className="sr-only lg:not-sr-only lg:flex lg:min-w-0 lg:flex-col">
                         <span className="truncate text-sm font-medium">{step.label}</span>
                         <span className="hidden text-[11px] font-normal text-muted-foreground lg:block">
                           {step.estimate}
@@ -708,6 +721,11 @@ export default function URLAForm() {
               <div aria-live="polite" className="mb-6 space-y-1">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Step {stepIndex + 1} of {STEPS.length} · {currentStep.estimate}
+                </p>
+                {/* The step's name is in the rail on desktop, but the rail is
+                    badge-only on a phone — so render it here below lg. */}
+                <p className="text-base font-semibold text-foreground lg:hidden" data-testid="text-urla-step-label">
+                  {currentStep.label}
                 </p>
                 <p className="text-sm text-muted-foreground">{currentStep.intro}</p>
               </div>

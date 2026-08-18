@@ -201,7 +201,7 @@ notice). All six verified live then, shipped as PRs #135–#139.
   preview integration; the Vercel project is deleted, nothing creates preview branches, and
   no preview clones prod PII. The doctrine is preserved in that runbook and applies again
   *if* Railway PR environments are ever turned on — read it first, not after.
-  ~~Drop the legacy `mortgage-stream.vercel.app` domain alias~~ — moot; it died with the
+  ~~Drop the legacy `.vercel.app` domain alias~~ — moot; it died with the
   Vercel project.
 - [ ] **5. `[DECISION]` Launch-shape decisions.** Beta posture — recommended: set
   `BETA_ACCESS_CODE` and open invite-only first (the
