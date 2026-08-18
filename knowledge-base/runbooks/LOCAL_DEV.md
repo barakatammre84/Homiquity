@@ -64,11 +64,13 @@ Paste those lines into `.env`, add your `DATABASE_URL`, and (optionally) a
 > ⚠️ **Only one of those three is actually required locally, and it is the one that fails silently.**
 >
 > - **`SESSION_SECRET` — mandatory.** Its boot-time guard is production-only
->   ([`server/integrations/auth/session.ts:20`](../../server/integrations/auth/session.ts)), and the
->   value is then passed to express-session regardless. So without it the dev server **boots
->   cleanly, prints its port, and serves pages** — and then every session-touching request 500s with
->   `secret option required for sessions`, because express-session only checks per request. **Login
->   is broken with no boot-time signal.** If you see that error, this is why.
+>   ([`server/integrations/auth/session.ts`](../../server/integrations/auth/session.ts)), and the
+>   value is then passed to express-session regardless. Measured on a real boot with it blank:
+>   the server **starts with no error and logs `serving on port 5001`**, `GET /health` still returns
+>   `{"status":"ok"}` because it is mounted above the session middleware — and **everything else,
+>   the homepage included, returns 500 `secret option required for sessions`.** express-session only
+>   checks per request, so there is no boot-time signal at all; the first symptom is a dead site with
+>   a healthy-looking process. If you see that error, this is why.
 > - **`CREDIT_ENCRYPTION_KEY` and `PII_HASH_SALT` — optional in dev.** Both fall back silently
 >   outside production ([`encryptionService.ts:52`](../../server/services/encryptionService.ts) and
 >   `:536`); `assertEncryptionConfig()` returns early when `NODE_ENV !== "production"`. Set them
@@ -76,7 +78,7 @@ Paste those lines into `.env`, add your `DATABASE_URL`, and (optionally) a
 >
 > Set all three regardless: `pnpm build && pnpm start` runs in production mode, where **all three do
 > throw at boot** (`SESSION_SECRET` needs ≥32 chars). That is the cheapest way to catch a prod
-> config gap before a deploy rather than after one.
+> config gap before a deploy rather than after one — see §8 for the one extra step it needs.
 
 **Leave `CREDIT_VENDOR_API_KEY` unset.** It is a *provenance stamp*, not a connection setting —
 setting it flips `isSimulated` to false on regulated credit records. `.env.example` says so at
@@ -123,6 +125,13 @@ database is down, so it is not evidence of anything except that the process is u
 **If it looks like it hangs:** a throw inside `createApp()` is only *logged* by the
 `unhandledRejection` handler — `server.listen()` is never reached and the process stays alive with
 nothing bound to the port. It is a config error two screens up in the log, not a hang.
+
+**One alarming-looking log line on a fresh database is expected.** During the boot seed you will see
+a stack trace containing `CRITICAL COMPLIANCE ERROR: Required matrix configuration [FANNIE_LLPA] is
+missing, expired, or not active`, from `syncBestExecutionRates`. It is non-fatal — the seed
+continues, prints `Database seeded successfully`, and the server binds. A fresh local database has
+no LLPA matrix rows, so best-execution pricing has nothing to price against. Nothing else depends on
+it for a click-through.
 
 ## 6a. Beta-test it — logging in and clicking through
 
@@ -266,6 +275,24 @@ middleware.
 pnpm build          # vite build + esbuild server -> dist/index.js
 pnpm start          # NODE_ENV=production node dist/index.js
 ```
+
+⚠️ **`pnpm start` does not read `.env`.** Only the dev entrypoint loads it —
+`server/index-dev.ts` opens with `import "./load-env"`, and `server/index-prod.ts` deliberately does
+not, because Railway injects its variables from the service config. So running the production bundle
+**on your own machine** dies immediately with
+`Error: DATABASE_URL must be set. Did you forget to provision a database?` even when your `.env` is
+perfect. Export it first, the same idiom the integration tests use:
+
+```bash
+pnpm build
+set -a; . ./.env; set +a          # .env is not read by the prod entrypoint
+PORT=5055 pnpm start              # a spare port, so it can run beside `pnpm dev`
+curl -s localhost:5055/api/health
+```
+
+Worth doing before any deploy: production mode arms the throws dev skips (`SESSION_SECRET` ≥32
+chars, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`), and CSRF is enforced — `/api/test-login` answers
+**403** there rather than the dev 200, which is the gate working, not a bug.
 Railway runs precisely these, declared as config-as-code in
 [`railway.json`](../../railway.json) (builder `RAILPACK`, build
 `pnpm install --frozen-lockfile && pnpm build`, start `pnpm start`, health check
