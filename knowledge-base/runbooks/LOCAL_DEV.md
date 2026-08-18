@@ -4,6 +4,70 @@ The whole app runs on your machine, database included — that is the default an
 what day-to-day work should use (CLAUDE.md, *Local is the default verification
 target*). A hosted Postgres is a supported fallback, not the recommendation.
 
+## Quick start — one command *(added 2026-08-18)*
+
+```bash
+pnpm dev:up        # provisions a local Postgres, writes .env, migrates, seeds, serves :5001
+```
+
+Measured cold on a clean clone with no `.env` and no database: **15 seconds** to a healthy
+server. It is idempotent — run it as often as you like — and it **never overwrites a value
+already in your `.env`**, it only fills in what is missing and prints which keys it added.
+
+```bash
+pnpm dev:up down   # stop the server (the database stays up)
+pnpm dev:up logs   # tail it
+pnpm dev:up status # is it up?
+pnpm db:local reset  # rebuild the database from migrations + seed
+```
+
+Sign in with any seeded account — `buyer@test.com`, `lo@test.com`, `admin@test.com`,
+`underwriter@test.com`, `broker@test.com`, `lender@test.com`, `closer@test.com`,
+`cpa@test.com` — password `test1234` (`DEV_TEST_PASSWORD`).
+
+**Why this exists.** `pnpm dev` on a clean checkout dies with `DATABASE_URL must be set` before
+it prints anything useful, and the documented fix below is a five-step manual setup. Every step
+is easy; the *sequence* is what goes wrong, which is why the server felt like it "had trouble
+spinning up" when it actually had trouble being set up, once, correctly. The manual path below
+still works and still explains what each piece is for — read it when something breaks.
+
+**No Docker required.** `pnpm db:local` uses whatever is available, in this order: an existing
+`DATABASE_URL` → Docker → a plain `pg_ctl` cluster under `$HOME`. Never point it at the shared
+dev database: it seeds, and `seedLendingGrids` **wipes and rebuilds the pricing matrices**.
+
+## Before you push — the whole gate, locally
+
+```bash
+pnpm preflight            # all 16 checks CI's `gate` job runs — ~2m45s measured
+pnpm preflight --fast     # skip build + boot + integration lane (~2 min)
+```
+
+`.githooks/pre-push` (install once: `git config core.hooksPath .githooks`) runs the cheap half
+automatically on every push — typecheck, nine guards, both test lanes. **`preflight` adds the
+three that only ever ran in CI**, and they are the ones that catch a broken *deploy* rather than
+a broken diff: the production build, the self-host boot of `dist/index.js`, and the 18-file
+integration lane against a real HTTP server.
+
+A stage that cannot run is reported `SKIPPED` with the reason — it never silently passes. And
+green preflight is **not** a promise CI is green: it prints what it did not cover, every run.
+
+## Seeing it — a real browser, no dependency added
+
+```bash
+node scripts/browser-probe.cjs --url http://localhost:5001/ --width 320 --out /tmp/shot.png
+```
+
+Renders in real Chromium and answers what a text scan cannot: horizontal overflow at a given
+width, images that failed to load, sub-44px touch targets, controls with no accessible name.
+Details and limits: [BROWSER_PROBE.md](./BROWSER_PROBE.md).
+
+---
+
+## The manual path, and what each piece is for
+
+Only Postgres is a managed service if you choose Neon — the free tier costs nothing, so that is
+also a $0 setup.
+
 ## 1. Prerequisites
 - Node.js 24 (`node -v`) — matches the pinned `engines.node` in `package.json` (what Railway builds with)
   - ⚠️ **Keep `engines.node` an exact major (`"24"`), never an npm range like `"24.x"`.** Railway's
@@ -103,10 +167,12 @@ TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 git config core.hooksPath .githooks
 ```
 
-That arms `.githooks/pre-push`, which runs exactly what CI's `gate` job runs —
-typecheck, the schema↔migration guard, the design-token ratchet, then the unit
-suites — and **refuses the push** if any of them fails. Skip it once with
-`git push --no-verify`.
+That arms `.githooks/pre-push`, which runs the cheap half of CI's `gate` job —
+typecheck, then nine guards (schema↔migration, migration ledger, delivery-stack
+freeze, design tokens, UI standard, KB index, doc staleness, query-key
+convergence), then both unit suites — and **refuses the push** if any of them
+fails. Skip it once with `git push --no-verify`. For the whole gate including the
+build, the boot and the integration lane, run `pnpm preflight` (top of this file).
 
 This is a cost control, not a style preference. The repo is private, so Actions
 minutes are metered (roadmap KTLO-2). Measured 2026-08-17: **66 CI runs over 4.85
@@ -119,9 +185,11 @@ common break before vitest spends three minutes proving the same thing.
 The hooks live in a **tracked** `.githooks/` rather than `.git/hooks` so they
 survive a reclone, apply in every worktree, and are visible to review.
 
-`pnpm checkup` remains the heavier pre-PR sweep — it adds the production build,
-the dependency audit, the KB/doc/regulatory guards and a prod health probe. The
-hook deliberately skips those to stay cheap enough to leave on.
+`pnpm preflight` is the pre-PR sweep — it mirrors CI's `gate` exactly, adding the
+production build, the bundle ratchet, the self-host boot and the integration lane.
+`pnpm checkup` is the wider health sweep on top of that: the regulatory/freshness
+guards and a **production** health probe, which is the one thing preflight
+deliberately never touches. The hook skips all of it to stay cheap enough to leave on.
 
 ## Landing work on GitHub
 

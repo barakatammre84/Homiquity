@@ -655,12 +655,18 @@ New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section 
   text scan with no layout engine, and its className metrics see only literal double-quoted
   strings — classes built in `cn()`, template literals or cva variants are invisible, so **every
   count it prints is a floor, not a total.**
-- **Never claim a UI change was verified in a browser.** The client test lane is happy-dom, which
-  has no layout engine; there is no Playwright, no Storybook and no axe in this repo, and §6
-  forbids adding one. Nothing here can prove a rendered layout, a mobile viewport or a contrast
-  ratio in situ. Report the commands you actually ran. A rail that demands evidence the repo
-  cannot produce trains routines to invent it — which is why "verify at 320px" is **not** a rail
-  here, and `unprefixedMultiColGrid` is: the second one is checkable.
+- **Never claim a UI change was verified in a browser — unless you ran `scripts/browser-probe.cjs`
+  and pasted its output.** *(Amended 2026-08-18. The prohibition was absolute because the repo could
+  not produce the evidence: happy-dom has no layout engine, and §6 forbids adding Playwright. The
+  probe closes that without touching what §6 protects — it drives whatever Chromium is already on
+  disk over CDP, using Node's built-in WebSocket client, and adds no dependency. So the rail is now
+  an evidence requirement instead of a ban: the command and its output, or no claim.)* It answers
+  four questions — horizontal overflow at a real width, images that failed to load, sub-44px
+  targets, controls with no accessible name. It measures **no contrast ratio**, is **not** an
+  accessibility audit, and one viewport is not "mobile verified"; those claims stay forbidden
+  outright. [`runbooks/BROWSER_PROBE.md`](../runbooks/BROWSER_PROBE.md).
+  `unprefixedMultiColGrid` stays a guard metric — it is cheap, runs on every PR, and catches the
+  class before a browser is ever opened; the probe is what confirms the instance.
 - **A metric earns trust by being used, not by being written.** `arbitraryColorValues` passed
   review, passed CI and was merged and deployed while 97% of what it counted were font sizes, not
   colours — it died the first time someone measured a real surface with it. Review checks
