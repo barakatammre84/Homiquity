@@ -114,7 +114,7 @@ export function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left group"
+        className="touch-target flex w-full items-center gap-2 text-left group"
         data-testid="button-toggle-snapshot"
       >
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -164,7 +164,7 @@ export function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
           </div>
           {graph.readiness.outstandingInputs.length > 0 && expanded && (
             <div className="mt-3 pt-3 border-t space-y-1.5">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Areas to Strengthen</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Areas to Strengthen</p>
               {graph.readiness.outstandingInputs.slice(0, 3).map((gap, i) => (
                 <div key={i} className="flex items-center gap-2" data-testid={`text-gap-${i}`}>
                   <AlertCircle className="h-3 w-3 text-warning-subtle-foreground shrink-0" />

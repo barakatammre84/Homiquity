@@ -157,7 +157,7 @@ export function JourneyTracker({ status, className = "", showEstimates = false, 
               {/* Text */}
               <div className="min-w-0 flex-1 pb-1">
                 <p
-                  className={`text-[10px] font-semibold uppercase tracking-wider ${tagColor}`}
+                  className={`text-xs font-semibold uppercase tracking-wider ${tagColor}`}
                   data-testid={`journey-tag-${step.id}`}
                 >
                   {tag}
@@ -185,14 +185,14 @@ export function JourneyTracker({ status, className = "", showEstimates = false, 
                     data-testid={`journey-detail-${step.id}`}
                   >
                     {details![step.id]!.map((line) => (
-                      <p key={line} className="text-[11px] text-muted-foreground leading-snug">
+                      <p key={line} className="text-xs text-muted-foreground leading-snug">
                         {line}
                       </p>
                     ))}
                   </div>
                 )}
                 {showEstimates && isCurrent && step.estimate && (
-                  <p className="mt-1 text-[11px] text-muted-foreground" data-testid={`journey-estimate-${step.id}`}>
+                  <p className="mt-1 text-xs text-muted-foreground" data-testid={`journey-estimate-${step.id}`}>
                     ~{step.estimate}
                   </p>
                 )}
@@ -223,11 +223,11 @@ export function JourneyTracker({ status, className = "", showEstimates = false, 
                   {current.label}
                 </div>
                 {showEstimates && current.estimate && (
-                  <div className="text-[11px] text-muted-foreground">~{current.estimate}</div>
+                  <div className="text-xs text-muted-foreground">~{current.estimate}</div>
                 )}
               </div>
             </div>
-            <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
               Step {currentIndex + 1} of {JOURNEY_STEPS.length}
             </span>
           </div>
@@ -248,7 +248,7 @@ export function JourneyTracker({ status, className = "", showEstimates = false, 
           </div>
 
           {next && (
-            <div className="mt-1.5 text-[11px] text-muted-foreground">
+            <div className="mt-1.5 text-xs text-muted-foreground">
               Up next: <span className="text-foreground">{next.label}</span>
             </div>
           )}
@@ -315,7 +315,7 @@ export function JourneyTracker({ status, className = "", showEstimates = false, 
 
                 {showEstimates && isCurrent && step.estimate && (
                   <span
-                    className="mt-0.5 text-[10px] text-muted-foreground"
+                    className="mt-0.5 text-xs text-muted-foreground"
                     data-testid={`journey-estimate-${step.id}`}
                   >
                     ~{step.estimate}
