@@ -202,10 +202,12 @@ labels its two diagnoses as diagnoses — but each needs a correction note when 
    (`Navigation.tsx` ×10, `MobileBottomNav.tsx`, `not-found.tsx`). *(PR #555 review addendum,
    independently re-verified: the sibling spelling — `<Link>` wrapping the shadcn `<Button>`
    **component** — is the same rendered defect (`components/ui/button.tsx:52`: no `asChild` ⇒ a
-   real `<button>` inside the Link's `<a>`) at **~48 files, zero of them passing `asChild`**;
-   two regexes measured 106 and 216 adjacency matches. The 12/3 figure stands as the correction
-   of the teardown's claim; the *class* is an order of magnitude larger, and the Step-2 rework
-   ticket is sized from the class.)* The `asChild` fix direction
+   real `<button>` inside the Link's `<a>`) at **108 sites across 48 files, zero passing
+   `asChild`** (AST-level count from the PR #555 sizing proposal; cruder regexes read 106–216).
+   The 12/3 figure stands as the correction of the teardown's claim; the *class* is an order of
+   magnitude larger, and the Step-2 rework ticket is sized from the class — 80 mechanical + 8
+   duplicate-className + 15 className-merge + 4 onClick-intent sites, three-batch plan, ~2–4 h,
+   28 correct `<Button asChild>` sites already in-repo as the target spelling.)* The `asChild` fix direction
    stands; the grep target is different.
 3. **B3 (empty header CTA before auth resolves) — present by design, not by accident.**
    `Navigation.tsx:223-224` renders a shape-reserving skeleton (`h-9 w-20 animate-pulse`) while
