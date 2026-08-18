@@ -137,6 +137,9 @@ export default defineConfig({
       "tests/quietHours.test.ts",
       "tests/mcpAudit.test.ts",
       "tests/mcpAgentIdentity.test.ts",
+      // F-042: the soft-pull tool's FCRA gate runs BEFORE the cached-pull
+      // read, and the consent's type must cover the pull.
+      "tests/mcpSoftPullGate.test.ts",
       "tests/smsCompliance.test.ts",
       // X-Twilio-Signature verification on the inbound SMS webhook — pins the
       // algorithm against Twilio's published test vector and the route's
@@ -179,6 +182,7 @@ export default defineConfig({
       "tests/approvalStrength.test.ts",
       "tests/buyingPowerEstimate.test.ts",
       "tests/loanScenarioMatrix.test.ts",
+      "tests/pricingAdapterMI.test.ts",
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",
@@ -234,6 +238,10 @@ export default defineConfig({
       "tests/rentNavigation.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
+      // CTO_ROADMAP §3.2 — the compliance dashboard's per-application MISMO
+      // validation, now batched. Pins that the batched loader and the
+      // single-application one produce IDENTICAL verdicts.
+      "tests/mismoValidationBatch.test.ts",
       "tests/mutationErrorHandling.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
