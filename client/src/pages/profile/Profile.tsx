@@ -24,10 +24,11 @@ import {
   UserCircle2,
   X,
 } from "lucide-react";
-// From the table-free module, NOT the @shared/schema barrel: a value import
-// of the barrel ships all 174 Drizzle table definitions to every visitor
-// (#482, tests/clientSchemaImports.test.ts).
-import { isClearableIntakeField } from "@shared/preApprovalForm";
+// From the tiny table-free module, NOT the @shared/schema barrel (a value
+// import of the barrel ships all 174 Drizzle tables to the browser — #482) and
+// NOT preApprovalForm, which sits in the eager entry chunk every visitor
+// downloads. This page is lazily routed, so the catalog rides in its chunk.
+import { isClearableIntakeField } from "@shared/intakeClearable";
 import {
   CAPTURE_FIELDS,
   TIER_CONFIG,

@@ -512,15 +512,14 @@ export {
   preApprovalFormSchema,
   CREDIT_SCORE_BAND_VALUES,
   CREDIT_SCORE_UNKNOWN_DEFAULT,
-  CLEARABLE_INTAKE_FIELDS,
-  isClearableIntakeField,
 } from "../preApprovalForm";
+export { CLEARABLE_INTAKE_FIELDS, isClearableIntakeField } from "../intakeClearable";
+export type { ClearableIntakeField } from "../intakeClearable";
 export type {
   USStateCode,
   RentalPropertyEntry,
   IncomeSourceEntry,
   PreApprovalFormData,
-  ClearableIntakeField,
 } from "../preApprovalForm";
 import {
   CREDIT_SCORE_UNKNOWN_DEFAULT,
@@ -619,12 +618,11 @@ export const loanApplicationIntakeSchema = z.preprocess(
 );
 export type LoanApplicationIntake = z.infer<typeof loanApplicationIntakeSchema>;
 
-// CLEARABLE_INTAKE_FIELDS / isClearableIntakeField live in ../preApprovalForm
-// (imported and re-exported above): they are a list of names and a predicate,
-// and CLIENT code reads the predicate. A value import of @shared/schema ships
-// all 174 Drizzle table definitions to every visitor (#482,
-// tests/clientSchemaImports.test.ts), so anything the client needs sits in the
-// table-free module.
+// CLEARABLE_INTAKE_FIELDS / isClearableIntakeField live in ../intakeClearable
+// (re-exported above), in a module of their own: /profile is the only client
+// that reads the predicate and it is lazily routed, so keeping the catalog out
+// of preApprovalForm keeps its bytes out of the eager entry chunk. See that
+// file's header for the measurement.
 
 // The four fields this PATCH accepts that the funnel form does not carry.
 // Named so the clearable variants below reuse the SAME validator rather than

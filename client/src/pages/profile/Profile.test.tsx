@@ -18,7 +18,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 //     early, the editor closes with NO message at all.
 //
 // The schema now has a third state: `null` means clear
-// (CLEARABLE_INTAKE_FIELDS, shared/preApprovalForm.ts). So a clear is a real
+// (CLEARABLE_INTAKE_FIELDS, shared/intakeClearable.ts). So a clear is a real
 // save, and these tests pin the translation — an empty INPUT becomes a null on
 // the WIRE, while an empty string stays rejected so an accidental blank can
 // never be destructive.
@@ -44,7 +44,7 @@ vi.mock("wouter", () => ({
 }));
 
 import Profile, { PROFILE_FIELDS } from "./Profile";
-import { isClearableIntakeField } from "@shared/preApprovalForm";
+import { isClearableIntakeField } from "@shared/intakeClearable";
 
 /** A draft application with two figures on file, both clearable text inputs. */
 function renderPage() {
