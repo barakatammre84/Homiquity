@@ -16,6 +16,12 @@ import { toNum as toNumber } from "@shared/lib/number";
  *   says they have additional income, when they are self-employed (1099 income
  *   must be detailed for underwriting), or when they already hold multiple
  *   rental properties.
+ * - `hasAdditionalIncome` — the yes/no question in front of that block — is
+ *   asked ONLY when the answer can change the route. For a self-employed
+ *   borrower (or a multi-property landlord) the block is mandatory either way,
+ *   so the question is skipped rather than asked and then overridden. Asking it
+ *   is what produced the reported bug: answering "No, this is my only income"
+ *   still landed the borrower on "What other income do you receive?".
  * - The military/first-time question is asked BEFORE purchase price and down
  *   payment so VA eligibility can drive the zero-down path: a VA-eligible
  *   purchase allows a $0 down payment and suppresses PMI guidance (VA loans
@@ -84,7 +90,12 @@ export const PRE_APPROVAL_DEFAULTS: PreApprovalFormData = {
   propertyState: "",
   householdFamilySize: "",
   homeSquareFootage: "",
-  hasAdditionalIncome: false,
+  // Deliberately UNANSWERED, not `false`. A default of false rendered the "No,
+  // this is my only income" tile already highlighted, so the question arrived
+  // showing an answer the borrower had not given — and the one it showed was
+  // the one that hides income. Undefined selects neither tile; routing treats
+  // it as falsy exactly as before.
+  hasAdditionalIncome: undefined,
   incomeSources: [],
 };
 
@@ -164,8 +175,17 @@ export function computeRoute(answers: PreApprovalFormData): FunnelStepId[] {
   if (answers.isVeteran) {
     route.push("householdFamilySize", "homeSquareFootage");
   }
-  route.push("annualIncome", "employmentType", "employmentYears", "hasAdditionalIncome");
+  route.push("annualIncome", "employmentType", "employmentYears");
   const hasEnteredSources = (answers.incomeSources?.length ?? 0) > 0;
+  // Only ask the yes/no gate when it can actually change what comes next.
+  // `complexIncome` (self-employed, or two or more rental properties already
+  // on file) makes the detail block mandatory for underwriting, so a "No"
+  // there could never be honoured — and a funnel that overrides the answer it
+  // just asked for reads as broken. Skip straight to the detail step instead;
+  // it is titled for self-employment on that path (getDynamicTitle).
+  if (!flags.complexIncome) {
+    route.push("hasAdditionalIncome");
+  }
   if (answers.hasAdditionalIncome || flags.complexIncome || hasEnteredSources) {
     route.push("incomeSources");
   }
@@ -202,19 +222,39 @@ export function stepGate(
     case "downPayment": {
       const down = toNumber(answers.downPayment);
       const price = toNumber(answers.purchasePrice);
+      // Same field, different word: on a refinance this step asks for EQUITY
+      // (value − loan), which is the identical quantity the purchase path
+      // calls a down payment. The messages have to follow the wording the
+      // borrower was actually shown — "enter your planned down payment" on a
+      // home they already own is the funnel talking to the wrong person.
+      const isRefinance = answers.loanPurpose === "refinance" || answers.loanPurpose === "cash_out";
       if (isNaN(down)) {
-        return flags.vaZeroDown
-          ? { ok: false, errors: ["Enter a down payment — 0 is allowed with your VA benefit."] }
+        if (flags.vaZeroDown) {
+          return { ok: false, errors: ["Enter a down payment — 0 is allowed with your VA benefit."] };
+        }
+        return isRefinance
+          ? { ok: false, errors: ["Please enter your estimated equity — your home's value minus what you owe."] }
           : { ok: false, errors: ["Please enter your planned down payment."] };
       }
       if (down === 0 && !flags.vaZeroDown) {
         return {
           ok: false,
-          errors: ["A down payment is required for non-VA loans. Veterans may qualify for $0 down."],
+          errors: [
+            isRefinance
+              ? "A refinance needs some equity in the home. Enter your best estimate of what's left after the loan."
+              : "A down payment is required for non-VA loans. Veterans may qualify for $0 down.",
+          ],
         };
       }
       if (!isNaN(price) && down > price) {
-        return { ok: false, errors: ["Down payment cannot be more than the purchase price."] };
+        return {
+          ok: false,
+          errors: [
+            isRefinance
+              ? "Your equity can't be more than the home's value."
+              : "Down payment cannot be more than the purchase price.",
+          ],
+        };
       }
       return GATE_OK;
     }
@@ -389,6 +429,71 @@ export function funnelReducer(state: FunnelState, event: FunnelEvent): FunnelSta
   }
 }
 
+// ---------------------------------------------------------------------------
+// Progress model — what the borrower is shown about where they are.
+//
+// A 13-to-16-step form reads as endless when the only orientation is a hairline
+// bar. Steps are therefore grouped into four named CHAPTERS: a borrower tracks
+// "2 of 4 chapters, most of the way through The home" far more cheaply than
+// "step 6 of 15". The chapter list is FIXED (four, always, in this order) even
+// though the step list is dynamic, so the rail never reflows mid-funnel — only
+// the fill inside it moves.
+// ---------------------------------------------------------------------------
+
+export type FunnelSectionId = "goal" | "property" | "finances" | "finish";
+
+/** Fixed chapter order. Rendered as the progress rail. */
+export const FUNNEL_SECTIONS: readonly { id: FunnelSectionId; label: string }[] = [
+  { id: "goal", label: "Your goal" },
+  { id: "property", label: "The home" },
+  { id: "finances", label: "Your finances" },
+  { id: "finish", label: "Finish" },
+];
+
+/**
+ * Which chapter each step belongs to. Exhaustive over FunnelStepId — a new step
+ * cannot be added without placing it, because the Record type won't compile
+ * until it is.
+ */
+export const STEP_SECTION: Record<FunnelStepId, FunnelSectionId> = {
+  intro: "goal",
+  loanPurpose: "goal",
+  propertyType: "goal",
+  veteranAndFirstTime: "goal",
+  purchasePrice: "property",
+  downPayment: "property",
+  propertyState: "property",
+  householdFamilySize: "property",
+  homeSquareFootage: "property",
+  annualIncome: "finances",
+  employmentType: "finances",
+  employmentYears: "finances",
+  hasAdditionalIncome: "finances",
+  incomeSources: "finances",
+  monthlyDebts: "finances",
+  creditScore: "finances",
+  final: "finish",
+};
+
+export interface FunnelSectionProgress {
+  id: FunnelSectionId;
+  label: string;
+  /** Chapter number shown to the borrower (1-based). */
+  number: number;
+  /** How many steps of this chapter the active route contains. */
+  stepCount: number;
+  /**
+   * Steps of this chapter the borrower has REACHED, counting the one they are
+   * on. "3 of 6" while answering the third question is how a person counts;
+   * it also keeps the last chapter from reading 0% while the borrower sits on
+   * its only step.
+   */
+  stepsReached: number;
+  status: "done" | "current" | "upcoming";
+  /** 0..100 fill for this chapter's segment of the rail. */
+  percent: number;
+}
+
 export interface FunnelProgress {
   /** Index of the current step within the active route (intro = 0). */
   index: number;
@@ -396,10 +501,62 @@ export interface FunnelProgress {
   total: number;
   /** 0..100, for the progress bar. */
   percent: number;
+  /** Steps still ahead of the borrower on the active route. */
+  remaining: number;
+  /** Chapter the current step belongs to. */
+  sectionId: FunnelSectionId;
+  /** All four chapters, with per-chapter fill. Always length 4. */
+  sections: FunnelSectionProgress[];
+}
+
+/**
+ * Human-readable time-to-finish.
+ *
+ * Derived from the steps actually LEFT on the borrower's route, not from a
+ * hardcoded index threshold — the route is 13 steps for a W-2 buyer and 16 for
+ * a self-employed veteran, so a fixed "step > 8 ⇒ almost done" was simply wrong
+ * for everyone off the base path. ~5 steps/minute is the funnel's own promise
+ * ("about 3 minutes" over 13 steps) read back out.
+ */
+export function estimateTimeRemaining(remaining: number): string {
+  if (remaining <= 0) return "Last step";
+  if (remaining <= 2) return "Almost done";
+  return `~${Math.max(1, Math.ceil(remaining / 5))} min left`;
 }
 
 export function routeProgress(route: FunnelStepId[], stepId: FunnelStepId): FunnelProgress {
   const index = resolveRouteIndex(route, stepId);
   const total = route.length - 1;
-  return { index, total, percent: total > 0 ? (index / total) * 100 : 0 };
+  const sectionId = STEP_SECTION[route[index] ?? "intro"];
+  const currentSectionIdx = FUNNEL_SECTIONS.findIndex((s) => s.id === sectionId);
+
+  const sections = FUNNEL_SECTIONS.map((section, sectionIdx) => {
+    // The intro is chrome, not a question — excluding it keeps chapter 1 from
+    // showing a step the borrower never sees a counter for.
+    const steps = route.filter((s) => s !== "intro" && STEP_SECTION[s] === section.id);
+    const status: FunnelSectionProgress["status"] =
+      sectionIdx < currentSectionIdx ? "done" : sectionIdx === currentSectionIdx ? "current" : "upcoming";
+    const stepsReached =
+      status === "done" ? steps.length : status === "upcoming" ? 0 : steps.filter((s) => route.indexOf(s) <= index).length;
+    return {
+      id: section.id,
+      label: section.label,
+      number: sectionIdx + 1,
+      stepCount: steps.length,
+      stepsReached,
+      status,
+      // A passed chapter reads 100%, an unreached one 0. Only the chapter the
+      // borrower is inside is partial.
+      percent: steps.length > 0 ? (stepsReached / steps.length) * 100 : status === "done" ? 100 : 0,
+    };
+  });
+
+  return {
+    index,
+    total,
+    percent: total > 0 ? (index / total) * 100 : 0,
+    remaining: Math.max(0, total - index),
+    sectionId,
+    sections,
+  };
 }

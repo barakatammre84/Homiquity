@@ -41,7 +41,7 @@ import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
-import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
+import { AdvisoryPanel, resolveStepCopy, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDeferredSubmit } from "./preApproval/useDeferredSubmit";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
@@ -49,7 +49,7 @@ import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
 import { useCalculatorPrefill } from "./preApproval/calculatorPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
-import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
+import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter, FunnelProgressHeader } from "./preApproval/FunnelChrome";
 import { calculateAffordabilityEstimate, type AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
 import { buildTeaserInputs, parseTargetPrice } from "./preApproval/affordabilityTeaser";
 import { FUNNEL_SOFT_PULL_CONSENT_TEXT } from "@shared/creditConsentCopy";
@@ -136,7 +136,9 @@ function PreApprovalFunnel() {
       isFirstTimeBuyer: urlType === "first-time",
       avoidsInterestFinancing: false,
       propertyState: urlState || "",
-      hasAdditionalIncome: false,
+      // Unanswered on arrival — see PRE_APPROVAL_DEFAULTS. Defaulting to false
+      // pre-highlighted "No, this is my only income" before the borrower chose.
+      hasAdditionalIncome: undefined,
       incomeSources: [],
     },
   });
@@ -270,7 +272,10 @@ function PreApprovalFunnel() {
   }, []);
 
   const watchedValues = form.watch();
-  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
+  // Title, subtext and "why we ask" resolve together against the answers so
+  // far — see resolveStepCopy. A refinancer is not asked for a "purchase
+  // price", and a self-employed borrower is not asked about "other" income.
+  const stepCopy = useMemo(() => resolveStepCopy(currentQ, watchedValues), [currentQ, watchedValues]);
 
   // Mirror form values into the machine so routing always sees the latest
   // answers — but ONLY when a routing-relevant answer moved.
@@ -757,46 +762,16 @@ function PreApprovalFunnel() {
       
       <VerificationPulse active={submitMutation.isPending} />
 
-      {/* Progress Bar */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
-        <motion.div
-          className="h-full bg-primary"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress.percent}%` }}
-          transition={{ duration: 0.4 }}
-        />
-      </div>
-
-      {/* Navigation Header — same max-w-5xl container as the content grid
-          below, so the chrome and the question column line up instead of
-          centering on two different boxes. */}
-      <div className="fixed top-0 w-full p-4 sm:p-6 z-40 bg-background/80 backdrop-blur-sm">
-       <div className="w-full max-w-5xl mx-auto flex justify-between items-center">
-        <button
-          onClick={handleBack}
-          disabled={progress.index === 0}
-          className={`p-2 rounded-full hover:bg-muted transition-all ${progress.index === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-6 h-6 text-muted-foreground" />
-        </button>
-        <div className="flex flex-col items-center" data-testid="text-step-counter">
-          <span className="text-sm font-medium text-muted-foreground">
-            Step {progress.index} of {progress.total}
-          </span>
-          <span className="text-[11px] text-muted-foreground/60">
-            {progress.index <= 4 ? "~2 min left" : progress.index <= 8 ? "~1 min left" : "Almost done"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 w-10 justify-end">
-          {progress.index > 0 && (
-            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1" data-testid="text-autosave-indicator">
-              <Check className="h-3 w-3" /> Saved
-            </span>
-          )}
-        </div>
-       </div>
-      </div>
+      {/* Orientation chrome — chapter rail, step counter, percentage, and a
+          time-to-finish derived from the steps actually left on this
+          borrower's route. Shares the max-w-5xl container with the content
+          grid below so the two line up. */}
+      <FunnelProgressHeader
+        progress={progress}
+        onBack={handleBack}
+        canGoBack={progress.index > 0}
+        showSaved={progress.index > 0}
+      />
 
       {/* Main Content Area — on lg+ a two-column grid: the question column and
           the advisory panel share one centered container and one coordinate
@@ -805,7 +780,10 @@ function PreApprovalFunnel() {
           left of every other centered element with dead space in between).
           The column is reserved on every step, so the question never jumps
           when the panel's numbers start arriving. */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-0 relative flex flex-col items-center lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:items-center">
+      {/* pt clears the fixed FunnelProgressHeader, which is ~115px tall (counter
+          row + chapter rail + labels + the chapter/time line) rather than the
+          ~70px of the single-line header it replaced. */}
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-32 sm:pt-36 pb-0 relative flex flex-col items-center lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:items-center">
        <div className="w-full min-w-0 flex flex-1 lg:flex-none flex-col items-center justify-center">
         {/*
           mode="wait" mounts the next step only after the previous step's exit
@@ -839,9 +817,9 @@ function PreApprovalFunnel() {
               className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight"
               data-testid="text-question"
             >
-              {dynamicTitle}
+              {stepCopy.title}
             </h2>
-            
+
             {currentQ.subtitle && (
               <p className="text-lg text-muted-foreground mb-8">{currentQ.subtitle}</p>
             )}
@@ -850,20 +828,20 @@ function PreApprovalFunnel() {
                <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto" data-testid="text-va-zero-down">
                  As a veteran, you may qualify for a VA loan with <span className="font-medium text-foreground">$0 down and no PMI</span>. Enter 0 to explore that path.
                </p>
-            ) : currentQ.subtext && (
-               <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto">{currentQ.subtext}</p>
+            ) : stepCopy.subtext && (
+               <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto">{stepCopy.subtext}</p>
             )}
 
             {/* Input Area */}
             <div className="mb-10">
               {renderInput()}
-              {currentQ.why && (
+              {stepCopy.why && (
                 <p
                   className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground/70"
                   data-testid={`text-why-${currentQ.id}`}
                 >
                   <Info className="h-3 w-3 shrink-0" />
-                  {currentQ.why}
+                  {stepCopy.why}
                 </p>
               )}
             </div>

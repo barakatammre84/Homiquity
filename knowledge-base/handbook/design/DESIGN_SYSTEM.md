@@ -44,17 +44,19 @@ sites actually use it.
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
 | `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
+| Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 33 in 24 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 8 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 101 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 104 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
 | `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
-| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **170** occurrence(s) |
+| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **151** occurrence(s) |
 | `blindSpotPaletteClasses` — palette class in a shape the token guard cannot see | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
-| `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **67** occurrence(s) |
+| `subMinTouchTarget` — Button size="sm" (h-9 = 36px) with no .touch-target | ratcheting down | **233** occurrence(s) |
+| `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **62** occurrence(s) |
 
 <!-- END GENERATED -->
 
@@ -380,6 +382,14 @@ out of autonomous scope — flag it.
 - **Labels are always visible** — placeholder-only labelling is a defect.
 - **Touch targets ≥44px** — `.touch-target` enforces `min-height`/`min-width: 44px` under
   767px. `Button` `default` and `icon` already clear it at `h-11`.
+
+  `size="sm"` does **not** (h-9 = 36px), and this was the one accessibility rule with no
+  mechanical check behind it until 2026-08-18 — so it drifted to **233** `size="sm"` buttons
+  without `.touch-target` across 114 files. `subMinTouchTarget` in `pnpm guard:ui` now ratchets
+  it. Two limits stated rather than implied: the utility is scoped `max-width: 767px`, so a
+  768px+ touch device (iPad portrait) is **not** covered by it; and a raw `<button>` can be
+  sub-44px too, but it can equally wrap a whole card — that class is reported in §0 as needing
+  human review, never failed on.
 - **Contrast:** every semantic pair is hand-verified (§2). New pairs need the same treatment,
   light and dark, before they ship.
 - **Open follow-ups:** an `aria-label` sweep on icon-only controls, and landmark/skip-link

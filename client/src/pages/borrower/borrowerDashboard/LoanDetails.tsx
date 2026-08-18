@@ -90,7 +90,7 @@ export function LoanDetails({
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left group"
+        className="touch-target flex w-full items-center gap-2 text-left group"
         data-testid="button-toggle-details"
       >
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -102,7 +102,7 @@ export function LoanDetails({
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         )}
         {!expanded && (
-          <Badge variant="secondary" className="text-[10px]" data-testid="badge-detail-count">
+          <Badge variant="secondary" className="text-xs" data-testid="badge-detail-count">
             {items.length}
           </Badge>
         )}
@@ -121,7 +121,7 @@ export function LoanDetails({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xs font-medium ${item.color || ""}`}>{item.value}</span>
                     {item.href && (
-                      <Button asChild variant="ghost" size="sm" data-testid={`button-${item.testId}`}>
+                      <Button asChild variant="ghost" size="sm" className="touch-target" data-testid={`button-${item.testId}`}>
                         <Link href={item.href} data-testid={`link-${item.testId}`}>
                           View
                           <ArrowRight className="h-3 w-3 ml-0.5" />
