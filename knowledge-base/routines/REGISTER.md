@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| founder session (interactive) | `client/src/pages/borrower/Dashboard.tsx`, `components/dashboard/LoanTeamCard.tsx`, `scripts/ui-standard-guard.cjs` + its baseline | primary checkout | `claude/routines-operating-cadence-olj41t` | 2026-08-18 19:35 | UC-007 borrower-dashboard conformance (visual only, §14), plus splitting the mis-named `arbitraryColorValues` metric — 97% of what it counts are font sizes, not colours |
 
 ## Recently released
 
