@@ -294,7 +294,32 @@ const CHECKS = `(() => {
         h: px(r.height),
       });
     }
-    const name = (el.getAttribute("aria-label") || el.getAttribute("title") || (el.textContent || "").trim());
+    // Accessible name, in roughly the order the accname spec resolves it.
+    //
+    // FIXED 2026-08-18 (second defect in this check, found the same day as the
+    // overflow one above). It read aria-label / title / textContent ONLY, so a
+    // correctly-labelled <input id=x> + <Label htmlFor=x> came back "unnamed":
+    // nine false positives across five public pages on the first real sweep and
+    // ZERO true ones, four on the affordability calculator alone. CHARTER §10
+    // now lets this output be cited as evidence, so over-reporting sends people
+    // to fix what is not broken — the guard-that-cries-wolf failure the
+    // subMinTouchTarget metric was deliberately narrowed to avoid (#581).
+    const labelText = (() => {
+      const ref = el.getAttribute("aria-labelledby");
+      if (ref) {
+        const t = ref.split(/\s+/).map((id) => (document.getElementById(id) || {}).textContent || "").join(" ").trim();
+        if (t) return t;
+      }
+      if (el.id) {
+        const l = document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(el.id) : el.id) + '"]');
+        if (l && (l.textContent || "").trim()) return (l.textContent || "").trim();
+      }
+      const wrapping = el.closest("label");
+      if (wrapping && (wrapping.textContent || "").trim()) return (wrapping.textContent || "").trim();
+      return "";
+    })();
+    const name = (el.getAttribute("aria-label") || labelText || el.getAttribute("title")
+      || el.getAttribute("placeholder") || (el.textContent || "").trim());
     if (!name) {
       unnamedIconControls.push({
         tag: el.tagName.toLowerCase(),

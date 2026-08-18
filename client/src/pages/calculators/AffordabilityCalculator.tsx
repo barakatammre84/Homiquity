@@ -60,7 +60,13 @@ export default function AffordabilityCalculator() {
 
         <PresalesDisclaimer className="mb-6" />
 
-        <div className="grid gap-8 lg:grid-cols-5">
+        {/* grid-cols-1 is load-bearing on mobile, not decoration. Without an
+            explicit template the implicit column is `auto`, which sizes to the
+            item's MIN-CONTENT — measured 313px inside a 288px grid, overflowing
+            the page by 9px at 320px. Tailwind's grid-cols-1 is
+            `repeat(1, minmax(0, 1fr))`, and that minmax(0,…) is the part that
+            lets the column shrink. See knowledge-base/runbooks/BROWSER_PROBE.md. */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           <div className="lg:col-span-3 space-y-6">
             <IncomeCard
               annualIncome={inputs.annualIncome}
