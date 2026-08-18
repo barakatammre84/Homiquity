@@ -175,12 +175,12 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
         })}
         
         {pendingTasks.length > 3 && (
-          <Link href="/documents" className="block">
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-view-all-requests">
+          <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-view-all-requests">
+            <Link href="/documents">
               View all {pendingTasks.length} requests
               <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
 
         {pendingTasks.length === 0 && (

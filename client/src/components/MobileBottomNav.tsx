@@ -80,26 +80,26 @@ export function MobileBottomNav() {
         {items.map((item) => {
           const active = isActive(item.href);
           return (
-            <Link key={item.href} href={item.href}>
-              <button
-                className={cn(
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
                   "relative flex min-w-[56px] flex-col items-center gap-0.5 rounded-lg px-3 py-2 text-[10px] font-medium transition-colors",
                   active
                     ? "text-primary"
                     : "text-muted-foreground"
                 )}
-                data-testid={item.testId}
-              >
-                <div className="relative">
-                  <item.icon className={cn("h-5 w-5", active && "text-primary")} />
-                  {item.badge && item.badge > 0 ? (
-                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
-                      {item.badge > 99 ? "99+" : item.badge}
-                    </span>
-                  ) : null}
-                </div>
-                <span>{item.label}</span>
-              </button>
+              data-testid={item.testId}
+            >
+              <div className="relative">
+                <item.icon className={cn("h-5 w-5", active && "text-primary")} />
+                {item.badge && item.badge > 0 ? (
+                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                ) : null}
+              </div>
+              <span>{item.label}</span>
             </Link>
           );
         })}

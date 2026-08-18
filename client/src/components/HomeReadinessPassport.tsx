@@ -285,18 +285,18 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
               )}
 
               <div className="pt-2 border-t flex gap-2">
-                <Link href="/ai-coach" className="flex-1">
-                  <Button variant="outline" size="sm" className="w-full gap-1.5" data-testid="button-passport-coach">
+                <Button asChild variant="outline" size="sm" className="flex-1 w-full gap-1.5" data-testid="button-passport-coach">
+                  <Link href="/ai-coach">
                     <Bot className="h-3.5 w-3.5" />
                     Talk to Coach
-                  </Button>
-                </Link>
-                <Link href="/apply" className="flex-1">
-                  <Button size="sm" className="w-full gap-1.5" data-testid="button-passport-apply">
+                  </Link>
+                </Button>
+                <Button asChild size="sm" className="flex-1 w-full gap-1.5" data-testid="button-passport-apply">
+                  <Link href="/apply">
                     Get Pre-Approved
                     <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
           )}

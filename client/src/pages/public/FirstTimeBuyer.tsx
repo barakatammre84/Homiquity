@@ -309,17 +309,17 @@ export default function FirstTimeBuyer() {
                 {/* Dual CTAs */}
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <div className="flex w-full max-w-md flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
-                    <Link href="/apply?type=first-time" className="w-full sm:w-auto">
-                      <Button size="lg" className="w-full gap-2 font-semibold sm:w-auto" data-testid="button-ftb-apply">
+                    <Button asChild size="lg" className="w-full gap-2 font-semibold sm:w-auto" data-testid="button-ftb-apply">
+                      <Link href="/apply?type=first-time">
                         See Where I Actually Stand
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    <Link href="/afford" className="w-full sm:w-auto">
-                      <Button variant="outline" size="lg" className="w-full sm:w-auto" data-testid="button-ftb-afford">
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="lg" className="w-full sm:w-auto" data-testid="button-ftb-afford">
+                      <Link href="/afford">
                         Curious about a specific home?
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                   {softPullNote}
                 </div>
@@ -481,12 +481,12 @@ export default function FirstTimeBuyer() {
               Three minutes from now you could know your buying power, your program
               options, and your exact next step.
             </p>
-            <Link href="/apply?type=first-time" className="mt-8 w-full max-w-md sm:w-auto sm:max-w-none">
-              <Button size="lg" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-ftb-apply-footer">
+            <Button asChild size="lg" className="mt-8 max-w-md sm:max-w-none w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-ftb-apply-footer">
+              <Link href="/apply?type=first-time">
                 See Where I Stand
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <p className="mt-4 flex items-center gap-2 text-sm text-white/70">
               <ShieldCheck aria-hidden="true" className="h-4 w-4 text-precision-300" />
               Soft credit check only — your score is safe.
