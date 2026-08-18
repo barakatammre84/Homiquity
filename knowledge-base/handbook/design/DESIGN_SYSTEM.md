@@ -47,13 +47,13 @@ sites actually use it.
 | Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 33 in 24 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 8 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 101 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 103 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
 | `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
-| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **153** occurrence(s) |
+| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **151** occurrence(s) |
 | `blindSpotPaletteClasses` — palette class in a shape the token guard cannot see | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `subMinTouchTarget` — Button size="sm" (h-9 = 36px) with no .touch-target | ratcheting down | **233** occurrence(s) |
 | `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **62** occurrence(s) |
