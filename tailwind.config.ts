@@ -14,7 +14,7 @@ export default {
          (index.css) so surfaces use a named, tunable card shadow instead of
          Tailwind's stock shadows. A content card on bg-surface uses shadow-card;
          hover lifts to shadow-card-hover; hero/emphasis uses shadow-card-lg.
-         Overlays keep Radix's own shadows. See design_guidelines.md → elevation. */
+         Overlays keep Radix's own shadows. See DESIGN_SYSTEM.md → Radii, elevation, motion. */
       boxShadow: {
         card: "var(--shadow-sm)",
         "card-hover": "var(--shadow-md)",

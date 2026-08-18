@@ -34,10 +34,14 @@ doc-drift bug to fix):
   - [04 — API Surface](handbook/app-guide/04-api-routes.md) · [05 — Data Flow: A Loan's Journey](handbook/app-guide/05-data-flow.md) · [06 — Auth, Security & Secrets](handbook/app-guide/06-auth-security-secrets.md)
   - [07 — Frontend](handbook/app-guide/07-frontend.md) · [08 — Service Catalog](handbook/app-guide/08-services.md) · [09 — External Integrations](handbook/app-guide/09-integrations.md)
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
-- [design/design_guidelines.md](handbook/design/design_guidelines.md) — the design system (the *language*).
-- [design/visual-consistency-standard.md](handbook/design/visual-consistency-standard.md) — the operational
-  *checklist*: spacing/elevation scales, the icon registry (one glyph per concept), the brand/`<Logo>`/
-  white-label mechanism, empty-state + illustration standards, and the PageShell adoption checklist.
+- [design/DESIGN_SYSTEM.md](handbook/design/DESIGN_SYSTEM.md) — **the single binding design standard**
+  (Royal Blue Emerald). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
+  elevation, the icon registry, `<Logo>`/white-label, empty states, the **capture-flow standard**
+  (progressive disclosure · tunnel vision · mobile invariants), the **four-question gate**
+  (provenance · explanation · agreement · honesty), and the adoption checklist. §0 is a *measured*
+  adoption table — no `⏳`, every row carries a number and the command that produces it
+  (`pnpm guard:ui`). Merged 2026-08-18 from `design_guidelines.md` + `visual-consistency-standard.md`,
+  both now in [archive/design/](archive/design/).
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
@@ -149,7 +153,8 @@ The looping `/financial-audit` run (skill in `.claude/skills/financial-audit/`):
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
 operational logs quarantined 2026-07-08: [archive/founder-routines/](archive/founder-routines/),
 [archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/); the dead
-UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/); and the
+UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/); the two design docs
+superseded by the merged standard on 2026-08-18: [archive/design/](archive/design/); and the
 pre-rewrite roadmap: [archive/roadmap/](archive/roadmap/).
 
 ## The rule (continuous update)

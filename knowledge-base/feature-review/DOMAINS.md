@@ -306,9 +306,11 @@ Runs over every surface from teams 1–12, on three axes:
   `app-guide/07-frontend.md`.
 - **Compliance rails on copy**: Reg Z trigger terms (flag to compliance-auditor), no consent
   dark patterns (**audit: consent UX is exemplary — 0 pre-checked boxes**), Reg B denial tone.
-- **Builds on the standing system**: cross-reference `knowledge-base/logs/ux-audit/page-audit.md` ids; use
-  `psychology-patterns.md` as the copy standard; `component-inventory.csv` for the census.
-- **Source docs**: `design_guidelines.md`, `knowledge-base/logs/ux-audit/*`, landing-page research, design skills
-  under `.agents/skills/`.
+- **Builds on the standing system**: score every surface against the four-question gate in
+  `knowledge-base/handbook/design/DESIGN_SYSTEM.md` §13. The old `ux-audit` corpus is **archived**
+  (`knowledge-base/archive/ux-audit/`) — quarantined, not a live checklist; its `design-tokens.json`
+  describes the retired Obsidian Indigo palette. Cross-reference its ids for history only.
+- **Source docs**: `knowledge-base/handbook/design/DESIGN_SYSTEM.md` (binding), landing-page research,
+  design skills under `.agents/skills/`.
 - **Owned checks**: `node scripts/design-token-guard.cjs` (via `npm run checkup`), preview
   screenshots/inspects per surface group. **A11y:** 12/14 property `<img>` lack `alt`.
