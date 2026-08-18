@@ -16,7 +16,9 @@ read it, never a summary of it.
 
 ## Why this routine exists
 
-The design system was never missing. `design_guidelines.md` opened *"Royal Blue Emerald
+The design system was never missing. Its predecessor doc — now archived at
+[`archive/design/design_guidelines.md`](../../../knowledge-base/archive/design/design_guidelines.md),
+**quarantined, do not act on it** — opened *"Royal Blue Emerald
 (Better.com-style conversion clarity)"* and specified mobile-first forms, sticky CTAs and 44px
 touch targets — and then, for five weeks, nobody propagated any of it. The foundations shipped
 and stopped: `PageShell` reached 17% of pages, the icon registry and the `<Heading>`/`<Text>`
