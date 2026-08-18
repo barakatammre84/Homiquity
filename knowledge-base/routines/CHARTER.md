@@ -1,11 +1,13 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
-`.claude/skills/<id>/` for the CCR-fired routines (§3a). **This file is the *contract*** — the
+`.claude/skills/<id>/` for the CCR-fired routines (§3a). A cloud session **cannot read the laptop
+copies**, so **in-repo is the home for anything new** — a definition only one machine can see is one
+nobody can audit. **This file is the *contract*** — the
 shared clock, the shared facts, the shared lock, and the shared escalation path.
 Where a routine's own file disagrees with this one, **this file wins**, and the routine must say so
 in its report rather than silently following the stale copy.
@@ -102,7 +104,7 @@ takes an artifact before a human touches it**, not by topic:
 |---|---|---|
 | **L1 — decides and acts** | Finished artifact / ready PR; no pre-approval | code within lanes (tests, tooling, refactors, docs included), analysis, drafts of anything, monitoring and probes, opening PRs, routine ledgers and reports |
 | **L2 — acts, then flags** | Ships, but the PR/report flags it for explicit review | expand-only schema migrations (same-PR, hand-authored, idempotent); any §9-tripping diff — ships as a **draft PR** with ⛔ "write the security review or reject", the review itself always human-authored; wide cross-cutting refactors; verified-dead-code removal |
-| **L3 — prepares, human signs** | The machine does everything except the signature/click | merging any PR (a merge to `main` is a production deploy); contract migrations; license filings and regulator correspondence; contracts and vendor commitments; disclosure-policy changes; any outbound or external communication; money movement; production variables; each state's launch go/no-go |
+| **L3 — prepares, human signs** | The machine does everything except the signature/click | merging any PR (a merge to `main` is a production deploy) — **one carve-out, §6c: a green patch/minor dependency bump, by the one routine that owns it, which then owns the deploy**; contract migrations; license filings and regulator correspondence; contracts and vendor commitments; disclosure-policy changes; any outbound or external communication; money movement; production variables; each state's launch go/no-go |
 | **L4 — human-only** | The decision itself is human, not preparable into a signature | being the licensee / control person; credit-decision policy beyond cited deterministic rules; anything statute assigns to a person |
 
 **L1/L2 is where automatic mode lives:** routines select their own work, ship without
@@ -111,6 +113,14 @@ licensing names accountable humans; credit policy belongs to the accountable lic
 incident history (§8's auto-merge near-miss; the 2026-07-13 contract-migration outage). **They are
 amended only by the founder, knowingly — never by a routine, and never by a session acting on a
 routine's behalf.** A rail the machine can relax for itself is not a rail.
+
+**Amended once, on the record.** On **2026-08-18 the founder authorized** the L3 merge row's single
+carve-out — a routine may merge a green patch/minor dependency bump under §6c's preconditions. It is
+recorded here rather than only in §6c because the point of this table is that its exceptions are
+visible where the rule is. The authorization is narrow by construction: it names one artifact shape
+(a manifest-only bump), one routine, one merge per run, and it **attaches the deploy** — the routine
+that merges must prove prod advanced, because in this repo a merge to `main` is a deploy and a green
+workflow is not evidence one happened (§8).
 
 ---
 
@@ -216,7 +226,7 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 | 1st 13:00 | `0 13 1 * *` | Monthly financial-architecture audit | monthly | via [`/financial-audit`](../../.claude/skills/financial-audit/SKILL.md) rails | ledgered `F-…` findings |
 | 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
 | 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
-| hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync & review loop | hourly | branch updates only | open-PR digest |
+| hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
 | 03:40 / 09:40 / 15:40 / 21:40 | `40 3,9,15,21 * * *` | **Doc Accuracy** (`doc-accuracy`) | every 6 h | yes — living `.md` only (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
 
 **Three of these cite a skill that is not on `origin/main` yet** — Doc Accuracy, the UI
@@ -257,6 +267,9 @@ The day is a pipeline, not a stack of independent jobs.
         ▼
 09:10 Wiring Audit ──► capture-path defects (question B)
         ▼
+11:00 UTC Backend Data Engineer (CCR fleet) ──► schema integrity, MISMO/ULDD mapping,
+        │                                        API payload stability (question A)
+        ▼
 12:30 Lender Gate ──► can an organic file reach a lender clean? (question A)
         ▼
 15:00 QA Sweep ──► one domain + one workflow, adversarially verified → FINDINGS.md
@@ -267,6 +280,13 @@ The day is a pipeline, not a stack of independent jobs.
 Tue 13:15 Compliance Watch ──► state-launch ladder + signature-ready drafts; its ⛔ items
                                 feed Evening Triage's founder list that evening
 ```
+
+**Two clocks, one chain.** Every other box above is local time on the founder's laptop; the Backend
+Data Engineer is UTC on the CCR fleet, so its position in the chain is a *statement about what it
+reads and who reads it*, not a promise about the gap between them. It feeds on yesterday's QA
+Sweep, Evening Triage and Lender Delivery Gate reports, and its own report is read by that day's
+Lender Gate and that evening's Triage. **Evening Triage is where the two fleets meet** — it counts
+CCR reports in its proof-of-life sweep exactly as it counts local ones.
 
 **Reading a peer's report is mandatory, not optional.** A missing upstream report is a `WARN` with
 the routine named — never silently ignored, and never treated as "nothing happened." The Primary
@@ -328,6 +348,40 @@ capacity is the blocker" only when the queue is genuinely healthy and there is n
 commits *and* the session unreachable) or its owner asked. Never force-push another session's
 branch, never close its PR, never silently rewrite its approach — say what you changed and why.
 
+### The decide-or-close clock — finished work that never lands
+
+The assist ladder above stops routines from *adding* to a busy queue. This stops the queue from
+quietly becoming a graveyard, which is the more expensive failure: the whole build cost is paid,
+nothing is delivered, and then a second run pays a rescue cost on top.
+
+It is not hypothetical. On 2026-08-18 the open queue held PR **#542** — *"rescue: 13 unlanded
+2026-08-12 compliance commits"*, a PR whose entire purpose was to recover work that had already
+been done and lost — alongside **#495**, a draft six days old, and **#558**, closed unmerged with
+its surviving content re-landing through a third PR. Nothing in the suite ever forced a decision on
+any of them: the PR sync loop reported staleness accurately every hour, and staleness is not a
+decision.
+
+**The clock.** Every open PR carries an age against its last *substantive* commit (a branch update
+that only merges the base does not reset it):
+
+| Age | What must happen |
+|---|---|
+| **≤ 72 h** | nothing — normal in-flight work |
+| **> 72 h, draft** | it is promoted to ready, or it is proposed for closure **with its surviving content recorded first** — a ledger row, a follow-up ticket, or a named branch. Content recorded, then closed; never the other way round. |
+| **> 72 h, ready** | it is merged, or it carries a dated park note in its body saying what it is waiting on and who decides |
+| **> 7 days, any state** | it is a ⛔ item in that day's report, hardest first, with a recommended disposition per PR |
+
+**A routine proposes the disposition; it never executes one.** Merging is L3 (§1b), and the assist
+ladder's *"never close its PR"* binds here unchanged — a routine may promote its **own** draft to
+ready, may push a fix or a park note to a stalled branch under the assist rules, and may write the
+⛔ list. Closing anything, and merging anything, stays human. **Recording the content is the part
+the machine owes** — a kill proposed without a ledger row behind it is how #542 happened, and it is
+refused, not deferred.
+
+The **PR sync & review loop** (CCR, hourly on weekdays) is where this is computed and reported,
+because it already refreshes every open PR's state each hour. Evening Triage carries the survivors
+into the founder's list.
+
 ### Ids must not need a register to stay unique
 
 **Finding ids are date-qualified — `F-<MMDD>-<NN>`, using your own run's date (`F-0812-01`).
@@ -355,6 +409,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
 | Launch Gate | nothing | — (report + proposed tickets only) |
 | Wiring Audit | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
+| Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b); **dependency-bump triage per §6c — verdicts only, never the manifest** | `client/**` — not one line; `package.json`/`pnpm-lock.yaml` (§6c is verify-only); the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
 | Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
 | QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
@@ -395,13 +450,109 @@ work. A standard nobody is assigned to propagate is a preference.
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
 `server/integrations/object_storage/**`; outbound messaging; the underwriting/decision/rule engines;
-`shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever**);
+`shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever** —
+the one carve-out is §6c's verify-only lane, which authors no dependency change at all);
 `docs/**`; `data/regulatory/**`.
 
 **Regulated math changes only with a citation** → a `data/regulatory/regulatory-ledger.json` entry
 in the same commit. No citation, no code change. Never weaken a consent gate, a disclosure gate, an
 FCRA pull gate, or a `complianceInvariants` test to make something pass — **a
 `complianceInvariants` failure is a compliance incident, not a flaky test.**
+
+---
+
+### 6b. Backend data integrity — who owns it
+
+§6a's lesson generalizes: **a standard nobody is assigned to propagate is a preference, and a
+package nobody is assigned to keep valid is a hope.** Question A — *does a clean, complete, valid
+mortgage package reach the lender?* — was inside the Primary Engineer's company-wide lane, competing
+with the whole roadmap for three PR slots a day, which meant no run was ever judged on it. Every
+other code-writing routine in both fleets writes to `client/src/**`.
+
+- **The [Backend Data Engineer](../../.claude/skills/backend-data-engineer/SKILL.md) owns it**
+  (registered 2026-08-18, daily 11:00Z, CCR fleet): backend payload correctness, schema and
+  migration discipline, and MISMO/ULDD/URLA mapping honesty. Its run is judged on whether an
+  *organic* file — not the demo seed — gets closer to delivering clean. Cross-run memory is
+  [`backend-data-engineer/LEDGER.md`](../backend-data-engineer/LEDGER.md), whose refusal record is
+  append-only: a mapping already flagged unverifiable is never re-derived from memory.
+- **Primary Engineer may still take backend items** in its company-wide lane — it is not narrowed —
+  but it is not *accountable* for backend data integrity, which is exactly the distinction §6a had
+  to invent after assigning the design rollout as a *"may"* to two routines that had other jobs.
+- **The REGISTER is still the lock.** Accountability decides who is answerable for the number;
+  §5 decides who may write the file today. A backend file under a live claim is off the table for
+  whoever did not claim it, owner or not.
+- **One subsystem per PR, sized to a single CI cycle.** A sweeping cross-service diff is
+  unreviewable, and on this lane an unreviewable diff is where a dropped delivery field hides.
+- **The boundary it defends is written down**:
+  [`handbook/app-guide/12-api-contract.md`](../handbook/app-guide/12-api-contract.md). The UI
+  routines may not change Zod schemas or payload shapes (§6a, DESIGN_SYSTEM §14) — they file a
+  ticket, and this routine lands it.
+
+---
+
+### 6c. Dependency bumps — the one carve-out, and why it is verify-only
+
+`package.json` and `pnpm-lock.yaml` are off limits to every routine. That rule is correct and stays:
+a routine that can add a dependency can add an attack surface, and **no new dependency, ever** is
+not softened by anything here.
+
+But it left automated dependency bumps with **no owner at all**. On 2026-08-18 the queue held
+`@types/node` (#523) and `@google-cloud/storage` 7→8 (#524), both open since the 17th, both
+structurally unassignable — every routine was forbidden to touch the files they change, so they
+could only ever accumulate on the founder. Dependency debt became a function of elapsed time rather
+than of anyone's decision.
+
+**The [Backend Data Engineer](../../.claude/skills/backend-data-engineer/SKILL.md) owns bump
+triage** — not the bump. Verification is lane-neutral: it runs the gate and writes a verdict, and
+edits nothing. On a bump PR it may:
+
+- check out the branch, run the **full** gate (`pnpm check`, `pnpm test`, the `guard:*` suite, and
+  `pnpm audit --prod --audit-level=high`) and report the real output;
+- read the upstream changelog for breaking changes and name the ones that touch code in this repo,
+  by `file:line`;
+- update the branch against `main` when it has fallen behind (assist-ladder rung 1);
+- post **one** verdict comment — clear, or blocked with the reason — and carry the PR in its report.
+
+It may **not** author or edit `package.json`/`pnpm-lock.yaml`, propose a **new** dependency, take a
+**major** bump beyond reporting what would break, or close anything. A major is escalated with its
+breaking-change list, never cleared.
+
+#### Merging a bump — founder-authorized 2026-08-18, and the preconditions are the authorization
+
+The founder amended §1b's L3 merge row on 2026-08-18 to allow exactly this: **the routine may merge
+a green patch/minor bump.** Nothing else. The rule is not "routines may merge when confident" — it
+is this artifact shape, this routine, one per run, with the deploy attached.
+
+**Every one of these must hold. A single miss means report and stop, not merge and mention it.**
+
+1. **Manifest-only.** The PR changes `package.json` and/or `pnpm-lock.yaml` and **nothing else**.
+   One other path — a source file, a config, a workflow — and it is not a bump; it is a change
+   wearing a bump's title.
+2. **A bump of an existing dependency.** Not an addition, not a removal. "No new dependency, ever"
+   is untouched.
+3. **Patch or minor on a `>= 1.0.0` package.** A **`0.x` minor counts as a major** — pre-1.0
+   minors break by convention — and majors are escalated, never merged.
+4. **`main` is green and prod is current *before* you merge.** `GET /api/health`'s `commit` equals
+   `origin/main`'s tip. Merging onto a broken or stale prod makes the next failure unattributable,
+   and the whole value of this lane is that a bump's blame is unambiguous.
+5. **The gate is green on the PR's current head, observed by you** — not pending, not inferred from
+   an earlier run — and the branch is current with `main` with a clean `mergeable_state`.
+6. **Squash merge**, matching the repo's convention (`title (#NNN)`). **Never `--auto`, never
+   auto-merge** — §8 is unchanged and this carve-out is its opposite: a gate you already watched go
+   green, merged deliberately, in the foreground.
+7. **One bump per run.** Never batched. A batch makes the rollback ambiguous, and the rollback is
+   the only thing standing behind this authorization.
+
+**Then you own the deploy, because you caused it.** Poll `GET /api/health` until its `commit` equals
+the merge SHA — Railway builds and boots in ~90s; allow 20 minutes. **Do not read the workflow's
+conclusion instead:** `verify-deploy` is `continue-on-error: true` by design, so the workflow reports
+success even when prod never advanced (§8, and the 2026-08-06 freeze it documents). If prod does not
+reach the merge SHA, that is a `FAIL`: hand the founder §8's bad-deploy runbook and name
+`git revert <merge-sha>` as the rollback, in the report, with the SHA filled in.
+
+The report states the merge SHA, the `/api/health` commit actually observed, and that rollback
+command. A merge reported without an observed health commit is the one thing this lane exists to
+never do.
 
 ---
 
@@ -444,9 +595,22 @@ Lead a `FAIL` with `⛔ FAIL` and the exact failing thing, then hand the founder
 - **Deploy appears stuck / green but stale:** compare `/api/health`'s `commit` to `origin/main`.
 
 **No routine ever flips a production variable, rotates a credential, applies a migration to prod,
-pushes to `main`, merges a PR, or enables auto-merge.** The report plus its task notification **is**
-the page. Auto-merge is especially forbidden: an `--auto` armed in one session fires the moment
-Actions recovers, turning "just get CI to run" into a production deploy.
+pushes to `main`, or enables auto-merge.** The report plus its task notification **is** the page.
+Auto-merge is especially forbidden, and **this is not relaxed by §6c**: an `--auto` armed in one
+session fires the moment Actions recovers, turning "just get CI to run" into a production deploy.
+The §6c carve-out is the opposite shape — the routine merges only a gate it has already **observed**
+green, one bump, deliberately, in the foreground.
+
+**Merging a PR is L3** with that one carve-out (§6c: a green patch/minor dependency bump, founder-
+authorized 2026-08-18). Everything else — every code PR, every report PR, every routine's own work —
+stays a human click.
+
+**The deploy trap, for anything that does merge.** `verify-deploy` in
+[`ci.yml`](../../.github/workflows/ci.yml) is deliberately `continue-on-error: true` — it must not
+block, because it and Railway's "Wait for CI" are mutually recursive and the deadlock produces a
+permanent silent deploy freeze. **So the workflow concludes SUCCESS even when prod never advanced.**
+A green check is not a shipped deploy; read `verify-deploy`'s own conclusion, or poll
+`GET /api/health` yourself until its `commit` equals the merge SHA.
 
 ---
 

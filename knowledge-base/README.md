@@ -29,11 +29,12 @@ doc-drift bug to fix):
   three candidate extractions; each failure mode is invisible to `tsc`, to the full test suite
   and to every CI guard, and the worst writes a **co-applicant's PII into the primary
   borrower's rows**. Read before touching that file.
-- [app-guide/](handbook/app-guide/) — the 11-chapter subsystem handbook (read in order, or jump):
+- [app-guide/](handbook/app-guide/) — the 12-chapter subsystem handbook (read in order, or jump):
   - [01 — Start Here](handbook/app-guide/01-start-here.md) · [02 — Architecture, Entry & Exit Points](handbook/app-guide/02-architecture.md) · [03 — Database & Schema](handbook/app-guide/03-database.md)
   - [04 — API Surface](handbook/app-guide/04-api-routes.md) · [05 — Data Flow: A Loan's Journey](handbook/app-guide/05-data-flow.md) · [06 — Auth, Security & Secrets](handbook/app-guide/06-auth-security-secrets.md)
   - [07 — Frontend](handbook/app-guide/07-frontend.md) · [08 — Service Catalog](handbook/app-guide/08-services.md) · [09 — External Integrations](handbook/app-guide/09-integrations.md)
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
+  - [12 — The UI ↔ Backend API Contract](handbook/app-guide/12-api-contract.md) — who owns a payload shape, the three wire states (absent / value / `null`), the error shape, and how a shape changes without dropping a borrower's answer.
 - [design/DESIGN_SYSTEM.md](handbook/design/DESIGN_SYSTEM.md) — **the single binding design standard**
   (Royal Blue Emerald). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
   elevation, the icon registry, `<Logo>`/white-label, empty states, the **capture-flow standard**
@@ -97,7 +98,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
-The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet and in `.claude/skills/` for the CCR-fired routines (CHARTER §3); **this directory wins wherever they disagree.**
+The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**
 - [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the launch sequence (§1a), the decision authority matrix (§1b), the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
 - [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
 - [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
@@ -111,6 +112,13 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
   refusals with reasons, per-metric floors, and the `guard:ui` count trend. The routine exists
   because CHARTER §6a's own line — *a standard nobody is assigned to propagate is a preference* —
   described the state the design system was actually in.
+
+### Backend Data Engineer — autonomous backend/delivery-integrity routine · [`backend-data-engineer/`](backend-data-engineer/)
+- [LEDGER.md](backend-data-engineer/LEDGER.md) — cross-run memory for
+  [`/backend-data-engineer`](../.claude/skills/backend-data-engineer/SKILL.md): the backend work queue,
+  and an append-only **refusal record** of MISMO names, enumerations and edit codes that could not be
+  verified against `docs/fannie-mae/` or the Loan Delivery job aid — so no later run re-derives one from
+  memory. The routine owns CHARTER §1's question A on the data side (§6b).
 
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
 The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
