@@ -7,7 +7,7 @@ import { useBranding } from "./BrandingProvider";
  * The one brand lockup. Replaces the ~13 copy-pasted `homiquity` wordmark spans
  * (which varied in weight/size/color). Branding-aware: on a private surface with
  * an active tenant it shows the tenant logo/brand name; otherwise the Homiquity
- * wordmark + logomark. See visual-consistency-standard.md §4.
+ * wordmark + logomark. See DESIGN_SYSTEM.md → Brand & white-label.
  *
  * Phase 2 ships this component but does NOT swap it into the existing spans yet
  * (that migration + mounting BrandingProvider is Phase 4), so it is inert.

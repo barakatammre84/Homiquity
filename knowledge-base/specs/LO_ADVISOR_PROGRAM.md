@@ -40,7 +40,7 @@ default; see §4 for the full built-vs-missing map.
   number underwriting sees) and pull-through (LO-4's signals rescue stalling files before
   they die). LO-3's client report is the borrower-facing face of "certainty and speed."
 - **Cut-line check:** the LO is the highest-leverage human in the loop; equipping them is
-  loop work, not peripheral work. The launch sprint remains the standing priority; no prompt
+  loop work, not peripheral work. The roadmap's launch-blocking queue (CTO_ROADMAP.md §0–§2) remains the standing priority; no prompt
   below preempts a launch blocker. LO-3 (borrower-facing delivery) is explicitly gated
   behind licensure (I9) and does not accelerate solicitation before F1.
 

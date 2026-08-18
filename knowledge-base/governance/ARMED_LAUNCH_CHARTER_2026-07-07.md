@@ -90,7 +90,7 @@ findings into `BLOCKER` (one of the three classes) vs `BACKLOG` — that sort is
 deliverable**, due EOD July 5.
 
 > Reference discipline for all lanes: verify against `docs/fannie-mae/`, `docs/nmls/`,
-> `docs/nmls-safe/`, `kb/regulatory-ledger.json`, and the code — **never from memory**.
+> `docs/nmls-safe/`, `data/regulatory/regulatory-ledger.json`, and the code — **never from memory**.
 > Confirm any "X is missing/broken" claim against the code before filing it (the
 > source-of-truth rule; the TRID #34 false alarm is the cautionary tale).
 

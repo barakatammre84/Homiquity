@@ -59,11 +59,11 @@ export default function ForgotPassword() {
                   If an account exists for <span className="font-medium text-foreground">{email}</span>, a
                   reset link is on its way. The link expires in 30 minutes.
                 </p>
-                <Link href="/login">
-                  <Button variant="outline" className="w-full" data-testid="button-back-to-login">
+                <Button asChild variant="outline" className="w-full" data-testid="button-back-to-login">
+                  <Link href="/login">
                     Back to sign in
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">

@@ -126,20 +126,20 @@ export function CapturePanel({ captured }: { captured: CapturedEvent[] }) {
         )}
 
         <div className="pt-2 border-t space-y-2">
-          <Link href="/profile" data-testid="link-capture-profile">
-            <Button variant="outline" className="w-full gap-2 text-sm">
+          <Button asChild variant="outline" className="w-full gap-2 text-sm">
+            <Link href="/profile" data-testid="link-capture-profile">
               <UserCircle2 className="h-4 w-4" />
               View My Profile
               <ArrowRight className="h-3.5 w-3.5 ml-auto" />
-            </Button>
-          </Link>
-          <Link href="/apply?source=coach" data-testid="link-capture-apply">
-            <Button className="w-full gap-2 text-sm">
+            </Link>
+          </Button>
+          <Button asChild className="w-full gap-2 text-sm">
+            <Link href="/apply?source=coach" data-testid="link-capture-apply">
               <FileText className="h-4 w-4" />
               Continue to Pre-Approval
               <ArrowRight className="h-3.5 w-3.5 ml-auto" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <p className="text-[10px] text-muted-foreground text-center leading-snug">
             Everything the coach captures pre-fills your application.
           </p>

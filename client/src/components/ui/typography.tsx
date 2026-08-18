@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 /**
  * Typographic scale primitives — enforce ONE heading/text scale so sizes aren't
  * hand-picked per page (the audit found bespoke h1s at text-xl→text-5xl). See
- * design_guidelines.md → Typography and visual-consistency-standard.md §1.
+ * DESIGN_SYSTEM.md → Typography.
  *
  * Weights 600–700, tight tracking, per the design language. All sizes are
  * canonical tokens — pass `className` only for spacing/color, not to resize.

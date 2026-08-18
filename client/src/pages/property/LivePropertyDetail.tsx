@@ -63,9 +63,9 @@ export default function LivePropertyDetailPage() {
           <Home className="mx-auto h-16 w-16 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Property Not Found</h1>
           <p className="mt-2 text-muted-foreground">We couldn't load the details for this listing.</p>
-          <Link href="/properties">
-            <Button className="mt-4" data-testid="button-back-browse">Browse Properties</Button>
-          </Link>
+          <Button asChild className="mt-4" data-testid="button-back-browse">
+            <Link href="/properties">Browse Properties</Link>
+          </Button>
         </div>
       </PageShell>
     );
@@ -79,12 +79,12 @@ export default function LivePropertyDetailPage() {
       <SEOHead title="Property Details" description="View detailed property information including photos, price history, mortgage estimates, schools, and neighborhood data." />
 
       <PageShell width="wide">
-        <Link href="/properties">
-          <Button variant="ghost" className="mb-4 gap-2" data-testid="button-back-search">
+        <Button asChild variant="ghost" className="mb-4 gap-2" data-testid="button-back-search">
+          <Link href="/properties">
             <ChevronLeft className="h-4 w-4" />
             Back to Search
-          </Button>
-        </Link>
+          </Link>
+        </Button>
 
         <PhotoGallery photos={property.photos} address={property.address} />
 

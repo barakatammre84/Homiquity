@@ -48,11 +48,10 @@ Shadcn primitives).
   ramp, near-black slate type, vivid royal-blue dark surfaces (sidebar, hero
   gradients), emerald reserved for conversion actions; one dominant CTA per screen,
   progress steppers, collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
-  design-token guard — see [design_guidelines.md](../design/design_guidelines.md)
-  (authoritative) and its operational companion
-  [visual-consistency-standard.md](../design/visual-consistency-standard.md)
-  (spacing/elevation scales, icon registry, `<Logo>`/white-label, empty-state + adoption
-  checklists). **⏳ Consistency program (2026-07-14):** app surfaces are moving to
+  design-token guard and the UI-standard ratchet — see
+  [DESIGN_SYSTEM.md](../design/DESIGN_SYSTEM.md), the single binding standard
+  (tokens, type scale, layout, icon registry, `<Logo>`/white-label, empty states, the
+  capture-flow standard and the four-question gate). **Consistency program (2026-07-14):** app surfaces are moving to
   soft-shadow cards on a light-gray `bg-surface`, one canonical glyph per concept, and
   **tenant-overridable branding on private pages** (white-label; public stays Homiquity) —
   rolled out surface-by-surface (borrower dashboard first).
@@ -72,9 +71,9 @@ Shadcn primitives).
   (auth/bare/public routes); inside `PrivateLayout` **don't set it** — that layout
   supplies the gray app surface (`bg-surface`), and a white `min-h-screen` would
   paint over it. Full-bleed marketing/hero pages and centered spinner/empty states
-  are legitimate exceptions. Converting one of the ~57% opt-out pages: follow the
-  PageShell adoption checklist in
-  [visual-consistency-standard.md](../design/visual-consistency-standard.md) §8.
+  are legitimate exceptions. Converting one of the opt-out pages (82% at `56cf00a` —
+  re-measure with `pnpm guard:ui`, never quote this number stale): follow the PageShell
+  adoption checklist in [DESIGN_SYSTEM.md](../design/DESIGN_SYSTEM.md) §16.
 - **Aliases**: `@/` → `client/src/`, `@shared/` → `shared/` (defined in
   `vite.config.ts` + `tsconfig.json`).
 

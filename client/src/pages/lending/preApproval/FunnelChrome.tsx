@@ -153,17 +153,17 @@ export function AuthGateOverlay({ onDismiss }: { onDismiss: () => void }) {
           Create an account (or sign in) to see your pre-approval results. Your answers are already saved.
         </p>
         <div className="space-y-3">
-          <a href="/signup" className="block">
-            <Button size="lg" className="w-full" data-testid="button-auth-gate-signup">
+          <Button asChild size="lg" className="w-full" data-testid="button-auth-gate-signup">
+            <a href="/signup">
               Create account
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
-          <a href="/login" className="block">
-            <Button size="lg" variant="outline" className="w-full" data-testid="button-auth-gate-login">
+            </a>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="w-full" data-testid="button-auth-gate-login">
+            <a href="/login">
               Sign In
-            </Button>
-          </a>
+            </a>
+          </Button>
           <Button
             variant="ghost"
             size="sm"

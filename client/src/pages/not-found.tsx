@@ -30,31 +30,31 @@ export default function NotFound() {
           {recoveryLinks.map((link) => {
             const Icon = link.icon;
             return (
-              <Link key={link.href} href={link.href}>
-                <button
-                  className="flex w-full items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover-elevate"
-                  data-testid={`link-404-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Icon className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{link.label}</p>
-                    <p className="text-xs text-muted-foreground">{link.description}</p>
-                  </div>
-                </button>
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex w-full items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover-elevate"
+                data-testid={`link-404-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Icon className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{link.label}</p>
+                  <p className="text-xs text-muted-foreground">{link.description}</p>
+                </div>
               </Link>
             );
           })}
         </div>
 
         <div className="mt-8">
-          <Link href="/">
-            <Button variant="outline" className="gap-2" data-testid="button-404-home">
+          <Button asChild variant="outline" className="gap-2" data-testid="button-404-home">
+            <Link href="/">
               Back to Homiquity
               <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </main>
       <Footer />

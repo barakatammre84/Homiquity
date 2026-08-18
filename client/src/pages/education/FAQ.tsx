@@ -122,11 +122,11 @@ export default function FAQ() {
         <div className="mx-auto max-w-4xl">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Link href="/learn">
-                <Button variant="ghost" size="sm" data-testid="link-learning-center">
+              <Button asChild variant="ghost" size="sm" data-testid="link-learning-center">
+                <Link href="/learn">
                   Learning Center
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">FAQs</span>
             </div>
@@ -415,12 +415,12 @@ export default function FAQ() {
             <p className="mt-2 text-muted-foreground">
               Check out our Learning Center for in-depth guides and articles
             </p>
-            <Link href="/learn">
-              <Button className="mt-4" data-testid="button-explore-learning-center">
+            <Button asChild className="mt-4" data-testid="button-explore-learning-center">
+              <Link href="/learn">
                 Explore Learning Center
                 <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

@@ -57,7 +57,7 @@ cut-line.⟩
 ⟨Given/When/Then, or "a failing test that then passes." Each criterion must be observable.⟩
 - [ ] ⟨e.g. Given a complete file, When staff exports MISMO, Then the XML validates against the
   ULDD XSD in `docs/fannie-mae/` and SSN appears nowhere outside the delivery seam.⟩
-- [ ] **Definition of Done** (TEAM_PRACTICES §5): `npm run check` clean · `npm test` green (new
+- [ ] **Definition of Done** (TEAM_PRACTICES §5): `pnpm check` clean · `pnpm test` green (new
   tests added to `vitest.config.ts`) · integration green on :5002 · live evidence in the PR ·
   env vars in `.env.example` + CICD.md · doc-sync line · security-review outcome recorded if §3
   triggered it.
