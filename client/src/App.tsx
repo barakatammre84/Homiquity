@@ -194,6 +194,11 @@ function StaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={ROUTE_GATES.staff}>{children}</PrivateLayout>;
 }
 
+/** Borrower-reachable disclosure surfaces (ux-30). See ROUTE_GATES.disclosure. */
+function DisclosurePage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={ROUTE_GATES.disclosure}>{children}</PrivateLayout>;
+}
+
 function InternalStaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={ROUTE_GATES.internalStaff}>{children}</PrivateLayout>;
 }
@@ -473,7 +478,7 @@ function Router() {
           {(params) => <StaffPage><BorrowerFile /></StaffPage>}
         </Route>
         <Route path="/loan-estimate/:id">
-          {(params) => <StaffPage><LoanEstimate /></StaffPage>}
+          {(params) => <DisclosurePage><LoanEstimate /></DisclosurePage>}
         </Route>
         <Route path="/compliance">
           <Redirect to="/staff-dashboard" />
