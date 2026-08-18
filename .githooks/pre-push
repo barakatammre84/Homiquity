@@ -80,8 +80,21 @@ echo "pre-push gate — mirroring CI's \`gate\` job"
 # Order is fail-fastest-first: 25s of tsc beats 3 minutes of vitest when the
 # break is a type error, which is the common case.
 step "typecheck (tsc)"          npx tsc --noEmit
+
+# The whole guard suite, added 2026-08-18. Every one of these is a REQUIRED
+# check in CI and they cost about a second between them — leaving them out meant
+# a design-token regression or an unregistered routine still burned the four
+# billed minutes to find out. Measured on this repo: 10 guards, ~1s total.
 step "schema <-> migrations"    node scripts/schema-migration-guard.cjs
+step "migration ledger"         node scripts/migration-ledger-guard.cjs
+step "delivery-stack freeze"    node scripts/delivery-stack-freeze-guard.cjs
 step "design tokens"            node scripts/design-token-guard.cjs
+step "UI standard ratchet"      node scripts/ui-standard-guard.cjs
+step "knowledge-base index"     node scripts/kb-index-guard.cjs
+step "doc staleness ratchet"    node scripts/doc-staleness-guard.cjs
+step "routine registry"         node scripts/routine-registry-guard.cjs
+step "query-key convergence"    node scripts/query-key-guard.cjs
+
 step "unit tests (node+client)" pnpm test
 
 if [ ${#failed[@]} -gt 0 ]; then
@@ -93,4 +106,9 @@ if [ ${#failed[@]} -gt 0 ]; then
 fi
 
 echo "all green — pushing"
+echo
+echo "  This hook is the CHEAP half. It does not build, does not boot the bundle,"
+echo "  and does not run the integration lane — the three checks that catch a"
+echo "  broken DEPLOY rather than a broken diff. Before opening a PR:"
+echo "      bash scripts/preflight.sh    # all 17 gate checks, ~3 min"
 exit 0

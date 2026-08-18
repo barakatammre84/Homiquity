@@ -1,7 +1,70 @@
 # Running Homiquity locally (Antigravity / any terminal)
 
-The whole app runs on your machine. Only Postgres is a managed service — the free
-tier of Neon costs nothing, so this is a $0 local setup.
+The whole app runs on your machine, database included.
+
+## Quick start — one command *(added 2026-08-18)*
+
+```bash
+pnpm dev:up        # provisions a local Postgres, writes .env, migrates, seeds, serves :5001
+```
+
+Measured cold on a clean clone with no `.env` and no database: **15 seconds** to a healthy
+server. It is idempotent — run it as often as you like — and it **never overwrites a value
+already in your `.env`**, it only fills in what is missing and prints which keys it added.
+
+```bash
+pnpm dev:up down   # stop the server (the database stays up)
+pnpm dev:up logs   # tail it
+pnpm dev:up status # is it up?
+pnpm db:local reset  # rebuild the database from migrations + seed
+```
+
+Sign in with any seeded account — `buyer@test.com`, `lo@test.com`, `admin@test.com`,
+`underwriter@test.com`, `broker@test.com`, `lender@test.com`, `closer@test.com`,
+`cpa@test.com` — password `test1234` (`DEV_TEST_PASSWORD`).
+
+**Why this exists.** `pnpm dev` on a clean checkout dies with `DATABASE_URL must be set` before
+it prints anything useful, and the documented fix below is a five-step manual setup. Every step
+is easy; the *sequence* is what goes wrong, which is why the server felt like it "had trouble
+spinning up" when it actually had trouble being set up, once, correctly. The manual path below
+still works and still explains what each piece is for — read it when something breaks.
+
+**No Docker required.** `pnpm db:local` uses whatever is available, in this order: an existing
+`DATABASE_URL` → Docker → a plain `pg_ctl` cluster under `$HOME`. Never point it at the shared
+dev database: it seeds, and `seedLendingGrids` **wipes and rebuilds the pricing matrices**.
+
+## Before you push — the whole gate, locally
+
+```bash
+pnpm preflight            # all 17 checks CI's `gate` job runs — ~2m45s measured
+pnpm preflight --fast     # skip build + boot + integration lane (~2 min)
+```
+
+`.githooks/pre-push` (install once: `git config core.hooksPath .githooks`) runs the cheap half
+automatically on every push — typecheck, ten guards, both test lanes. **`preflight` adds the
+three that only ever ran in CI**, and they are the ones that catch a broken *deploy* rather than
+a broken diff: the production build, the self-host boot of `dist/index.js`, and the 18-file
+integration lane against a real HTTP server.
+
+A stage that cannot run is reported `SKIPPED` with the reason — it never silently passes. And
+green preflight is **not** a promise CI is green: it prints what it did not cover, every run.
+
+## Seeing it — a real browser, no dependency added
+
+```bash
+node scripts/browser-probe.cjs --url http://localhost:5001/ --width 320 --out /tmp/shot.png
+```
+
+Renders in real Chromium and answers what a text scan cannot: horizontal overflow at a given
+width, images that failed to load, sub-44px touch targets, controls with no accessible name.
+Details and limits: [BROWSER_PROBE.md](./BROWSER_PROBE.md).
+
+---
+
+## The manual path, and what each piece is for
+
+Only Postgres is a managed service if you choose Neon — the free tier costs nothing, so that is
+also a $0 setup.
 
 ## 1. Prerequisites
 - Node.js 24 (`node -v`) — matches the pinned `engines.node` in `package.json` (what Railway builds with)
