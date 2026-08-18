@@ -189,9 +189,16 @@ export type PreApprovalFormData = z.infer<typeof preApprovalFormBaseSchema>;
 
 // Exported for the derived schemas in shared/schema/lendingUrla.ts (see above).
 export const downPaymentWithinPurchasePrice = (
-  data: { downPayment?: string; purchasePrice?: string },
+  // `null` is admitted because the draft-update schema lets a borrower CLEAR
+  // either figure (CLEARABLE_INTAKE_FIELDS, shared/intakeClearable.ts).
+  // The falsy guard below already handled it; only the type was too narrow,
+  // and widening it here is what keeps that check honest rather than casting
+  // at the call site.
+  data: { downPayment?: string | null; purchasePrice?: string | null },
   ctx: z.RefinementCtx,
 ) => {
+  // A cleared figure has nothing to compare against — the pair is only
+  // meaningful when both are present, exactly as when neither was answered yet.
   if (!data.downPayment || !data.purchasePrice) return;
   const dp = parseFloat(data.downPayment.replace(/[,$]/g, ""));
   const pp = parseFloat(data.purchasePrice.replace(/[,$]/g, ""));
