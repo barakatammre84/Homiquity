@@ -205,7 +205,7 @@ export default function MortgageCalculator() {
   ].filter((item) => item.value > 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Mortgage Calculator — Monthly Payment & Cost Breakdown"
         description="Free mortgage calculator. See your estimated monthly payment — principal, interest, taxes, insurance, PMI, and HOA — with an interactive amortization schedule. No sign-up required."
@@ -493,6 +493,6 @@ export default function MortgageCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

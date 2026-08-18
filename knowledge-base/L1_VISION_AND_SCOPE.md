@@ -3,7 +3,7 @@
 > **Freshness:** last verified 2026-07-17 · review every 90 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 > **This is L1 — the top of the source-of-truth hierarchy.** It decides *what we build*.
-> **L2 `COMPLIANCE_AND_LOGIC.md`** (the regulatory/financial guardrails) overrides anything
+> **L2 `L2_COMPLIANCE_AND_LOGIC.md`** (the regulatory/financial guardrails) overrides anything
 > here when they conflict. **L3 `[Feature]_SPECS.md`** files execute under both and MUST cite the
 > L1 loop they serve and the L2 constraints they obey. If a proposal doesn't serve the core loop
 > in §2 or unblock launch, it does not ship now — see the cut-line in §3.
@@ -97,7 +97,7 @@ scoped). Client role gates MUST mirror the server gate (`isInternalStaffRole`, n
 
 ## 6. Non-negotiable boundaries (L1 states them; L2 owns the detail)
 
-These are absolute. Detail and citations live in **L2 `COMPLIANCE_AND_LOGIC.md`**; L1 names them so
+These are absolute. Detail and citations live in **L2 `L2_COMPLIANCE_AND_LOGIC.md`**; L1 names them so
 no feature idea can quietly cross one:
 
 - **AI never decides.** AI extracts, structures, and surfaces — it never makes a lending decision,

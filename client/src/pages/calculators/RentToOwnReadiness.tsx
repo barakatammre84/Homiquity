@@ -57,7 +57,7 @@ export default function RentToOwnReadiness() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Rent-to-Own Readiness Calculator"
         description="See what home price your current rent could cover, the credit and down payment you'd need, and a clear plan to go from renting to owning. No login required."
@@ -119,6 +119,6 @@ export default function RentToOwnReadiness() {
           </div>
         )}
       </PageShell>
-    </div>
+    </>
   );
 }

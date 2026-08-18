@@ -91,7 +91,7 @@ export default function AmortizationCalculator() {
   const maxYearInterest = Math.max(...results.yearly.map((y) => y.principal + y.interest), 1);
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Amortization Calculator — See Your Full Mortgage Payoff Schedule"
         description="Free amortization calculator. See how much of every mortgage payment goes to principal vs. interest, your full year-by-year payoff schedule, and how extra payments save you interest and time."
@@ -373,6 +373,6 @@ export default function AmortizationCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }
