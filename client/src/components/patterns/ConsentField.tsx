@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-// Consent capture (docs/DESIGN-STANDARD.md §6, teardown §6.3 — Better shipped
+// Consent capture (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §6.3 — Better shipped
 // an opt-out with a double negative and a threat). This component makes that
 // unavailable: positive opt-in only, there is deliberately NO `defaultChecked`
 // prop, the consequence of consenting is stated neutrally OUTSIDE the label,
@@ -42,14 +42,14 @@ export function ConsentField({
       console.warn(
         `[ConsentField:${id}] consent arrived pre-granted (checked on first ` +
           `render). Consent is a positive opt-in and must start unchecked ` +
-          `(DESIGN-STANDARD §6).`,
+          `(DESIGN_SYSTEM.md §13, Honesty).`,
       );
     }
     if (NEGATIVE_LANGUAGE.test(label)) {
       console.warn(
         `[ConsentField:${id}] the label "${label}" reads as negative language. ` +
           `State the opt-in positively; put consequences in \`consequence\`, ` +
-          `outside the label (DESIGN-STANDARD §6).`,
+          `outside the label (DESIGN_SYSTEM.md §13, Honesty).`,
       );
     }
   }

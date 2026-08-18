@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 
-// Progress whose denominator cannot move (docs/DESIGN-STANDARD.md §6, teardown
+// Progress whose denominator cannot move (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown
 // §6.2 — Better shipped a counter that ran BACKWARDS when verification added
 // tasks mid-flight). The total is snapshotted on first render; a later change
 // is kept out of the UI and warned about loudly in dev instead of silently
@@ -14,7 +14,7 @@ export function useTaskProgress(completed: number, total: number) {
     console.warn(
       `[TaskProgress] total changed ${frozenTotal.current} → ${total} after the ` +
         `snapshot; keeping ${frozenTotal.current}. A fraction whose denominator ` +
-        `moves is banned (DESIGN-STANDARD §6) — snapshot totals at task start.`,
+        `moves is banned (DESIGN_SYSTEM.md §13, Agreement) — snapshot totals at task start.`,
     );
   }
   const totalNow = frozenTotal.current;

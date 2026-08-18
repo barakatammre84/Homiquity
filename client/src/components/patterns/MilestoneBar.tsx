@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 // The macro journey tier (teardown §9, P2): the whole road at squint distance,
 // sitting above a LoanTracker's step detail. `label` is required and doubles
 // as the accessible name — every progress tier says what it measures
-// (DESIGN-STANDARD §8 bans unlabeled progress displays).
+// (DESIGN_SYSTEM.md §13 — every display says what it measures).
 
 export type MilestoneStatus = "done" | "current" | "future";
 

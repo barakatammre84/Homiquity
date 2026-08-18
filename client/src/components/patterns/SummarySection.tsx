@@ -6,7 +6,7 @@ import {
   type ProvenanceMethod,
 } from "@/components/patterns/ProvenanceBadge";
 
-// Application-summary block (docs/DESIGN-STANDARD.md §6). `source` and
+// Application-summary block (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13). `source` and
 // `whyWeAsk` are REQUIRED: a financial figure cannot render without declaring
 // its origin, and an intrusive request cannot ship unexplained — the standard's
 // Provenance and Explanation questions moved from code review to the compiler.

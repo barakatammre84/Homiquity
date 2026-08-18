@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Icons } from "@/lib/icons";
 
 // Sticky Support-left / Submit-right bar on every multi-field flow
-// (docs/DESIGN-STANDARD.md §6, teardown §4.2). Two guarantees: Submit is never
+// (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §4.2). Two guarantees: Submit is never
 // something you scroll to find, and help is one click away at the moment of
 // confusion. The right cluster reserves space for the Coach launcher bubble so
 // the two never overlap.

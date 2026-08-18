@@ -29,9 +29,9 @@ Today's single most important unblock: **LS-2 ops env vars** (SendGrid/Sentry/GC
 - LS-4 vendor applications (F3 credit / F6 DU-LPA) — no code-side signal available; founder-owned, standing.
 - LS-6 prod grid reseed — founder-supervised, destructive; not run.
 - ci.yml human push — still not on origin: `git ls-remote --heads origin` shows neither `claude/inspiring-faraday-86b6b2` nor `claude/gracious-mendel-a0f77c`, and `.github/workflows/ci.yml` does not exist on `main`. Standing.
-- homiquity.com domain — `curl https://homiquity.com/api/health` → **404** (not attached). Prod still lives at the legacy Vercel prod host.
+- homiquity.com domain — `curl https://homiquity.com/api/health` → **404** (not attached). Prod still lives at mortgage-stream.vercel.app.
 
-**(c) Production pulse** — `curl` against the legacy Vercel prod host's `/api/health` → **200 OK**, 0.37s response time, body `{"status":"ok","timestamp":"2026-07-06T03:57:56.315Z"}`.
+**(c) Production pulse** — `curl https://mortgage-stream.vercel.app/api/health` → **200 OK**, 0.37s response time, body `{"status":"ok","timestamp":"2026-07-06T03:57:56.315Z"}`.
 
 **(d) Next engineering leg** — LS-10 (lender submission adapter) and L6 (XSD-validate MISMO export): no commits touching `server/services/lenderSubmission.ts` or `server/mismo.ts` in the last 24h; `git log --since="24 hours ago" --oneline` shows a single roadmap-reconciliation docs commit (`86bdc67`), no code movement. PR queue: **empty** (`gh pr list --state open` returned nothing).
 

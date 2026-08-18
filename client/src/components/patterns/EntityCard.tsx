@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Icons } from "@/lib/icons";
 
 // Repeating entities have three states — empty → editing → saved
-// (docs/DESIGN-STANDARD.md §5, teardown §4.7). The saved state keeps each
+// (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §4.7). The saved state keeps each
 // question BESIDE its answer, removing the "wait, what did I put?" anxiety
 // without a separate review screen. Edit is neutral; Delete is a red OUTLINE
 // (present, not inviting); Add lives on the collection, outside the card.

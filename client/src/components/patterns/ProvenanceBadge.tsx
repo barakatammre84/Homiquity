@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { DATA_PROVENANCE, type DataProvenance } from "@shared/dataProvenance";
 
-// Provenance as a first-class UI element (docs/DESIGN-STANDARD.md §6, teardown
+// Provenance as a first-class UI element (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown
 // §4.8): every financial figure declares how it was obtained. The type derives
 // from shared/dataProvenance.ts — the data layer's enum, not a parallel client
 // vocabulary — so a figure's badge and its decision-grade treatment can never
@@ -30,7 +30,7 @@ export const PROVENANCE_DISPLAY: Record<DataProvenance, ProvenanceDisplay> = {
     explanation: "Confirmed against your documents or an authoritative source.",
   },
   [DATA_PROVENANCE.SYSTEM_CALCULATED]: {
-    label: "Estimated",
+    label: "Calculated",
     variant: "warning",
     explanation:
       "Calculated by us from other figures, so it is only as firm as they are.",

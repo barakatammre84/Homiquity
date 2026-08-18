@@ -30,11 +30,11 @@ interface DashboardData {
 }
 
 // The borrower's "what you told us" summary, on the pattern components
-// (docs/DESIGN-STANDARD.md §6): the financial section is a SummarySection with
+// (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13): the financial section is a SummarySection with
 // its required source + why-we-ask; income and debts render dual-unit (annual
 // AND monthly, monthly derived); the previous hand-rolled "Initial"/"Soft
 // check" chips became the shared ProvenanceBadge vocabulary; and the
-// client-computed loan amount now declares itself Estimated instead of
+// client-computed loan amount now declares itself Calculated instead of
 // rendering unlabeled.
 
 export default function ApplicationSummary() {

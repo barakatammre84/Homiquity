@@ -76,10 +76,10 @@
   --secondary-foreground: 222 47% 11%;
   /* Data-section separation: Ultra-Light Gray #F8FAFC */
   --muted: 210 40% 98%;
-  /* Secondary/micro-copy: green-grey per docs/DESIGN-STANDARD.md §4 (was blue-grey
-     Muted Slate 215 24% 37%) — quiet text carries the brand hue. Verified ~5.8:1
-     on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1). Still clearly
-     recessive vs the near-black primary type (~16:1). */
+  /* Secondary/micro-copy: green-grey per the 2026-08-18 overhaul direction —
+     quiet text carries the brand hue (was blue-grey Muted Slate 215 24% 37%).
+     Verified ~5.8:1 on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1).
+     Still clearly recessive vs the near-black primary type (~16:1). */
   --muted-foreground: 168 12% 37%;
   /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
      --muted #F8FAFC) that white cards sit ON so their shadow-card reads.

@@ -16,7 +16,7 @@
 > GCS env vars pending, LS-2). Still true: licensing (F1), vendor contracts (F3–F7),
 > CI (#5 — workflow authored but stranded off-main; see ASSUMPTIONS.md §2).
 **Audience:** Frontend, Backend/Platform, Data, DevOps, Compliance, AI, QA, Product
-**Production:** the legacy Vercel prod host (homiquity.com custom domain pending) · **Repo:** single source of truth on `main`, every push deploys
+**Production:** https://mortgage-stream.vercel.app (homiquity.com custom domain pending) · **Repo:** single source of truth on `main`, every push deploys
 **How to use this doc:** every numbered item in §3/§4 and every row in §5 is scoped to be a single work prompt/session — name the item, point at the files, state the acceptance check.
 
 ---

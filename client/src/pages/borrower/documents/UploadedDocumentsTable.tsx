@@ -7,7 +7,7 @@ import type { Document } from "@shared/schema";
 import { DOCUMENT_CATEGORIES, docTypeName } from "../documentCategories";
 
 // The borrower's uploaded-documents vault, on the DocumentList pattern
-// (docs/DESIGN-STANDARD.md §6). Titles resolve through the catalog's own
+// (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13). Titles resolve through the catalog's own
 // docTypeName map — the data layer's naming, never a view-side
 // `replace(/_/g, " ")` — rows group by the catalog's categories, dates read as
 // plain English ("You uploaded on …"), a rejection's reason rides the row, and

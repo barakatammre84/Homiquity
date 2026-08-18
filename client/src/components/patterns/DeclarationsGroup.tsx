@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Icons } from "@/lib/icons";
 
 // The bulk-answer escape hatch for mandatory declaration walls
-// (docs/DESIGN-STANDARD.md §6, teardown §4.12 — the best pattern found in the
+// (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §4.12 — the best pattern found in the
 // benchmark). Every question still renders and stays individually answerable
 // (the regulator gets a complete record); the shortcut is announced BEFORE the
 // wall; and the master checkbox is DERIVED from the answers, never stored, so

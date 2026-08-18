@@ -7,7 +7,7 @@ import type { LoanApplication } from "@shared/schema";
 // Pins the summary's migration onto the pattern components: the financial
 // section declares its source and why-we-ask, income/debts render dual-unit
 // with the monthly column DERIVED from the annual figure, and the
-// client-computed loan amount is labeled Estimated instead of unlabeled.
+// client-computed loan amount is labeled Calculated instead of unlabeled.
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -75,11 +75,11 @@ describe("ApplicationSummary", () => {
     expect(screen.getByText(/never affects your credit score/)).toBeTruthy();
   });
 
-  it("labels the client-computed loan amount Estimated", () => {
+  it("labels the client-computed loan amount Calculated", () => {
     renderPage([app]);
 
     expect(screen.getByTestId("text-loan-amount").textContent).toContain("$320,000");
-    expect(screen.getByTestId("provenance-loan-amount").textContent).toBe("Estimated");
+    expect(screen.getByTestId("provenance-loan-amount").textContent).toBe("Calculated");
   });
 
   it("shows a scoped empty state when there is no active application", () => {

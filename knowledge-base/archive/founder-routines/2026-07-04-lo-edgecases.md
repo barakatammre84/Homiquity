@@ -25,7 +25,7 @@ Interview script — one line per LO, to be filled in by the founder:
 
 ## 2. Summary
 
-The engine's document-requirements config has a real dead end: borrowers who select employment type **"other"** (1099 contractors, trust/pension income — a valid schema value) silently fell through to the "employed" bucket and were asked for a W-2 they cannot produce, per `server/pipelineEngine.ts`. This is exactly the class of defect this routine hunts for — a file the engine "handled wrong" that an LO would otherwise have to notice and route around by hand. It's fixed, unit-tested, and shipped as [PR #37](https://github.com/barakatammre84/Homiquity/pull/37) today (see §7). Separately, the friction-telemetry module (`frictionLog.ts`) declares five signal types but only three are ever fired in the codebase — `credit_pull_blocked` and `rate_limited` are dead, meaning a real borrower hitting a credit-pull consent wall today would produce **no durable signal at all**, only a thrown `Error`. The known S-05/S-06 gap (rental-income advisory copy that never reaches `decisionEngine.ts`'s actual DTI, flagged by last night's LO audit as H9) remains open and is carried forward, not re-litigated here.
+The engine's document-requirements config has a real dead end: borrowers who select employment type **"other"** (1099 contractors, trust/pension income — a valid schema value) silently fell through to the "employed" bucket and were asked for a W-2 they cannot produce, per `server/pipelineEngine.ts`. This is exactly the class of defect this routine hunts for — a file the engine "handled wrong" that an LO would otherwise have to notice and route around by hand. It's fixed, unit-tested, and shipped as [PR #37](https://github.com/barakatammre84/MortgageStream/pull/37) today (see §7). Separately, the friction-telemetry module (`frictionLog.ts`) declares five signal types but only three are ever fired in the codebase — `credit_pull_blocked` and `rate_limited` are dead, meaning a real borrower hitting a credit-pull consent wall today would produce **no durable signal at all**, only a thrown `Error`. The known S-05/S-06 gap (rental-income advisory copy that never reaches `decisionEngine.ts`'s actual DTI, flagged by last night's LO audit as H9) remains open and is carried forward, not re-litigated here.
 
 ---
 
@@ -77,7 +77,7 @@ Not applicable — this is the **first run** of this scheduled routine (no prior
 
 | Ticket | Owner | Est. | Notes |
 |---|---|---|---|
-| **Fix "other"-employment doc requirements** | Claude | Done | Shipped today — [PR #37](https://github.com/barakatammre84/Homiquity/pull/37), not yet merged (never pushed to `main` directly, per rule). |
+| **Fix "other"-employment doc requirements** | Claude | Done | Shipped today — [PR #37](https://github.com/barakatammre84/MortgageStream/pull/37), not yet merged (never pushed to `main` directly, per rule). |
 | **T1 — wire `credit_pull_blocked` friction logging** | Claude | 0.5h | `creditService.ts:601-603`; call `logFriction` before the throw, same pattern as `consentGate.ts:149`. |
 | **T2 — wire or remove `rate_limited` friction logging** | Claude | 0.5h | Decide with Amr: real limiter integration (~1h) vs. deleting the dead union member (~5 min). Recommend the real integration — rate-limit walls are exactly the "friction the borrower silently hit" signal this loop exists to catch. |
 | **L10 — condo/1099/trust-income document branches (carried from lo-audit)** | Claude | 2h | `pipelineEngine.ts` `PROPERTY_REQUIREMENTS` needs a `propertyType === "condo"` branch (HOA cert / condo questionnaire); today's fix covers the 1099/trust-income *employment*-type half specifically, condo half remains. |
@@ -94,7 +94,7 @@ No genuinely new P0/P1 items met the bar for CTO_ROADMAP.md today — T1/T2 are 
 - **Files touched:** [`server/pipelineEngine.ts`](../../../server/pipelineEngine.ts) (added an `other` bucket to `EMPLOYMENT_RULES`), [`tests/pipelineEngineDocumentRequirements.test.ts`](../../../tests/pipelineEngineDocumentRequirements.test.ts) (new), [`vitest.config.ts`](../../../vitest.config.ts) (registered the new test file in the explicit `include` list).
 - **Test added:** 3 cases — "other" no longer receives `w2`; "other" receives a 2-year `tax_return` requirement instead; "employed" is unaffected (regression guard). All pass; `tests/scenarioCatalog.test.ts` (5/5) and `npx tsc --noEmit` also clean.
 - **Acceptance criterion:** a loan application with `employmentType: "other"` never has `w2` in its generated document requirements, and does have a 2-year `tax_return` requirement — met.
-- **Shipped as:** [PR #37](https://github.com/barakatammre84/Homiquity/pull/37) (branch `claude/lo-edgecase-other-employment`, isolated worktree, not pushed to `main`).
+- **Shipped as:** [PR #37](https://github.com/barakatammre84/MortgageStream/pull/37) (branch `claude/lo-edgecase-other-employment`, isolated worktree, not pushed to `main`).
 
 **Tomorrow's carry-forward pick (not done today, next in line):** wire `credit_pull_blocked` (T1 above) — smallest, cleanest telemetry fix, same pattern as the three already-working friction points, 30 minutes.
 

@@ -37,10 +37,10 @@ direct scheduler read, not re-verified from here.
   dead links; `guard:docs` — 6 living docs within freshness interval. The old-name sweep found
   the former repo name only in archived/dated history and explicitly-bannered historical rows, which is
   correct, plus one false positive (`server/services/apr.ts`'s payment-stream params type — a *payment
-  stream* domain term, not the repo name; leave it). *(Superseded 2026-08-18, founder-directed:
-  the same-day design-standard PR scrubbed the former name repo-wide — historical PR links
-  normalized to canonical URLs, the params type renamed `MortgagePaymentStreamParams` — leaving
-  the spelled-out name only in root `CLAUDE.md`'s ban.)*
+  stream* domain term, not the repo name; leave it). *(Amended 2026-08-18, founder-directed: the
+  pattern-library PR renames the params type `MortgagePaymentStreamParams` and scrubs the former
+  name from living docs and code — archived/dated history keeps its original wording per this
+  audit's own §2 doctrine, now also enforced by the doc-staleness ratchet.)*
 - **The routine cleanup already worked**: the four stale app-UI tasks the playbook says to delete
   are **absent from the live trigger list** (seven triggers remain: the four new ones, the PR sync
   loop, Barakat RE triage, one transient `send_later`). The playbook's own Part 1 "delete these
@@ -118,10 +118,10 @@ keeping for the things guards can't see (semantic staleness, routine drift).
    optional cosmetics), `BETA_GO_LIVE_READINESS.md:204` (struck-through moot item),
    `routines/CHARTER.md:28` (documents the rename). False positive to leave alone:
    `server/services/apr.ts`'s payment-stream params type — the payment
-   stream, not the repo. *(Superseded 2026-08-18, founder-directed: the "optional cosmetics"
-   were executed repo-wide in the design-standard PR, and the params type is now
-   `MortgagePaymentStreamParams`; the spelled-out former name survives only in root
-   `CLAUDE.md`'s ban.)*
+   stream, not the repo. *(Amended 2026-08-18, founder-directed: the "optional cosmetics" were
+   executed for living docs and code in the pattern-library PR — PR links normalized to canonical
+   URLs, the params type renamed `MortgagePaymentStreamParams`. Archived/dated history keeps its
+   original wording, per this section's own doctrine and the doc-staleness ratchet's design.)*
 3. **`governance/TEAM_PRACTICES.md` — the one living doc with genuine pointer drift** (§2b.1).
 4. **`research/gtm/COMPETITIVE_BRIEF_2026-07-06.md` — Better facts superseded by the 08-18
    baseline**; supersession banner due once the teardown lands (§2b.4).

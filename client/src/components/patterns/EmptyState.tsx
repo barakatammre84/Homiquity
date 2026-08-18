@@ -1,7 +1,7 @@
 import { type LucideIcon } from "lucide-react";
 import { EmptyState as BaseEmptyState } from "@/components/ui/empty-state";
 
-// Scoped empty state (docs/DESIGN-STANDARD.md §6): `scope` is required and the
+// Scoped empty state (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13): `scope` is required and the
 // heading is DERIVED from it, so a component that knows one flow can never
 // claim "you're all caught up" about the whole account — the two-sources-of-
 // truth defect (teardown §6.1) becomes structurally impossible. Renders through

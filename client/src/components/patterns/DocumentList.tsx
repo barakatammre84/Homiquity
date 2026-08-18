@@ -6,7 +6,7 @@ import {
   type ProvenanceMethod,
 } from "@/components/patterns/ProvenanceBadge";
 
-// The document vault list (docs/DESIGN-STANDARD.md §6, teardown §6.5 — the
+// The document vault list (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §6.5 — the
 // benchmark shipped raw slugs and a dead "File name" column). Human titles come
 // from a slug→title map owned by the DATA layer and passed in (never normalized
 // in the view); duplicate document types are disambiguated by subject ("For
@@ -54,7 +54,7 @@ function resolveTitle(row: DocumentRow, titles: Readonly<Record<string, string>>
     console.error(
       `[DocumentList] no human title for slug "${row.slug ?? "(none)"}" (id ${row.id}). ` +
         `Add it to the data layer's title map — raw slugs in UI text are banned ` +
-        `(DESIGN-STANDARD §8), and so is normalizing names in the view.`,
+        `(DESIGN_SYSTEM.md §13, Honesty), and so is normalizing names in the view.`,
     );
   }
   return "Document (name missing)";

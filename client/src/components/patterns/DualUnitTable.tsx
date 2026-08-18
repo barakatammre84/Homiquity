@@ -5,7 +5,7 @@ import {
   type DualUnitGroup,
 } from "@/lib/dualUnitMath";
 
-// Dual-unit financial display (docs/DESIGN-STANDARD.md §6, teardown §4.11):
+// Dual-unit financial display (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §4.11):
 // borrowers think in annual salary, underwriters think in monthly DTI — every
 // amount renders in both. The monthly column is derived from the annual figure
 // (never a second input), `—` marks not-applicable (never $0), and the caption

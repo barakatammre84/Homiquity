@@ -1,4 +1,4 @@
-// Dual-unit financial display math (docs/DESIGN-STANDARD.md §6, teardown §4.11).
+// Dual-unit financial display math (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §4.11).
 //
 // One source figure (annual), two renderings (annual + monthly) — the monthly
 // column is always DERIVED here, never supplied separately, so the two units

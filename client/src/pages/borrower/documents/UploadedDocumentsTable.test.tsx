@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import type { Document } from "@shared/schema";
 import { UploadedDocumentsTable } from "./UploadedDocumentsTable";
 
-// Pins the vault migration onto DocumentList (DESIGN-STANDARD §6/§8): titles
+// Pins the vault migration onto DocumentList (DESIGN_SYSTEM.md §13 + the vault rules, teardown §6.5): titles
 // come from the catalog's data-layer name map (never a view-side slug
 // prettifier), off-catalog types land in "Other documents" via the same map's
 // own fallback, dates read as plain English, a rejection's reason rides the

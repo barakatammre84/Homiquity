@@ -19,7 +19,7 @@ describe("ProvenanceBadge", () => {
     expect(text()).toBe("Verified");
 
     rerender(<ProvenanceBadge provenance={DATA_PROVENANCE.SYSTEM_CALCULATED} />);
-    expect(text()).toBe("Estimated");
+    expect(text()).toBe("Calculated");
   });
 
   it("renders the soft-check refinement only on verified data", () => {

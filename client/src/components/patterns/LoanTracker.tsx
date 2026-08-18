@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
-// Whole road visible, one step lit (docs/DESIGN-STANDARD.md §6, teardown §4.1).
+// Whole road visible, one step lit (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13; teardown §4.1).
 // Future steps stay VISIBLE, greyed, each with a plain-English description that
 // names the actor ("We review…", "Your loan is prepared…") — answering the
 // question borrowers actually have: is something wrong, or is this just how

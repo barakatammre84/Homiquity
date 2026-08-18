@@ -17,11 +17,13 @@ import { DualUnitTable } from "@/components/patterns/DualUnitTable";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { EntityCard, EntityCollection } from "@/components/patterns/EntityCard";
 import { LoanTracker } from "@/components/patterns/LoanTracker";
+import { MilestoneBar } from "@/components/patterns/MilestoneBar";
+import { OptionalUpload } from "@/components/patterns/OptionalUpload";
 import { StickyFormBar, SupportPill } from "@/components/patterns/StickyFormBar";
 import { SummarySection, UnderwritingRule } from "@/components/patterns/SummarySection";
 import { TaskProgress } from "@/components/patterns/TaskProgress";
 
-// UI-overhaul prototype (docs/DESIGN-STANDARD.md) — an internal, staff-gated
+// UI-overhaul prototype — an internal, staff-gated
 // gallery that composes every pattern component with SIMULATED data: Better's
 // white/clean layout physics carrying Homiquity's brand and products. This is
 // the reference rendering the overhaul migrates real surfaces toward; nothing
@@ -60,11 +62,22 @@ export default function DesignPrototype() {
       width="content"
       eyebrow="Design standard"
       title="UI overhaul prototype"
-      subtitle="Every pattern component from docs/DESIGN-STANDARD.md, composed the way real flows will use them."
+      subtitle="Every pattern component from components/patterns, composed the way real flows will use them (gate: DESIGN_SYSTEM.md §13)."
       headerMeta={<Badge variant="info">Simulated data</Badge>}
     >
       <div className="space-y-10">
-        {/* §6 — whole road visible, one step lit; labels mirror the homepage. */}
+        {/* The macro tier above the step detail — both name what they measure. */}
+        <MilestoneBar
+          label="Your journey to keys"
+          milestones={[
+            { id: "preapproval", name: "Pre-approval", status: "done" },
+            { id: "underwriting", name: "Underwriting", status: "current" },
+            { id: "closing", name: "Closing", status: "future" },
+            { id: "keys", name: "Move in", status: "future" },
+          ]}
+        />
+
+        {/* Whole road visible, one step lit; labels mirror the homepage. */}
         <LoanTracker
           label="Your loan, start to close"
           steps={[
@@ -259,7 +272,21 @@ export default function DesignPrototype() {
           />
         </section>
 
-        {/* §6 — scoped empty state: the heading is derived from what this
+        {/* An optional ask with its reassurance — no penalty for skipping. */}
+        <OptionalUpload
+          title="Gift letter"
+          description="Only needed when part of your down payment is a gift."
+          reassurance="If no gift funds are part of your down payment, there's nothing to add here — your application is complete without it."
+          tips={["Ask the giver to sign and date it — a short note is enough."]}
+          action={
+            <Button variant="outline" size="sm">
+              <Icons.upload className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Upload gift letter
+            </Button>
+          }
+        />
+
+        {/* Scoped empty state: the heading is derived from what this
             surface actually knows. */}
         <EmptyState
           scope="messages from your loan team"

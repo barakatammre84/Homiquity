@@ -57,7 +57,7 @@ across the three standing acceptance-gate files pass.
   - `DataVersionIdentifier` confirmed `3.4.0` (deliberate — matches doctrine, not chasing 3.6).
   - Validation result: `valid: true`, `errors: []`, `warnings: ["MERS Org ID is not configured; a MERS MIN cannot be generated for loan delivery"]`, `phase5Ready: false`.
   - The one warning is expected and correct: `mersOrgId` is also `"PENDING"` in `server/config/company.ts` — same F1-adjacent gate, not a bug.
-  - Generated XML saved to scratchpad: the session scratchpad file `dummy-mismo-export-2026-07-04.xml` (5,424 bytes) — ready to attach to a real submission the day credentials land. Throwaway generator script (not committed) lived alongside it in the same scratchpad directory.
+  - Generated XML saved to scratchpad: `/private/tmp/claude-501/-Users-ammrebarakat-Developer-MortgageStream/77ec4237-0deb-4874-bd3a-8bc20953eaae/scratchpad/dummy-mismo-export-2026-07-04.xml` (5,424 bytes) — ready to attach to a real submission the day credentials land. Throwaway generator script (not committed) lived alongside it in the same scratchpad directory.
 
 ## Corrections table
 

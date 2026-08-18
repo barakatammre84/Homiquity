@@ -16,7 +16,7 @@
    - `SENDGRID_API_KEY` / `FROM_EMAIL` / `FROM_NAME` + SPF/DKIM DNS (roadmap #3) — code is ready, silently no-ops (console-log only) until set.
    - `SENTRY_DSN` + uptime monitor on `/api/health` (roadmap #4) — same silent no-op risk; a production crash today produces no alert to anyone.
    - `CRON_SECRET` (`vercel.json` crons: `/api/jobs/lifecycle`, `/api/jobs/adverse-action-delivery`) — unset degrades the lifecycle sweep and the adverse-action watchdog to admin-manual with no error surfaced.
-   - **`homiquity.com` domain attach** — confirmed still not attached: `GET https://homiquity.com/api/health` returned **404** just now, while the known-good legacy Vercel prod host's `/api/health` returned 200. Borrowers can only reach the platform via the `.vercel.app` URL until this is fixed in the Vercel project's domain settings.
+   - **`homiquity.com` domain attach** — confirmed still not attached: `GET https://homiquity.com/api/health` returned **404** just now, while the known-good `https://mortgage-stream.vercel.app/api/health` returned 200. Borrowers can only reach the platform via the `.vercel.app` URL until this is fixed in the Vercel project's domain settings.
 7. **F4 Plaid production application** — production Link access needs a use-case review; starting now shortens the F1→launch runway. Still sandbox-only (`server/plaid.ts:5` `PLAID_ENV` defaults `"sandbox"`).
 8. **GitHub token scope** — roadmap #5 (minimal CI) stays blocked on the repo token lacking `workflow` scope; `ci.yml` is written and sitting on a local branch waiting for a human push. Founder-only account action.
 
@@ -58,7 +58,7 @@ Every credential-gated seam still throws loudly if its env var is set without th
 ### Live-vendor risk review
 
 - **Vercel** (deploy platform) — single point of failure, no fallback host.
-  - `homiquity.com` domain: **confirmed not attached** — `curl -s -o /dev/null -w '%{http_code}' https://homiquity.com/api/health` → **404**; control check against the legacy Vercel prod host's `/api/health` → **200**. Borrowers can only reach the `.vercel.app` URL today.
+  - `homiquity.com` domain: **confirmed not attached** — `curl -s -o /dev/null -w '%{http_code}' https://homiquity.com/api/health` → **404**; control check against `https://mortgage-stream.vercel.app/api/health` → **200**. Borrowers can only reach the `.vercel.app` URL today.
   - `GCS_SERVICE_ACCOUNT_KEY`/`PRIVATE_OBJECT_DIR` (#1), `SENDGRID_API_KEY`/`FROM_EMAIL` (#3), `SENTRY_DSN` (#4), `CRON_SECRET` — none verifiable from the repo (Vercel env isn't visible to this routine); all degrade silently to no-op/admin-manual when unset, so there is no error to notice, only silence. `CRON_SECRET` specifically gates `vercel.json`'s two cron jobs (`server/routes/jobs.ts:15-24`) — the lifecycle sweep and adverse-action watchdog fall back to admin-manual trigger without it.
 - **RapidAPI (realty-us)** — `RAPIDAPI_KEY` is dual-purpose: property/AVM data (Vercel-only per prior review) and the live mortgage-rate fetch (`rateService.ts:9-13,64`) hit the same host list. One key revocation or rate-limit event degrades both simultaneously; both fall back safely to simulated data.
 - **SendGrid / Sentry** — config-pending, no crash risk today (app functions without them), but blast radius is invisibility: a real production error or account email isn't seen by anyone until set.

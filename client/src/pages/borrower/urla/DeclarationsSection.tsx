@@ -7,7 +7,7 @@ import {
 } from "@/components/patterns/DeclarationsGroup";
 import { DECLARATION_QUESTIONS } from "./types";
 
-// URLA Section 5, on the DeclarationsGroup pattern (docs/DESIGN-STANDARD.md §6).
+// URLA Section 5, on the DeclarationsGroup pattern (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13).
 //
 // The wall is split by what the answers MEAN, and the bulk-"No" escape hatch
 // covers only the block it is honest over:
@@ -36,7 +36,10 @@ const HISTORY_KEYS: ReadonlySet<keyof BorrowerDeclarations> = new Set([
 const TRANSACTION_QUESTIONS = DECLARATION_QUESTIONS.filter((q) => !HISTORY_KEYS.has(q.key));
 const HISTORY_QUESTIONS = DECLARATION_QUESTIONS.filter((q) => HISTORY_KEYS.has(q.key));
 
-const toAnswer = (value: boolean | undefined): DeclarationAnswer | undefined =>
+// `unknown` because reading through the union key yields every field type; a
+// declaration value that isn't literally true/false (e.g. a DB null) is simply
+// unanswered.
+const toAnswer = (value: unknown): DeclarationAnswer | undefined =>
   value === true ? "yes" : value === false ? "no" : undefined;
 
 const toBool = (answer: DeclarationAnswer | undefined): boolean | undefined =>
@@ -60,7 +63,11 @@ export function DeclarationsSection({ declarations, onChange, activeSeq }: Decla
     (next: Record<string, DeclarationAnswer | undefined>) => {
       const merged: Partial<BorrowerDeclarations> = { ...declarations };
       for (const q of list) {
-        merged[q.key] = toBool(next[q.key as string]);
+        // All DECLARATION_QUESTIONS keys are boolean fields; TS can't see that
+        // through the union key, so the write is cast — the read side stays typed.
+        (merged as Record<string, boolean | undefined>)[q.key as string] = toBool(
+          next[q.key as string],
+        );
       }
       onChange(merged);
     };

@@ -6,7 +6,7 @@
 
 ## What shipped
 
-[PR #56](https://github.com/barakatammre84/Homiquity/pull/56) — `feat(mismo): XSD-validate MISMO export against the official schema (L6)`, branch `claude/l6-xsd-validation`.
+[PR #56](https://github.com/barakatammre84/MortgageStream/pull/56) — `feat(mismo): XSD-validate MISMO export against the official schema (L6)`, branch `claude/l6-xsd-validation`.
 
 - No `2026-07-06-morning-gate.md` existed yet at run time, so ran the gate myself first: `git status`/`git diff origin/main` clean, no gate-fail item to prioritize.
 - Picked **L6** (XSD-validate the MISMO export against `docs/fannie-mae/schemas/`) over LS-10 slice 3 — L6 was concretely scoped (already flagged with a code comment pointer in `server/services/lenderSubmission.ts:140`, schema files confirmed present) where slice 3 is ambiguous/blocked on broker agreements with unclear remaining work.

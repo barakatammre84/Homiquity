@@ -4,7 +4,7 @@ import { Icons } from "@/lib/icons";
 // The optional-file ask (teardown §9, P3). `reassurance` is required and
 // states — neutrally — what happens if the borrower skips it: an optional ask
 // without that sentence reads as a quiet obligation, and penalty language on
-// declining is banned outright (DESIGN-STANDARD §8). Never a required marker.
+// declining is banned outright (DESIGN_SYSTEM.md §13, Honesty). Never a required marker.
 
 export interface OptionalUploadProps {
   title: string;

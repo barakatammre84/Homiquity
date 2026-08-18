@@ -1,11 +1,11 @@
 # Deploy & Revert
 
-> **Naming note (rebrand, 2026-08-04).** This product launched under a former name,
-> recorded — and banned from use — in the root `CLAUDE.md`. Historical rows below were
-> written under that name; on 2026-08-18 a founder-directed scrub normalized their PR
-> links to the canonical `barakatammre84/Homiquity` URLs (the same PRs — GitHub
-> redirects renamed repositories) and replaced spelled-out mentions of the former
-> repo/host names with descriptive references. Every fact in every row is unchanged.
+> **Naming note (rebrand, 2026-08-04).** This product was formerly called
+> **MortgageStream**. Ledger rows, PR links, and postmortems below that predate
+> 2026-08-04 are left exactly as written — they were accurate at the time, and the
+> GitHub URLs still resolve because GitHub redirects renamed repositories. Read
+> `MortgageStream` / `mortgage-stream.vercel.app` in historical rows as the former
+> names of Homiquity / the hosting project it was then deployed on.
 
 > **Platform note (Railway cutover, 2026-08-06).** Hosting moved from Vercel to
 > **Railway**, and the Vercel project was deleted — there is no Vercel account
