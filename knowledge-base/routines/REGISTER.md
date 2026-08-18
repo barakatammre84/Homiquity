@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); stacked on #554's branch per its session's coordination message — direct overlap acknowledged, additive on top, never racing |
 | user-tasked session (F-077 follow-up) | `server/services/scenarioSimulator.ts` MI source, `server/services/loanCosts.ts` (delete `calculatePMI`), `tests/scenarioSimulator.test.ts`, `tests/loanEstimateMI.test.ts` (drop the deleted import) | strange-kilby-c389c0 | `feat/f-077-scenario-sim-matrix-mi` | 2026-08-18 14:29 | The follow-up #553 itself flags: what-if MI card→matrix/product-aware. Stacked on open PRs #552+#553 (adjacent by design — their branches are merged into this one; lands after they do). |
 
 ## Recently released

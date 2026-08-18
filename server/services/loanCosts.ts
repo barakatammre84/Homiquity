@@ -449,8 +449,17 @@ export interface ClosingCostInputs {
   loanAmount: number;
   /** Note rate, %. */
   interestRate: number;
-  /** Monthly private MI premium ($/month; 0 when none applies). */
+  /** Monthly MI premium ($/month; 0 when none applies) — private PMI or FHA MIP. */
   monthlyPMI: number;
+  /**
+   * Up-front (single-premium) mortgage insurance collected in cash at closing
+   * — FHA UFMIP today (services/mortgageInsurance.ts offerUpfrontMI). Defaults
+   * to 0. Rides the prepaids "Mortgage Insurance Premium" line alongside the
+   * periodic months, counts as a §1026.4 prepaid finance charge (the posture
+   * services/apr.ts has always taken for it), and is NOT escrowed — the escrow
+   * cushion is periodic-only.
+   */
+  upfrontMortgageInsurance?: number;
   /** Days of prepaid interest collected at closing. */
   prepaidInterestDays: number;
   /**
@@ -665,7 +674,10 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const dailyInterest = (loanAmount * (interestRate / 100)) / 365;
   const prepaidInterest = dailyInterest * input.prepaidInterestDays;
   const prepaidHomeownersInsurance = annualHomeownersInsurance;
-  const prepaidMortgageInsurance = monthlyPMI * 2;
+  // Two months of the periodic premium, plus any up-front single premium
+  // (FHA UFMIP) — one prepaids line, per the input's doc comment.
+  const upfrontMortgageInsurance = input.upfrontMortgageInsurance ?? 0;
+  const prepaidMortgageInsurance = monthlyPMI * 2 + upfrontMortgageInsurance;
   const prepaidPropertyTaxes = monthlyPropertyTax * 2;
 
   const escrowHomeownersInsurance = monthlyHomeownersInsurance * 3;
@@ -686,7 +698,9 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const totalClosingCosts = loanCostsTotal + otherCostsTotal;
 
   // Prepaid finance charges per §1026.4: origination, points, application/
-  // underwriting fees, tax service, prepaid interest, and prepaid MI.
+  // underwriting fees, tax service, prepaid interest, and prepaid MI (which
+  // includes any up-front FHA MIP — services/apr.ts has always classified
+  // UFMIP as a prepaid finance charge on the advertised surface).
   // Appraisal, credit report, title, survey, pest, and recording/transfer
   // charges are excluded (§1026.4(c)(7), (e)).
   //

@@ -18,6 +18,7 @@ import {
   PLATFORM_APPLICATION_FEE,
   PLATFORM_UNDERWRITING_FEE,
 } from "./loanCosts";
+import { fhaUpfrontMIP } from "./mortgageInsurance";
 
 // The payment formula lives in @shared/lib/amortization — one canonical copy
 // shared by the calculators, the letter path, and this APR solver. Re-exported
@@ -145,8 +146,10 @@ export function estimatePrepaidFinanceCharges(
   const underwritingFee = PLATFORM_UNDERWRITING_FEE;
   const taxServiceFee = 100;
   const prepaidInterest = ((loanAmount * (noteRatePct / 100)) / 365) * 15;
-  // FHA up-front MIP (1.75%) is a prepaid finance charge.
-  const upfrontMIP = options.isFHA ? loanAmount * 0.0175 : 0;
+  // FHA up-front MIP is a prepaid finance charge. The rate lives in
+  // services/mortgageInsurance.ts (FHA_UPFRONT_MIP_RATE) — one figure for
+  // this advertised model and the transaction-level LE/scenario surfaces.
+  const upfrontMIP = options.isFHA ? fhaUpfrontMIP(loanAmount) : 0;
   return originationFee + applicationFee + underwritingFee + taxServiceFee + prepaidInterest + upfrontMIP;
 }
 
