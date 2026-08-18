@@ -310,7 +310,7 @@ export default function BuyerProperties() {
 
           {/* Quick Stats - Only show when pre-approved */}
           {hasPreApproval && (
-            <div className="mt-8 grid grid-cols-3 gap-4">
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Card className="bg-success/20 backdrop-blur-sm">
                 <CardContent className="flex items-center gap-3 p-4">
                   <CheckCircle className="h-8 w-8 text-success" />

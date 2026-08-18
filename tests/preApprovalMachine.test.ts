@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CANONICAL_ORDER,
   computeFlags,
   computeRoute,
   createFunnelState,
+  estimateTimeRemaining,
   funnelReducer,
   PRE_APPROVAL_DEFAULTS,
   resolveRouteIndex,
@@ -75,6 +77,34 @@ describe("computeRoute — deterministic dynamic routing", () => {
     expect(route).toContain("incomeSources");
   });
 
+  // The reported bug: a self-employed borrower answered "No, this is my only
+  // income" and was taken to the other-income step anyway, because the block is
+  // mandatory for them regardless. The fix is not to honour a "No" underwriting
+  // can't accept — it is to stop asking a question whose answer is ignored.
+  it("does not ask about additional income when the detail block is mandatory anyway", () => {
+    const selfEmployed = computeRoute(answers({ employmentType: "self_employed" }));
+    expect(selfEmployed).not.toContain("hasAdditionalIncome");
+    expect(selfEmployed).toContain("incomeSources");
+    expect(selfEmployed.indexOf("incomeSources")).toBe(selfEmployed.indexOf("employmentYears") + 1);
+  });
+
+  it("still asks about additional income whenever the answer can change the route", () => {
+    for (const employmentType of ["employed", "retired", "other"] as const) {
+      const route = computeRoute(answers({ employmentType }));
+      expect(route).toContain("hasAdditionalIncome");
+      expect(route).not.toContain("incomeSources");
+    }
+  });
+
+  it("honours “No, this is my only income” for every borrower it is asked of", () => {
+    // Answering No clears incomeSources (the choice handler in PreApproval.tsx
+    // does this), so both routing inputs say no. The step must be gone.
+    const route = computeRoute(answers({ hasAdditionalIncome: false, incomeSources: [] }));
+    expect(route).toContain("hasAdditionalIncome");
+    expect(route).not.toContain("incomeSources");
+    expect(route[route.indexOf("hasAdditionalIncome") + 1]).toBe("monthlyDebts");
+  });
+
   it("keeps the complex-income block for multi-property landlords", () => {
     const route = computeRoute(
       answers({
@@ -144,6 +174,40 @@ describe("stepGate — validation gates", () => {
   it("blocks a down payment above the purchase price", () => {
     const gate = stepGate("downPayment", answers({ purchasePrice: "300,000", downPayment: "400,000" }), NO_CONSENT);
     expect(gate.ok).toBe(false);
+  });
+
+  // On a refinance the step asks for EQUITY, not a down payment. The gate's
+  // messages have to speak the same language the borrower was shown — telling
+  // someone who already owns the home to "enter your planned down payment" is
+  // the funnel talking to the wrong person.
+  it("words the down-payment gate as equity on a refinance", () => {
+    for (const loanPurpose of ["refinance", "cash_out"] as const) {
+      const blank = stepGate("downPayment", answers({ loanPurpose, purchasePrice: "500,000" }), NO_CONSENT);
+      expect(blank.ok).toBe(false);
+      expect(blank.errors[0]).toMatch(/equity/i);
+      expect(blank.errors[0]).not.toMatch(/down payment/i);
+
+      const zero = stepGate(
+        "downPayment",
+        answers({ loanPurpose, purchasePrice: "500,000", downPayment: "0" }),
+        NO_CONSENT,
+      );
+      expect(zero.ok).toBe(false);
+      expect(zero.errors[0]).not.toMatch(/down payment/i);
+
+      const tooMuch = stepGate(
+        "downPayment",
+        answers({ loanPurpose, purchasePrice: "300,000", downPayment: "400,000" }),
+        NO_CONSENT,
+      );
+      expect(tooMuch.ok).toBe(false);
+      expect(tooMuch.errors[0]).toMatch(/equity/i);
+    }
+  });
+
+  it("keeps purchase wording on the purchase path", () => {
+    const gate = stepGate("downPayment", answers({ loanPurpose: "purchase", purchasePrice: "500,000" }), NO_CONSENT);
+    expect(gate.errors[0]).toMatch(/down payment/i);
   });
 
   it("requires self-employed borrowers to detail their income", () => {
@@ -282,6 +346,101 @@ describe("resolveRouteIndex / routeProgress", () => {
     const p = routeProgress(route, "final");
     expect(p.index).toBe(route.length - 1);
     expect(p.percent).toBe(100);
+    expect(p.remaining).toBe(0);
+  });
+
+  it("counts the steps still ahead", () => {
+    const route = computeRoute(answers());
+    const p = routeProgress(route, "annualIncome");
+    expect(p.remaining).toBe(route.length - 1 - route.indexOf("annualIncome"));
+    expect(p.index + p.remaining).toBe(p.total);
+  });
+});
+
+/**
+ * The chapter rail is the funnel's primary orientation surface, so its shape is
+ * a contract, not a rendering detail: always four chapters, always in order,
+ * monotonic fill, and every routed step accounted for. A step added to
+ * CANONICAL_ORDER without a STEP_SECTION entry fails to compile; a step that
+ * routes but lands in no chapter's step count fails here.
+ */
+describe("routeProgress — chapter rail", () => {
+  it("always reports the four chapters in order", () => {
+    for (const stepId of CANONICAL_ORDER) {
+      const route = computeRoute(answers({ isVeteran: true, hasAdditionalIncome: true }));
+      const p = routeProgress(route, stepId);
+      expect(p.sections.map((s) => s.id)).toEqual(["goal", "property", "finances", "finish"]);
+      expect(p.sections.map((s) => s.number)).toEqual([1, 2, 3, 4]);
+    }
+  });
+
+  it("accounts for every routed question exactly once", () => {
+    for (const a of [answers(), answers({ isVeteran: true }), answers({ employmentType: "self_employed" })]) {
+      const route = computeRoute(a);
+      const p = routeProgress(route, "final");
+      const counted = p.sections.reduce((sum, s) => sum + s.stepCount, 0);
+      // route.length - 1: the intro is chrome, not a counted question.
+      expect(counted).toBe(route.length - 1);
+    }
+  });
+
+  it("marks exactly one chapter current, with earlier ones done and later ones upcoming", () => {
+    const route = computeRoute(answers());
+    const p = routeProgress(route, "annualIncome");
+    expect(p.sectionId).toBe("finances");
+    expect(p.sections.map((s) => s.status)).toEqual(["done", "done", "current", "upcoming"]);
+    expect(p.sections[0].percent).toBe(100);
+    expect(p.sections[3].percent).toBe(0);
+    // First question of the chapter, so one of its steps is reached.
+    expect(p.sections[2].stepsReached).toBe(1);
+    expect(p.sections[2].percent).toBeGreaterThan(0);
+    expect(p.sections[2].percent).toBeLessThan(100);
+  });
+
+  it("fills the last chapter once the borrower is on the final step", () => {
+    const route = computeRoute(answers());
+    const p = routeProgress(route, "final");
+    expect(p.sectionId).toBe("finish");
+    expect(p.sections[3]).toMatchObject({ status: "current", stepCount: 1, stepsReached: 1, percent: 100 });
+  });
+
+  it("leaves the rail empty on the intro", () => {
+    const p = routeProgress(computeRoute(answers()), "intro");
+    expect(p.index).toBe(0);
+    expect(p.percent).toBe(0);
+    expect(p.sections.every((s) => s.percent === 0)).toBe(true);
+  });
+
+  it("never fills a chapter backwards as the borrower advances", () => {
+    const route = computeRoute(answers({ isVeteran: true }));
+    let previous = route.map(() => 0);
+    for (const stepId of route) {
+      const fills = routeProgress(route, stepId).sections.map((s) => s.percent);
+      fills.forEach((fill, i) => expect(fill).toBeGreaterThanOrEqual(previous[i] ?? 0));
+      previous = fills;
+    }
+  });
+
+  it("grows the property chapter when VA residual-income steps are injected", () => {
+    const base = routeProgress(computeRoute(answers()), "purchasePrice");
+    const va = routeProgress(computeRoute(answers({ isVeteran: true })), "purchasePrice");
+    expect(va.sections[1].stepCount).toBe(base.sections[1].stepCount + 2);
+  });
+});
+
+describe("estimateTimeRemaining", () => {
+  it("derives the estimate from steps left, not from a fixed step index", () => {
+    // 13 questions at ~5/min is the funnel's own "about 3 minutes" promise.
+    expect(estimateTimeRemaining(13)).toBe("~3 min left");
+    expect(estimateTimeRemaining(8)).toBe("~2 min left");
+    expect(estimateTimeRemaining(3)).toBe("~1 min left");
+  });
+
+  it("switches to reassurance at the tail", () => {
+    expect(estimateTimeRemaining(2)).toBe("Almost done");
+    expect(estimateTimeRemaining(1)).toBe("Almost done");
+    expect(estimateTimeRemaining(0)).toBe("Last step");
+    expect(estimateTimeRemaining(-1)).toBe("Last step");
   });
 });
 

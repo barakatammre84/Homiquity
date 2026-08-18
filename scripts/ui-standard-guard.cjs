@@ -170,6 +170,24 @@ const METRICS = [
     ],
   },
   {
+    key: "subMinTouchTarget",
+    label: "Button size=\"sm\" (h-9 = 36px) with no .touch-target",
+    unit: "occurrence",
+    hint:
+      "DESIGN_SYSTEM.md, Accessibility: touch targets are >=44px, and `.touch-target` is how a sub-44px control gets there under 767px. `size=\"sm\"` resolves to h-9 = 36px (components/ui/button.tsx) — fine for a dense desktop row, nine pixels short on a phone.",
+    // Only the unambiguous case. A raw <button> can be sub-44px too, but it can
+    // just as easily wrap a whole card, so it is REPORTED as a measure rather
+    // than ratcheted here — a guard that cries wolf is one people learn to skip.
+    scan: (src, rel) => {
+      if (rel.startsWith(path.join("client", "src", "components", "ui"))) return 0;
+      let hits = 0;
+      for (const m of src.matchAll(/<Button\b[^>]*>/g)) {
+        if (/size="sm"/.test(m[0]) && !/touch-target/.test(m[0])) hits += 1;
+      }
+      return hits;
+    },
+  },
+  {
     key: "unprefixedMultiColGrid",
     label: "multi-column grid with no responsive prefix (mobile breakage)",
     unit: "occurrence",
@@ -257,6 +275,23 @@ const MEASURES = [
     const n = count((e) => /from\s*["'][^"']*brand\/Logo["']/.test(e[1]));
     return { label: "`Logo` + `BrandingProvider`", state: n ? "BUILT · ADOPTED" : "BUILT · ADOPTED 0%",
              detail: n ? `${n} call site(s)` : "zero call sites", cmd: "—" };
+  })(),
+  (() => {
+    // Reported, never ratcheted: a raw <button> with no height can be a 20px
+    // text toggle OR a button wrapping an entire card. Counting it is useful;
+    // failing a PR on it would be noise.
+    let n = 0, files = 0;
+    for (const [rel, src] of ALL) {
+      if (/\.test\./.test(rel) || rel.startsWith(path.join("client", "src", "components", "ui"))) continue;
+      let hit = 0;
+      for (const m of src.matchAll(/<button\b[^>]*>/g)) {
+        if (!/touch-target|h-\d|min-h-|py-[2-9]|p-[2-9]|size="/.test(m[0])) hit += 1;
+      }
+      if (hit) { n += hit; files += 1; }
+    }
+    return { label: "Raw `<button>` with no height, padding or `.touch-target`", state: n ? "NEEDS REVIEW" : "CLEAR",
+             detail: n ? `${n} in ${files} file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which` : "none",
+             cmd: "—" };
   })(),
   (() => {
     const n = count((e) => /\bEmptyState\b/.test(e[1]) && !e[0].includes(path.join("ui", "empty-state")));

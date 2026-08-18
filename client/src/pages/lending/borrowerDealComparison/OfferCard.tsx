@@ -147,7 +147,7 @@ export function OfferCard({
         {showPoints && offer.points > 0 && baseOffer && (
           <div className="p-3 bg-muted/50 rounded-lg mb-4" data-testid={`section-points-analysis-${offer.id}`}>
             <p className="text-sm font-medium mb-2">Points Analysis</p>
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
               <div>
                 <p className="text-muted-foreground">Points Cost</p>
                 <p className="font-medium">{formatCurrency(offer.points * loanAmount / 100)}</p>

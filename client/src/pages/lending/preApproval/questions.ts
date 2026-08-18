@@ -14,6 +14,7 @@ import {
   Users,
   Check,
   HelpCircle,
+  Minus,
   Percent,
 } from "lucide-react";
 
@@ -194,7 +195,12 @@ export const QUESTIONS: Question[] = [
     icon: TrendingUp,
     options: [
       { value: "yes", label: "Yes, I have other income", icon: TrendingUp },
-      { value: "no", label: "No, this is my only income", icon: Check }
+      // NOT a checkmark. A tick beside "No, this is my only income" reads as
+      // "already answered" — which, next to a tile that used to arrive
+      // pre-highlighted, is a large part of why borrowers reported answering
+      // No and being taken to the other-income step anyway. The radio dot on
+      // the right of the tile is the only selection signal.
+      { value: "no", label: "No, this is my only income", icon: Minus }
     ]
   },
   {

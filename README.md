@@ -26,7 +26,7 @@ pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
 
 ```bash
 corepack enable            # one-time: activates the pinned pnpm (ships with Node)
-pnpm install && pnpm dev   # dev server on port 5001 — full setup in LOCAL_DEV.md
+pnpm install && pnpm dev   # port 5001 comes from .env (PORT=5001) — full setup in LOCAL_DEV.md
 pnpm check                 # typecheck
 pnpm test                  # unit tests
 ```

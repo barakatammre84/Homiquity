@@ -46,6 +46,8 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
     return null;
   }
 
+  const isRefinance = formValues.loanPurpose === "refinance" || formValues.loanPurpose === "cash_out";
+
   const getContextualAdvice = () => {
     switch (currentStepId) {
       case "loanPurpose":
@@ -53,8 +55,14 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
       case "propertyType":
         return "Property type affects your rate and reserve requirements.";
       case "purchasePrice":
+        if (isRefinance) {
+          return "Your home's value sets the loan-to-value we price against. We'll estimate your new payment from it.";
+        }
         return "We use this to estimate your monthly payment and closing costs.";
       case "downPayment":
+        if (isRefinance) {
+          return "Equity works the same way here that a down payment does on a purchase: more of it generally means a better rate, and 20%+ avoids mortgage insurance.";
+        }
         if (formValues.isVeteran && formValues.loanPurpose === "purchase") {
           return (
             <span className="text-success-subtle-foreground font-medium">
@@ -99,6 +107,9 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
       case "hasAdditionalIncome":
         return "Including all income sources gives a more complete picture for underwriting.";
       case "incomeSources":
+        if (formValues.employmentType === "self_employed") {
+          return "Add a Self-Employment / 1099 entry with your annual figure — that one is required. Anything else you receive is optional, and every source you add can raise your buying power.";
+        }
         return "Each income source may require different documentation. We'll let you know what's needed.";
       case "monthlyDebts":
         return "Include car payments, student loans, credit cards, and other monthly obligations.";
@@ -221,34 +232,118 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
   );
 }
 
-export function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): string {
+/**
+ * Per-step copy resolved against the borrower's own answers.
+ *
+ * Three fields move together, so they resolve together: a step whose TITLE
+ * adapts to a refinance but whose subtext and "why we ask" still describe a
+ * purchase is worse than one that never adapted at all. `questions.ts` holds
+ * the default for each; anything returned here overrides it.
+ *
+ * The refinance branches matter most. `purchasePrice` and `downPayment` are
+ * purchase words for fields the machine uses as (value, value − loan) — so a
+ * refinancer was being asked "What is the estimated purchase price?" and "How
+ * much are you planning to put down?" about a home they already own. The FIELD
+ * SEMANTICS are unchanged here (loan amount is still price − down); only the
+ * words are, which is why equity — not the loan balance — is what the reworded
+ * down-payment step asks for. Asking for the balance and storing it in
+ * `downPayment` would invert the math.
+ */
+export interface StepCopy {
+  title: string;
+  subtext?: string;
+  why?: string;
+}
+
+export function resolveStepCopy(currentQ: Question, formValues: PreApprovalFormData): StepCopy {
   const { purchasePrice, loanPurpose, employmentType } = formValues;
+  const isRefi = loanPurpose === "refinance" || loanPurpose === "cash_out";
+  const fallback: StepCopy = {
+    title: currentQ.question || "",
+    subtext: currentQ.subtext,
+    why: currentQ.why,
+  };
 
   switch (currentQ.id) {
-    case "downPayment":
-      if (purchasePrice) {
-        return `On a $${purchasePrice} home, how much can you put down?`;
+    case "purchasePrice":
+      if (isRefi) {
+        return {
+          title: "What's your home worth today?",
+          subtext: "Your best estimate of its current market value — an appraisal will confirm it later.",
+          why: "Value and what you owe set your loan-to-value, which drives the rates you'll see.",
+        };
       }
       break;
+
+    case "downPayment":
+      if (loanPurpose === "cash_out") {
+        return {
+          title: "After taking cash out, how much equity would you keep?",
+          subtext: "Your home's value minus the new loan amount. An estimate is fine.",
+          why: "Cash-out pricing is set by how much equity stays in the home after closing.",
+        };
+      }
+      if (loanPurpose === "refinance") {
+        return {
+          title: "How much equity do you have in it?",
+          subtext: "Your home's value minus what you still owe.",
+          why: "Equity does the same job on a refinance that a down payment does on a purchase — it sets your loan-to-value.",
+        };
+      }
+      if (purchasePrice) {
+        return { ...fallback, title: `On a $${purchasePrice} home, how much can you put down?` };
+      }
+      break;
+
+    case "propertyState":
+      if (isRefi) {
+        return { ...fallback, title: "Which state is the property in?" };
+      }
+      break;
+
     case "creditScore":
       if (loanPurpose === "cash_out") {
-        return "Since you're pulling cash out, credit score is key. What's yours?";
+        return { ...fallback, title: "Since you're pulling cash out, credit score is key. What's yours?" };
       }
       break;
+
     case "annualIncome":
-      return "What's your total household income?";
+      return { ...fallback, title: "What's your total household income?" };
+
     case "employmentYears":
       if (employmentType === "self_employed") {
-        return "How many years have you been self-employed?";
+        return { ...fallback, title: "How many years have you been self-employed?" };
       }
       if (employmentType === "retired") {
-        return "How many years have you been retired?";
+        return { ...fallback, title: "How many years have you been retired?" };
       }
       break;
+
+    case "incomeSources":
+      // The step is MANDATORY for a self-employed borrower — the machine skips
+      // the "any additional income?" question for them precisely because the
+      // answer could not change the route. Which means the default heading,
+      // "What other income do you receive?", would be the first thing they see
+      // after saying nothing of the sort. Ask for what is actually needed.
+      if (employmentType === "self_employed") {
+        return {
+          title: "Let's detail your self-employment income",
+          subtext:
+            "Underwriting reviews 1099 and business income line by line, so it needs its own entry. Add any other sources you receive while you're here.",
+          why: "Self-employed income is averaged from your returns — detailing it up front is what keeps your approval from stalling later.",
+        };
+      }
+      break;
+
     case "monthlyDebts":
-      return "What are your current monthly debt payments?";
+      return { ...fallback, title: "What are your current monthly debt payments?" };
   }
 
-  return currentQ.question || "";
+  return fallback;
+}
+
+/** Title-only convenience over {@link resolveStepCopy}. */
+export function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): string {
+  return resolveStepCopy(currentQ, formValues).title;
 }
 

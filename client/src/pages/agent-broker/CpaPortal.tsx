@@ -120,7 +120,7 @@ export default function CpaPortal() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { label: "Clients referred", value: stats?.total ?? 0 },
           { label: "In application", value: stats?.active ?? 0 },
