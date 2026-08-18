@@ -137,6 +137,9 @@ export default defineConfig({
       "tests/quietHours.test.ts",
       "tests/mcpAudit.test.ts",
       "tests/mcpAgentIdentity.test.ts",
+      // F-042: the soft-pull tool's FCRA gate runs BEFORE the cached-pull
+      // read, and the consent's type must cover the pull.
+      "tests/mcpSoftPullGate.test.ts",
       "tests/smsCompliance.test.ts",
       // X-Twilio-Signature verification on the inbound SMS webhook — pins the
       // algorithm against Twilio's published test vector and the route's
