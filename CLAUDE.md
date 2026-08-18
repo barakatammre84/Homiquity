@@ -156,6 +156,20 @@ Full flow and the one-time secret/branch-protection setup: [DB_MIGRATIONS.md](kn
 - `pnpm test` / `pnpm test:integration` — unit / integration tests
 - Local setup details: [LOCAL_DEV.md](knowledge-base/runbooks/LOCAL_DEV.md)
 
+### Local is the default verification target
+
+`http://localhost:5001` is where every check runs — probing an endpoint, driving a page,
+reproducing a defect, confirming a fix. `pnpm dev` is already fully local: `.env` points
+`DATABASE_URL` at native Postgres on `localhost:5432`, and the client calls **relative** URLs, so
+whatever origin serves the page serves the API — there is no base-URL flag to set. A local
+`GET /api/health` answers `commit: null`; that null **is** the local-dev signature, not a defect.
+
+Reach for the deployed site in exactly one case: proving a merge actually shipped, via the `commit`
+field of `GET https://homiquity-production.up.railway.app/api/health` (machine-to-machine uses the
+Railway host, never `www`). **Never reproduce a bug or check a UI change against prod** — a failed
+build leaves the *previous* container serving, so what you see there may not be the code you think
+you are looking at.
+
 ## Source-of-truth notes
 
 - [CTO_ROADMAP.md](CTO_ROADMAP.md) is the live roadmap. All other docs live in

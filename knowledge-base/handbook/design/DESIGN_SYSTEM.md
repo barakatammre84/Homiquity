@@ -35,24 +35,39 @@ So: **⏳ is retired.** Every row below carries a state, a measured number, and 
 measures it. `SPEC'D` = decided, not built. `BUILT` = the code exists. `ADOPTED n%` = call
 sites actually use it.
 
-| Capability | State | Measured 2026-08-18 @ `56cf00a` |
-|---|---|---|
-| Semantic colour tokens | **ADOPTED** | `rawColorOccurrences` **0** — hard target held (`pnpm guard:tokens`) |
-| `bg-white`/`text-white` literals | **BUILT**, ratcheting down | **97** and falling (`pnpm guard:tokens`) |
-| `PageShell` page geometry | **BUILT**, **ADOPTED 17%** | 48 of 281 page files import it; **13** files hand-roll `min-h-screen` *while* importing it (`pnpm guard:ui` → `pageShellDrift`) |
-| `PageShell` three-step gutter | **ADOPTED** | shipped at `PageShell.tsx:93`. *(The predecessor doc still promised this as a future "Phase 2" upgrade.)* |
-| Icon registry `lib/icons.ts` | **BUILT**, **ADOPTED ~0%** | **323** files still import `lucide-react` directly (`pnpm guard:ui` → `directLucideImports`) |
-| `<Heading>`/`<Text>` `ui/typography.tsx` | **BUILT**, **ADOPTED 0%** | zero call sites; allowlisted in `scripts/orphan-scan.cjs` as known-unused |
-| `<Logo>` + `BrandingProvider` | **BUILT**, **ADOPTED 0%** | zero call sites; ~13 hand-rolled wordmark spans remain |
-| `<EmptyState>` | **BUILT**, **ADOPTED ~35%** | 10 files, against ~18 hand-rolled zero-states |
-| `bg-surface` app ground | **ADOPTED** (via layout) | set once on `PrivateLayout`'s `<main>`; only 3 files name it directly, which is correct — pages inherit it |
-| Illustration layer | **BUILT** | `components/illustrations/index.tsx` exists |
-| Nested interactive controls | **defect, sized** | **122** sites across 50 files (`pnpm guard:ui` → `nestedInteractive`). An independent AST count on 2026-08-18 put the `<Link>`→`<Button>` spelling at 108 across 48 files; this guard's regex is broader and catches three spellings. Both numbers are recorded rather than the flattering one |
-| Mobile responsiveness | **SPEC'D**, largely unowned | **69** un-prefixed multi-column grids (`pnpm guard:ui` → `unprefixedMultiColGrid`); no page consumes `useIsMobile`; zero viewport tests exist |
-| Component tests | **BUILT**, thin | 82 client test files; only `ui/button.test.tsx` covers a primitive |
+<!-- BEGIN GENERATED — do not hand-edit; run `pnpm guard:ui --write-table` -->
 
-**Re-measure before quoting any number here** (`knowledge-base/routines/CHARTER.md` §10: a
-standing claim is a claim about the day it was written). `pnpm guard:ui` prints the live figures.
+| Capability | State | Measured |
+|---|---|---|
+| `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 282 page files import it — *pnpm guard:ui → `pageShellDrift`* |
+| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 5%** | 17 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
+| `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
+| `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
+| `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
+| `EmptyState` | **BUILT** | 8 file(s) use it |
+| `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
+| Component tests / `components/ui` primitives | **BUILT** | 101 client test file(s); 34 primitives — *pnpm test:client* |
+| `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
+| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
+| `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
+| `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
+| `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
+| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **170** occurrence(s) |
+| `blindSpotPaletteClasses` — palette class in a shape the token guard cannot see | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
+| `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **67** occurrence(s) |
+
+<!-- END GENERATED -->
+
+**The table above is generated, and that is the point.** It was hand-written on 2026-08-18 and was
+wrong by the same evening: it stated the nested-control class at 122 while three PRs closed it to
+**0** that afternoon, and quoted 69 un-prefixed grids after a fix took them to 67. A number a human
+retypes is a number that will be wrong — the predecessor docs proved that over five weeks, and this
+one proved it in nine hours.
+
+So it is emitted by `scripts/ui-standard-guard.cjs`, and **`pnpm guard:ui` fails when the committed
+block disagrees with the live measurement.** To update it, run `pnpm guard:ui --write-table` and
+commit the result in the same PR; never edit the block by hand. Adding a row means adding a
+*measurement*, not a sentence.
 
 ---
 
@@ -198,8 +213,19 @@ discouraged. Spacing primitives stay on Tailwind's `2, 4, 6, 8, 12, 16`; form fi
 `space-y-4`; dashboards grid as `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` and comparisons as
 `lg:grid-cols-3`.
 
-**Inside `PrivateLayout`, never pass `fullHeight`** — it paints a white `min-h-screen` over the
-surface. `fullHeight` is for outside-`PrivateLayout` routes only.
+**`fullHeight` is for `BareLayout` routes only** (login, signup, legal, invite landings) — those
+are the only ones whose layout supplies no height and no background.
+
+Under `PrivateLayout` it paints a white `min-h-screen` over the gray app surface, *and* overflows
+that layout's `flex-1 overflow-y-auto` `<main>`. Under `PublicLayout` it is just as wrong for a
+reason that is easy to miss: that layout is **already** `flex min-h-screen flex-col bg-background`
+around a `flex-1` `<main>`, so a second 100vh inside it forces the content region to a full
+viewport *on top of* the nav — which pushes the Footer, and with it the NMLS identifier, the Equal
+Housing notice and the broker-not-lender disclosure, below the fold on every page however short.
+That was live on all ten calculators and both property pages until 2026-08-18.
+
+If a page under a real layout genuinely needs to fill its container, that is `min-h-full`, not
+`min-h-screen` (§15).
 
 **Documented exceptions:** full-bleed marketing/hero pages, centered spinner/empty-state routes,
 and auth pages (`max-w-md` centered card). Note that `max-w-md` is an *auth-card* width — it is
@@ -532,10 +558,12 @@ vertical timeline · branding-aware chrome): `client/src/pages/borrower/Dashboar
 Converting one of the 82% opt-out pages (§0):
 
 1. Delete the hand-rolled wrapper (`<div className="min-h-screen …">`, `mx-auto max-w-… px-… py-…`).
+   Delete it — do **not** move it onto `PageShell` as `fullHeight`; under either real layout that
+   reproduces the same bug through a prop instead of a div.
    If the page imports PageShell but wraps it in `min-h-screen`, remove that wrapper — that is
    the `pageShellDrift` metric.
 2. Wrap content in `<PageShell width={narrow|content|wide|full}>`, picked by §4's semantic set.
-   Inside `PrivateLayout`, don't set `fullHeight`.
+   Don't set `fullHeight` under `PrivateLayout` **or** `PublicLayout` — `BareLayout` routes only.
 3. Move the page header into `PageHeader` props (`title`/`subtitle`/`icon`/`eyebrow`/
    `headerAction`), passing `titleTestId` to keep the existing `data-testid`.
 4. Replace bespoke `space-y-*` and card padding with §4's tiers; replace direct `lucide-react`

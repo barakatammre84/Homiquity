@@ -110,7 +110,7 @@ export default function HomeEquityCalculator() {
   const equityPct = Math.max(0, Math.min(100, results.equityPercent));
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Home Equity Calculator — How Much Equity Do You Have?"
         description="Free home equity calculator. Enter your home's value and what you still owe to see your equity, your loan-to-value, and how much you could potentially borrow with a HELOC or cash-out refinance."
@@ -294,6 +294,6 @@ export default function HomeEquityCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

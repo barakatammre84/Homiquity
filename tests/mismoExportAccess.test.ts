@@ -65,7 +65,20 @@ describe("MISMO export role gate (H8)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("still serves the full GSE XML (real SSN element) to internal staff", async (ctx) => {
+  // Needs a borrower file with a VAULTED SSN, which `pnpm db:seed` does not
+  // create — so on a freshly-provisioned database (CI, a preview branch, a new
+  // environment) this assertion cannot distinguish "the staff export is
+  // over-masked" from "there was no SSN to export". A skip is the honest answer
+  // to that; a pass would be the guard-with-no-artifact trap (routines/LESSONS.md
+  // 2026-08-12), and a fail would be a red gate reporting a fixture gap as a
+  // regression.
+  //
+  // It runs wherever the data exists: set INTEGRATION_FULL_FIXTURES=true against
+  // a database that has one (the shared dev DB does). TICKET: seed a synthetic
+  // vaulted SSN so this role gate — the route that embeds full SSN and DOB — is
+  // provable on every PR. Until then the three 403 cases above DO run in CI, so
+  // the deny half of H8 is covered and only the allow half is not.
+  it.skipIf(process.env.INTEGRATION_FULL_FIXTURES !== "true")("still serves the full GSE XML (real SSN element) to internal staff", async (ctx) => {
     const cookie = await loginAs("admin@test.com");
     const apps = await getWithSession("/api/staff/applications", cookie);
     expect(apps.status).toBe(200);
