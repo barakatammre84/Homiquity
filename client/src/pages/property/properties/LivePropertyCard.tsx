@@ -74,18 +74,18 @@ export function LivePropertyCard({ property, viewMode }: { property: LivePropert
             </div>
 
             <div className="mt-4 flex gap-2">
-              <Link href={`/properties/live?propertyId=${property.property_id}`} className="flex-1">
-                <Button variant="outline" className="w-full gap-2">
+              <Button asChild variant="outline" className="flex-1 w-full gap-2">
+                <Link href={`/properties/live?propertyId=${property.property_id}`}>
                   <Home className="h-4 w-4" />
                   Details
-                </Button>
-              </Link>
-              <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
-                <Button className="w-full gap-2">
+                </Link>
+              </Button>
+              <Button asChild className="flex-1 w-full gap-2">
+                <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`}>
                   <DollarSign className="h-4 w-4" />
                   {isSold ? "Get Estimate" : "Pre-Approve"}
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </div>
@@ -152,18 +152,18 @@ export function LivePropertyCard({ property, viewMode }: { property: LivePropert
         </div>
 
         <div className="mt-4 flex gap-2">
-          <Link href={`/properties/live?propertyId=${property.property_id}`} className="flex-1">
-            <Button variant="outline" className="w-full gap-2">
+          <Button asChild variant="outline" className="flex-1 w-full gap-2">
+            <Link href={`/properties/live?propertyId=${property.property_id}`}>
               <Home className="h-4 w-4" />
               Details
-            </Button>
-          </Link>
-          <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
-            <Button className="w-full gap-2">
+            </Link>
+          </Button>
+          <Button asChild className="flex-1 w-full gap-2">
+            <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`}>
               <DollarSign className="h-4 w-4" />
               {isSold ? "Get Estimate" : "Pre-Approve"}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>
