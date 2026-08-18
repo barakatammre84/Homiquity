@@ -44,14 +44,29 @@ run — see the caveat below.
 
 ## The four built-in checks
 
-1. **Horizontal overflow at the requested width** — `scrollWidth > innerWidth`, with the offending
-   elements named (tag, `data-testid`, class, geometry). This is DESIGN_SYSTEM §12.3's real
-   question rather than its proxy.
+1. **Horizontal overflow at the requested width** — `scrollWidth > documentElement.clientWidth`,
+   with the offending elements named (tag, `data-testid`, class, geometry). This is
+   DESIGN_SYSTEM §12.3's real question rather than its proxy.
+
+   ⚠️ **It compared against `window.innerWidth` until 2026-08-18, and that check could never
+   fail.** Under mobile emulation the *visual* viewport widens to fit overflowing content, so
+   `innerWidth` grew in lockstep with `scrollWidth`. On `/calculators/affordability` it printed
+   `✓ no horizontal overflow (scrollWidth 329 ≤ 329)` while the *layout* viewport was 320 and the
+   page really did overflow by 9px. `documentElement.clientWidth` is the layout viewport and stays
+   at the requested width. Any "no overflow" result recorded before that date is not evidence.
 2. **Images that failed to load** (`naturalWidth === 0`). Before calling one a new defect, compare
    `/api/health`'s `commit` against `origin/main`: a hashed-asset 404 with drift > 0 is a **stale
    deploy**, not a missing file. That mistake has been made here twice.
 3. **Interactive elements under 44×44 px** (DESIGN_SYSTEM §11).
-4. **Interactive elements with no accessible name** — no `aria-label`, `title`, or text.
+4. **Interactive elements with no accessible name** — resolved roughly the way the accname spec
+   does: `aria-labelledby` → `aria-label` → an associated `<label for>` or wrapping `<label>` →
+   `title` → `placeholder` → text content.
+
+   ⚠️ **It checked only `aria-label` / `title` / text content until 2026-08-18**, so a correctly
+   labelled `<input id=x>` + `<Label htmlFor=x>` was reported as unnamed. That produced **nine
+   false positives across five public pages and zero true ones** on its first real sweep — four on
+   the affordability calculator alone, every one properly associated. Since CHARTER §10 now lets
+   this output be cited as evidence, over-reporting sends people to fix what is not broken.
 
 ## What it still cannot do — and what §10 therefore still forbids claiming
 
@@ -81,3 +96,29 @@ Against the built bundle on a freshly-seeded database:
 - `/calculators` at 320 — no overflow; **19 interactive elements under 44 px**, including the whole
   footer link set at 36 px tall and the mobile-menu wordmark at 32 px. Measured, not inferred, and
   not visible to any guard in this repo before that day.
+
+## First ten-page sweep, 2026-08-18 — and the bug class `guard:ui` cannot see
+
+Ten public pages at 320 px. **One real page defect, and two defects in this script** (both fixed
+above; the sweep was re-run afterwards and the other nine pages hold up).
+
+`/calculators/affordability` overflowed the viewport by 9 px. The cause is the *inverse* of what
+`unprefixedMultiColGrid` hunts for, which is why no guard in this repo could have caught it:
+
+```
+<div className="grid gap-8 lg:grid-cols-5">   ← multi-column template is correctly prefixed
+  <div className="lg:col-span-3 …">           ← but measured 313px inside a 288px grid
+```
+
+With **no** template at the mobile breakpoint, the implicit column is `auto`, which sizes to the
+item's **min-content** — 313 px — and the item overflows a 288 px grid box. The metric only flags a
+multi-column template *missing* a prefix (breaks mobile by staying multi-column); a template that
+exists *only* above `lg` leaves an unshrinkable `auto` column below it, and reads as correct.
+
+The fix is `grid-cols-1`, which Tailwind compiles to `repeat(1, minmax(0, 1fr))` — the `minmax(0,…)`
+is the load-bearing half. Proven by setting `gridTemplateColumns` live through `--expr` before
+editing anything: the item went 313 → 288 and the page overflow cleared. Desktop is untouched
+(5 × 192 px, item spans 3 = 640 px).
+
+**Neither `min-width: 0` on the item nor on all of its descendants fixes this** — both were tried
+and measured. The floor is the track, not the box.

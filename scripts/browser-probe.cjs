@@ -179,16 +179,26 @@ function connect(wsUrl) {
  */
 const CHECKS = `(() => {
   const px = (v) => Math.round(v * 10) / 10;
+  // Measure against documentElement.clientWidth, NOT window.innerWidth.
+  //
+  // Under mobile emulation the VISUAL viewport widens to fit overflowing content,
+  // so window.innerWidth grows in lockstep with scrollWidth and the comparison
+  // can never fail. Found 2026-08-18 on /calculators/affordability: this check
+  // printed "no horizontal overflow (scrollWidth 329 <= 329)" while the layout
+  // viewport was 320 and the page really did overflow by 9px. clientWidth is the
+  // LAYOUT viewport and stays at the requested width, so it sees the overflow.
+  const layoutWidth = document.documentElement.clientWidth;
   const overflow = {
     scrollWidth: document.documentElement.scrollWidth,
-    innerWidth: window.innerWidth,
-    overflows: document.documentElement.scrollWidth > window.innerWidth + 1,
+    innerWidth: layoutWidth,
+    visualWidth: window.innerWidth,
+    overflows: document.documentElement.scrollWidth > layoutWidth + 1,
     culprits: [],
   };
   if (overflow.overflows) {
     for (const el of document.querySelectorAll("body *")) {
       const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.right > window.innerWidth + 1) {
+      if (r.width > 0 && r.right > layoutWidth + 1) {
         overflow.culprits.push({
           tag: el.tagName.toLowerCase(),
           testid: el.getAttribute("data-testid") || null,
@@ -219,7 +229,30 @@ const CHECKS = `(() => {
         h: px(r.height),
       });
     }
-    const name = (el.getAttribute("aria-label") || el.getAttribute("title") || (el.textContent || "").trim());
+    // Accessible name, in roughly the order the accname spec resolves it.
+    //
+    // This used to check aria-label / title / textContent ONLY, which reports a
+    // correctly-labelled <input id=x> + <Label htmlFor=x> as unnamed — four such
+    // false positives on /calculators/affordability alone, all properly
+    // associated. A guard that cries wolf is one people learn to skip, and
+    // CHARTER §10 now lets this output be cited as evidence, so over-reporting
+    // here sends people to fix things that are not broken.
+    const labelText = (() => {
+      const ref = el.getAttribute("aria-labelledby");
+      if (ref) {
+        const t = ref.split(/\\s+/).map((id) => (document.getElementById(id) || {}).textContent || "").join(" ").trim();
+        if (t) return t;
+      }
+      if (el.id) {
+        const l = document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(el.id) : el.id) + '"]');
+        if (l && (l.textContent || "").trim()) return (l.textContent || "").trim();
+      }
+      const wrapping = el.closest("label");
+      if (wrapping && (wrapping.textContent || "").trim()) return (wrapping.textContent || "").trim();
+      return "";
+    })();
+    const name = (el.getAttribute("aria-label") || labelText || el.getAttribute("title")
+      || el.getAttribute("placeholder") || (el.textContent || "").trim());
     if (!name) {
       unnamedIconControls.push({
         tag: el.tagName.toLowerCase(),
