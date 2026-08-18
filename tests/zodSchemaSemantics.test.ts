@@ -79,13 +79,60 @@ function valueForKey(k: string): unknown {
   return "x";
 }
 
-function shapeProbes(s: ZodLike): Array<[string, unknown]> {
-  let shape: Record<string, unknown> | undefined;
-  try {
-    shape = s.shape;
-  } catch {
-    return [];
+/**
+ * Find the object shape behind whatever wrappers a schema is exported with.
+ *
+ * WHY THIS IS NOT JUST `s.shape`. A schema wrapped in `z.preprocess(...)` or
+ * `.transform(...)` exposes no `.shape` of its own, so the per-field probes
+ * below produced NOTHING for it and only the ten scalar probes ran. Five of the
+ * ~195 exported schemas were in that state — including
+ * `loanApplicationIntakeSchema` and `loanApplicationIntakeUpdateSchema`, the
+ * pair that admits borrower financial data into a loan file. Their per-field
+ * rules were entirely unpinned, and a change to what ten of those fields accept
+ * passed this test unchanged (PR #547, ticket 6).
+ *
+ * The wrappers put the object on different sides depending on which one it is —
+ * `z.preprocess(fn, obj)` keeps it on `.out` (`.in` is the preprocessing step),
+ * while `obj.transform(fn)` keeps it on `.in` (`.out` is the transform). Rather
+ * than encode that per constructor name, which is exactly the sort of internal
+ * that moves between zod majors, this walks both sides breadth-first and takes
+ * the first shape it finds. Only one side ever carries one.
+ *
+ * NOTE WHAT THIS DOES NOT CHANGE: the shape is used only to CHOOSE PROBE FIELD
+ * NAMES. Every probe is still parsed against the OUTER exported schema
+ * (`outcome(val, input)` in buildSnapshot), so the recorded decision is still
+ * "what does the thing we export accept?" — preprocessing included — and not
+ * "what does its inner object accept?". Those are different questions and only
+ * the first one is worth pinning.
+ */
+function unwrapToShape(s: ZodLike): Record<string, unknown> | undefined {
+  const seen = new Set<unknown>();
+  const queue: unknown[] = [s];
+  // Generous enough for preprocess(obj.superRefine().transform()) and then
+  // some; bounded so a self-referential schema cannot spin.
+  for (let steps = 0; steps < 32 && queue.length; steps++) {
+    const node = queue.shift();
+    if (!node || typeof node !== "object" || seen.has(node)) continue;
+    seen.add(node);
+
+    let shape: unknown;
+    try {
+      shape = (node as ZodLike).shape;
+    } catch {
+      shape = undefined; // some wrappers throw rather than return undefined
+    }
+    if (shape && typeof shape === "object") return shape as Record<string, unknown>;
+
+    const n = node as Record<string, any>;
+    // `.in`/`.out` are the zod 4 pipe sides; `innerType` covers the
+    // optional/nullable/default wrappers in both majors.
+    queue.push(n.in, n.out, n._zod?.def?.innerType, n._def?.innerType, n._def?.schema);
   }
+  return undefined;
+}
+
+function shapeProbes(s: ZodLike): Array<[string, unknown]> {
+  const shape = unwrapToShape(s);
   if (!shape || typeof shape !== "object") return [];
   const keys = Object.keys(shape);
   if (!keys.length) return [];
@@ -100,6 +147,24 @@ function shapeProbes(s: ZodLike): Array<[string, unknown]> {
     probes.push([`missing-${k}`, copy]);
   }
   probes.push([`wrongtype-${keys[0]}`, { ...filled, [keys[0]]: { nested: "wrong" } }]);
+
+  // WHICH FIELDS ACCEPT NULL — one probe, every key at once.
+  //
+  // The faulted-path list is the payload here: a field that starts admitting
+  // null DROPS OUT of it, so this single line pins nullability across the whole
+  // shape without six probes per schema.
+  //
+  // It exists because the probes above would not have caught the change that
+  // exposed this file's blind spot. `valueForKey` supplies plausible values, so
+  // the null question was never asked — and "does this field accept null?" is a
+  // data-admission question on a loan file, not a cosmetic one: null is how
+  // `loanApplicationIntakeUpdateSchema` says "clear this borrower's answer"
+  // (CLEARABLE_INTAKE_FIELDS, shared/intakeClearable.ts). Widening that set is
+  // exactly the kind of change that should have to walk past a recorded line.
+  const nulled: Record<string, unknown> = {};
+  for (const k of keys) nulled[k] = null;
+  probes.push(["all-keys-null", nulled]);
+
   return probes;
 }
 
