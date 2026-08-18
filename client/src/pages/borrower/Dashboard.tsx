@@ -413,8 +413,21 @@ export default function Dashboard() {
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Progress</p>
                       <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
                     </div>
+                    {/* Every progress display says what it measures
+                        (DESIGN_SYSTEM §13). This bar is a weighted estimate of
+                        how far the FILE has moved — loan stage plus the
+                        verification steps done — not a count of anything, so
+                        it is labeled as an estimate and never presented as a
+                        tally the borrower could reconcile against a list. */}
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-20 rounded-full bg-muted overflow-hidden">
+                      <span className="text-xs text-muted-foreground" data-testid="label-readiness">
+                        How far your file has moved (estimated)
+                      </span>
+                      <div
+                        className="h-1.5 w-20 rounded-full bg-muted overflow-hidden"
+                        role="img"
+                        aria-label={`How far your file has moved, estimated: ${readiness}%`}
+                      >
                         <div
                           className="h-full rounded-full bg-primary transition-all duration-700"
                           style={{ width: `${readiness}%` }}

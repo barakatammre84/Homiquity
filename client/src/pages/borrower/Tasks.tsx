@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
+import { TaskProgress } from "@/components/patterns/TaskProgress";
+import { EmptyState } from "@/components/patterns/EmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
@@ -252,9 +253,14 @@ export default function Tasks() {
   const pendingDocTasks = pendingTasks.filter((t) => t.taskType === "document_request");
   const pendingOtherTasks = pendingTasks.filter((t) => t.taskType !== "document_request");
 
+  // Fed to <TaskProgress>, which SNAPSHOTS the total on first render. Both
+  // figures derive from `myTasks` — the one scoped list this page filters
+  // everything else from — so no two counts on the screen can disagree
+  // (DESIGN_SYSTEM §13, Agreement). The denominator must not move while the
+  // borrower is looking at it: an LO assigning a task mid-session used to
+  // drop the percentage, making their progress run backwards.
   const totalTasks = myTasks.length;
   const completedCount = completedTasks.length;
-  const progressPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
 
   const openUploadDialog = (task: Task) => {
     setSelectedTask(task);
@@ -265,40 +271,35 @@ export default function Tasks() {
     <>
       <PageShell width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
             {myTasks.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <CheckCircle2 className="mb-4 h-12 w-12 text-status-success" />
-                  <h3 className="mb-2 text-lg font-semibold">No Tasks Yet</h3>
-                  <p className="text-center text-muted-foreground">
-                    {activeApplication
-                      ? "Your loan officer will assign tasks as your application progresses."
-                      : "Start a loan application to receive your first tasks."}
-                  </p>
-                  {!activeApplication && (
-                    <Button asChild className="mt-4" data-testid="button-start-application">
-                      <Link href="/apply">
-                        Start Application
-                      </Link>
+              // Scoped to what this page knows — the ACTIVE application's tasks,
+              // never a global "you're all caught up" (DESIGN_SYSTEM §13).
+              <EmptyState
+                scope="tasks on this application"
+                icon={CheckCircle2}
+                description={
+                  activeApplication
+                    ? "Your loan officer will assign tasks as your application progresses — we'll tell you the moment one arrives."
+                    : "Start a loan application to receive your first tasks."
+                }
+                action={
+                  !activeApplication ? (
+                    <Button asChild data-testid="button-start-application">
+                      <Link href="/apply">Start Application</Link>
                     </Button>
-                  )}
-                </CardContent>
-              </Card>
+                  ) : undefined
+                }
+                data-testid="tasks-empty"
+              />
             ) : (
               <>
                 <Card className="mb-8">
                   <CardContent className="p-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="font-semibold">Your Progress</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {completedCount} of {totalTasks} tasks completed
-                        </p>
-                      </div>
-                      <div className="text-2xl font-bold text-primary">
-                        {Math.round(progressPercent)}%
-                      </div>
-                    </div>
-                    <Progress value={progressPercent} className="mt-4" />
+                    <TaskProgress
+                      label="Tasks completed on this application"
+                      completed={completedCount}
+                      total={totalTasks}
+                      data-testid="tasks-progress"
+                    />
                   </CardContent>
                 </Card>
 

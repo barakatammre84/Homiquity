@@ -25,7 +25,7 @@ In that window:
 - The platform moved **Vercel → Railway**. All sixteen dormant definitions still hand the founder
   `set INTAKE_PAUSED=true in Vercel env + redeploy` as the incident runbook — a page aimed at a
   platform that 404s.
-- The repo was renamed `MortgageStream → Homiquity`, `npm → pnpm`, `kb/ → knowledge-base/`. Every
+- The repo was renamed to `Homiquity` (former name recorded — and banned — in root `CLAUDE.md`), `npm → pnpm`, `kb/ → knowledge-base/`. Every
   dormant routine writes its report to `kb/`, which does not exist.
 
 **The lesson is the rule: a routine that cannot be shown to have run is not a control.** §7 makes
