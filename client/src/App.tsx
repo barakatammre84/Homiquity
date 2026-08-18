@@ -194,11 +194,6 @@ function StaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={ROUTE_GATES.staff}>{children}</PrivateLayout>;
 }
 
-/** Borrower-reachable disclosure surfaces (ux-30). See ROUTE_GATES.disclosure. */
-function DisclosurePage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROUTE_GATES.disclosure}>{children}</PrivateLayout>;
-}
-
 function InternalStaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={ROUTE_GATES.internalStaff}>{children}</PrivateLayout>;
 }
@@ -477,8 +472,16 @@ function Router() {
         <Route path="/borrower-file/:id">
           {(params) => <StaffPage><BorrowerFile /></StaffPage>}
         </Route>
+        {/* Inlined rather than given a page wrapper: ROUTE_GATES.disclosure has
+            exactly one route, and a fifth single-use wrapper measured 56 extra
+            bytes on the eager entry every visitor downloads. Uses the named
+            gate, never an inline role literal (tests/routeGates.test.ts:99). */}
         <Route path="/loan-estimate/:id">
-          {(params) => <DisclosurePage><LoanEstimate /></DisclosurePage>}
+          {(params) => (
+            <PrivateLayout requiredRoles={ROUTE_GATES.disclosure}>
+              <LoanEstimate />
+            </PrivateLayout>
+          )}
         </Route>
         <Route path="/compliance">
           <Redirect to="/staff-dashboard" />
