@@ -24,6 +24,11 @@ import {
   UserCircle2,
   X,
 } from "lucide-react";
+// From the tiny table-free module, NOT the @shared/schema barrel (a value
+// import of the barrel ships all 174 Drizzle tables to the browser — #482) and
+// NOT preApprovalForm, which sits in the eager entry chunk every visitor
+// downloads. This page is lazily routed, so the catalog rides in its chunk.
+import { isClearableIntakeField } from "@shared/intakeClearable";
 import {
   CAPTURE_FIELDS,
   TIER_CONFIG,
@@ -61,7 +66,10 @@ interface ProfileFieldDef extends Omit<CaptureFieldDef, "key"> {
   key: string;
 }
 
-const PROFILE_FIELDS: ProfileFieldDef[] = [
+// Exported for Profile.test.tsx's catalog invariant: every field this editor
+// can EMPTY must have a wire clear (CLEARABLE_INTAKE_FIELDS). Reading the list
+// is how that test stays true as fields are added.
+export const PROFILE_FIELDS: ProfileFieldDef[] = [
   ...CAPTURE_FIELDS.slice(0, 5),
   { key: "employerName", label: "Employer", kind: "text", icon: UserCircle2 },
   ...CAPTURE_FIELDS.slice(5, 9),
@@ -134,21 +142,60 @@ export default function Profile() {
   const saveEdits = useMutation({
     mutationFn: async () => {
       if (!application) return null;
-      const payload: Record<string, string | boolean> = {};
+      const payload: Record<string, string | boolean | null> = {};
+      // Fields the borrower EMPTIED that already held a value.
+      //
+      // These used to be dropped in silence — the other edits saved, the toast
+      // said "Your self-reported details were saved", the refetch put the old
+      // value back, and no state existed in which the borrower could tell
+      // (#451's defect class). They now travel as an explicit `null`, which is
+      // the intake schema's third wire state: absent = unchanged, a value =
+      // set, `null` = clear (CLEARABLE_INTAKE_FIELDS, shared/schema/
+      // lendingUrla.ts). An empty string is still rejected on purpose, so the
+      // translation has to happen here rather than by sending `next` through.
+      const uncleared: string[] = [];
       for (const field of PROFILE_FIELDS) {
         const current = toFormValue(field, application.fields[field.key] ?? null);
         const next = form[field.key];
         if (next === undefined || next === current) continue;
-        if (typeof next === "string" && next.trim() === "") continue; // absent, never "0"
+        if (typeof next === "string" && next.trim() === "") { // absent, never "0"
+          // Blanking an already-blank field is a no-op the borrower cannot
+          // perceive; reporting it would be noise.
+          if (typeof current !== "string" || current.trim() === "") continue;
+          if (isClearableIntakeField(field.key)) {
+            payload[field.key] = null;
+            continue;
+          }
+          // No wire representation for clearing this one. Reachable only if a
+          // field becomes emptyable in this editor without being added to the
+          // catalog — say so rather than discard the edit, which is the whole
+          // lesson of #451. `Profile.test.tsx` pins the invariant that keeps
+          // this branch unreachable in practice.
+          uncleared.push(field.label);
+          continue;
+        }
         payload[field.key] = next;
       }
-      if (Object.keys(payload).length === 0) return null;
+      if (Object.keys(payload).length === 0) return { updated: null, uncleared };
       const res = await apiRequest("PATCH", `/api/loan-applications/${application.id}`, payload);
-      return res.json();
+      return { updated: await res.json(), uncleared };
     },
-    onSuccess: (updated) => {
-      setEditing(false);
-      if (updated) {
+    onSuccess: (result) => {
+      const uncleared = result?.uncleared ?? [];
+      // Stay in the editor while a field still needs the borrower's attention —
+      // closing it would discard the very edit they are being asked to correct.
+      if (!uncleared.length) setEditing(false);
+
+      if (uncleared.length) {
+        const list = uncleared.length === 1
+          ? uncleared[0]
+          : `${uncleared.slice(0, -1).join(", ")} and ${uncleared[uncleared.length - 1]}`;
+        toast({
+          title: result?.updated ? "Saved — but some fields can't be left blank" : "We couldn't clear those fields",
+          description: `${list} can't be emptied. Enter a value instead — 0 is fine for an amount you don't have — or put the previous one back.`,
+          variant: "destructive",
+        });
+      } else if (result?.updated) {
         toast({ title: "Profile updated", description: "Your self-reported details were saved to your draft application." });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/profile/financial"] });
