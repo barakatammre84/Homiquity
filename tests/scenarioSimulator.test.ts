@@ -11,6 +11,7 @@ import {
   pointsAndFeesDollars,
 } from "../server/services/antiSteeringOptions";
 import { computeClosingCosts } from "../server/services/loanCosts";
+import { fhaMonthlyMIP } from "../server/services/mortgageInsurance";
 import { UnderwritingError, type UnderwritingInput, type UnderwritingResult } from "../server/underwritingEngine";
 import type { ComputedOffer } from "../server/services/pricingAdapter";
 
@@ -241,6 +242,158 @@ describe("composeScenario (LO-2 what-if simulator)", () => {
     const result = await composeScenario(facts({ offers: [] }), fakeEvaluate);
     expect(result.status).toBe("NO_ELIGIBLE_PRODUCTS");
     expect(result.antiSteering!.options).toEqual([]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// F-077 follow-up — what-if MI is the offer's product-aware matrix figure.
+//
+// composeScenario used to price every non-VA offer through
+// loanCosts.calculatePMI, a compile-time FICO×LTV card that exceeded the
+// versioned CONVENTIONAL_PMI matrix in every live cell — after #553 moved the
+// LE/decision to the matrix, a what-if OVERSTATED PITI/DTI against the very
+// decision it exists to mirror. Now each offer carries its own
+// estimatedMonthlyMI, priced by computeOffers from THIS scenario's profile
+// (matrix conventional PMI / FHA MIP / zero on VA — services/
+// mortgageInsurance.ts), and the simulator consumes it. The card is deleted.
+//
+// Fixture figures mirror the seeded matrix's worked example (700 FICO × 92 LTV
+// → 0.78%/yr); the binding matrix VALUES are pinned by the integration suite
+// against seeded matrices, and the product routing by tests/
+// pricingAdapterMI.test.ts. Here the offers are injected, so these tests pin
+// the SIMULATOR's consumption: per-offer MI into PITI, DTI, APR, and
+// cash-to-close, deterministically and without Postgres.
+// -----------------------------------------------------------------------------
+
+// The register's worked example: $400k price, $32k down → $368k loan, 92 LTV.
+const F077_SCENARIO = { purchasePrice: 400000, downPaymentAmount: 32000 };
+// Matrix 0.78%/yr: $368k × 0.78% / 12. The DELETED card's figure for the same
+// inputs was $429.33 (700 FICO × 92 LTV → its 1.40%/yr band) — if it ever
+// reappears here, the F-077 defect is back.
+const MATRIX_MONTHLY_PMI = 239.2;
+const DELETED_CARD_FIGURE = 429.33;
+
+describe("what-if MI prices the offer's product-aware matrix figure (F-077 follow-up)", () => {
+  const app700 = () => ({ ...facts().application, creditScore: 700 });
+
+  const convOffer = () =>
+    offer({
+      estimatedMonthlyMI: MATRIX_MONTHLY_PMI,
+      estimatedMonthlyTotal: 2334.29 + MATRIX_MONTHLY_PMI,
+    });
+
+  it("consumes each offer's own MI — two products, two figures, never one card for all", async () => {
+    // FHA MIP at 92 LTV — cross-checked against the shared helper so the
+    // fixture cannot drift from what computeOffers actually emits.
+    const fhaMI = Math.round(fhaMonthlyMIP(368000, 92) * 100) / 100;
+    expect(fhaMI).toBe(245.33);
+
+    const result = await composeScenario(
+      facts({
+        application: app700(),
+        scenario: F077_SCENARIO,
+        offers: [
+          convOffer(),
+          offer({
+            lenderId: "lender-fha",
+            productId: "product-fha",
+            productCode: "FIX-FHA30",
+            productName: "FHA 30-Year Fixed",
+            productType: "FHA",
+            estimatedMonthlyPI: 2360.12,
+            estimatedMonthlyMI: fhaMI,
+            estimatedMonthlyTotal: 2360.12 + fhaMI,
+          }),
+        ],
+      }),
+      fakeEvaluate,
+    );
+
+    expect(result.status).toBe("OK");
+    const conv = result.offers.find((o) => o.productId === "product-1")!;
+    const fha = result.offers.find((o) => o.productId === "product-fha")!;
+
+    // Per-offer product-aware MI — the old code gave every non-VA offer the
+    // same card figure, so two DIFFERENT figures here pin the migration.
+    expect(conv.payment.mortgageInsurance).toBe(MATRIX_MONTHLY_PMI);
+    expect(fha.payment.mortgageInsurance).toBe(fhaMI);
+    expect(conv.payment.mortgageInsurance).not.toBe(DELETED_CARD_FIGURE);
+    expect(fha.payment.mortgageInsurance).not.toBe(DELETED_CARD_FIGURE);
+
+    // PITI composes from the same figure (default schedule escrow on $400k:
+    // $400/mo tax + $100/mo insurance).
+    expect(conv.payment.escrow).toBe(500);
+    expect(conv.payment.totalPiti).toBe(2334.29 + MATRIX_MONTHLY_PMI + 500);
+  });
+
+  it("moves DTI, APR, and cash-to-close — the matrix figure reaches qualification, not just the card", async () => {
+    const run = (mi: number) =>
+      composeScenario(
+        facts({
+          application: app700(),
+          scenario: F077_SCENARIO,
+          offers: [
+            offer({ estimatedMonthlyMI: mi, estimatedMonthlyTotal: 2334.29 + mi }),
+          ],
+        }),
+        fakeEvaluate,
+      );
+
+    const withMI = (await run(MATRIX_MONTHLY_PMI)).offers[0];
+    const control = (await run(0)).offers[0];
+
+    // fakeEvaluate: DTI = ($500 debts + PITI) / $10k income. PITI with the
+    // matrix figure: 2334.29 + 239.20 + 500 escrow = 3073.49 → 35.73%;
+    // without MI: 2834.29 → 33.34%. The 2.39-point spread is exactly what the
+    // decision sees — under the old card the spread was 4.29 points, bouncing
+    // borderline what-ifs the real decision approves.
+    expect(withMI.qualification.dti).toBe(35.73);
+    expect(control.qualification.dti).toBe(33.34);
+
+    // Cash-to-close carries 4 months of MI at the matrix rate — the shared
+    // fee model's 2 prepaid months plus its 2-month initial escrow deposit
+    // (loanCosts prepaidMortgageInsurance + escrowMortgageInsurance)…
+    expect(withMI.costs.cashToClose - control.costs.cashToClose).toBeCloseTo(
+      4 * MATRIX_MONTHLY_PMI,
+      2,
+    );
+    // …and the APR stream prices the same MI leg.
+    expect(withMI.apr).toBeGreaterThan(control.apr);
+  });
+
+  it("keeps a veteran's what-if MI-free on every product (VA underwriting routing parity)", async () => {
+    const result = await composeScenario(
+      facts({
+        application: {
+          ...app700(),
+          isVeteran: true,
+          // VA residual-income inputs normalizeScenario requires for veterans.
+          householdFamilySize: 3,
+          homeSquareFootage: 1800,
+        },
+        scenario: F077_SCENARIO,
+        offers: [
+          // Even a conventional offer carrying a matrix figure prices at zero:
+          // the platform underwrites veterans as VA (qualifyAtPiti passes
+          // isVeteran), so their what-if PITI matches their decision's.
+          convOffer(),
+          offer({
+            lenderId: "lender-va",
+            productId: "product-va",
+            productCode: "FIX-VA30",
+            productName: "VA 30-Year Fixed",
+            productType: "VA",
+            estimatedMonthlyMI: 0,
+            estimatedMonthlyTotal: 2334.29,
+          }),
+        ],
+      }),
+      fakeEvaluate,
+    );
+
+    for (const evaluated of result.offers) {
+      expect(evaluated.payment.mortgageInsurance).toBe(0);
+    }
   });
 });
 
