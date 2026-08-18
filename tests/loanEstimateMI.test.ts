@@ -44,7 +44,6 @@ vi.mock("../server/storage", () => ({
 }));
 
 import { computePaymentProjection } from "../server/services/loanEstimate";
-import { calculatePMI } from "../server/services/loanCosts";
 
 describe("payment projection MI comes from the CONVENTIONAL_PMI matrix (F-077)", () => {
   it("carries the matrix figure — not the hardcoded card that fed the decision", async () => {
@@ -52,13 +51,15 @@ describe("payment projection MI comes from the CONVENTIONAL_PMI matrix (F-077)",
 
     expect(projection.monthlyMortgageInsurance).toBe(MATRIX_MONTHLY_PMI);
 
-    // The card's figure for the same inputs is materially different — the
+    // The card's figure for the same inputs was materially different — the
     // register's worked example: $429.33 vs $239.20 (+$190.13/mo, 2.38 DTI
-    // points on $8k/mo income). If the projection ever equals the card again,
-    // the defect is back.
-    const cardFigure = Math.round(calculatePMI(368_000, 400_000, 700) * 100) / 100;
-    expect(cardFigure).toBe(429.33);
-    expect(projection.monthlyMortgageInsurance).not.toBe(cardFigure);
+    // points on $8k/mo income). loanCosts.calculatePMI was deleted when its
+    // last caller (the scenario simulator) migrated to the matrix, so the
+    // figure is pinned as a historical constant: 700 FICO × 92 LTV → the
+    // card's 1.40%/yr band → $368k × 1.40% / 12 = $429.33. If the projection
+    // ever equals it again, the defect is back.
+    const DELETED_CARD_FIGURE = 429.33;
+    expect(projection.monthlyMortgageInsurance).not.toBe(DELETED_CARD_FIGURE);
 
     // The PITI total composes from the same figure.
     expect(projection.estimatedMonthlyTotal).toBeCloseTo(
