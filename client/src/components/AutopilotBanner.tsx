@@ -77,7 +77,7 @@ export function AutopilotBanner({
           hook's fallback poll is already trying to reconnect. */}
       {live === "lost" && (
         <p
-          className="mt-2 flex items-center gap-1.5 text-[11px] opacity-80"
+          className="mt-2 flex items-center gap-1.5 text-xs opacity-80"
           data-testid="autopilot-banner-stale"
         >
           <WifiOff className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -88,7 +88,7 @@ export function AutopilotBanner({
       {/* Package-readiness meter — how close the file is to lender-ready. */}
       {readiness.total > 0 && (
         <div className="mt-2.5">
-          <div className="flex items-center justify-between text-[11px] font-medium opacity-80">
+          <div className="flex items-center justify-between text-xs font-medium opacity-80">
             <span className="inline-flex items-center gap-1">
               {readyToSubmitToLender && <Send className="h-3 w-3" aria-hidden="true" />}
               {readyToSubmitToLender

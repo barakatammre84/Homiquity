@@ -134,11 +134,11 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
           <div>
             <div className="flex items-center gap-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tasks</p>
-              <Badge variant="secondary" className="text-[10px]">{pendingTasks.length}</Badge>
+              <Badge variant="secondary" className="text-xs">{pendingTasks.length}</Badge>
             </div>
             <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
           </div>
-          <Button asChild variant="outline" size="sm" data-testid="button-complete-items">
+          <Button asChild variant="outline" size="sm" className="touch-target" data-testid="button-complete-items">
             <Link href="/tasks">
               Complete items
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -155,7 +155,7 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
           return (
             <div 
               key={task.id}
-              className="flex items-center justify-between gap-3 p-3 rounded-md border"
+              className="flex flex-col items-stretch gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
               data-testid={`row-request-${task.id}`}
             >
               <div className="flex items-center gap-3 min-w-0 flex-wrap">
@@ -169,7 +169,10 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" data-testid={`text-request-title-${task.id}`}>
+                  {/* Wraps on a phone (the row stacks, so the title owns the line);
+                      keeps truncating from sm: up, where the CTA sits beside it. A
+                      truncated request title tells the borrower nothing. */}
+                  <p className="text-sm font-medium sm:truncate" data-testid={`text-request-title-${task.id}`}>
                     {friendlyName}
                   </p>
                   {dueText && (
@@ -181,7 +184,7 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
                   )}
                 </div>
               </div>
-              <Button asChild size="sm" variant="outline" className="shrink-0" data-testid={`button-upload-${task.id}`}>
+              <Button asChild size="sm" variant="outline" className="touch-target w-full shrink-0 sm:w-auto" data-testid={`button-upload-${task.id}`}>
                 <Link href="/documents">
                   Upload
                   <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -192,7 +195,7 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
         })}
         
         {pendingTasks.length > 3 && (
-          <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-view-all-requests">
+          <Button asChild variant="ghost" size="sm" className="touch-target w-full text-muted-foreground" data-testid="button-view-all-requests">
             <Link href="/documents">
               View all {pendingTasks.length} requests
               <ArrowRight className="h-4 w-4 ml-1" />

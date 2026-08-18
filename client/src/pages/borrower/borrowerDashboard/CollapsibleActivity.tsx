@@ -29,7 +29,7 @@ export function CollapsibleActivity({ activities }: { activities: DealActivity[]
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         )}
         {!expanded && (
-          <Badge variant="secondary" className="text-[10px]" data-testid="badge-activity-count">
+          <Badge variant="secondary" className="text-xs" data-testid="badge-activity-count">
             {Math.min(activities.length, 5)}
           </Badge>
         )}
@@ -52,7 +52,7 @@ export function CollapsibleActivity({ activities }: { activities: DealActivity[]
                     <p className="text-xs text-foreground" data-testid={`text-activity-desc-${index}`}>
                       {activity.description || activity.title}
                     </p>
-                    <span className="text-[11px] text-muted-foreground" data-testid={`text-activity-time-${index}`}>
+                    <span className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
                       {formatActivityTime(activity.createdAt!)}
                     </span>
                   </div>
