@@ -75,30 +75,30 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <Link href={PRELAUNCH_GATED ? "/" : applyUrl}>
-              <Button
+            <Button asChild
                 size="lg"
                 className="gap-2 w-full sm:w-auto"
                 onClick={() => trackCta("conversion-cta-apply", `/${context}`)}
                 data-testid="button-cta-apply"
               >
+              <Link href={PRELAUNCH_GATED ? "/" : applyUrl}>
                 {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved"}
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             {context !== "coach" && (
-              <Link href="/ai-coach">
-                <Button
+              <Button asChild
                   variant="outline"
                   size="lg"
                   className="gap-2 w-full sm:w-auto"
                   onClick={() => trackCta("conversion-cta-coach", `/${context}`)}
                   data-testid="button-cta-coach"
                 >
+                <Link href="/ai-coach">
                   <Bot className="h-4 w-4" />
                   Talk to Coach
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
           {msg.coachPrompt && (

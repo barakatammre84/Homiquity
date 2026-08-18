@@ -182,12 +182,12 @@ export function InterestedCtaCard({
           </Link>
         </Button>
         {href && (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
-            <Button variant="outline" className="w-full gap-2 border-primary-foreground/30 text-primary-foreground" data-testid="button-view-external">
+          <Button asChild variant="outline" className="mt-2 w-full gap-2 border-primary-foreground/30 text-primary-foreground" data-testid="button-view-external">
+            <a href={href} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4" />
               View Full Listing
-            </Button>
-          </a>
+            </a>
+          </Button>
         )}
       </CardContent>
     </Card>
