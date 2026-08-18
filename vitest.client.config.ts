@@ -23,6 +23,11 @@ export default defineConfig({
     alias: {
       "@shared": path.resolve(__dirname, "shared"),
       "@": path.resolve(__dirname, "client", "src"),
+      // Mirrors vite.config.ts. Without it, any component test that reaches a
+      // module importing a lifestyle photo fails to RESOLVE — the suite reports
+      // "0 tests" rather than a failure, which reads like the file was never
+      // picked up at all.
+      "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
 });

@@ -453,11 +453,25 @@ export function registerCoachRoutes(app: Express) {
       }
       updateData.completionPercentage = state.profile.completionPercentage;
     } else if (verifiedContext.completionPercentage !== undefined) {
-      const existingProfile = (conversation.financialProfile as any) || {};
-      updateData.financialProfile = {
-        ...existingProfile,
-        completionPercentage: verifiedContext.completionPercentage,
-      };
+      // The model did not call set_readiness this turn, so there is no profile
+      // to write — only a server-derived percentage. That belongs in the
+      // dedicated `completionPercentage` COLUMN, which is what the branch above
+      // also writes.
+      //
+      // This used to spread the percentage into `financialProfile` instead, and
+      // on a conversation's first turn `existingProfile` is `{}` — so the column
+      // the client reads as a whole CoachProfile got `{completionPercentage: 88}`
+      // and nothing else. `ReadinessPanel` then dereferenced
+      // `profile.completedInputs.length` on an absent array and took the entire
+      // /ai-coach page down through the error boundary. Rows in that shape
+      // already exist, which is why the client defends itself too.
+      updateData.completionPercentage = verifiedContext.completionPercentage;
+      if (conversation.financialProfile && typeof conversation.financialProfile === "object") {
+        updateData.financialProfile = {
+          ...(conversation.financialProfile as Record<string, unknown>),
+          completionPercentage: verifiedContext.completionPercentage,
+        };
+      }
     }
     if (state.actionPlan) {
       updateData.actionPlan = state.actionPlan;

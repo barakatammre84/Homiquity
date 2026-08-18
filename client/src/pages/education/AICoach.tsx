@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, coachConversationKeys } from "@/lib/queryClient";
+import { clearPendingCoachQuestion, readPendingCoachQuestion } from "@/lib/pendingCoachQuestion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, WifiOff } from "lucide-react";
@@ -117,17 +118,40 @@ export default function AICoach() {
     onConversationId: setActiveConversationId,
   });
 
-  const handleSend = (msg: string) => {
-    if (isBusy || usage?.isLimited) return;
+  // Returns whether the message was actually handed to the stream. Callers that
+  // consume a one-shot input (the landing-hero handoff below) must not discard
+  // it on a refusal — a rate-limited or mid-stream send is a no-op, and clearing
+  // regardless would drop the question with nothing to show for it.
+  const handleSend = (msg: string): boolean => {
+    if (isBusy || usage?.isLimited) return false;
     if (!activeConversationId) {
       trackCoachSession("coach_session_start");
     }
     void send(msg);
     trackActivity("coach_chat", "/ai-coach");
+    return true;
   };
+
+  // The question the visitor typed into the public landing hero, carried across
+  // the signup boundary in localStorage (see lib/pendingAttribution.ts). It runs
+  // ahead of getSourceContext and WITHOUT that effect's `conversations.length === 0`
+  // guard: a returning borrower who asks something on the home page meant to ask
+  // it, and having prior conversations is no reason to swallow it.
+  const heroQuestionSent = useRef(false);
+  useEffect(() => {
+    if (heroQuestionSent.current || activeConversationId || loadingConvs) return;
+    const pending = readPendingCoachQuestion();
+    if (!pending) return;
+    if (handleSend(pending)) {
+      heroQuestionSent.current = true;
+      clearPendingCoachQuestion();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversationId, loadingConvs, isBusy, usage?.isLimited]);
 
   const sourceContext = getSourceContext();
   useEffect(() => {
+    if (heroQuestionSent.current) return;
     if (sourceContext && !sourceHandled && !activeConversationId && conversations.length === 0 && !loadingConvs) {
       setSourceHandled(true);
       handleSend(sourceContext.autoMessage);
