@@ -8,7 +8,15 @@ import {
   __resetEncryptionStateForTests,
 } from "../server/services/encryptionService";
 import { toLeaseView } from "../server/storage/leases";
-import { leaseBodySchema, leasePatchSchema } from "../server/routes/borrower/leases";
+import {
+  leaseBodySchema,
+  leasePatchSchema,
+  rentPaymentBodySchema,
+} from "../server/routes/borrower/leases";
+import { toRentPaymentView } from "../server/storage/leases";
+import { isForeignKeyViolation, isUniqueViolation } from "../server/http/dbErrors";
+import { FURNISHABLE_PROVENANCE } from "../server/services/rentFurnishing";
+import type { RentPayment } from "../shared/schema";
 import type { Lease } from "../shared/schema";
 
 /**
@@ -261,5 +269,210 @@ describe("leasePatchSchema", () => {
 
   it("still rejects an invalid amount when one is supplied", () => {
     expect(leasePatchSchema.safeParse({ monthlyRentAmount: "-1" }).success).toBe(false);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Rent payments — the writer, and the evidence claim it must never accept
+// -----------------------------------------------------------------------------
+
+function paymentRow(over: Partial<RentPayment> = {}): RentPayment {
+  const now = new Date("2026-08-01T00:00:00.000Z");
+  return {
+    id: "pay-1",
+    leaseId: "lease-1",
+    dueDate: new Date("2026-07-01T00:00:00.000Z"),
+    paidDate: new Date("2026-07-01T00:00:00.000Z"),
+    amountDue: "1450.00",
+    amountPaid: "1450.00",
+    status: "paid",
+    provenance: "self_reported",
+    processorReference: null,
+    createdAt: now,
+    updatedAt: now,
+    ...over,
+  } as RentPayment;
+}
+
+describe("rentPaymentBodySchema", () => {
+  const paid = {
+    dueDate: "2026-07-01",
+    amountDue: "1450.00",
+    paidDate: "2026-07-01",
+    amountPaid: "1450.00",
+    status: "paid" as const,
+  };
+
+  it("accepts a settled payment", () => {
+    expect(rentPaymentBodySchema.safeParse(paid).success).toBe(true);
+  });
+
+  it("REFUSES a request that tries to claim provenance or a processor reference", () => {
+    // The whole point. `provenance` decides furnishability and `processorReference` is
+    // the audit thread back to a payment partner that does not exist — a request that
+    // could set either would be asserting first-party evidence we do not have.
+    const parsed = rentPaymentBodySchema.safeParse({
+      ...paid,
+      provenance: "platform_processed",
+      processorReference: "tr_forged",
+    });
+    expect(parsed.success).toBe(true); // zod strips unknown keys rather than erroring…
+    if (parsed.success) {
+      // …and what matters is that neither survives into the parsed data.
+      expect("provenance" in parsed.data).toBe(false);
+      expect("processorReference" in parsed.data).toBe(false);
+    }
+  });
+
+  it("accepts a missed period with no payment details", () => {
+    expect(
+      rentPaymentBodySchema.safeParse({ dueDate: "2026-07-01", amountDue: "1450.00", status: "missed" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects a paid or late period with no paid date or amount", () => {
+    expect(rentPaymentBodySchema.safeParse({ ...paid, paidDate: null }).success).toBe(false);
+    expect(rentPaymentBodySchema.safeParse({ ...paid, amountPaid: null }).success).toBe(false);
+  });
+
+  it("rejects 'scheduled' — an unsettled row does not belong in a payment history", () => {
+    expect(rentPaymentBodySchema.safeParse({ ...paid, status: "scheduled" }).success).toBe(false);
+  });
+
+  it("rejects calling a payment late when it landed on or before its due date", () => {
+    expect(
+      rentPaymentBodySchema.safeParse({ ...paid, status: "late", paidDate: "2026-06-28" }).success,
+    ).toBe(false);
+    expect(
+      rentPaymentBodySchema.safeParse({ ...paid, status: "late", paidDate: "2026-07-09" }).success,
+    ).toBe(true);
+  });
+
+  it("parses dates at UTC midnight, like every other date in this module", () => {
+    const parsed = rentPaymentBodySchema.safeParse(paid);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.dueDate.toISOString()).toBe("2026-07-01T00:00:00.000Z");
+  });
+});
+
+describe("toRentPaymentView", () => {
+  it("reports a self-reported payment as NOT furnishable", () => {
+    expect(toRentPaymentView(paymentRow()).furnishable).toBe(false);
+  });
+
+  it("reports a bank-observed payment as NOT furnishable either", () => {
+    expect(toRentPaymentView(paymentRow({ provenance: "bank_observed" })).furnishable).toBe(false);
+  });
+
+  it("derives furnishability from the gate's own constant, not a local copy", () => {
+    // If someone widens FURNISHABLE_PROVENANCE, the view must move with it — a surface
+    // that hardcoded `false` would keep saying "not reported" about rows that now are.
+    for (const p of ["self_reported", "platform_processed", "bank_observed"]) {
+      expect(toRentPaymentView(paymentRow({ provenance: p })).furnishable).toBe(
+        FURNISHABLE_PROVENANCE.includes(p as never),
+      );
+    }
+  });
+
+  it("emits date-only strings and never a processor reference", () => {
+    const view = toRentPaymentView(paymentRow());
+    expect(view.dueDate).toBe("2026-07-01");
+    expect(view.paidDate).toBe("2026-07-01");
+    expect(Object.keys(view)).not.toContain("processorReference");
+  });
+
+  it("renders an unpaid period with a null paid date", () => {
+    const view = toRentPaymentView(paymentRow({ status: "missed", paidDate: null, amountPaid: null }));
+    expect(view.paidDate).toBeNull();
+    expect(view.amountPaid).toBeNull();
+  });
+});
+
+describe("deletion is a real erase, not a status flag", () => {
+  // The repo's usual instinct is a soft delete (cancelTask is an audited status flip).
+  // That is right for a work item, whose history is the product. It is wrong for a
+  // landlord's email and a street address the borrower typed in: answering "delete my
+  // data" with a flag leaves the ciphertext in the table while telling them it's gone.
+  const src = fs.readFileSync(path.join(ROOT, "server/storage/leases.ts"), "utf8");
+
+  it("issues real DELETEs against all three tables", () => {
+    expect(src).toMatch(/\.delete\(rentPayments\)/);
+    expect(src).toMatch(/\.delete\(rentFurnishingQueue\)/);
+    expect(src).toMatch(/\.delete\(leases\)/);
+  });
+
+  it("does it in one transaction — a partial delete orphans a payment history", () => {
+    expect(src).toMatch(/deleteLeaseForUser[\s\S]{0,200}db\.transaction/);
+  });
+
+  it("keeps ownership in the WHERE even on the final delete", () => {
+    expect(src).toMatch(/\.delete\(leases\)[\s\S]{0,120}eq\(leases\.userId, userId\)/);
+  });
+
+  it("consults the furnishing gate rather than deciding erasability locally", () => {
+    expect(src).toMatch(/isErasable\(/);
+    expect(src).not.toMatch(/state\s*===\s*["']pending_authority["']/);
+  });
+
+  it("does not write the erased PII into the audit metadata", () => {
+    const route = fs.readFileSync(path.join(ROOT, "server/routes/borrower/leases.ts"), "utf8");
+    const deleteBlock = route.slice(route.indexOf('app.delete("/api/leases/:id"'));
+    const auditCall = deleteBlock.slice(0, deleteBlock.indexOf("res.json"));
+    expect(auditCall).toMatch(/lease\.deleted/);
+    expect(auditCall).not.toMatch(/landlordEmail|propertyAddress|landlordName/);
+  });
+});
+
+describe("unique-violation detection survives the ORM wrapper", () => {
+  // The 2026-08-17 live audit: recording the same month twice returned 500, not 409.
+  // drizzle 0.45 wraps driver errors in DrizzleQueryError with the pg code on
+  // `.cause`, so the route's bare `err.code === "23505"` matched nothing — and the
+  // client test that "verified" the 409 toast had mocked the 409, proving nothing.
+  // These feed the REAL error shape drizzle throws.
+
+  const drizzleWrapped = (code: string) => {
+    const cause = Object.assign(new Error("duplicate key value"), { code });
+    return Object.assign(new Error(`Failed query: insert into "rent_payments" ...`), { cause });
+  };
+
+  it("detects 23505 on the wrapper's cause (drizzle 0.45 shape)", () => {
+    expect(isUniqueViolation(drizzleWrapped("23505"))).toBe(true);
+  });
+
+  it("detects 23505 on a bare pg error (pre-wrapper shape)", () => {
+    expect(isUniqueViolation(Object.assign(new Error("dup"), { code: "23505" }))).toBe(true);
+  });
+
+  it("does not claim other codes, shapes, or nothing at all", () => {
+    expect(isUniqueViolation(drizzleWrapped("23503"))).toBe(false);
+    expect(isUniqueViolation(new Error("plain"))).toBe(false);
+    expect(isUniqueViolation(null)).toBe(false);
+    expect(isUniqueViolation(undefined)).toBe(false);
+    expect(isUniqueViolation("23505")).toBe(false);
+  });
+
+  it("detects the FK violation the POST-vs-DELETE race produces", () => {
+    expect(isForeignKeyViolation(drizzleWrapped("23503"))).toBe(true);
+    expect(isForeignKeyViolation(drizzleWrapped("23505"))).toBe(false);
+  });
+
+  it("the route uses the helper — a bare err.code check must not return", () => {
+    const src = fs.readFileSync(path.join(ROOT, "server/routes/borrower/leases.ts"), "utf8");
+    expect(src).toMatch(/isUniqueViolation\(/);
+    expect(src, "bare err.code comparison reintroduced — it is dead under drizzle 0.45").not.toMatch(
+      /err[^\n]*\.code\s*===\s*["']23505["']/,
+    );
+  });
+});
+
+describe("the writer can only produce self_reported rows", () => {
+  it("pins provenance at the single insert site", () => {
+    // Source-text, because the alternative is a live database. The insert must name
+    // `self_reported` literally and must not read provenance from its input.
+    const src = fs.readFileSync(path.join(ROOT, "server/storage/leases.ts"), "utf8");
+    expect(src).toMatch(/provenance:\s*"self_reported"/);
+    expect(src).not.toMatch(/provenance:\s*input\./);
+    expect(src).not.toMatch(/processorReference:\s*input\./);
   });
 });

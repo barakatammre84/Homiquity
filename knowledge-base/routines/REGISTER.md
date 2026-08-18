@@ -4,7 +4,7 @@
 code** claims its target here first. Rules live in [`CHARTER.md`](CHARTER.md) §5; this file is the
 table plus the overlap protocol.
 
-Without this, the Frontend Wiring Audit (09:10), Sprint Blitz (09:45) and Refactor Radar (Sun 20:00)
+Without this, the Frontend Wiring Audit (09:10), the Primary Engineer (07:15 — absorbed Sprint Blitz 2026-08-17) and Refactor Radar (Sun 20:00)
 all write to `client/src/**` with no idea the others exist.
 
 > **Absorbed `knowledge-base/SESSION_CLAIMS.md` on 2026-08-12.** Two boards briefly existed — this
@@ -61,6 +61,9 @@ Keep the last ~10 for collision forensics; trim older rows freely.
 
 | routine / session | target | released (UTC) | outcome |
 |---|---|---|---|
+| primary-engineer 2026-08-17 (item 3) | `client/src/pages/borrower/CreditConsent.tsx` (ux-20: hard-inquiry fact invisible at the ask) | 2026-08-17 | **shipped** — callout + checkbox label + fine print now name the hard inquiry, mirroring the ratified disclosure item 2; colocated test proves the facts render even with the disclosure document seeded empty. 4 red pre-fix → 543/543 green. |
+| primary-engineer 2026-08-17 (item 2, assist) | PR #503 `scripts/bundle-size-baseline.json` (branch `chore/bundle-size-guard`) | 2026-08-17 | **shipped** — CHARTER §5 rung-1 assist on the queue's only red PR: baseline froze at 521,319 on 08-12 while main's merged client work grew the eager entry to a measured 522,148 (+829 raw, +0.16%); branch itself adds zero client bytes (`git diff origin/main...HEAD -- client/` empty). Re-baselined to the measured tip per the guard's own procedure, attribution in the PR comment. |
+| refactor-radar 2026-08-17 | `client/src/pages/calculators/AmortizationCalculator.tsx` (RR-015) | 2026-08-17 | **shipped to review** — [#528](https://github.com/barakatammre84/Homiquity/pull/528), the run's one PR. Pure amortization math extracted to `client/src/lib/amortizationEstimate.ts` + colocated characterization tests; page 519→378 lines, behavior-preserving (moved block `diff`-proven byte-identical). **Not merged — owner's call.** Note for peers: `gh pr create` was unusable during a GitHub GraphQL outage that day; the PR was opened over REST (`gh api …/pulls -X POST`), which stayed up. |
 | lender-delivery-gate 2026-08-12 | `tests/mismoXsdValidation.test.ts` (worktree `wt-lender`, branch `routine/lender-gate-2026-08-12`) | 2026-08-12 | **shipped** — eight XSD cases early-`return`ed without `xmllint`, which vitest reports as PASSED; converted to `it.skipIf` so absence is visible. Proven both ways: on `adaa826` with no xmllint the suite reports **19 passed**; on the branch, **8 skipped**. Claim was recorded at commit time, not before the edit — a §5.4 deviation, noted in the report. |
 | frontend-wiring-audit 2026-08-12 | the remaining 71 singleton-`queryClient` importers | 2026-08-12 | **shipped** — #504, merged and verified in prod via `/api/health`. The migration is now COMPLETE: `client/src/lib/logout.ts` is the only module-singleton consumer left and carries a comment explaining why it must stay (plain async fn, not a render; and `clear()` on the app's own cache is exactly what it wants). |
 | frontend-wiring-audit 2026-08-12 | the 12 `client/src` components importing the singleton `queryClient` **with** a `.test.tsx` sibling | 2026-08-12 | **shipped** — migrated to `useQueryClient()` on `claude/frontend-standardization-2` (`384ab1a`). The other **72** singleton importers are untouched and unclaimed; take them in tested-first batches. Note `TestLogin.test.tsx` had been rendering with no `QueryClientProvider` at all — only the singleton made that pass. |

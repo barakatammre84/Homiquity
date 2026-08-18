@@ -144,6 +144,26 @@ export function canTransition(from: FurnishingState, to: FurnishingState): boole
   return FURNISHING_TRANSITIONS[from].includes(to);
 }
 
+/**
+ * Queue states from which a lease may still be **erased** rather than suppressed.
+ *
+ * The distinction is not bookkeeping. Once a tradeline has left the building, deleting
+ * our copy does not un-say it — the record lives at the bureau, and the only honest
+ * remedy is `suppressed`, which excludes the line from every subsequent file and is
+ * itself a thing we must be able to prove we did. Erasing the local row instead would
+ * destroy the evidence of what we furnished while leaving the furnished data in place:
+ * the worst of both, and unanswerable when the consumer disputes it.
+ *
+ * `pending_authority` is erasable because nothing has ever left. Today that is every
+ * row, because nothing can furnish — but this list, not that fact, is what makes the
+ * rule survive the day furnishing turns on.
+ */
+export const ERASABLE_FURNISHING_STATES: readonly FurnishingState[] = ["pending_authority"];
+
+export function isErasable(state: FurnishingState): boolean {
+  return ERASABLE_FURNISHING_STATES.includes(state);
+}
+
 export function assertTransition(from: FurnishingState, to: FurnishingState): void {
   if (!canTransition(from, to)) {
     throw new Error(`illegal furnishing transition: ${from} -> ${to}`);
