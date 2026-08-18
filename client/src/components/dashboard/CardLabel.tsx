@@ -4,7 +4,7 @@ import * as React from "react";
  * Uppercase section label with a short brand-accent underline — the consistent
  * card-header treatment for the borrower dashboard's right-column cards
  * (Pre-Approved / Contact / Loan Team). The underline uses `bg-primary` so it
- * re-skins per tenant (white-label). See visual-consistency-standard.md §7.
+ * re-skins per tenant (white-label). See DESIGN_SYSTEM.md → Reference surface.
  */
 export function CardLabel({
   children,

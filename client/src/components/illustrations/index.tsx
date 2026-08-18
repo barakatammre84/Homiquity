@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  *
  * Decorative — always `aria-hidden`. Default size h-24 w-24; override via className.
  * Primarily for EmptyState (see ui/empty-state.tsx) and hero/onboarding moments.
- * See visual-consistency-standard.md §5.
+ * See DESIGN_SYSTEM.md → Graphics & illustration.
  */
 
 export interface IllustrationProps {

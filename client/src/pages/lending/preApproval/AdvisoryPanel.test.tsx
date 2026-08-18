@@ -90,4 +90,27 @@ describe("AdvisoryPanel", () => {
     expect(screen.queryByTestId("text-qualifying-income")).toBeNull();
     expect(screen.queryByTestId("text-dti-value")).toBeNull();
   });
+
+  // Regression pin for a defect no guard can see. The panel shipped as
+  // `hidden lg:block`, so every borrower on a phone got no DTI, no payment
+  // estimate and none of the why-we-ask advice — the borrower most likely to
+  // abandon received the least reassurance (DESIGN_SYSTEM.md §12.3). happy-dom
+  // has no layout engine, so this asserts the CONTRACT that makes it visible
+  // (no width-gated `hidden`, and a width that fits a 320px screen) rather than
+  // pretending to measure a rendered viewport.
+  it("renders at every width — never re-hidden behind a desktop breakpoint", () => {
+    renderPanel(rentalWithDebt);
+    const cls = screen.getByTestId("advisory-panel").className;
+    expect(cls.split(/\s+/)).not.toContain("hidden");
+    expect(cls).toContain("w-full");
+  });
+
+  it("still carries the live numbers a phone previously never saw", () => {
+    renderPanel(rentalWithDebt);
+    expect(screen.getByTestId("text-dti-value")).toBeTruthy();
+    expect(screen.getByTestId("text-est-payment")).toBeTruthy();
+    expect(screen.getByTestId("text-payment-disclaimer").textContent).toContain(
+      "Not an offer of credit",
+    );
+  });
 });

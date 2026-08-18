@@ -56,7 +56,7 @@ Two axes of authority:
 
 | Document | What it governs |
 |---|---|
-| [CTO_ROADMAP.md](CTO_ROADMAP.md) | **The work queue.** Launch sprint + ordered backlog. Updated in the same commit that completes an item. |
+| [CTO_ROADMAP.md](CTO_ROADMAP.md) | **The work queue.** The ordered §0–§5 queue. Updated in the same commit that completes an item. |
 | [CLAUDE.md](CLAUDE.md) | Non-negotiable session rules: compliance-first doctrine, architecture ground rules, DB rules. |
 | [handbook/DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md) | The deep engineering map — layers, engines, conventions. |
 | [handbook/app-guide/](knowledge-base/handbook/app-guide/) | The 11-chapter subsystem handbook. Start at [01-start-here](knowledge-base/handbook/app-guide/01-start-here.md). |
@@ -75,7 +75,7 @@ Two axes of authority:
 | [compliance/SAFE_MLO_COMPLIANCE_MAP.md](knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [compliance/COMPLIANCE_COUNSEL_REVIEW.md](knowledge-base/compliance/COMPLIANCE_COUNSEL_REVIEW.md) | SAFE Act / MLO advertising crosswalk + the standing compliance-counsel review. |
 | [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 5-routine launch suite). |
 | [docs/fannie-mae/](docs/fannie-mae/) · [docs/nmls/](docs/nmls/) · [docs/nmls-safe/](docs/nmls-safe/) | Official GSE + NMLS reference documents — never work from memory on ULDD/UCD/URLA/MISMO or NMLS licensing. |
-| [handbook/design/design_guidelines.md](knowledge-base/handbook/design/design_guidelines.md) | Design system rules. |
+| [handbook/design/DESIGN_SYSTEM.md](knowledge-base/handbook/design/DESIGN_SYSTEM.md) | The design system — tokens, type scale, layout, capture-flow standard, four-question gate. |
 | [compliance/security/threat_model.md](knowledge-base/compliance/security/threat_model.md) | Security threat model. |
 
 ### Tier 3 — Runbooks (operational how-to)

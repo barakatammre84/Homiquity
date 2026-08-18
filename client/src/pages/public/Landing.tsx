@@ -116,26 +116,26 @@ export default function Landing() {
               </p>
 
               <div className="mt-8 flex w-full max-w-md flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
-                <Link href="/apply" className="w-full sm:w-auto">
-                  <Button
+                <Button asChild
                     size="lg"
                     className="w-full gap-2 font-semibold shadow-lg shadow-primary/25 sm:w-auto"
                     data-testid="button-hero-preapprove"
                   >
+                  <Link href="/apply">
                     Start Your Pre-Approval
                     <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/afford" className="w-full sm:w-auto">
-                  <Button
+                  </Link>
+                </Button>
+                <Button asChild
                     variant="outline"
                     size="lg"
                     className="w-full gap-2 sm:w-auto"
                     data-testid="button-hero-afford"
                   >
+                  <Link href="/afford">
                     Can I Afford This Home?
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
@@ -230,12 +230,12 @@ export default function Landing() {
                     <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                       {path.description}
                     </p>
-                    <Link href={path.href}>
-                      <Button variant="ghost" size="sm" className="mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
+                    <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
+                      <Link href={path.href}>
                         {path.cta}
                         <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -382,27 +382,27 @@ export default function Landing() {
           </p>
           
           <div className="mt-10 flex w-full max-w-md mx-auto flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
-            <Link href="/apply" className="w-full sm:w-auto">
-              <Button
+            <Button asChild
                 size="lg"
                 className="w-full gap-2 font-semibold shadow-lg shadow-primary/25 sm:w-auto"
                 data-testid="button-cta-preapprove"
               >
+              <Link href="/apply">
                 Start Your Pre-Approval
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/ai-coach" className="w-full sm:w-auto">
-              <Button
+              </Link>
+            </Button>
+            <Button asChild
                 variant="outline"
                 size="lg"
                 className="w-full gap-2 sm:w-auto"
                 data-testid="button-cta-coach"
               >
+              <Link href="/ai-coach">
                 <Bot className="h-4 w-4" />
                 Not sure yet? Talk to our AI Coach
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
           
           <p className="mt-6 text-sm text-muted-foreground">
@@ -481,12 +481,12 @@ function RatesTeaser() {
         </div>
 
         <div className="mt-8 text-center">
-          <Link href="/rates">
-            <Button variant="outline" className="gap-2" data-testid="button-view-all-rates">
+          <Button asChild variant="outline" className="gap-2" data-testid="button-view-all-rates">
+            <Link href="/rates">
               View All Rates
               <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <p className="mt-3 text-xs text-muted-foreground">
             Rates are for illustrative purposes. Your rate may vary based on credit, property, and loan terms.
           </p>

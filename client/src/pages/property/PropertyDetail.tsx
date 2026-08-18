@@ -206,9 +206,9 @@ export default function PropertyDetail() {
         <div>
           <Home className="mx-auto h-16 w-16 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Property Not Found</h1>
-          <Link href="/buy">
-            <Button className="mt-4">Browse Properties</Button>
-          </Link>
+          <Button asChild className="mt-4">
+            <Link href="/buy">Browse Properties</Link>
+          </Button>
         </div>
       </PageShell>
     );
@@ -218,12 +218,12 @@ export default function PropertyDetail() {
     <div className="min-h-screen bg-background">
       <PageShell width="wide">
         {/* Back Button */}
-        <Link href="/buy">
-          <Button variant="ghost" className="mb-4 gap-2">
+        <Button asChild variant="ghost" className="mb-4 gap-2">
+          <Link href="/buy">
             <ChevronLeft className="h-4 w-4" />
             Back to Search
-          </Button>
-        </Link>
+          </Link>
+        </Button>
 
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Content */}
@@ -344,11 +344,11 @@ export default function PropertyDetail() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Complete a loan application to see personalized affordability calculations for this property
                   </p>
-                  <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
-                    <Button className="mt-4 w-full">
+                  <Button asChild className="mt-4 w-full">
+                    <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
                       Start Pre-Approval
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -527,11 +527,11 @@ export default function PropertyDetail() {
                 <p className="mt-1 text-sm opacity-90">
                   Get a detailed loan estimate for this property
                 </p>
-                <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
-                  <Button variant="secondary" className="mt-4 w-full">
+                <Button asChild variant="secondary" className="mt-4 w-full">
+                  <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
                     Get Loan Estimate
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
