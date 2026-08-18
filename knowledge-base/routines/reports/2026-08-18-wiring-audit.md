@@ -1,8 +1,10 @@
 # Frontend Wiring Audit — 2026-08-18
 
 STATUS: OK — three capture-path defects found and fixed on branch, all of the "silent success"
-class, each proven by reintroducing the bug. Every gate green; nothing merged. Includes a
-completed sweep for the #451 pattern (this report's own ticket 4), run at the founder's request.
+class, each proven by reintroducing the bug, plus the root cause behind two of them removed.
+Every gate green; nothing merged. Tickets 4 (the #451 sweep) and 5 (a wire representation for
+"clear") were both completed this run at the founder's direction — 5 carries a §6 territory
+deviation, recorded below.
 
 ## ⛔ Human actions
 
@@ -153,12 +155,14 @@ Branch `claude/interesting-goodall-351b8b`, rebased onto `origin/main` (`24fd54c
 
 ```
 pnpm check                     exit 0
-pnpm test  node lane           195 files, 2767 passed | 1 skipped
-           client lane          78 files,  557 passed        (543 → 557: +14 new)
+pnpm test  node lane           196 files, 2785 passed | 1 skipped   (195 → 196: intakeClearSemantics)
+           client lane          78 files,  558 passed              (543 → 558: +15 new)
 pnpm guard:querykeys           guard:querykeys / reachability / transport — all OK
 pnpm guard:tokens              0 raw palette · 97 bare white/black (at baseline, no regression)
 vitest tests/clientSchemaImports.test.ts   10 passed
-detectTriggers() over the 7 changed files  →  []   (run, not read — CHARTER §10)
+detectTriggers() over all changed files    →  []   (run, not read — CHARTER §10)
+pnpm guard:schema              OK — no new column reached the schema, so nothing to migrate
+pnpm guard:migrations          OK — 57 migrations, contiguous, all journalled
 ```
 
 **Honesty check on the new tests** — reverted `URLAForm.tsx` and re-ran:
@@ -195,10 +199,18 @@ recycled rows from an older report.
 3. **Consolidate `Messages.tsx`'s three polls** onto `useShellBadges`/SSE, as every other live
    surface already was, and pause the heartbeat `setInterval` on a hidden tab. Carried from the
    2026-08-12 report, re-verified live.
-5. **Give "clear this field" a wire representation.** `loanApplicationIntakeUpdateSchema` requires
-   non-empty for every field it receives, so a borrower can correct a value but never blank one —
-   `/profile` now says so, the funnel's server draft and the URLA save still cannot express it.
-   Needs a server-schema change + migration; Primary Engineer, not this routine.
+5. ~~**Give "clear this field" a wire representation.**~~ **DONE this run** (founder-directed; §6
+   territory deviation recorded in Addendum 2). Needed no migration — the columns were already
+   nullable.
+6. **`zodSchemaSemantics` cannot see per-field rules on a preprocessed schema.** `shapeProbes`
+   reads `.shape`, which `z.preprocess(...)` does not expose, so 5 of 195 schemas get top-level
+   scalar probes only — including the two that admit borrower financial data. Unwrap the inner
+   object for probing; expect snapshot churn, so it wants its own PR and a careful read of the
+   delta.
+7. **Let the funnel commit a clear.** `buildDraftPatchPayload` deliberately still omits empties
+   (it fires on a debounce mid-typing, where a transient blank must not erase). So a borrower who
+   clears a funnel field and later restores the server draft still gets the old value back. The
+   per-step Continue is the candidate commit point — a funnel-flow decision, not a schema one.
 4. ~~**Look for the #451 pattern elsewhere.**~~ **DONE this run** — see the sweep section above.
    One more live instance found and fixed (`Profile.tsx`); the rest of the client is clean.
 
@@ -279,5 +291,92 @@ ticket 5.
 The pattern was **not** widespread: two live instances in the client (`URLAForm`, `Profile`), both
 now fixed and both with the same root cause — *a validation rule enforced by dropping data rather
 than by reporting it*. That phrasing is the thing to grep for next time, not `.filter(`.
+
+## Addendum 2 — ticket 5, done: "clear this field" now has a wire representation
+
+**⛔ Territory deviation, stated plainly.** CHARTER §6 puts `shared/schema/**` outside this
+routine's lane. The founder directed this work explicitly, which is the same basis as
+refactor-radar's owner-directed RR-005 pass on 2026-08-17. It is recorded here rather than
+absorbed silently, because a rail the machine can relax *for itself* is not a rail (§1b) — this
+one was relaxed by its owner, once, for a named piece of work.
+
+### The rule that caused both #451-pattern defects
+
+`loanApplicationIntakeUpdateSchema` is `.partial()`, giving exactly two wire states: **absent** =
+"leave this alone" (what lets the funnel's debounced autosave send partial progress without
+blanking earlier answers) and **present** = must satisfy the base rules, all of which reject an
+empty string. "Set this back to blank" had nothing to travel as, so every surface that met the
+wall dropped the edit before sending. That is one rule, enforced by discarding data instead of
+reporting it — and it is why the sweep found the same shape twice.
+
+`null` is now the third state, catalogued in `CLEARABLE_INTAKE_FIELDS`
+(`shared/preApprovalForm.ts`): the ten free-text/money/years fields a borrower can actually empty
+in a UI. Not `""` — an empty string is what a form control emits on its own, and treating that as
+a command to erase would make every accidental blank destructive.
+
+Deliberately excluded: the four select-only fields (no "empty" exists for a UI to produce) and the
+three intent booleans. `avoidsInterestFinancing` especially — null there already means "not
+asked", distinct from an explicit no, and a later PATCH must not be able to reach in and unset it.
+
+Each clearable field **wraps its own validator** with `.nullable()` rather than restating it, so
+`annualIncome: "abc"` is still a 400. Null is not a bypass.
+
+### No migration — and that is a finding, not an omission
+
+Every affected column in `loan_applications` is **already nullable**
+(`shared/schema/lendingCore.ts:63-81`). Clearing returns the row to the state a draft is in before
+the borrower answers — a shape the whole app already handles. `pnpm guard:schema` asks whether a
+new *column* reached the schema without DDL; none did, so it is green **honestly**, not by
+suppression, and no no-op migration was invented to satisfy a path rule the guard does not have.
+
+### Risks cleared before writing, not after
+
+| Risk | Finding |
+|---|---|
+| Could clearing stop a started Loan Estimate clock? | **No.** `evaluateTridTrigger` is set-once — `server/services/trid.ts:167` early-returns whenever `tridTriggeredAt` is set, and the module is the only writer. Reg Z §1026.19(e)(1)(iii) holds. |
+| Could clearing `propertyState` slip an unlicensed state through? | **No.** `unlicensedStateRejection` treats null as "not supplied" (`shared/companyIdentity.ts:200`) — identical to a fresh draft. |
+| Does the cross-field check survive a half-cleared pair? | Yes. `downPaymentWithinPurchasePrice` already guarded on falsiness; only its **type** was too narrow. `tsc` caught that, correctly, and the type was widened rather than cast away at the call site. |
+| **Can the AI coach erase a borrower's answer?** | **No — and this is the property that makes admitting null safe at all.** The coach writes to the SAME schema, fed by an LLM reading a chat transcript. `presentFields` (`server/services/coachProfileSync.ts:155-160`) drops `undefined`, `null` and `""` before anything is built, and the candidate map is typed `string \| boolean`. Pinned by test so it stays true rather than being re-derived by whoever reads the schema next. |
+
+### Evidence
+
+`tests/intakeClearSemantics.test.ts` — 18 cases, added to `vitest.config.ts`'s `include:` array and
+**confirmed present in the full-lane run** (`--reporter=verbose` names it 14 times; the node lane
+went 195 → 196 files). It pins the three states; the catalog/schema agreement *in both directions*;
+that a bad value on a clearable field is still a 400; that the coach cannot reach the clear; and —
+on the **real route**, over the hermetic express harness `tests/urlaLoanDetailsSave.test.ts`
+established — that a null reaches the column as a null while absent fields are not swept along,
+that `""` is still a 400, and that the edit is still draft-only (409 on a submitted file).
+
+`client/src/pages/profile/Profile.test.tsx` gains the invariant that matters long-term: **every
+field the profile editor can empty has a wire clear.** The "we couldn't clear those fields" branch
+from Addendum 1 is kept as the honest last resort, and that test is what keeps it unreachable —
+failing the day someone adds an emptyable field without catalogueing it, rather than the day a
+borrower hits it.
+
+**Verified honest:** against the previous schema, `{ monthlyDebts: null }` returns
+`Invalid input: expected string, received null`. The state genuinely did not exist.
+
+### A finding about a guard, found on the way
+
+`tests/zodSchemaSemantics.test.ts` passed **unchanged** through a change that altered what ten
+fields admit. That is not the snapshot vouching for the change — it is a blind spot:
+`shapeProbes` reads `schema.shape`, and a schema wrapped in `z.preprocess(...)` / `.transform()`
+exposes none, so only the ten top-level scalar probes run and every per-field rule goes unpinned.
+
+**5 of the 195 snapshotted schemas are in that state — and two of the five are
+`loanApplicationIntakeSchema` and `loanApplicationIntakeUpdateSchema`,** the pair that admits
+borrower financial data into a loan file. Not fixed here: unwrapping the inner object for probing
+would re-record rows across the whole snapshot, which is its own decision. Proposed as ticket 6.
+
+### What ticket 5 does NOT change
+
+`useServerDraftAutosave.buildDraftPatchPayload` still omits empties and still does **not** send
+null. That is deliberate: it fires on a debounce while the borrower is typing, so a transiently
+empty field must never be read as an erasure. Clearing is an explicit act and belongs to an
+explicit Save. The consequence noted in Addendum 1 therefore stands — an authenticated borrower who
+clears a funnel field, leaves, and later restores the server draft still gets the old value back.
+Closing that needs the funnel to commit clears at a deliberate moment (its per-step Continue is the
+candidate), which is a funnel-flow decision, not a schema one. Ticket 7.
 
 STATUS: OK
