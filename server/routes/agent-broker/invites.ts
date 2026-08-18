@@ -20,6 +20,7 @@ import {
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
 import { routeParams } from "../../http/routeParams";
+import { logAudit } from "../../auditLog";
 
 
 export function registerInviteRoutes(
@@ -141,13 +142,36 @@ export function registerInviteRoutes(
       // Get referrer info
       const referrer = await storage.getUser(invite.referrerId);
 
+      // Captured BEFORE the click transition below, so the audit records which
+      // view an auditor is looking at: the first one (pending) or a later
+      // re-view (clicked).
+      const statusBefore = invite.status;
+
       // Mark as clicked if first time
       if (invite.status === "pending") {
-        await storage.updateApplicationInvite(invite.id, { 
+        await storage.updateApplicationInvite(invite.id, {
           status: "clicked",
           clickedAt: new Date(),
         });
       }
+
+      // This response discloses the invitee's name and email to whoever holds
+      // the link, so it is a PII read and gets an audit entry (CLAUDE.md — any
+      // PII-touching path writes to server/auditLog.ts). Only this path audits:
+      // the 404 and both 410s above disclose nothing.
+      //
+      // What is deliberately NOT recorded: the token (a replayable capability —
+      // an audit row is the wrong place to store one), and the PII values
+      // themselves, including the free-text message. Recording that a field was
+      // disclosed is the audit's job; copying it would spread the exposure into
+      // a second store. Booleans distinguish "disclosed" from "absent" without
+      // leaking either.
+      await logAudit(req, "application_invite.viewed", "application_invite", invite.id, {
+        referrerId: invite.referrerId,
+        statusBefore,
+        disclosedClientName: Boolean(invite.clientName),
+        disclosedClientEmail: Boolean(invite.clientEmail),
+      });
 
       res.json({
         valid: true,
