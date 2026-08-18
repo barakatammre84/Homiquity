@@ -65,7 +65,12 @@
       "schedulerRepoint": {
         "required": true,
         "since": "2026-08-18",
-        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
+        "note": "Definition committed 2026-08-18 and a cloud trigger now fires it (see cloudTrigger). THE LOCAL SCHEDULER TASK MUST BE DISABLED — until it is, both fleets can fire the same routine on the same day. Both are instructed to extend today's existing report/PR rather than open a competing one (LESSONS 2026-08-17), so the failure mode is a wasted run rather than two contradictory registers — but it is still a wasted run. Merge any rail the private copy carries that the repo copy lacks before disabling it, never delete one."
+      },
+      "cloudTrigger": {
+        "created": "2026-08-18",
+        "cron": "20 10 * * * (UTC)",
+        "note": "Migrated to the Claude-Code-Remote fleet on founder instruction so it runs whether or not the laptop is open — the local scheduler only fires while the app is open, which is why reports/ shows four dates for a suite scheduled seven times a day. The trigger carries NO private copy of the method: it invokes the repo skill and is written to stop if that skill is absent. The cron here is documentation; list_triggers is authoritative."
       }
     },
     {
@@ -95,7 +100,12 @@
       "schedulerRepoint": {
         "required": true,
         "since": "2026-08-18",
-        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
+        "note": "Definition committed 2026-08-18 and a cloud trigger now fires it (see cloudTrigger). THE LOCAL SCHEDULER TASK MUST BE DISABLED — until it is, both fleets can fire the same routine on the same day. Both are instructed to extend today's existing report/PR rather than open a competing one (LESSONS 2026-08-17), so the failure mode is a wasted run rather than two contradictory registers — but it is still a wasted run. Merge any rail the private copy carries that the repo copy lacks before disabling it, never delete one."
+      },
+      "cloudTrigger": {
+        "created": "2026-08-18",
+        "cron": "10 16 * * * (UTC)",
+        "note": "Migrated to the Claude-Code-Remote fleet on founder instruction so it runs whether or not the laptop is open — the local scheduler only fires while the app is open, which is why reports/ shows four dates for a suite scheduled seven times a day. The trigger carries NO private copy of the method: it invokes the repo skill and is written to stop if that skill is absent. The cron here is documentation; list_triggers is authoritative."
       }
     },
     {

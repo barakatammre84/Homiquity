@@ -212,6 +212,23 @@ held eight Homiquity triggers:
 | Mon 14:00 | doc-accuracy, weekly firing | repointed 2026-08-18 to invoke `/doc-accuracy`; **no longer its own hygiene sweep** | **in the repo** (pending) |
 | 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges | **in the repo** (pending) |
 | hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest | in the trigger prompt |
+| daily 10:20 | **Frontend Wiring Audit** — migrated 2026-08-18 | writes code; PR lane; never merges | **in the repo** |
+| daily 16:10 | **Deliverable QA Sweep** — migrated 2026-08-18 | findings + report PR; never merges | **in the repo** |
+
+**The last two rows are the first fleet-1 routines to move here, and the reason is §3's own
+footnote:** scheduled tasks only run while the app is open, so the daily suite has been running at
+roughly a fifth of its schedule — `reports/` holds four dates for a cadence that should produce
+seven a day. A routine that only runs when a laptop is open is not a control. These two were chosen
+because in build mode they are what keeps the fix queue fed. **Their local scheduler tasks must be
+disabled**; until that happens both fleets can fire the same routine on the same day, and the only
+thing preventing two contradictory artifacts is that both are instructed to extend today's existing
+report/PR rather than open a competing one. That is a mitigation, not a fix.
+
+**Moving a routine here has a bill, and it is not the model's.** Every run that opens a PR triggers
+the required `gate` job, and `CTO_ROADMAP.md` KTLO-2 measures ~1,850 of the private repo's 2,000
+free Actions minutes already in use. Two daily routines add roughly 300 minutes a month. **Migrate
+the remaining four only after KTLO-2 is decided** — and know what a hard spending cap does when it
+trips: it halts `gate`, which halts every merge *and* `migrate-prod`.
 
 Where they touch the repo they are report-only or PR-lane and bound by this charter.
 
