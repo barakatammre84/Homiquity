@@ -71,6 +71,25 @@ Practically:
 - If a PR must be large (a mechanical rename, a dependency migration), say so in the body and
   expect to re-merge `main` more than once.
 
+### Verify locally; push on a cadence *(founder direction, 2026-08-18)*
+
+**CI is the gate, not the build.** Run the whole suite on your own machine before pushing —
+`pnpm check`, `pnpm build`, `pnpm test`, and every `guard:*` the gate runs. All of it works
+offline against the checkout; none of it needs GitHub.
+
+Then batch. A push is not free: it burns metered Actions minutes on a private repo (§ *PR size*
+measures the gate at ~3.5 min against a 2,000-minute monthly allowance), and every merge to `main`
+is a **Railway build and deploy of production**. Pushing after each commit spends both on work
+that was not finished. Roughly one push a day is the expected rhythm — more when something is
+genuinely urgent, not because a commit exists.
+
+This does not loosen anything else: the gate still decides (§6), `verify-deploy` is still the only
+proof a deploy landed (§4), and a green local run is evidence a push is *worth making*, never a
+substitute for the gate. It changes when you push, not what has to be true before you merge.
+
+The practical shape: keep working the branch locally, commit as you go, and when the batch is
+coherent push once — one CI cycle, one deploy, one review.
+
 ## 5. Definition of done (every PR, no exceptions)
 
 1. `pnpm check` clean (tsc).
