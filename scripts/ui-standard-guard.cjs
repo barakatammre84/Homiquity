@@ -46,6 +46,25 @@ const ICON_REGISTRY = path.join("client", "src", "lib", "icons.ts");
 /** PageShell itself owns the only legitimate min-h-screen (its `fullHeight` prop). */
 const PAGE_SHELL = path.join("client", "src", "components", "PageShell.tsx");
 
+/**
+ * Every metric measures CODE, so comments are stripped before scanning.
+ *
+ * Without this the guard punishes documentation: the comment on AgentDashboard
+ * explaining *why* it uses min-h-full rather than min-h-screen tripped
+ * `pageShellDrift`, because the prose contained both trigger words. A guard a
+ * writer has to tiptoe around teaches people to stop explaining themselves.
+ *
+ * Deliberately conservative — it skips a `//` preceded by `:` so protocol-relative
+ * URLs ("https://…") inside string literals survive intact. A comment that hides a
+ * real violation is the only failure mode, and that costs an undercount, never a
+ * false FAIL.
+ */
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+}
+
 const PALETTE =
   "gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const SHADE = "50|100|200|300|400|500|600|700|800|900|950";
@@ -65,8 +84,15 @@ const METRICS = [
     unit: "file",
     hint:
       "Delete the hand-rolled wrapper and let <PageShell> own page geometry — DESIGN_SYSTEM.md, PageShell adoption checklist.",
+    // The PageShell test is the IMPORT, not the bare word: "a file that also
+    // imports PageShell" is what the label claims, and a file merely naming it in
+    // prose is not drift.
     scan: (src, rel) =>
-      rel !== PAGE_SHELL && /\bmin-h-screen\b/.test(src) && /\bPageShell\b/.test(src) ? 1 : 0,
+      rel !== PAGE_SHELL &&
+      /\bmin-h-screen\b/.test(src) &&
+      /from\s*["'][^"']*\/PageShell["']/.test(src)
+        ? 1
+        : 0,
   },
   {
     key: "directLucideImports",
@@ -214,6 +240,15 @@ const MEASURES = [
              cmd: "pnpm guard:ui → `directLucideImports`" };
   })(),
   (() => {
+    // The prop that exists to solve pageShellDrift, and the reason the metric
+    // was 13: not one page ever called it. Twelve hand-rolled it under a layout
+    // that already supplies page height, which is a bug, not a preference.
+    const n = count((e) => /\bfullHeight\b/.test(e[1]) && !e[0].endsWith(path.join("components", "PageShell.tsx")));
+    return { label: "`PageShell fullHeight`", state: n ? "BUILT · ADOPTED" : "BUILT · ADOPTED 0%",
+             detail: n ? `${n} call site(s)` : "zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet",
+             cmd: "—" };
+  })(),
+  (() => {
     const n = count((e) => /from\s*["'][^"']*ui\/typography["']/.test(e[1]));
     return { label: "`Heading` / `Text` (`ui/typography.tsx`)", state: n ? `BUILT · ADOPTED` : "BUILT · ADOPTED 0%",
              detail: n ? `${n} call site(s)` : "zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused", cmd: "—" };
@@ -248,7 +283,7 @@ for (const m of METRICS) {
 
 for (const file of files) {
   const rel = path.relative(ROOT, file);
-  const src = fs.readFileSync(file, "utf8");
+  const src = stripComments(fs.readFileSync(file, "utf8"));
   for (const m of METRICS) {
     let hits = 0;
     if (m.scan) {

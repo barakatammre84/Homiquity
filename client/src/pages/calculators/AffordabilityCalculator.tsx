@@ -43,7 +43,7 @@ export default function AffordabilityCalculator() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Mortgage Affordability Calculator — How Much Home Can You Afford?"
         description="Free mortgage affordability calculator. Adjust income, monthly debts, down payment, and credit score with interactive sliders to see your comfortable home price range — no sign-up, no credit check."
@@ -83,6 +83,6 @@ export default function AffordabilityCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }
