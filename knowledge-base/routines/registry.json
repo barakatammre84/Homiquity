@@ -1,0 +1,256 @@
+{
+  "_readme": [
+    "The machine-readable inventory of the autonomous suite. CHARTER.md is the contract;",
+    "this file is the part of it a script can check, and scripts/routine-registry-guard.cjs",
+    "(pnpm guard:routines, in the required CI gate) is what checks it.",
+    "",
+    "Why it exists: CHARTER §0's failure was a suite that stopped and described itself as live",
+    "for five weeks. §7 answers 'did it run' from reports. Nothing answered the question one",
+    "step earlier — 'does this routine still have a definition anyone but one laptop can read?'",
+    "On 2026-08-18, six of the ten scheduled routines existed only under ~/.claude/",
+    "scheduled-tasks/ on the founder's machine: unversioned, unreviewable, and unrunnable from",
+    "any cloud session. Each of those carries a dated waiver below rather than a silence.",
+    "",
+    "WHAT THIS FILE IS NOT. It is not the fleet-2 schedule. Claude-Code-Remote triggers are",
+    "authoritative in list_triggers (CHARTER §3) and a hand-copied cron here would rot within",
+    "a day. Fleet-2 rows record only the CONTRACT — which repo-native skill the trigger must",
+    "invoke — because that is the half the repo can actually verify.",
+    "",
+    "Adding/retiring/re-timing a routine edits this file, CHARTER §3, and the scheduler",
+    "together, in one session (CHARTER §11)."
+  ],
+  "updated": "2026-08-18",
+  "routines": [
+    {
+      "id": "primary-engineer",
+      "title": "Primary Engineer",
+      "fleet": "local-scheduler",
+      "cron": "15 7 * * *",
+      "cadence": "daily",
+      "writesCode": true,
+      "definition": ".claude/skills/primary-engineer/SKILL.md",
+      "reportId": "primary-engineer"
+    },
+    {
+      "id": "launch-gate",
+      "title": "Launch Gate",
+      "fleet": "local-scheduler",
+      "cron": "45 7 * * *",
+      "cadence": "daily",
+      "writesCode": false,
+      "definition": "laptop-only",
+      "reportId": "launch-gate",
+      "waiver": {
+        "reason": "Definition lives only in ~/.claude/scheduled-tasks/launch-gate/ on the founder's machine. It publishes §7's RELEASABLE line — the suite's headline output — from a file no reviewer, no guard and no cloud session can read.",
+        "since": "2026-08-18",
+        "expires": "2026-09-30",
+        "remedy": "Commit it to .claude/skills/launch-gate/SKILL.md and point the scheduled task at the repo copy, as primary-engineer and compliance-watch already are."
+      }
+    },
+    {
+      "id": "act-as-a-senior-frontend-architect",
+      "title": "Frontend Wiring Audit",
+      "fleet": "local-scheduler",
+      "cron": "10 9 * * *",
+      "cadence": "daily",
+      "writesCode": true,
+      "definition": "laptop-only",
+      "reportId": "wiring-audit",
+      "note": "taskId is deliberately unwieldy and deliberately unrenamed (CHARTER §3) — renaming discards its run history and stored tool approvals. The id here is its taskId prefix.",
+      "waiver": {
+        "reason": "Writes code on the capture path daily — the highest-consequence lane in the suite after Primary Engineer — from an unversioned definition. Its rails cannot be reviewed in a PR or checked by any guard.",
+        "since": "2026-08-18",
+        "expires": "2026-09-30",
+        "remedy": "Commit to .claude/skills/frontend-wiring-audit/SKILL.md; keep the scheduler taskId unchanged so run history and approvals survive."
+      }
+    },
+    {
+      "id": "lender-delivery-gate",
+      "title": "Lender Delivery Gate",
+      "fleet": "local-scheduler",
+      "cron": "30 12 * * *",
+      "cadence": "daily",
+      "writesCode": true,
+      "definition": "laptop-only",
+      "reportId": "lender-delivery-gate",
+      "waiver": {
+        "reason": "Owns acceptance question A (does an organic file reach a lender clean) and may ship small/safe fixes. Unversioned.",
+        "since": "2026-08-18",
+        "expires": "2026-09-30",
+        "remedy": "Commit to .claude/skills/lender-delivery-gate/SKILL.md."
+      }
+    },
+    {
+      "id": "deliverable-qa-sweep",
+      "title": "Deliverable QA Sweep",
+      "fleet": "local-scheduler",
+      "cron": "0 15 * * *",
+      "cadence": "daily",
+      "writesCode": false,
+      "definition": "laptop-only",
+      "reportId": "qa-sweep",
+      "waiver": {
+        "reason": "Feeds every verified row in feature-review/FINDINGS.md, which Primary Engineer builds from. Its adversarial-verification method is unversioned, so a drift in it silently changes what the whole suite treats as a verified finding.",
+        "since": "2026-08-18",
+        "expires": "2026-09-30",
+        "remedy": "Commit to .claude/skills/deliverable-qa-sweep/SKILL.md; the .claude/agents/{feature-reviewer,finding-verifier,workflow-verifier}.md it drives are already in the repo, which makes the missing half conspicuous."
+      }
+    },
+    {
+      "id": "evening-triage",
+      "title": "Evening Triage",
+      "fleet": "local-scheduler",
+      "cron": "0 21 * * *",
+      "cadence": "daily",
+      "writesCode": false,
+      "definition": "laptop-only",
+      "reportId": "evening-triage",
+      "waiver": {
+        "reason": "Holds exclusive authority over CTO_ROADMAP.md §0–§3 and performs §7's proof-of-life count — the control that would have caught §0's five-week silence — from an unversioned file.",
+        "since": "2026-08-18",
+        "expires": "2026-09-30",
+        "remedy": "Commit to .claude/skills/evening-triage/SKILL.md. Highest-value of the six: it is the only routine whose absence hides the absence of the others."
+      }
+    },
+    {
+      "id": "vendor-procurement",
+      "title": "Vendor & Procurement",
+      "fleet": "local-scheduler",
+      "cron": "35 9 * * 1",
+      "cadence": "weekly",
+      "writesCode": false,
+      "definition": "laptop-only",
+      "reportId": "vendor-procurement",
+      "waiver": {
+        "reason": "Report-only, so the blast radius is lowest of the six — but it is still a routine whose rails nobody can read.",
+        "since": "2026-08-18",
+        "expires": "2026-09-30",
+        "remedy": "Commit to .claude/skills/vendor-procurement/SKILL.md."
+      }
+    },
+    {
+      "id": "compliance-watch",
+      "title": "Compliance Watch",
+      "fleet": "local-scheduler",
+      "cron": "15 13 * * 2",
+      "cadence": "weekly",
+      "writesCode": false,
+      "definition": ".claude/skills/compliance-watch/SKILL.md",
+      "reportId": "compliance-watch"
+    },
+    {
+      "id": "rent-reporting-watch",
+      "title": "Rent Reporting Watch",
+      "fleet": "local-scheduler",
+      "cron": "0 11 * * 4",
+      "cadence": "weekly",
+      "writesCode": false,
+      "definition": ".claude/skills/rent-reporting-watch/SKILL.md",
+      "reportId": "rent-reporting-watch"
+    },
+    {
+      "id": "refactor-radar-weekly",
+      "title": "Refactor Radar",
+      "fleet": "local-scheduler",
+      "cron": "0 20 * * 0",
+      "cadence": "weekly",
+      "writesCode": true,
+      "definition": ".claude/skills/refactor-radar/SKILL.md",
+      "reportId": "refactor-radar"
+    },
+    {
+      "id": "sprint-blitz",
+      "title": "Sprint Blitz",
+      "fleet": "local-scheduler",
+      "retired": "2026-08-17",
+      "writesCode": true,
+      "definition": "retired",
+      "reportId": "sprint-blitz",
+      "note": "Absorbed into Primary Engineer (CHARTER §3, §11 worked example). Registered here only so its historical reports are not read as orphans."
+    },
+    {
+      "id": "financial-audit",
+      "title": "Financial Audit",
+      "fleet": "claude-code-remote",
+      "cadence": "monthly (1st) — schedule authoritative in list_triggers, never here",
+      "writesCode": true,
+      "definition": ".claude/skills/financial-audit/SKILL.md",
+      "invokes": ".claude/skills/financial-audit/SKILL.md",
+      "reportId": "financial-audit",
+      "status": "live",
+      "note": "Governed by CHARTER §6's Financial Audit row. Rewired 2026-08-18 to invoke the repo skill instead of carrying a private copy of the method."
+    },
+    {
+      "id": "doc-accuracy",
+      "title": "Doc Accuracy steward",
+      "fleet": "claude-code-remote",
+      "cadence": "6-hourly, plus a Monday firing — schedule authoritative in list_triggers, never here",
+      "writesCode": false,
+      "definition": "pending",
+      "invokes": ".claude/skills/doc-accuracy/SKILL.md",
+      "reportId": "doc-accuracy",
+      "status": "awaiting-definition",
+      "awaiting": {
+        "branch": "claude/md-docs-accuracy-routine-2x0850",
+        "since": "2026-08-18",
+        "expires": "2026-09-08",
+        "note": "Two triggers invoke this skill (the 6-hourly steward and the Monday 14:00 firing) and it does not exist on origin/main. Both are correctly written to say so and stop, which is the right shape — but that is ~29 no-op runs a week until the founding PR merges, and a second Monday firing 100 minutes before a steward tick is duplication to resolve when it does."
+      }
+    },
+    {
+      "id": "better-competitive-brief",
+      "title": "Better.com competitive brief",
+      "fleet": "claude-code-remote",
+      "cadence": "daily — schedule authoritative in list_triggers, never here",
+      "writesCode": false,
+      "definition": "trigger-prompt",
+      "reportId": null,
+      "status": "live",
+      "note": "Report-only; may file one design-standard issue. Still carries its method in the trigger prompt rather than a repo skill — a drift risk the audit records but does not fix."
+    },
+    {
+      "id": "page-audit",
+      "title": "Page-by-page deep inspection",
+      "fleet": "claude-code-remote",
+      "cadence": "daily — schedule authoritative in list_triggers, never here",
+      "writesCode": false,
+      "definition": "trigger-prompt",
+      "reportId": null,
+      "status": "live",
+      "note": "Files page-audit issues; opens no PRs. Its 10-slot rotation and defect-class list live in the trigger prompt — the largest private method copy in either fleet."
+    },
+    {
+      "id": "ux-audit",
+      "title": "UX audit vs the design standard",
+      "fleet": "claude-code-remote",
+      "cadence": "weekly (Wed) — schedule authoritative in list_triggers, never here",
+      "writesCode": false,
+      "definition": "trigger-prompt",
+      "reportId": null,
+      "status": "live",
+      "note": "Report-only, read access. Duplicates DESIGN_SYSTEM.md §13's four questions in prose; the standard itself wins on any conflict."
+    },
+    {
+      "id": "better-deep-dive-reminder",
+      "title": "Logged-in Better deep-dive reminder",
+      "fleet": "claude-code-remote",
+      "cadence": "weekly (Mon) — schedule authoritative in list_triggers, never here",
+      "writesCode": false,
+      "definition": "trigger-prompt",
+      "reportId": null,
+      "status": "live",
+      "note": "Human-directed; sends a reminder and nothing else. Never handles a sign-in."
+    },
+    {
+      "id": "pr-sync-review-loop",
+      "title": "PR sync & review loop",
+      "fleet": "claude-code-remote",
+      "cadence": "hourly on weekdays — schedule authoritative in list_triggers, never here",
+      "writesCode": false,
+      "definition": "trigger-prompt",
+      "reportId": null,
+      "status": "live",
+      "note": "Updates open PR branches and reports a digest. Never merges. This is the fleet-2 routine that most needs CHARTER §5's assist ladder in a repo skill."
+    }
+  ]
+}

@@ -1,13 +1,21 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10
+amended that day; §2 repo row, §3 Definition column, §6 regulatory carve-out, §11 and the new §12
+amended that evening by the routine-suite audit).
 
-Each routine lives as a `SKILL.md` in `~/.claude/scheduled-tasks/<id>/` and runs in a **fresh
-session with no memory of any other run**. That file is the *job description*. **This file is the
-*contract*** — the shared clock, the shared facts, the shared lock, and the shared escalation path.
-Where a routine's own file disagrees with this one, **this file wins**, and the routine must say so
-in its report rather than silently following the stale copy.
+Each routine is a `SKILL.md` and runs in a **fresh session with no memory of any other run**. That
+file is the *job description*; **this file is the *contract*** — the shared clock, the shared
+facts, the shared lock, and the shared escalation path. Where a routine's own file disagrees with
+this one, **this file wins**, and the routine must say so in its report rather than silently
+following the stale copy.
+
+**Where that `SKILL.md` lives is itself a fact this file tracks**, because it decides who can read
+it: `.claude/skills/<id>/SKILL.md` in this repo (reviewable, versioned, runnable from any session)
+or `~/.claude/scheduled-tasks/<id>/` on one machine (none of those things). §3's Definition column
+says which, [`registry.json`](registry.json) is the machine-readable form, and `pnpm guard:routines`
+is what stops the two from drifting apart.
 
 Read this file, then [`REGISTER.md`](REGISTER.md), before doing anything else.
 
@@ -119,7 +127,7 @@ Each of these killed the previous suite. Probe them; do not trust this table's a
 
 | Fact | Current value | How to re-verify |
 |---|---|---|
-| Repo | `/Users/ammrebarakat/Developer/Homiquity` | — |
+| Repo | Derive it: `git rev-parse --show-toplevel`. **Never hardcode a path** — the founder's checkout is `~/Developer/Homiquity`, cloud and remote sessions clone elsewhere, and a hardcoded path has already aborted a run for no reason | `LESSONS.md` 2026-08-12 |
 | Package manager | **pnpm** (`pnpm check`, `pnpm test`, `pnpm test:unit`, `pnpm test:client`, `pnpm test:integration`, `pnpm checkup`, `pnpm guard:*`) | `package.json` scripts |
 | Platform | **Railway** — one Node process serving API + static client. **Vercel is deleted (404).** | `railway.json`, [`runbooks/CICD.md`](../runbooks/CICD.md) |
 | Public host | `https://www.homiquity.com` — the **apex is not on Railway** (Squarespace has no ALIAS/flattening) | `curl -s https://www.homiquity.com/api/health` |
@@ -142,18 +150,31 @@ The scheduler adds a small **deterministic dispatch offset** per task, so a rout
 minutes after its cron minute. "Fires" below is the real observed time — the number that matters
 when reasoning about overlap. `taskId` is the scheduler key.
 
-| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
-|---|---|---|---|---|---|
-| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | up to **3 launch-ranked PRs** |
-| 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
-| 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
-| 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
-| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
-| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
-| Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
-| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
-| Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
-| Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
+The **Definition** column is the one added 2026-08-18, and it is the uncomfortable one:
+`repo` means the routine's `SKILL.md` is committed here, reviewable in a PR and runnable from
+any session; **`⚠ laptop-only`** means it exists solely under `~/.claude/scheduled-tasks/` on one
+machine. Six of ten were in that state when the column was added — including Evening Triage,
+whose absence is the thing that hides the absence of all the others. Each carries a dated waiver
+in [`registry.json`](registry.json); `pnpm guard:routines` fails on an undated one.
+
+| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Definition | Produces |
+|---|---|---|---|---|---|---|
+| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | repo | up to **3 launch-ranked PRs** |
+| 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | ⚠ laptop-only | `RELEASABLE: yes/no` + the day's gate verdict |
+| 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | ⚠ laptop-only | committed fix on a worktree branch |
+| 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | ⚠ laptop-only | delivery verdict + Target-5 execution |
+| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | ⚠ laptop-only | verified rows in `FINDINGS.md` |
+| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | ⚠ laptop-only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
+| Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | ⚠ laptop-only | vendor/contract board |
+| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | repo | state-launch compliance ladder + signature-ready drafts |
+| Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | repo | furnishing-gate posture + the two procurement asks |
+| Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | repo | at most one PR |
+
+**Financial Audit is the eleventh routine and it is not on this clock** — it fires monthly from
+the second fleet below, invoking [`.claude/skills/financial-audit/SKILL.md`](../../.claude/skills/financial-audit/SKILL.md),
+and §6's Financial Audit row governs it. It is listed in [`registry.json`](registry.json) with the
+rest so that "the suite" has exactly one inventory rather than a clock, a territory table and a
+trigger list that each know about different routines.
 
 **Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
 Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
@@ -173,20 +194,33 @@ had already recorded a stale "six" between them. **The authoritative list is `li
 (Claude_Code_Remote MCP); read it rather than this paragraph.** As of **2026-08-18 18:25Z** it
 held eight Homiquity triggers:
 
-| Fires (UTC) | Trigger | Posture |
-|---|---|---|
-| daily 12:00 | Better.com competitive brief | report-only; may file one `design-standard` issue |
-| Mon 12:30 | logged-in Better deep-dive reminder | human-directed; sends a reminder, nothing else |
-| Wed 13:00 | UX audit vs the design standard | report-only, `read` access |
-| 1st 13:00 | financial-architecture audit | invokes `/financial-audit`; §6's Financial Audit row governs it |
-| daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
-| Mon 14:00 | doc & memory hygiene sweep | report-only; docs-PR lane for its report |
-| 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
-| hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest |
+| Fires (UTC) | Trigger | Posture | Carries its method… |
+|---|---|---|---|
+| daily 12:00 | Better.com competitive brief | report-only; may file one `design-standard` issue | in the trigger prompt |
+| Mon 12:30 | logged-in Better deep-dive reminder | human-directed; sends a reminder, nothing else | in the trigger prompt |
+| Wed 13:00 | UX audit vs the design standard | report-only, `read` access | in the trigger prompt |
+| 1st 13:00 | financial-architecture audit | invokes `/financial-audit`; §6's Financial Audit row governs it | **in the repo** |
+| daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs | in the trigger prompt |
+| Mon 14:00 | doc-accuracy, weekly firing | repointed 2026-08-18 to invoke `/doc-accuracy`; **no longer its own hygiene sweep** | **in the repo** (pending) |
+| 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges | **in the repo** (pending) |
+| hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest | in the trigger prompt |
 
-Where they touch the repo they are report-only or PR-lane and bound by this charter. Note the
-Monday 14:00 collision between the daily inspection and the hygiene sweep — harmless while both
-are report-only, a real hazard the day either starts writing code.
+Where they touch the repo they are report-only or PR-lane and bound by this charter.
+
+Two live conditions in that table, both verified against `list_triggers` on 2026-08-18 19:00Z:
+
+- **`.claude/skills/doc-accuracy/SKILL.md` does not exist on `origin/main`** (its founding PR is
+  the branch `claude/md-docs-accuracy-routine-2x0850`). Both triggers are written to say so and
+  stop, which is the correct shape for a routine whose dependency has not landed — but that is
+  ~29 firings a week producing nothing, and `pnpm guard:routines` prints it as a WARN every run
+  until the PR merges rather than letting it become normal.
+- **Two triggers now fire the same routine on Mondays**, 100 minutes apart (14:00 weekly, 15:40
+  steward). Harmless while it is a no-op; the day the skill lands it is duplicated work, and
+  `LESSONS.md` already records what a routine firing twice in a day does to a backlog. Retire the
+  weekly firing when the skill merges, or narrow it deliberately.
+
+The Monday 14:00 slot still collides with the daily page inspection — harmless while both are
+report-only, a real hazard the day either starts writing code.
 
 Audited and rewired 2026-08-18 —
 [logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Until
@@ -354,7 +388,15 @@ work. A standard nobody is assigned to propagate is a preference.
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
 `server/integrations/object_storage/**`; outbound messaging; the underwriting/decision/rule engines;
 `shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever**);
-`docs/**`; `data/regulatory/**`.
+`docs/**`; `data/regulatory/**` — **with exactly one carve-out, named below.**
+
+*(Contradiction resolved 2026-08-18, founder to confirm. This list said `data/regulatory/**` flat
+while the next paragraph requires a routine to write `data/regulatory/regulatory-ledger.json`
+alongside any regulated-math change. A rule that forbids the write it mandates is a rule a routine
+must break to obey, so it is narrowed to the reading that keeps every other file locked:
+`regulatory-watch-state.json` is machine-owned by `pnpm reg:watch:save` and stays off limits, and
+the ledger is writable **only** as the same-commit companion to the change it cites — never edited
+on its own, never to soften an existing row.)*
 
 **Regulated math changes only with a citation** → a `data/regulatory/regulatory-ledger.json` entry
 in the same commit. No citation, no code change. Never weaken a consent gate, a disclosure gate, an
@@ -475,10 +517,17 @@ New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section 
 
 ## 11. Changing the suite
 
-Adding, retiring or re-timing a routine means editing **this file and the scheduler together**, in
-the same session. A definition on disk that is not registered in the scheduler is not a routine —
-it is a fossil, and fossils are what produced §0. Retired definitions are archived under
-`~/.claude/scheduled-tasks/_archive/`, never left registered-looking.
+Adding, retiring or re-timing a routine means editing **this file, [`registry.json`](registry.json),
+and the scheduler together**, in the same session. A definition on disk that is not registered in
+the scheduler is not a routine — it is a fossil, and fossils are what produced §0. Retired
+definitions are archived under `~/.claude/scheduled-tasks/_archive/`, never left
+registered-looking; their registry row stays, marked `retired`, so their old reports remain
+attributable.
+
+`pnpm guard:routines` checks the two thirds of that a script can reach — this file's §3 clock
+against `registry.json`, and `registry.json` against what is actually committed under
+`.claude/skills/`. **It cannot see the scheduler**, so it can never tell you a routine is really
+registered, or really firing. That half is still §7's job, and §7's evidence is a report.
 
 **Worked example (2026-08-17):** Sprint Blitz was retired into the Primary Engineer in one
 session — its definition copied to `_archive/sprint-blitz/` with a dated retirement note, the
@@ -487,3 +536,41 @@ scheduler task deleted, its §3 row removed, and the two new routines (`primary-
 self-disables) before this file's clock rows were finalized from the scheduler's real jitter.
 Both directions of §11 in one commit: nothing registered-looking that isn't registered, nothing
 registered that this file doesn't carry.
+
+---
+
+## 12. The suite's own health — who owns the controls
+
+Added 2026-08-18 after a founder-directed audit of both fleets
+([`logs/2026-08-18-routine-suite-audit.md`](../logs/2026-08-18-routine-suite-audit.md)). Every
+control below was already described somewhere in this file. None of them had a named owner, and a
+control with no owner is a control that runs when someone happens to feel like it — which is the
+same as §0's five weeks of nobody noticing, arrived at more slowly.
+
+| Control | Owner | Cadence | Evidence it happened |
+|---|---|---|---|
+| **Proof of life** — count §3's expected reports against `reports/`, name every routine that did not run (§7) | Evening Triage | daily | a named list in its report, `none` when complete |
+| **Registry truth** — `registry.json` matches the scheduler and the committed skills (§11) | every routine that changes anything about itself, in the same PR | per change | `pnpm guard:routines` green in the PR |
+| **Waiver expiry** — is a routine still running on a definition nobody can read, past its date? | founder | weekly | the `Doc freshness` workflow's `--strict` step |
+| **Cross-fleet reconciliation** — read `list_triggers`, correct §3's second-fleet table, check each trigger still invokes the skill it promises | Evening Triage | weekly (Sunday tick) | the corrected table, or "no drift", with the UTC timestamp it was read |
+| **Lesson promotion** — move a proven `LESSONS.md` row into §10 and trim the source row (§10) | Evening Triage **proposes**, founder ratifies | weekly | the proposed-tickets block; a §10 edit is never silent |
+
+Two of those rows name a routine whose own definition is `⚠ laptop-only`. **That is not a
+technicality.** Until Evening Triage's `SKILL.md` is committed, three of the five controls above
+are assigned to a file nobody can review, which is a promise this document cannot keep.
+
+### What no routine owns at all
+
+Recorded so it is a decision rather than an oversight. None of these are authorized by being
+listed here — each is a founder call:
+
+- **The server-side refactor lane.** Refactor Radar is `client/src` only by R5, and routes every
+  server idea to `blocked-human`. Primary Engineer *may* take one, but ranks by §1, where an
+  elegant server refactor is LOW by construction. So they accumulate, owned by no one.
+- **Test-suite health.** No routine watches for slow, skipped, or quarantined tests. The
+  `it.skipIf` fix on 2026-08-12 found eight XSD cases that vitest had been reporting as *passed*
+  for as long as `xmllint` had been absent — found by a routine looking for something else.
+- **The second fleet's private method copies.** Five of eight triggers still carry their method in
+  the trigger prompt rather than a repo skill. Every one is a copy of a standard that lives in the
+  repo, and copies drift: three triggers cited documents that did not exist until 2026-08-18.
+  A trigger should carry what a fresh session needs to *reach* the method, and nothing more.

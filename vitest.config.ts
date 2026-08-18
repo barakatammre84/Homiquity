@@ -14,6 +14,9 @@ export default defineConfig({
       "tests/amortization.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
+      // CHARTER §8's hard-nevers as an enforced PreToolUse rail, plus the routine
+      // registry guard. The allow-list half is the regression test that matters.
+      "tests/routineGovernance.test.ts",
       // The CI trigger surface. A `branches:` filter under pull_request means a
       // stacked PR gets zero check-runs while still reporting mergeStateStatus CLEAN.
       "tests/ciTriggers.test.ts",

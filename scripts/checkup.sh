@@ -62,6 +62,9 @@ check "design tokens (no raw colors)" node scripts/design-token-guard.cjs
 check "UI standard ratchet"           node scripts/ui-standard-guard.cjs
 check "knowledge base indexed"        node scripts/kb-index-guard.cjs
 check "doc staleness ratchet"         node scripts/doc-staleness-guard.cjs
+# --strict adds the calendar half (expired unversioned-definition waivers), which
+# is checkup's job and not the merge gate's.
+check "routine registry"              node scripts/routine-registry-guard.cjs --strict
 check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs
 check "living docs fresh"             node scripts/doc-freshness-guard.cjs
 check "production health ($PROD_URL)" prod_healthy

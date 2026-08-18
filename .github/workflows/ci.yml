@@ -213,6 +213,20 @@ jobs:
         # (Job `name:` above deliberately unchanged — verbatim required-check string;
         # see the rename warning.)
         run: pnpm guard:kb
+      - name: Routine registry guard
+        # The suite that governs the machine writing everything else was the one
+        # layer checked by prose alone — CHARTER §0 is what that costs. This fails
+        # on a routine SKILL.md nobody registered (a fossil), a registered routine
+        # whose definition is invisible with no dated waiver, a CHARTER §3 clock
+        # that disagrees with knowledge-base/routines/registry.json, a report that
+        # belongs to no routine, or a fleet-2 trigger promising to invoke a skill
+        # that does not exist. Structural only: waiver EXPIRY is deliberately left
+        # to `--strict` (checkup + the weekly doc-freshness workflow) for the same
+        # reason doc-freshness itself is not here — a calendar failure inside the
+        # required check blocks every merge on a day no diff caused.
+        # (Job `name:` above deliberately unchanged — verbatim required-check string;
+        # see the rename warning.)
+        run: pnpm guard:routines
       - name: Doc staleness ratchet
         # Dead vocabulary in LIVING docs vs scripts/doc-staleness-baseline.json
         # (ratchet: counts may only go down). Metrics: kb/ paths, npm-as-instruction,

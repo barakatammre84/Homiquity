@@ -43,3 +43,12 @@ jobs:
         # A failure here means a doc is overdue for re-verification, not that
         # anything is broken — fix it by doing the review pass and moving the date.
         run: pnpm guard:docs
+      - name: Routine waiver expiry (--strict)
+        # Same calendar-not-diff logic, same reason it is here rather than in the
+        # merge gate. `pnpm guard:routines` runs structurally in `gate`; --strict
+        # adds the one question only a date can answer: is a routine still running
+        # on a definition nobody but one laptop can read, past the date the founder
+        # said that would stop? `if: always()` so an overdue doc above does not
+        # hide an expired waiver here — two independent facts, two independent lines.
+        if: always()
+        run: pnpm guard:routines --strict
