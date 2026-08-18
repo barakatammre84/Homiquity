@@ -156,6 +156,7 @@ Branch `claude/interesting-goodall-351b8b`, rebased onto `origin/main` (`24fd54c
 ```
 pnpm check                     exit 0
 pnpm test  node lane           196 files, 2785 passed | 1 skipped   (195 → 196: intakeClearSemantics)
+pnpm guard:bundle              522,434 raw — at baseline (run against a FRESH build; see Addendum 2)
            client lane          78 files,  558 passed              (543 → 558: +15 new)
 pnpm guard:querykeys           guard:querykeys / reachability / transport — all OK
 pnpm guard:tokens              0 raw palette · 97 bare white/black (at baseline, no regression)
@@ -202,11 +203,8 @@ recycled rows from an older report.
 5. ~~**Give "clear this field" a wire representation.**~~ **DONE this run** (founder-directed; §6
    territory deviation recorded in Addendum 2). Needed no migration — the columns were already
    nullable.
-6. **`zodSchemaSemantics` cannot see per-field rules on a preprocessed schema.** `shapeProbes`
-   reads `.shape`, which `z.preprocess(...)` does not expose, so 5 of 195 schemas get top-level
-   scalar probes only — including the two that admit borrower financial data. Unwrap the inner
-   object for probing; expect snapshot churn, so it wants its own PR and a careful read of the
-   delta.
+6. ~~**`zodSchemaSemantics` cannot see per-field rules on a preprocessed schema.**~~ **DONE this
+   run** (founder-directed) — Addendum 3.
 7. **Let the funnel commit a clear.** `buildDraftPatchPayload` deliberately still omits empties
    (it fires on a debounce mid-typing, where a transient blank must not erase). So a borrower who
    clears a funnel field and later restores the server draft still gets the old value back. The
@@ -391,5 +389,78 @@ explicit Save. The consequence noted in Addendum 1 therefore stands — an authe
 clears a funnel field, leaves, and later restores the server draft still gets the old value back.
 Closing that needs the funnel to commit clears at a deliberate moment (its per-step Continue is the
 candidate), which is a funnel-flow decision, not a schema one. Ticket 7.
+
+## Addendum 3 — ticket 6, done: the zod guard can now see through its own wrappers
+
+**⛔ Territory deviation again.** CHARTER §6 confines this routine to `client/src/**`;
+`tests/**` is outside it. Founder-directed, same basis as tickets 4 and 5, recorded rather than
+absorbed.
+
+### The hole
+
+`shapeProbes` read `schema.shape`. A schema wrapped in `z.preprocess(...)` or `.transform(...)`
+exposes none, so those schemas got the ten top-level scalar probes and **nothing per-field**. Five
+of ~195 were in that state, two of them `loanApplicationIntakeSchema` and
+`loanApplicationIntakeUpdateSchema` — the pair that admits borrower financial data into a loan
+file. Ticket 5 changed what ten of those fields accept and this test passed unchanged, which is
+how the hole surfaced.
+
+### The fix, and the thing it deliberately does not change
+
+`unwrapToShape` walks the wrapper chain breadth-first and returns the first shape it finds. Both
+sides are searched rather than encoding which one carries the object per constructor name —
+`z.preprocess(fn, obj)` keeps it on `.out`, `obj.transform(fn)` keeps it on `.in`, and that is the
+sort of internal that moves between zod majors. Only one side ever has a shape.
+
+**It changes only which field names the probes use.** Every probe is still parsed against the
+OUTER exported schema (`outcome(val, input)`), so the recorded decision stays "what does the thing
+we export accept?" — preprocessing included — rather than "what does its inner object accept?".
+Those are different questions and only the first is worth pinning.
+
+### One new probe, because the fix alone was not enough
+
+The unwrap on its own would **still not** have caught ticket 5: `valueForKey` supplies plausible
+values, so the null question was never asked of any field. `all-keys-null` asks it of every key at
+once, and the faulted-path list is the payload — a field that starts admitting null **drops out of
+it**. One line per schema, full nullability coverage.
+
+That is the right thing to pin here specifically, because null is how the intake update schema
+says "clear this borrower's answer". The recorded line now reads as a precise statement of which
+fields are clearable:
+
+```
+schema.loanApplicationIntakeUpdateSchema [all-keys-null]
+  reject:avoidsInterestFinancing,creditScore,employmentType,hasAdditionalIncome,homeSquareFootage,
+         householdFamilySize,incomeSources,isFirstTimeBuyer,isVeteran,loanPurpose,propertyType
+```
+
+The six clearable base fields are **absent from that list** — they accept null. The full
+`loanApplicationIntakeSchema` still faults all of them, which is correct: only the *update* schema
+is clearable, and the snapshot now documents the difference between the two.
+
+### The delta was audited, not eyeballed
+
+Re-recording touched 400 lines. Checked semantically rather than by reading git's line count:
+
+| Check | Result |
+|---|---|
+| schemas added / removed | **0 / 0** |
+| probes removed | **0** |
+| **existing probe values changed** | **0** |
+| probes added | `all-*` ×194, `missing-*` ×12, `wrongtype-*` ×2 |
+
+Purely additive coverage — nothing previously pinned moved. (The 192 "deletions" git reports are
+JSON comma reflow.)
+
+### What is still scalar-only, and why that is correct
+
+Three schemas: `lookupAxisTypeSchema` (enum), `incomePathsSchema` (array), `incomePathResultSchema`
+(discriminated union). None has a single object shape to probe, so scalar probes are the complete
+answer. Probing a union per-variant is a separate idea, not a gap this closes — stated so the next
+reader does not mistake three remaining rows for three remaining bugs.
+
+**Verified honest:** reverting ticket 5's nullability turns the
+`loanApplicationIntakeUpdateSchema [all-keys-null]` line red, naming exactly the six fields that
+lost their clear.
 
 STATUS: OK
