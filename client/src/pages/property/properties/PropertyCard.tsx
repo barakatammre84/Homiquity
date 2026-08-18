@@ -58,18 +58,18 @@ export function PropertyCard({ property, viewMode }: { property: Property; viewM
             </div>
 
             <div className="mt-4 flex gap-2">
-              <Link href={`/properties/${property.id}`} className="flex-1" data-testid={`link-detail-${property.id}`}>
-                <Button variant="outline" className="w-full gap-2">
+              <Button asChild variant="outline" className="flex-1 w-full gap-2">
+                <Link href={`/properties/${property.id}`} data-testid={`link-detail-${property.id}`}>
                   <Home className="h-4 w-4" />
                   View Details
-                </Button>
-              </Link>
-              <Link href={`/apply?propertyId=${property.id}&price=${property.price}&state=${property.state || ""}&propertyType=${property.propertyType || "single_family"}`} className="flex-1">
-                <Button className="w-full gap-2">
+                </Link>
+              </Button>
+              <Button asChild className="flex-1 w-full gap-2">
+                <Link href={`/apply?propertyId=${property.id}&price=${property.price}&state=${property.state || ""}&propertyType=${property.propertyType || "single_family"}`}>
                   <DollarSign className="h-4 w-4" />
                   See Loan Options
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </div>
@@ -123,18 +123,18 @@ export function PropertyCard({ property, viewMode }: { property: Property; viewM
         </div>
 
         <div className="mt-4 flex gap-2">
-          <Link href={`/properties/${property.id}`} className="flex-1" data-testid={`link-detail-grid-${property.id}`}>
-            <Button variant="outline" className="w-full gap-2">
+          <Button asChild variant="outline" className="flex-1 w-full gap-2">
+            <Link href={`/properties/${property.id}`} data-testid={`link-detail-grid-${property.id}`}>
               <Home className="h-4 w-4" />
               Details
-            </Button>
-          </Link>
-          <Link href={`/apply?propertyId=${property.id}&price=${property.price}&state=${property.state || ""}&propertyType=${property.propertyType || "single_family"}`} className="flex-1">
-            <Button className="w-full gap-2">
+            </Link>
+          </Button>
+          <Button asChild className="flex-1 w-full gap-2">
+            <Link href={`/apply?propertyId=${property.id}&price=${property.price}&state=${property.state || ""}&propertyType=${property.propertyType || "single_family"}`}>
               <DollarSign className="h-4 w-4" />
               Loan Options
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>

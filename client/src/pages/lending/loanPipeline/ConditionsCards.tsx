@@ -138,12 +138,12 @@ export function OutstandingConditionsCard({ conditions }: OutstandingConditionsC
         ))}
       </CardContent>
       <CardFooter className="border-t pt-4">
-        <Link href="/documents" className="w-full">
-          <Button className="w-full" data-testid="button-view-all-documents">
+        <Button asChild className="w-full" data-testid="button-view-all-documents">
+          <Link href="/documents">
             <FileText className="mr-2 h-4 w-4" />
             View All Documents
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );
