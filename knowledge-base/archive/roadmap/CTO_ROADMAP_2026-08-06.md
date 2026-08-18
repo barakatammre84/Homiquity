@@ -297,3 +297,9 @@ Strategy: own borrower intent *before* the credit pull via first-party channels 
 - [x] DEVELOPER_PLAYBOOK.md + PORT fix (6a01de0)
 - [x] CTO platform assessment (b0d6766)
 - [x] Design system Phases 1–3, dashboard query rewrite, AUS pipeline, MCP server, Vercel migration, brand unification (earlier) *[the Vercel leg was superseded 2026-08 by the migration to Railway; the Vercel project has since been deleted]*
+- [x] **§2.1 `GET /health` liveness + cron sweeps off the third-party DNS zone — closed 2026-08-17
+  by evening-triage.** #446 merged 2026-08-07T03:07Z (`gh pr view 446`); verified live 2026-08-17:
+  the scheduled sweeps run against `SWEEP_HOST=https://homiquity-production.up.railway.app` with a
+  matching `CRON_SECRET` (adverse-action-delivery run 32038494454 → `{"ok":true}`), closing the
+  2026-08-06 `curl` exit-6 class (vendor-procurement 2026-08-17 E6). The roadmap line also carried
+  "blocked on KTLO-2 (zero check-runs)" — stale since the merge.

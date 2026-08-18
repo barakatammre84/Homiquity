@@ -53,7 +53,6 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` | — | `claude/fervent-mayer-oqk0iv` | 2026-08-12 | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Stays out of `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Recently released
 
@@ -61,6 +60,7 @@ Keep the last ~10 for collision forensics; trim older rows freely.
 
 | routine / session | target | released (UTC) | outcome |
 |---|---|---|---|
+| `/financial-audit` (weekly, standing claim of 2026-08-12) | money paths (`shared/compensation*`, `costLedger`, `rateLockConfirmation`, `wholesaleLenders`, `contingentLiabilityRegister`, rate-sheets/rateLocks routes, admin Financial pages) · finding ids `F-0812-*` | 2026-08-17 | **stale claim cleared by evening-triage** (REGISTER rule 3): 5 days old, its branch `claude/fervent-mayer-oqk0iv` was merged (#496, #506) and deleted from origin, no worktree exists. The lane's live signal is open PR #521 (2026-08-16) — open PRs outrank this board. The weekly routine re-claims on its next tick per CHARTER §5.5. |
 | primary-engineer 2026-08-17 (item 1) | `server/mcp/index.ts` + `server/mcp/softPullGate.ts` (F-042: consent gate ran after the cached-pull return; gate ignored consent type) | 2026-08-17 | **shipped** — gate-first made structural (`readCachedSoftPull` requires the authorized consent as a parameter), scoped via `consentCoversPullType`; 9 new tests in `tests/mcpSoftPullGate.test.ts` prove a refusal never reads `credit_pulls`. Bug reintroduced → 5 fail; fixed → all green. |
 | primary-engineer 2026-08-17 (item 3) | `client/src/pages/borrower/CreditConsent.tsx` (ux-20: hard-inquiry fact invisible at the ask) | 2026-08-17 | **shipped** — callout + checkbox label + fine print now name the hard inquiry, mirroring the ratified disclosure item 2; colocated test proves the facts render even with the disclosure document seeded empty. 4 red pre-fix → 543/543 green. |
 | primary-engineer 2026-08-17 (item 2, assist) | PR #503 `scripts/bundle-size-baseline.json` (branch `chore/bundle-size-guard`) | 2026-08-17 | **shipped** — CHARTER §5 rung-1 assist on the queue's only red PR: baseline froze at 521,319 on 08-12 while main's merged client work grew the eager entry to a measured 522,148 (+829 raw, +0.16%); branch itself adds zero client bytes (`git diff origin/main...HEAD -- client/` empty). Re-baselined to the measured tip per the guard's own procedure, attribution in the PR comment. |
