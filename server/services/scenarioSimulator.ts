@@ -388,9 +388,13 @@ export async function composeScenario(
   const policyFingerprints = new Set<string>();
 
   for (const offer of offers) {
-    // VA guarantee (veteran) means no private MI; otherwise the LE's banded
-    // disclosure-grade estimate (platform parity with the instant decision,
-    // which prices PITI off the Loan Estimate).
+    // VA guarantee (veteran) means no private MI; otherwise the banded card.
+    // ⚠️ The parity this line used to claim is now INVERTED (F-077): the
+    // instant decision and the LE price MI from the CONVENTIONAL_PMI matrix,
+    // and this card exceeds that matrix in every live cell — so a what-if
+    // here OVERSTATES PITI/DTI relative to the real decision (conservative
+    // for staff exploration, but wrong). Flagged follow-up: price MI per
+    // offer from the matrix/product-aware helper and delete the card.
     const isVaPriced = app.isVeteran || offer.productType.toUpperCase() === "VA";
     const monthlyPMI = isVaPriced
       ? 0
