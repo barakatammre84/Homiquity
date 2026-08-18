@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| founder-directed session (UI-overhaul stage 3, PR #558) | `client/src/pages/borrower/urla/DeclarationsSection.tsx` (+new test) · `client/src/pages/borrower/documents/UploadedDocumentsTable.tsx` (+new test) · `client/src/pages/lending/ApplicationSummary.tsx` (+new test) · `client/src/components/patterns/{DeclarationsGroup,DocumentList,DualUnitTable,MilestoneBar,OptionalUpload}.tsx` (+tests) · `pages/staff/DesignPrototype.tsx` · `handbook/design/{design_guidelines,visual-consistency-standard}.md` + `.claude/skills/ui-components/SKILL.md` (authority banners) | primary checkout | `claude/file-implementation-naijtt` | 2026-08-18T18:30Z | Migrate the three real surfaces onto the pattern library (URLA declarations wall → `DeclarationsGroup` with the escape hatch on the E–K history block only; uploaded-docs table → `DocumentList`; application summary → `SummarySection`/`ProvenanceBadge`/`DualUnitTable`), add `MilestoneBar`/`OptionalUpload`, point the old design docs at `docs/DESIGN-STANDARD.md`. **URLAForm.tsx itself is NOT touched** (URLA_FORM_REFACTOR_TRAP respected — only the already-extracted section file changes; `buildPayload`/`STEPS`/hydration untouched). `Documents.tsx` untouched (the §9-reviewed upload path stays in place; only the table component's internals change). Founder-directed. Releases in the same PR. |
 
 ## Recently released
 
