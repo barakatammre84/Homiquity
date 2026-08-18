@@ -3,7 +3,7 @@
 **Status:** DRAFT pending founder + compliance review. Do NOT seed to the Learning Center yet.
 **Series doctrine:** consumer-direct upload sidesteps IRC §7216; no CPA referral fees (RESPA §8);
 TurboTax is a competitor, not a channel. Feeds Phase 1 CPA invite channel.
-**Positioning:** the unclaimed content territory from kb/gtm/COMPETITIVE_BRIEF_2026-07-06.md —
+**Positioning:** the unclaimed content territory from COMPETITIVE_BRIEF_2026-07-06.md (this directory) —
 no lender connects the 1040 to mortgage qualification; TurboTax only writes about deductions.
 **Renderer note:** written plain-text-safe for the Learning Center renderer (no links/bold/tables).
 
