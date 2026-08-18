@@ -1,5 +1,7 @@
-import { type LucideIcon } from "lucide-react";
-import { EmptyState as BaseEmptyState } from "@/components/ui/empty-state";
+import {
+  EmptyState as BaseEmptyState,
+  type EmptyStateProps as BaseEmptyStateProps,
+} from "@/components/ui/empty-state";
 
 // Scoped empty state (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13): `scope` is required and the
 // heading is DERIVED from it, so a component that knows one flow can never
@@ -15,7 +17,7 @@ export interface ScopedEmptyStateProps {
   scope: string;
   description?: string;
   action?: React.ReactNode;
-  icon?: LucideIcon;
+  icon?: BaseEmptyStateProps["icon"];
   illustration?: React.ReactNode;
   bordered?: boolean;
   className?: string;

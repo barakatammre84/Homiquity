@@ -59,6 +59,7 @@ check "no orphaned files"             node scripts/orphan-scan.cjs
 check "schema ↔ migrations synced"    node scripts/schema-migration-guard.cjs
 check "migration ledger intact"       node scripts/migration-ledger-guard.cjs
 check "design tokens (no raw colors)" node scripts/design-token-guard.cjs
+check "UI standard ratchet"           node scripts/ui-standard-guard.cjs
 check "knowledge base indexed"        node scripts/kb-index-guard.cjs
 check "doc staleness ratchet"         node scripts/doc-staleness-guard.cjs
 check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs

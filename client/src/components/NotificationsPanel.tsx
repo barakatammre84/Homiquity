@@ -306,12 +306,12 @@ export function NotificationsBell() {
           )}
         </ScrollArea>
         <div className="border-t p-2">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="w-full text-xs" data-testid="button-view-all-notifications">
+          <Button asChild variant="ghost" size="sm" className="w-full text-xs" data-testid="button-view-all-notifications">
+            <Link href="/dashboard">
               View all activity
               <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>

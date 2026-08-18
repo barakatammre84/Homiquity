@@ -75,7 +75,7 @@ Two axes of authority:
 | [compliance/SAFE_MLO_COMPLIANCE_MAP.md](knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [compliance/COMPLIANCE_COUNSEL_REVIEW.md](knowledge-base/compliance/COMPLIANCE_COUNSEL_REVIEW.md) | SAFE Act / MLO advertising crosswalk + the standing compliance-counsel review. |
 | [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 5-routine launch suite). |
 | [docs/fannie-mae/](docs/fannie-mae/) · [docs/nmls/](docs/nmls/) · [docs/nmls-safe/](docs/nmls-safe/) | Official GSE + NMLS reference documents — never work from memory on ULDD/UCD/URLA/MISMO or NMLS licensing. |
-| [handbook/design/design_guidelines.md](knowledge-base/handbook/design/design_guidelines.md) | Design system rules. |
+| [handbook/design/DESIGN_SYSTEM.md](knowledge-base/handbook/design/DESIGN_SYSTEM.md) | The design system — tokens, type scale, layout, capture-flow standard, four-question gate. |
 | [compliance/security/threat_model.md](knowledge-base/compliance/security/threat_model.md) | Security threat model. |
 
 ### Tier 3 — Runbooks (operational how-to)

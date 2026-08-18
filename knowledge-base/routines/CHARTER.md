@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-17.
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day).
 
 Each routine lives as a `SKILL.md` in `~/.claude/scheduled-tasks/<id>/` and runs in a **fresh
 session with no memory of any other run**. That file is the *job description*. **This file is the
@@ -45,6 +45,16 @@ not a lens on it.
 > **B. Is the borrower and partner experience best-in-class?**
 > Lowest friction, highest capture quality, design-system-conformant, WCAG AA. A borrower who
 > abandons, or whose data is captured wrong, is the same loss as a rejected package.
+>
+> "Best-in-class" is not a matter of taste here, and it is not a routine's to define. The binding
+> standard is [`handbook/design/DESIGN_SYSTEM.md`](../handbook/design/DESIGN_SYSTEM.md), and a
+> question-B finding cites the section it fails. A surface passes when all four hold (§13 there):
+> **provenance** — every displayed number declares its source, in the three real states of
+> `shared/dataProvenance.ts`, never an invented parallel enum; **explanation** — every intrusive
+> ask says what it is for; **agreement** — no two elements disagree about the same fact, and no
+> fraction's denominator moves; **honesty** — every choice is a positive opt-in with no penalty
+> for declining. Capture screens additionally meet §12 (one decision per screen, ≤3 visible
+> inputs, no global chrome during capture, mobile designed at 320px).
 
 A finding that touches **neither** is LOW, however elegant the architecture argument. An elegant
 refactor is never the headline; a broken capture path always is.
@@ -156,19 +166,40 @@ run history and stored tool approvals. Judge it by its description, not its slug
 launch. A gap in `reports/` may therefore mean "the laptop was shut", not "the routine broke" —
 Evening Triage distinguishes the two rather than assuming either.
 
-**A second fleet exists.** Six claude.ai-side (CCR) scheduled triggers run against this repo
-from the cloud, outside this scheduler: the daily Better.com competitive brief (12:00Z), the
-weekly UX audit (Wed 13:00Z — report-only, reads `feature-review/FINDINGS.md`), the monthly
-financial-architecture audit (1st, 13:00Z — invokes `/financial-audit`, so §6's Financial Audit
-territory row governs it), the Monday logged-in deep-dive reminder (12:30Z, human-directed), and
-the hourly weekday PR sync loop, and the **Monday doc & memory hygiene sweep** (14:00Z —
-report-only: runs `pnpm guard:staleness --list` plus the judgment sweep the ratchet cannot do —
-standing claims dated against code, defunct references beyond regex, ledger/board rot — filing a
-dated report through the docs PR lane and proposing tickets to Evening Triage; if two consecutive
-sweeps find nothing, it proposes its own demotion to monthly). Audited and rewired 2026-08-18 —
-[logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Where
-they touch the repo they are report-only or PR-lane and bound by this charter; the quarterly
-knowledge audit reads both fleets.
+**A second fleet exists, and this clock is not it.** Claude-Code-Remote triggers run against this
+repo from the cloud, outside this scheduler, in fresh sessions. **Do not trust a count written
+here** — this fleet grew twice in the hour this paragraph was last rewritten, and two sessions
+had already recorded a stale "six" between them. **The authoritative list is `list_triggers`
+(Claude_Code_Remote MCP); read it rather than this paragraph.** As of **2026-08-18 18:25Z** it
+held eight Homiquity triggers:
+
+| Fires (UTC) | Trigger | Posture |
+|---|---|---|
+| daily 12:00 | Better.com competitive brief | report-only; may file one `design-standard` issue |
+| Mon 12:30 | logged-in Better deep-dive reminder | human-directed; sends a reminder, nothing else |
+| Wed 13:00 | UX audit vs the design standard | report-only, `read` access |
+| 1st 13:00 | financial-architecture audit | invokes `/financial-audit`; §6's Financial Audit row governs it |
+| daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
+| Mon 14:00 | doc & memory hygiene sweep | report-only; docs-PR lane for its report |
+| 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
+| hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest |
+
+Where they touch the repo they are report-only or PR-lane and bound by this charter. Note the
+Monday 14:00 collision between the daily inspection and the hygiene sweep — harmless while both
+are report-only, a real hazard the day either starts writing code.
+
+Audited and rewired 2026-08-18 —
+[logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Until
+that date the two fleets did not know about each other, and it showed: three triggers cited
+documents that did not exist — a teardown corpus that had not yet landed in the repo (it has since,
+at [`research/better-teardown/`](../research/better-teardown/)), and `docs/DESIGN-STANDARD.md`, in
+a directory §6 puts off limits to every routine. All three now cite
+[`handbook/design/DESIGN_SYSTEM.md`](../handbook/design/DESIGN_SYSTEM.md) and
+[`feature-review/FINDINGS.md`](../feature-review/FINDINGS.md) — the same sources this fleet uses —
+and probe the Railway host rather than `www`. A fourth, the doc-accuracy steward, cites a skill
+that does not exist at `origin/main` yet; it is written to say so and stop, which is the correct
+shape for a routine whose dependency has not landed. **Changing one fleet means checking the
+other**; the quarterly knowledge audit reads both lists.
 
 The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
@@ -288,9 +319,9 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 
 | Routine | May edit | Never edits |
 |---|---|---|
-| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
+| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
 | Launch Gate | nothing | — (report + proposed tickets only) |
-| Wiring Audit | `client/src/**` on the capture path | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
+| Wiring Audit | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
 | Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
 | QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
@@ -299,6 +330,25 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
 | Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
+
+### 6a. The design-system propagation sweep — who owns it
+
+The standard was adopted 2026-07-14, its foundations shipped, and then nobody owned the rollout:
+at 2026-08-18 PageShell was at **17%** adoption, the icon registry and the `<Heading>`/`<Text>`
+primitives were **built with zero call sites**, and the doc still described all three as future
+work. A standard nobody is assigned to propagate is a preference.
+
+- **Primary Engineer** and the **Wiring Audit** may take conformance batches within their existing
+  lanes — Wiring Audit on the capture path, Primary Engineer elsewhere.
+- **One surface area per PR, sized to a single CI cycle.** A 200-file mechanical sweep is
+  unreviewable and gets rejected. Follow DESIGN_SYSTEM.md §16.
+- **`pnpm guard:ui` must go down, never up**, and the tightened baseline is committed in the same
+  PR. That ratchet is what makes the sweep irreversible.
+- **Refactor Radar still may not do this work.** Its R6 forbids visual and copy changes, and
+  nothing here relaxes it.
+- A conformance batch is **visual only** — DESIGN_SYSTEM.md §14: no `react-hook-form` rewiring, no
+  Zod edits, no API payload changes in the same commit. That rule exists because capture fields
+  feed the ULDD/UCD package, and a large styling diff is where a dropped field hides best.
 
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
@@ -395,7 +445,20 @@ New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section 
   <file>` defaults to the **node** config — pointing it at a `client/src` test silently runs
   nothing. Assert your new test's filename appears in the run output.
 - **A guard only answers its own question.** Green guards are not a clean bill of health; the
-  design-token guard matches inside comments, and fixtures can pin a bug in place.
+  design-token guard matches inside comments, and fixtures can pin a bug in place. `guard:ui` is a
+  text scan with no layout engine, and its className metrics see only literal double-quoted
+  strings — classes built in `cn()`, template literals or cva variants are invisible, so **every
+  count it prints is a floor, not a total.**
+- **Never claim a UI change was verified in a browser.** The client test lane is happy-dom, which
+  has no layout engine; there is no Playwright, no Storybook and no axe in this repo, and §6
+  forbids adding one. Nothing here can prove a rendered layout, a mobile viewport or a contrast
+  ratio in situ. Report the commands you actually ran. A rail that demands evidence the repo
+  cannot produce trains routines to invent it — which is why "verify at 320px" is **not** a rail
+  here, and `unprefixedMultiColGrid` is: the second one is checkable.
+- **Never quote a design-adoption number from a doc.** Re-measure with `pnpm guard:ui`. Both
+  predecessor design docs stated an adoption figure that had drifted in the flattering direction
+  (57% claimed, 82% actual), which is exactly why those numbers now live in a baseline file
+  instead of prose.
 - **Date every standing claim before reporting it** — `git log -S '<symbol>' -- <path>`, then trace
   the chain in the code. A finding register records what was true when it was written; one row in
   this repo was recorded the same day its fix merged and stayed asserted for a week (§1). Re-reporting

@@ -102,12 +102,12 @@ export default function ArticleDetail() {
               <p className="mt-2 text-muted-foreground">
                 The article you're looking for doesn't exist or has been removed.
               </p>
-              <Link href="/learn">
-                <Button className="mt-6" data-testid="button-back-to-learning">
+              <Button asChild className="mt-6" data-testid="button-back-to-learning">
+                <Link href="/learn">
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Back to Learning Center
-                </Button>
-              </Link>
+                </Link>
+              </Button>
         </div>
       </>
     );
@@ -132,12 +132,12 @@ export default function ArticleDetail() {
       />
       <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
             <div className="mb-8">
-              <Link href="/learn">
-                <Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-4" data-testid="button-back">
+              <Button asChild variant="ghost" size="sm" className="gap-1 -ml-2 mb-4" data-testid="button-back">
+                <Link href="/learn">
                   <ChevronLeft className="h-4 w-4" />
                   Back to Learning Center
-                </Button>
-              </Link>
+                </Link>
+              </Button>
 
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 {category && (
@@ -236,23 +236,23 @@ export default function ArticleDetail() {
             <div className="mt-12 border-t pt-8">
               <h2 className="text-lg font-semibold mb-4">Continue learning</h2>
               <div className="flex flex-wrap gap-4">
-                <Link href="/learn">
-                  <Button variant="outline" data-testid="button-more-articles">
+                <Button asChild variant="outline" data-testid="button-more-articles">
+                  <Link href="/learn">
                     <BookOpen className="mr-2 h-4 w-4" />
                     All articles
-                  </Button>
-                </Link>
-                <Link href="/faq">
-                  <Button variant="outline" data-testid="button-view-faqs">
-                    View FAQs
-                  </Button>
-                </Link>
-                {!PRELAUNCH_GATED && (
-                  <Link href="/apply">
-                    <Button data-testid="button-get-preapproved">
-                      Get Pre-Approved
-                    </Button>
                   </Link>
+                </Button>
+                <Button asChild variant="outline" data-testid="button-view-faqs">
+                  <Link href="/faq">
+                    View FAQs
+                  </Link>
+                </Button>
+                {!PRELAUNCH_GATED && (
+                  <Button asChild data-testid="button-get-preapproved">
+                    <Link href="/apply">
+                      Get Pre-Approved
+                    </Link>
+                  </Button>
                 )}
               </div>
             </div>

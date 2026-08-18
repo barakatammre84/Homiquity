@@ -198,15 +198,24 @@ discovered trap gets a line here in the same PR.
   knowing direct push only when it is not. Never autonomous, never silent —
   [ROLLBACK.md](../runbooks/ROLLBACK.md) §2.)*
 - Every merge to `main` deploys production — Railway builds from GitHub and rolls a new
-  container. A deploying merge — and any action against the production DB or env — is not
-  complete until its entry lands in the **production change ledger** in
-  [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions, validation
-  evidence, rollback pointer. Validation **must include the binding post-deploy health probe** —
-  `curl https://www.homiquity.com/api/health` — and must read the **`commit`** field, not just
-  the status code: a build status attests the build, not the runtime, and a *failed* Railway
-  deploy leaves the previous container serving, so a healthy 200 can be the old code answering
-  (2026-08-06: nine failed deploys, prod ~8 commits stale, every check green). *(Prevents: an
-  unledgered deploy invisible to the next incident responder — and the 2026-07-17 class of
+  container. **Ledger scope — rescoped 2026-08-18** *(founder-approved. The per-merge row rule
+  dates to the pre-`verify-deploy` era; practice diverged for a month of merges after
+  2026-07-19, and a rule nobody keeps trains readers to skip rules. Per-merge currency is now
+  proven mechanically — the CI `verify-deploy` job reads `/api/health`'s `commit` field after
+  every push to `main` — so the ledger binds where the PR record and `verify-deploy` cannot
+  see)*: a row in the **production change ledger**
+  ([CHANGE_LEDGER.md](../runbooks/CHANGE_LEDGER.md), split out of CICD.md 2026-08-06) is
+  required, same session, for **(a)** any hand action against the prod DB or env — reseeds,
+  variable flips, credential rotations, break-glass migrations; **(b)** incidents and their
+  forward fixes; **(c)** deploys that tripped a §9 security trigger; **(d)** anything with a
+  special rollback shape — contract migrations, destructive data changes, dependency majors.
+  Ordinary green PR merges are recorded by the PR itself plus `verify-deploy` and need no row.
+  Where a row IS written, validation **must include the binding post-deploy health probe** —
+  `curl https://www.homiquity.com/api/health` — read by the **`commit`** field, not the status
+  code: a build status attests the build, not the runtime, and a *failed* Railway deploy leaves
+  the previous container serving, so a healthy 200 can be the old code answering (2026-08-06:
+  nine failed deploys, prod ~8 commits stale, every check green). *(Prevents: an unledgered
+  prod-touching action invisible to the next incident responder — and the 2026-07-17 class of
   outage, where a deploy marked READY served a dead API.)*
 - Scheduled routines publish **docs-only, through the same PR lane** (docs-only branch →
   gate watched to green → merge; the routine inspects every commit's paths before opening

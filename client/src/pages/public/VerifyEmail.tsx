@@ -67,11 +67,11 @@ export default function VerifyEmail() {
                 <p className="text-sm text-muted-foreground" data-testid="verify-message">{message}</p>
               )}
               {status !== "verifying" && (
-                <Link href="/dashboard">
-                  <Button className="w-full" data-testid="button-continue">
+                <Button asChild className="w-full" data-testid="button-continue">
+                  <Link href="/dashboard">
                     Continue
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               )}
             </div>
           </CardContent>

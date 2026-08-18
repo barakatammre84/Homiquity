@@ -149,7 +149,10 @@ export function IncomeSourcesStep({
 
   return (
     <div className="w-full max-w-lg mx-auto space-y-6">
-      <div className="grid grid-cols-2 gap-3">
+      {/* One column on a phone: each chip is a 36px glyph + label + checkbox in
+          p-4, and at 320px two of them crush labels like "Self-Employment /
+          1099" and "Pension / Retirement" (DESIGN_SYSTEM.md §12.3). */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {allIncomeTypes.map((incomeType) => {
           const TypeIcon = incomeType.icon;
           const isActive = selectedIncomeTypes.includes(incomeType.value);
@@ -224,7 +227,10 @@ export function IncomeSourcesStep({
                           onSelect={(result) => updateRentalProperty(idx, "address", result.formattedAddress)}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* Two $-prefixed currency fields side by side leave ~110px
+                          of usable width each at 320px, inside a card that is
+                          itself nested two levels deep. Stack them on a phone. */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-sm text-muted-foreground mb-1 block">Monthly Rental Income</label>
                           <div className="relative">
