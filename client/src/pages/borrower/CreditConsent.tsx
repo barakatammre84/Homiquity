@@ -419,6 +419,23 @@ export default function CreditConsent() {
 
               <Separator />
 
+              {/* ux-20: the hard-inquiry fact must be visible AT the decision
+                  point, not only as item 2 of the disclosure document inside
+                  the scroll area above — especially because the pre-approval
+                  funnel deliberately set the opposite expectation ("a soft
+                  inquiry, which will not affect my credit score"). Wording
+                  mirrors the ratified FCRA disclosure item 2
+                  (server/services/creditCatalogs.ts); nothing new is asserted. */}
+              <Alert data-testid="alert-hard-inquiry">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>This authorizes a hard credit inquiry</strong> — unlike the soft check
+                  used for pre-qualification, a hard inquiry may temporarily lower your credit
+                  score. Mortgage inquiries made within a 45-day period are typically counted as
+                  a single inquiry for scoring purposes.
+                </AlertDescription>
+              </Alert>
+
               <div className="flex items-start gap-3">
                 <Checkbox
                   id="acknowledge"
@@ -426,10 +443,15 @@ export default function CreditConsent() {
                   onCheckedChange={(checked) => setAcknowledged(checked as boolean)}
                   data-testid="checkbox-acknowledge"
                 />
-                <Label htmlFor="acknowledge" className="text-sm leading-relaxed cursor-pointer">
-                  I have read and understand the Credit Authorization Disclosure above. I authorize 
-                  Homiquity to obtain my credit report from one or more consumer reporting agencies 
-                  for the purpose of evaluating my mortgage loan application.
+                <Label
+                  htmlFor="acknowledge"
+                  className="text-sm leading-relaxed cursor-pointer"
+                  data-testid="label-acknowledge"
+                >
+                  I have read and understand the Credit Authorization Disclosure above. I authorize
+                  Homiquity to obtain my credit report from one or more consumer reporting agencies
+                  for the purpose of evaluating my mortgage loan application. I understand this
+                  permits a hard credit inquiry, which may temporarily lower my credit score.
                 </Label>
               </div>
 
@@ -479,9 +501,10 @@ export default function CreditConsent() {
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground text-center">
-                By clicking "I Authorize", you are providing written authorization as required by the 
-                Fair Credit Reporting Act (FCRA). This authorization is valid for 120 days.
+              <p className="text-xs text-muted-foreground text-center" data-testid="text-authorize-fine-print">
+                By clicking "I Authorize", you are providing written authorization for a hard credit
+                inquiry as required by the Fair Credit Reporting Act (FCRA). This authorization is
+                valid for 120 days.
               </p>
             </CardContent>
           </Card>

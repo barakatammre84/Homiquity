@@ -229,6 +229,9 @@ export default defineConfig({
       // Lease capture: the encryption round-trip, the view's refusal to leak ciphertext,
       // UTC date semantics, and the validation boundary.
       "tests/leaseCapture.test.ts",
+      // The rent surfaces' inbound paths — both routes shipped as orphans (2026-08-17
+      // audit); deleting a nav link is silent, so the links are pinned.
+      "tests/rentNavigation.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
       // CTO_ROADMAP §3.2 — the compliance dashboard's per-application MISMO

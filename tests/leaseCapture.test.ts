@@ -14,6 +14,7 @@ import {
   rentPaymentBodySchema,
 } from "../server/routes/borrower/leases";
 import { toRentPaymentView } from "../server/storage/leases";
+import { isForeignKeyViolation, isUniqueViolation } from "../server/http/dbErrors";
 import { FURNISHABLE_PROVENANCE } from "../server/services/rentFurnishing";
 import type { RentPayment } from "../shared/schema";
 import type { Lease } from "../shared/schema";
@@ -385,6 +386,83 @@ describe("toRentPaymentView", () => {
     const view = toRentPaymentView(paymentRow({ status: "missed", paidDate: null, amountPaid: null }));
     expect(view.paidDate).toBeNull();
     expect(view.amountPaid).toBeNull();
+  });
+});
+
+describe("deletion is a real erase, not a status flag", () => {
+  // The repo's usual instinct is a soft delete (cancelTask is an audited status flip).
+  // That is right for a work item, whose history is the product. It is wrong for a
+  // landlord's email and a street address the borrower typed in: answering "delete my
+  // data" with a flag leaves the ciphertext in the table while telling them it's gone.
+  const src = fs.readFileSync(path.join(ROOT, "server/storage/leases.ts"), "utf8");
+
+  it("issues real DELETEs against all three tables", () => {
+    expect(src).toMatch(/\.delete\(rentPayments\)/);
+    expect(src).toMatch(/\.delete\(rentFurnishingQueue\)/);
+    expect(src).toMatch(/\.delete\(leases\)/);
+  });
+
+  it("does it in one transaction — a partial delete orphans a payment history", () => {
+    expect(src).toMatch(/deleteLeaseForUser[\s\S]{0,200}db\.transaction/);
+  });
+
+  it("keeps ownership in the WHERE even on the final delete", () => {
+    expect(src).toMatch(/\.delete\(leases\)[\s\S]{0,120}eq\(leases\.userId, userId\)/);
+  });
+
+  it("consults the furnishing gate rather than deciding erasability locally", () => {
+    expect(src).toMatch(/isErasable\(/);
+    expect(src).not.toMatch(/state\s*===\s*["']pending_authority["']/);
+  });
+
+  it("does not write the erased PII into the audit metadata", () => {
+    const route = fs.readFileSync(path.join(ROOT, "server/routes/borrower/leases.ts"), "utf8");
+    const deleteBlock = route.slice(route.indexOf('app.delete("/api/leases/:id"'));
+    const auditCall = deleteBlock.slice(0, deleteBlock.indexOf("res.json"));
+    expect(auditCall).toMatch(/lease\.deleted/);
+    expect(auditCall).not.toMatch(/landlordEmail|propertyAddress|landlordName/);
+  });
+});
+
+describe("unique-violation detection survives the ORM wrapper", () => {
+  // The 2026-08-17 live audit: recording the same month twice returned 500, not 409.
+  // drizzle 0.45 wraps driver errors in DrizzleQueryError with the pg code on
+  // `.cause`, so the route's bare `err.code === "23505"` matched nothing — and the
+  // client test that "verified" the 409 toast had mocked the 409, proving nothing.
+  // These feed the REAL error shape drizzle throws.
+
+  const drizzleWrapped = (code: string) => {
+    const cause = Object.assign(new Error("duplicate key value"), { code });
+    return Object.assign(new Error(`Failed query: insert into "rent_payments" ...`), { cause });
+  };
+
+  it("detects 23505 on the wrapper's cause (drizzle 0.45 shape)", () => {
+    expect(isUniqueViolation(drizzleWrapped("23505"))).toBe(true);
+  });
+
+  it("detects 23505 on a bare pg error (pre-wrapper shape)", () => {
+    expect(isUniqueViolation(Object.assign(new Error("dup"), { code: "23505" }))).toBe(true);
+  });
+
+  it("does not claim other codes, shapes, or nothing at all", () => {
+    expect(isUniqueViolation(drizzleWrapped("23503"))).toBe(false);
+    expect(isUniqueViolation(new Error("plain"))).toBe(false);
+    expect(isUniqueViolation(null)).toBe(false);
+    expect(isUniqueViolation(undefined)).toBe(false);
+    expect(isUniqueViolation("23505")).toBe(false);
+  });
+
+  it("detects the FK violation the POST-vs-DELETE race produces", () => {
+    expect(isForeignKeyViolation(drizzleWrapped("23503"))).toBe(true);
+    expect(isForeignKeyViolation(drizzleWrapped("23505"))).toBe(false);
+  });
+
+  it("the route uses the helper — a bare err.code check must not return", () => {
+    const src = fs.readFileSync(path.join(ROOT, "server/routes/borrower/leases.ts"), "utf8");
+    expect(src).toMatch(/isUniqueViolation\(/);
+    expect(src, "bare err.code comparison reintroduced — it is dead under drizzle 0.45").not.toMatch(
+      /err[^\n]*\.code\s*===\s*["']23505["']/,
+    );
   });
 });
 
