@@ -93,7 +93,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
-The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Their job descriptions live in `~/.claude/scheduled-tasks/`; **this directory wins wherever they disagree.**
+The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet and in `.claude/skills/` for the CCR-fired routines (CHARTER §3); **this directory wins wherever they disagree.**
 - [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the launch sequence (§1a), the decision authority matrix (§1b), the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
 - [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
 - [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
@@ -109,6 +109,17 @@ The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): on
 ### Financial Audit — recurring capital-structure routine · [`financial-audit/`](financial-audit/)
 The looping `/financial-audit` run (skill in `.claude/skills/financial-audit/`): audits capital flow, risk/liability, unit economics and balance sheet **as implemented in code**. Memory-first (rail R2), never more than 2 commits behind `origin/main` (R3), never more than 2 open PRs (R4), PR-only, and it reports new findings rather than fixing them — discovery is not permission (R7).
 - [LEDGER.md](financial-audit/LEDGER.md) — the `F-###` register, statuses, run log, and the standing signals three audits found repeatedly (the routine's cross-run memory).
+
+### Doc Accuracy — the knowledge-base steward routine · [`doc-accuracy/`](doc-accuracy/)
+The daily CCR-fired `/doc-accuracy` run (skill in `.claude/skills/doc-accuracy/`): owns the gap the
+guards can't see — **semantic currency**. `guard:kb` proves indexed-and-linked, `guard:docs` proves
+re-verified-on-time; this routine verifies living docs against the code, corrects factual drift
+(docs-only, one PR per tick, meaning-preserving — rule changes are proposed, never edited), banners
+what history overtook, proposes pruning for fossils, and keeps a drift-source scoreboard so
+recurring drift classes earn structural prevention rather than a third hand-fix. Drift vs
+regression is decided before any edit: a doc contradicting the code may be reporting a code bug,
+which gets escalated, never papered over (rail D7).
+- [LEDGER.md](doc-accuracy/LEDGER.md) — the `DA-<MMDD>-<NN>` register, drift-source scoreboard, rotation cursor, exclusion table (the routine's cross-run memory).
 
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).

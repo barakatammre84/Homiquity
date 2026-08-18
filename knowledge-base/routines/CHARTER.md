@@ -3,9 +3,10 @@
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
 **Last verified against the code:** 2026-08-17.
 
-Each routine lives as a `SKILL.md` in `~/.claude/scheduled-tasks/<id>/` and runs in a **fresh
-session with no memory of any other run**. That file is the *job description*. **This file is the
-*contract*** — the shared clock, the shared facts, the shared lock, and the shared escalation path.
+Each routine runs in a **fresh session with no memory of any other run**. Its job description
+lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
+`.claude/skills/<id>/` for the CCR-fired routines (§3a). **This file is the *contract*** — the
+shared clock, the shared facts, the shared lock, and the shared escalation path.
 Where a routine's own file disagrees with this one, **this file wins**, and the routine must say so
 in its report rather than silently following the stale copy.
 
@@ -161,6 +162,32 @@ The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rai
 the register, and the acceptance questions on top. Radar's rails R1–R9 are **not** relaxed by
 anything here.
 
+### 3a. The CCR-scheduled fleet (cloud sessions — fire regardless of the laptop)
+
+These run as claude.ai Code triggers in **fresh cloud sessions**, cron in **UTC** (the table
+above is local time; the offset moves — verified local = UTC-3 on 2026-08-18). The CCR fleet
+cannot see `~/.claude/scheduled-tasks/` and the local fleet cannot see the trigger list, so
+**both lists live here** — the [2026-08-18 knowledge-file audit](../logs/2026-08-18-knowledge-file-audit.md)
+§4 found the two fleets blind to each other, and §11's rule extends to this table: re-timing or
+adding a CCR trigger edits this table in the same session. Trigger list read live 2026-08-18.
+
+| Fires (UTC) | Cron | Trigger | Cadence | Writes? | Produces |
+|---|---|---|---|---|---|
+| 12:00 | `0 12 * * *` | Daily Better.com competitive review | daily | GitHub issues only (`design-standard`) | competitive brief |
+| Mon 12:30 | `30 12 * * 1` | Better logged-in deep-dive reminder | weekly | no | founder reminder |
+| Wed 13:00 | `0 13 * * 3` | Weekly UX audit vs Better standard | weekly | no — report only | top-issues report |
+| 1st 13:00 | `0 13 1 * *` | Monthly financial-architecture audit | monthly | via [`/financial-audit`](../../.claude/skills/financial-audit/SKILL.md) rails | ledgered `F-…` findings |
+| 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
+| hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync & review loop | hourly | branch updates only | open-PR digest |
+| 03:40 / 09:40 / 15:40 / 21:40 | `40 3,9,15,21 * * *` | **Doc Accuracy** (`doc-accuracy`) | every 6 h | yes — living `.md` only (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
+
+Doc Accuracy's cadence is deliberately the suite's tightest: every fresh session — human or
+routine — orients from the docs, so doc drift compounds into every other lane's errors within
+hours (founder direction, 2026-08-18). Its ticks are diff-driven from its ledger's `last-swept
+SHA`, so an empty window is a cheap clean tick; same-day ticks extend one PR. Its report lands in
+`reports/` like every routine's (§7 counts it; §9 format binds it) and its proposed tickets go to
+Evening Triage like everyone's (§4).
+
 ---
 
 ## 4. The hand-off chain
@@ -285,6 +312,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
 | Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
+| Doc Accuracy | living `.md` docs: `knowledge-base/**` (minus the peer registers at right) + root `README.md` + its own `knowledge-base/doc-accuracy/**`; ⛔-flagged per its rail D11: `CLAUDE.md` pointers, this file's §2/§3 factual rows, `.claude/skills\|agents/**` pointers, archive moves | every code path; `docs/**`; `data/regulatory/**`; `CTO_ROADMAP.md` (Triage's); dated `logs/`/`reports/`/`archive/` bodies (top banners only); peer cross-run memory (`financial-audit/LEDGER.md`, `refactor-radar/LEDGER.md`, `primary-engineer/LEDGER.md`, `compliance-watch/STATE_LADDER.md`, `feature-review/FINDINGS.md`); rule semantics anywhere (propose-only); its own `SKILL.md` |
 
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
