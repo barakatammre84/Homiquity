@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { lookupResolver } from "./lookupResolver";
 import { recalculateDecision, type InstantDecision } from "./decisionEngine";
 import { monthlyPrincipalAndInterest, paymentFactor } from "@shared/lib/amortization";
+import { calculateMortgageAPR, estimatePrepaidFinanceCharges } from "./apr";
 
 // =============================================================================
 // DETERMINISTIC INTAKE ANALYSIS
@@ -100,6 +101,55 @@ function escrowFor(purchasePrice: number): { tax: number; insurance: number } {
   };
 }
 
+/**
+ * Actuarial APR for one scenario — the Appendix J solver in services/apr.ts,
+ * never a spread over the note rate. The spread was F-076: every borrower
+ * option card showed `rate + 0.25/0.50`, which apr.ts's own header calls a
+ * TILA violation to advertise, and a paid discount point moved the displayed
+ * APR by exactly 0.000pp.
+ *
+ * Fee basis: these scenarios are PRE-ELECTION estimates — no originator
+ * compensation model exists yet, and loanCosts.ts deliberately refuses to
+ * assume one (§1026.36(d)(2)). The advertised representative fee model is the
+ * platform's treatment for exactly that state, and errs only in the
+ * conservative direction (borrower-paid origination kept ⇒ a higher disclosed
+ * APR, never a lower one). The scenario's own discount points are added on
+ * top — points are prepaid finance charges (§1026.4 per apr.ts's header).
+ *
+ * MI in the stream is the scenario's own monthly figure: conventional BPMI
+ * terminates at 78% LTV (HPA — property value passed), FHA annual MIP runs
+ * life-of-loan (same post-2013 treatment as advertisedAPR).
+ *
+ * Exported so the matrix test can pin that the stored column ROUTES through
+ * this (F-090: the old test's `apr >= rate` passed for any constant).
+ */
+export function scenarioAPR(args: {
+  loanType: "conventional" | "fha" | "va";
+  loanAmount: number;
+  ratePct: number;
+  termMonths: number;
+  monthlyMI: number;
+  purchasePrice: number;
+  pointsCost: number;
+}): number {
+  const { loanType, loanAmount, ratePct, termMonths, monthlyMI, purchasePrice, pointsCost } = args;
+  // Degenerate pricing inputs (no positive loan, or fees swallowing the whole
+  // amount financed) cannot carry an APR claim; the note rate is the honest
+  // floor and the card renders nothing meaningful in these states anyway.
+  if (loanAmount <= 0 || ratePct <= 0 || termMonths <= 0) return ratePct;
+  const prepaidFinanceCharges =
+    estimatePrepaidFinanceCharges(loanAmount, ratePct, { isFHA: loanType === "fha" }) + pointsCost;
+  if (loanAmount - prepaidFinanceCharges <= 0) return ratePct;
+  return calculateMortgageAPR({
+    loanAmount,
+    noteRatePct: ratePct,
+    termMonths,
+    monthlyMI,
+    propertyValue: loanType === "fha" ? 0 : purchasePrice,
+    prepaidFinanceCharges,
+  });
+}
+
 function buildScenario(
   loanType: "conventional" | "fha" | "va",
   inputs: ScenarioInputs,
@@ -131,11 +181,21 @@ function buildScenario(
   const closingPct = loanType === "fha" ? 0.035 : loanType === "va" ? 0.025 : 0.03;
   const closingCosts = loanAmount * closingPct + pointsCost;
 
+  const apr = scenarioAPR({
+    loanType,
+    loanAmount,
+    ratePct: rate,
+    termMonths,
+    monthlyMI: mi,
+    purchasePrice,
+    pointsCost,
+  });
+
   return {
     loanType,
     loanTerm: termYears,
     interestRate: rate.toFixed(3),
-    apr: (rate + (loanType === "fha" ? 0.5 : 0.25)).toFixed(3),
+    apr: apr.toFixed(3),
     points: String(points),
     pointsCost: pointsCost.toFixed(2),
     monthlyPayment: (pi + tax + insurance + mi).toFixed(2),
