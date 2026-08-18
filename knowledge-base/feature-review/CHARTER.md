@@ -55,9 +55,15 @@ false positive:
 - **Decisioning is a server cascade** on `POST /api/loan-applications` (`finalizeIntake →
   recalculateDecision → runInstantDecision`). The `instant-decision`/`calculate-*`/`advance-stage`
   endpoints are dead-but-redundant — assert on cascade outputs, not those endpoints (N-002).
-- **~100 dead endpoints / 5 server-only subsystems** (Borrower Intelligence, Underwriting Rules,
-  Rate Sheets, Optimization, Market-data) — unshipped surface; don't review as features or write
+- **~100 dead endpoints / 4 server-only subsystems** (Borrower Intelligence, Underwriting Rules,
+  Rate Sheets, Optimization) — unshipped surface; don't review as features or write
   tests against endpoints nothing calls. Decide wire/defer/delete per the dead-surface map.
+  ⚠️ **`Market-data` was removed from this list 2026-08-17 (D-013d) — it is WIRED**:
+  `client/src/pages/staff/PricingIntelligence.tsx:91,97` calls `/api/market-data/undercut-quote`
+  and `/risk-profile`, pinned by `PricingIntelligence.test.tsx:47-48`. `Rate Sheets` is still
+  accurate (zero client callers, verified same day). **Re-verify a dead-surface claim before
+  relying on it** — this list suppresses false positives, so a stale entry here teaches reviewers
+  to dismiss real findings unreviewed, which is the more expensive failure.
 - **Security posture is STRONG** — no P0, PII-at-rest sound (N-001). Findings are P1/P2
   hardening on §9 trigger surfaces. *(Correction 2026-07-12: one AUS-route IDOR was found after
   the audit and closed in #135's §9 review — the "no IDOR" line predates that discovery.)*
