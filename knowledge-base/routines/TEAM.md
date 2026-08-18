@@ -1,4 +1,4 @@
-# The core team — seven seats, one working day
+# The core team — eight seats, one working day
 
 **Status:** binding on the seats named below. **Owner:** founder (Amr).
 **Authority:** [`CHARTER.md`](CHARTER.md) wins over this file on any conflict, and every rail there
@@ -25,9 +25,16 @@ good each one is alone.
 
 ## 1. The seating chart
 
-Seven seats. **Four were already staffed** — the finding that produced this file is that the
+Eight seats. **Four were already staffed** — the finding that produced this file is that the
 fleet's gaps and the hiring plan's gaps are the *same* gaps, and both are on the non-engineering
 side. We had built the builders and skipped the domain, the vendor edge, and the adversarial check.
+
+**The eighth seat was added the same evening, from the other direction.** The Complex File Engine
+(CHARTER §6d) is a *builder*, but it was missing for the same structural reason the three above
+were: the qualification layer — can a messy borrower qualify at all — sat inside the Primary
+Engineer's company-wide lane, so no run was ever judged on it. It pairs with the Domain seat by
+design: when it reaches regulated math it may not implement, it asks the **Domain Oracle** for a
+cited verdict and posts a `WAITING` row rather than guessing (its rails C2/C3).
 
 | Seat | Hiring-plan role | Routine | Cadence | Writes code? |
 |---|---|---|---|---|
@@ -36,6 +43,7 @@ side. We had built the builders and skipped the domain, the vendor edge, and the
 | **Build — product** | Senior full-stack (§2.3) | Primary Engineer | daily 07:21 | yes |
 | **Build — backend** | Senior full-stack (§2.3) | Backend Data Engineer | daily 11:00 UTC | yes |
 | **Build — capture path** | Senior full-stack (§2.3) | Frontend Wiring Audit | daily 09:20 | yes |
+| **Build — qualification layer** | Senior full-stack (§2.3) | **Complex File Engine** *(new)* | daily 09:53 | yes |
 | **QA — find** | QA engineer (§2.4) | Deliverable QA Sweep | daily 15:05 | no |
 | **QA — prove** | QA engineer (§2.4) | **QA Mutation Verifier** *(new)* | daily 16:20 | throwaway only |
 

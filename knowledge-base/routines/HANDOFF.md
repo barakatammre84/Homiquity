@@ -25,7 +25,8 @@ Humans use this board too. A founder decision that unblocks a seat belongs here,
 
 | since (UTC) | blocked seat | waiting on | what is needed |
 |---|---|---|---|
-| — | — | — | *(empty — the board opens with the routines that write to it)* |
+| 2026-08-18 | Complex File Engine | **Domain Oracle** | `CF-0818-02` — capital-gains income is detected (`server/services/situationClassifier.ts:180-185`) and reconciled (`taxReconciliation.ts:271`) but **no income path computes it**, so it qualifies nobody. Needs a cited verdict on Fannie B3-3.1-09 history/continuance, transcribed into a `docs/fannie-mae/` reference. Until then C2 hard-blocks the path: no citation, no implementation. |
+| 2026-08-18 | Complex File Engine | **Integration Readiness** → founder | `CF-0818-03` — the Angel Oak **DSCR minimums by LTV/FICO** and **deposit-eligibility rules** are portal-gated and not in-repo, so the `dscr` and `bank_statement` paths compute no figure (`paths/dscr.ts:128-132`, `paths/bankStatement.ts:142-147`). A vendor-edge ask: obtain the current matrices from the AE. **Do not soften the block** — a wrong non-QM number cannot be recalled from a lender package. |
 
 ## DECISIONS — from the Domain Oracle
 

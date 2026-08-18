@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **2026-08-18 (evening):** §3 clock, §4 chain, §6 territory and a new §6d added to register the **Complex File Engine**; §3a gained the live-`list_triggers` finding that the entire CCR fleet is currently `enabled: false`.
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -159,6 +159,7 @@ when reasoning about overlap. `taskId` is the scheduler key.
 | 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
 | 08:20 | `15 8 * * *` | **Domain Oracle** (`domain-oracle`) | daily | no — docs only | cited scenario verdicts + the day's `DECISIONS` |
 | 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
+| 09:53 | `50 9 * * *` | **Complex File Engine** (`complex-file-engine`) | daily | yes — the qualification layer, never the three engine files | ≤**1** PR + `CF-…` ledger |
 | 10:40 | `35 10 * * *` | **Integration Readiness** (`integration-readiness`) | daily | no — board only | per-adapter sim→contract readiness + `ASKS` |
 | 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
@@ -178,8 +179,12 @@ or throwaway-only **by design**: the fleet's scarcest resources are write access
 a founder action.
 
 **Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
-Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
-slot is free.
+Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. **The 09:53
+slot was taken by the Complex File Engine on 2026-08-18**, resolving a same-session collision with
+Integration Readiness over 10:40: both were written at 10:40 by sessions that could not see each
+other, and the code-writing one moved. Concurrency with the 09:20 Wiring Audit is safe **by
+construction, not by luck** — that routine's territory is `client/src/**` and this one's excludes
+`client/**` entirely, so the two cannot land on the same file even when they overlap in time.
 
 The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
 run history and stored tool approvals. Judge it by its description, not its slug.
@@ -240,6 +245,18 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 | hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
 | 03:40 / 09:40 / 15:40 / 21:40 | `40 3,9,15,21 * * *` | **Doc Accuracy** (`doc-accuracy`) | every 6 h | yes — living `.md` only (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
 
+⛔ **Every trigger in this table read `enabled: false` on 2026-08-18 (19:5xZ), with zero run
+sessions ever recorded** (`RemoteTrigger` `list`, then `list_runs` on the oldest daily trigger:
+`"data": []`). `next_run_at` is still populated on a disabled trigger, so it is **not** evidence of
+life — the field that decides is `enabled`, and the corroborating one is a non-empty `list_runs`.
+The same read showed all ten **local** tasks with a `lastRunAt` earlier that day, so the two fleets
+are in opposite states: local is firing, cloud has never fired. This matters beyond bookkeeping,
+because §6a and §6b assign **accountable ownership** of two lanes — design-system propagation and
+backend data integrity — to routines in this table, and §0's rule is that a routine that cannot be
+shown to have run is not a control. Until these are enabled, those lanes are owned on paper only.
+**Founder action:** enable them, or move them to the local fleet, or retire them — but not leave
+them registered-looking. This finding is dated; **re-read `list_triggers` rather than trusting it.**
+
 **Three of these cite a skill that is not on `origin/main` yet** — Doc Accuracy, the UI
 conformance sweep and the Backend Data Engineer each name a founding PR that has not merged. All
 three are written to say exactly that and stop, which is the correct shape for a routine whose
@@ -277,6 +294,10 @@ The day is a pipeline, not a stack of independent jobs.
         │             (a FAIL here is the NEXT Primary Engineer run's first item)
         ▼
 09:10 Wiring Audit ──► capture-path defects (question B)
+        ▼
+09:53 Complex File Engine ──► can a MESSY borrower qualify at all? multi-path income,
+        │                            situation identification, tax/document intelligence
+        │                            (question A, upstream of delivery)
         ▼
 11:00 UTC Backend Data Engineer (CCR fleet) ──► schema integrity, MISMO/ULDD mapping,
         │                                        API payload stability (question A)
@@ -421,6 +442,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Launch Gate | nothing | — (report + proposed tickets only) |
 | Wiring Audit | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
 | Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b); **dependency-bump triage per §6c — verdicts only, never the manifest** | `client/**` — not one line; `package.json`/`pnpm-lock.yaml` (§6c is verify-only); the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
+| Complex File Engine | `server/services/income/**`, `selfEmploymentIncome.ts`, `underwritingNuance.ts`, `incomeAnalysisPackage.ts`, the tax/document intelligence modules, `preUnderwriting.ts` (flag derivation only), `shared/{incomePaths,incomePackage,situationProfile,borrowerIncomeView}.ts`, `tests/**` for the behaviour it changes, plus `knowledge-base/complex-file-engine/**` and its report | **the underwriting/decision/rule engines** (proposes only — C1); `docs/**` and `data/regulatory/**`, which makes **regulated math a proposal, never a PR** (C3); `client/**` — not one line; `shared/schema/**` + `migrations/**` (the Backend Data Engineer's lane) |
 | Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
 | QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
@@ -564,6 +586,46 @@ reach the merge SHA, that is a `FAIL`: hand the founder §8's bad-deploy runbook
 The report states the merge SHA, the `/api/health` commit actually observed, and that rollback
 command. A merge reported without an observed health commit is the one thing this lane exists to
 never do.
+
+---
+
+### 6d. The complex-file capability — who owns it
+
+§6a's lesson, third instance: **a standard nobody is assigned to propagate is a preference, a
+package nobody is assigned to keep valid is a hope, and a capability nobody is assigned to extend
+is a demo.**
+
+The [Universal Adaptation Layer](../specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md) is the founder's
+stated differentiator: Rocket and Better hard-stop on multi-entity self-employed borrowers, K-1
+income, rental portfolios, DSCR investors and bank-statement files, and that stop is the moat. P1–P7
+shipped in July 2026 and the program then went unowned — it sat inside the Primary Engineer's
+company-wide lane, competing with the whole roadmap for three PR slots, so no run was ever judged on
+whether the complex-file capability got better.
+
+- **The [Complex File Engine](../../.claude/skills/complex-file-engine/SKILL.md) owns it**
+  (registered 2026-08-18, daily 09:53, **local fleet**): the multi-path income orchestrator,
+  situation identification, tax/document intelligence, and the honesty of every path it cannot
+  compute. Its run is judged on one number, recomputed each run and never quoted from a doc: **how
+  many real borrower situations the platform can qualify, correctly and citably.** Cross-run memory
+  is [`complex-file-engine/LEDGER.md`](../complex-file-engine/LEDGER.md), whose
+  verified-not-a-defect and refusal sections are append-only.
+- **It is upstream of every existing control, which is why it is not one of them.** The Lender
+  Delivery Gate asks whether a file that qualified can be *delivered*; the Backend Data Engineer
+  owns payload and schema integrity; the QA Sweep files findings and fixes nothing. **None of them
+  ask whether the borrower could qualify at all** — and a file that never produces a qualifying
+  figure never reaches delivery, so the defect and its detectors sit on opposite sides of the same
+  gate. The headline defect class is *a real borrower situation that silently yields no figure*.
+- **Local fleet, deliberately.** Every CCR trigger read live on 2026-08-18 was `enabled: false`
+  with zero run sessions ever recorded, while all ten local tasks showed `lastRunAt` that day. §0's
+  rule decides it: a routine that cannot be shown to have run is not a control, so a new routine
+  goes on the fleet that demonstrably fires. See §3a's standing debt.
+- **The two rails it cannot relax for itself.** The three engine files stay off limits (credit
+  policy is L4 — it is what the licensee is accountable for), and so does regulated math: §6 puts
+  `data/regulatory/**` off limits to every routine *and* requires a same-commit ledger citation for
+  any regulated-math change, which together mean **this routine may not change regulated math at
+  all**. It follows that reading rather than working around it, and drafts the ledger entry verbatim
+  in its report for the founder. **A proposal is a finished deliverable on this lane, not a failure
+  to ship** — which is the whole reason the lane can be trusted with the qualification layer.
 
 ---
 
