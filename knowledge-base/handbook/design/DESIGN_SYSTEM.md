@@ -46,7 +46,7 @@ sites actually use it.
 | `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
 | `EmptyState` | **BUILT** | 8 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 101 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 102 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
 | `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
