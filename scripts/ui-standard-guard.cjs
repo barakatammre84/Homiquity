@@ -173,6 +173,73 @@ function walk(dir, acc = []) {
   return acc;
 }
 
+/**
+ * Adoption MEASURES — reported, never ratcheted.
+ *
+ * A ratchet answers "did this get worse". These answer "how far along is it",
+ * which is what DESIGN_SYSTEM.md §0 is for. They exist because that table was
+ * hand-written and rotted in under a day: it shipped on 2026-08-18 saying the
+ * nested-control class stood at 122, and three PRs closed it to 0 the same
+ * afternoon. A number a human retypes is a number that will be wrong. So §0's
+ * table is GENERATED from here (`--table` / `--write-table`) and the guard fails
+ * when the committed doc disagrees with the live measurement.
+ */
+function walkAll(dir, acc = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkAll(full, acc);
+    else if (/\.(tsx?|jsx?)$/.test(entry.name)) acc.push(full);
+  }
+  return acc;
+}
+const allFiles = walkAll(SCAN_DIR);
+const readAll = (list) => list.map((f) => [path.relative(ROOT, f), fs.readFileSync(f, "utf8")]);
+const ALL = readAll(allFiles);
+const isPage = ([rel]) => rel.startsWith(path.join("client", "src", "pages")) && rel.endsWith(".tsx") && !/\.test\./.test(rel);
+const count = (pred) => ALL.filter(pred).length;
+const pct = (a, b) => (b === 0 ? 0 : Math.round((a / b) * 100));
+
+const MEASURES = [
+  (() => {
+    const total = count(isPage);
+    const using = count((e) => isPage(e) && /\bPageShell\b/.test(e[1]));
+    return { label: "`PageShell` page geometry", state: `BUILT · ADOPTED ${pct(using, total)}%`,
+             detail: `${using} of ${total} page files import it`, cmd: "pnpm guard:ui → `pageShellDrift`" };
+  })(),
+  (() => {
+    const reg = count((e) => /from\s*["']@\/lib\/icons["']/.test(e[1]));
+    const direct = count((e) => /from\s*["']lucide-react["']/.test(e[1]) && !e[0].endsWith(path.join("lib", "icons.ts")));
+    return { label: "Icon registry `lib/icons.ts`", state: `BUILT · ADOPTED ${pct(reg, reg + direct)}%`,
+             detail: `${reg} file(s) import the registry, ${direct} still import \`lucide-react\` directly`,
+             cmd: "pnpm guard:ui → `directLucideImports`" };
+  })(),
+  (() => {
+    const n = count((e) => /from\s*["'][^"']*ui\/typography["']/.test(e[1]));
+    return { label: "`Heading` / `Text` (`ui/typography.tsx`)", state: n ? `BUILT · ADOPTED` : "BUILT · ADOPTED 0%",
+             detail: n ? `${n} call site(s)` : "zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused", cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /from\s*["'][^"']*brand\/Logo["']/.test(e[1]));
+    return { label: "`Logo` + `BrandingProvider`", state: n ? "BUILT · ADOPTED" : "BUILT · ADOPTED 0%",
+             detail: n ? `${n} call site(s)` : "zero call sites", cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /\bEmptyState\b/.test(e[1]) && !e[0].includes(path.join("ui", "empty-state")));
+    return { label: "`EmptyState`", state: "BUILT", detail: `${n} file(s) use it`, cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /\bbg-surface\b/.test(e[1]));
+    return { label: "`bg-surface` app ground", state: "ADOPTED (via layout)",
+             detail: `set once on \`PrivateLayout\`'s \`<main>\`; ${n} file(s) name it directly — pages inherit it`, cmd: "—" };
+  })(),
+  (() => {
+    const n = ALL.filter(([rel]) => /\.test\.(tsx?|jsx?)$/.test(rel)).length;
+    const prim = ALL.filter(([rel]) => rel.startsWith(path.join("client", "src", "components", "ui")) && !/\.test\./.test(rel)).length;
+    return { label: "Component tests / `components/ui` primitives", state: "BUILT",
+             detail: `${n} client test file(s); ${prim} primitives`, cmd: "pnpm test:client" };
+  })(),
+];
+
 const files = walk(SCAN_DIR);
 for (const m of METRICS) {
   m.total = 0;
@@ -198,6 +265,59 @@ for (const file of files) {
       m.total += m.unit === "file" ? 1 : hits;
     }
   }
+}
+
+const DOC = path.join(ROOT, "knowledge-base", "handbook", "design", "DESIGN_SYSTEM.md");
+const BEGIN = "<!-- BEGIN GENERATED — do not hand-edit; run `pnpm guard:ui --write-table` -->";
+const END = "<!-- END GENERATED -->";
+
+/** §0's adoption table, rendered from the live measurements. */
+function renderTable() {
+  const rows = [];
+  rows.push("| Capability | State | Measured |");
+  rows.push("|---|---|---|");
+  for (const m of MEASURES) {
+    const cmd = m.cmd === "—" ? "" : ` — *${m.cmd}*`;
+    rows.push(`| ${m.label} | **${m.state}** | ${m.detail}${cmd} |`);
+  }
+  for (const m of METRICS) {
+    const floor = m.total === 0 ? " — **at zero; any hit is a regression**" : "";
+    rows.push(`| \`${m.key}\` — ${m.label} | ${m.total === 0 ? "**HELD**" : "ratcheting down"} | **${m.total}** ${m.unit}(s)${floor} |`);
+  }
+  return rows.join("\n");
+}
+
+if (process.argv.includes("--table")) {
+  console.log(renderTable());
+  process.exit(0);
+}
+
+if (process.argv.includes("--write-table")) {
+  const doc = fs.readFileSync(DOC, "utf8");
+  const a = doc.indexOf(BEGIN), b = doc.indexOf(END);
+  if (a === -1 || b === -1) {
+    console.error(`ui-standard-guard: ${path.relative(ROOT, DOC)} has no generated block. Add:\n${BEGIN}\n${END}`);
+    process.exit(1);
+  }
+  const next = doc.slice(0, a + BEGIN.length) + "\n\n" + renderTable() + "\n\n" + doc.slice(b);
+  fs.writeFileSync(DOC, next);
+  console.log(`ui-standard-guard: wrote the adoption table into ${path.relative(ROOT, DOC)}. Commit it.`);
+  process.exit(0);
+}
+
+/**
+ * The doc must agree with the measurement. This is the point of the whole
+ * mechanism: §0 was hand-written on 2026-08-18 and was wrong by the same evening
+ * (it said the nested-control class stood at 122; three PRs had closed it to 0).
+ * A number a human retypes is a number that will be wrong, so the doc is
+ * generated and this check makes drifting from it impossible.
+ */
+let docDrift = null;
+if (fs.existsSync(DOC)) {
+  const doc = fs.readFileSync(DOC, "utf8");
+  const a = doc.indexOf(BEGIN), b = doc.indexOf(END);
+  if (a === -1 || b === -1) docDrift = "no generated block found";
+  else if (doc.slice(a + BEGIN.length, b).trim() !== renderTable().trim()) docDrift = "stale";
 }
 
 let baseline = {};
@@ -234,6 +354,15 @@ for (const m of METRICS) {
   } else {
     console.log(`OK       ${m.key}: ${m.total} ${m.unit}(s) (at baseline)`);
   }
+}
+
+if (docDrift) {
+  console.error(
+    `\nFAIL  DESIGN_SYSTEM.md §0's adoption table is ${docDrift}.\n` +
+      "      That table is GENERATED from these measurements — it is not prose to keep in sync by\n" +
+      "      hand. Run `pnpm guard:ui --write-table` and commit the result in this PR.",
+  );
+  failed = true;
 }
 
 if (failed) {

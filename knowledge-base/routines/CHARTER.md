@@ -465,6 +465,16 @@ New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section 
   ratio in situ. Report the commands you actually ran. A rail that demands evidence the repo
   cannot produce trains routines to invent it — which is why "verify at 320px" is **not** a rail
   here, and `unprefixedMultiColGrid` is: the second one is checkable.
+- **A metric earns trust by being used, not by being written.** `arbitraryColorValues` passed
+  review, passed CI and was merged and deployed while 97% of what it counted were font sizes, not
+  colours — it died the first time someone measured a real surface with it. Review checks
+  plausibility; only use checks correctness. Before quoting a new metric's number as fact, run it
+  against one real target and verify its output by hand.
+- **A number a human retypes is a number that will be wrong.** Prefer generating a claim over
+  writing one: DESIGN_SYSTEM.md §0's adoption table is emitted by `pnpm guard:ui --write-table`
+  and the guard fails when the committed block drifts, because the hand-written version was wrong
+  within nine hours of being written. When a claim can be generated, generate it; when it cannot,
+  point at the command instead of restating its output.
 - **Never quote a design-adoption number from a doc.** Re-measure with `pnpm guard:ui`. Both
   predecessor design docs stated an adoption figure that had drifted in the flattering direction
   (57% claimed, 82% actual), which is exactly why those numbers now live in a baseline file
