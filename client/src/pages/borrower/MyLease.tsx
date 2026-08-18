@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Home, Info, Loader2, Plus } from "lucide-react";
+import { Home, Info, Loader2, Plus, Trash2 } from "lucide-react";
 import type { LeaseView } from "@shared/leaseView";
 import { LeasePayments } from "./myLease/LeasePayments";
 
@@ -74,6 +74,7 @@ function toPayload(values: LeaseFormValues) {
 export default function MyLease() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<{ leases: LeaseView[] }>({
     queryKey: leaseKeys.all(),
@@ -109,6 +110,30 @@ export default function MyLease() {
         description: "Please check the details and try again.",
         variant: "destructive",
       }),
+  });
+
+  const deleteLease = useMutation({
+    mutationFn: async (leaseId: string) => {
+      const res = await apiRequest("DELETE", `/api/leases/${leaseId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: leaseKeys.all() });
+      setConfirmingDelete(null);
+      toast({ title: "Lease deleted", description: "Your lease details have been removed." });
+    },
+    onError: (err: unknown) => {
+      // 409 is the reported-tradeline refusal, and it deserves its own words: the user
+      // asked for removal and is entitled to know it did not happen, and why.
+      const reported = (err as { status?: number })?.status === 409;
+      toast({
+        title: reported ? "This lease can't be deleted" : "Couldn't delete that",
+        description: reported
+          ? "It's been reported to a credit bureau, so it has to be suppressed instead. Contact us and we'll handle it."
+          : "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   return (
@@ -164,6 +189,45 @@ export default function MyLease() {
                   {lease.furnishingEnrolled ? "Reporting to bureaus" : "Not being reported"}
                 </div>
                 <LeasePayments leaseId={lease.id} monthlyRent={lease.monthlyRentAmount} />
+
+                <div className="mt-4 border-t border-border pt-3">
+                  {confirmingDelete === lease.id ? (
+                    <div className="space-y-2" data-testid={`confirm-delete-${lease.id}`}>
+                      <p className="text-sm text-foreground">
+                        Delete this lease and its payment history? Your landlord's details are
+                        removed for good — this can't be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={deleteLease.isPending}
+                          onClick={() => deleteLease.mutate(lease.id)}
+                          data-testid={`button-confirm-delete-${lease.id}`}
+                        >
+                          {deleteLease.isPending ? "Deleting…" : "Delete permanently"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmingDelete(null)}
+                          data-testid={`button-cancel-delete-${lease.id}`}
+                        >
+                          Keep it
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmingDelete(lease.id)}
+                      data-testid={`button-delete-lease-${lease.id}`}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete this lease
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}

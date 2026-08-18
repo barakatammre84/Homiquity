@@ -37,17 +37,30 @@ vi.mock("../server/storage", () => ({
   },
 }));
 
-// Pricing reaches the rate sheet in the DB; holding the LLPA at zero keeps the
-// projection arithmetic the only moving part.
+// Pricing reaches the rate sheet in the DB; holding the LLPA adjustments at
+// zero keeps the projection arithmetic the only moving part. The PMI leg is
+// LTV-aware because the projection now takes MI from THIS result (the
+// CONVENTIONAL_PMI matrix figure, F-077) rather than the old hardcoded card —
+// a representative 0.78%/yr above the 80-LTV trigger, zero below, mirroring
+// lookupPMIRate's structural rule.
+const MOCK_PMI_ANNUAL_PCT = 0.78;
 vi.mock("../server/pricing", () => ({
-  calculateLLPA: async (loanAmount: number) => ({
-    baseLLPA: 0,
-    propertyTypeAdjustment: 0,
-    condoAdjustment: 0,
-    fthbWaiver: 0,
-    totalLLPA: 0,
-    pricing: { loanAmount, lLPAFeeAmount: 0, pmiAnnualRate: 0, pmiMonthlyPayment: 0 },
-  }),
+  calculateLLPA: async (loanAmount: number, _creditScore: number, ltv: number) => {
+    const pmiAnnualRate = ltv > 80 ? MOCK_PMI_ANNUAL_PCT : 0;
+    return {
+      baseLLPA: 0,
+      propertyTypeAdjustment: 0,
+      condoAdjustment: 0,
+      fthbWaiver: 0,
+      totalLLPA: 0,
+      pricing: {
+        loanAmount,
+        lLPAFeeAmount: 0,
+        pmiAnnualRate,
+        pmiMonthlyPayment: (loanAmount * pmiAnnualRate) / 12 / 100,
+      },
+    };
+  },
 }));
 
 import { computePaymentProjection, generateLoanEstimate } from "../server/services/loanEstimate";

@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { toLeaseView, toRentPaymentView } from "../../storage/leases";
 import { logAudit } from "../../auditLog";
 import { routeParam } from "../../http/routeParams";
+import { isForeignKeyViolation, isUniqueViolation } from "../../http/dbErrors";
 import { type User } from "@shared/schema";
 import { fromDateOnly } from "@shared/leaseView";
 
@@ -215,6 +216,43 @@ export function registerLeaseRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  /**
+   * Erase a lease and its payment history.
+   *
+   * A hard delete, deliberately — see the storage method for why a status flag would be
+   * a lie here. Refuses with 409 when the lease has been furnished, naming suppression
+   * as the remedy rather than silently doing something adjacent.
+   */
+  app.delete("/api/leases/:id", isAuthenticated, async (req, res, next) => {
+    try {
+      const user = req.user as User;
+      const leaseId = routeParam(req, "id");
+      const result = await storage.deleteLeaseForUser(leaseId, user.id);
+
+      if (!result.ok && result.reason === "not_found") {
+        return res.status(404).json({ error: "Lease not found" });
+      }
+      if (!result.ok) {
+        return res.status(409).json({
+          error:
+            "This lease has been reported to a credit bureau and cannot be deleted. " +
+            "It has to be suppressed instead, so the record of what was reported survives.",
+          state: result.state,
+        });
+      }
+
+      // Counts and ids only. The whole point of the request was to remove the landlord
+      // email and the address; writing either into an audit row would defeat it.
+      await logAudit(req, "lease.deleted", "lease", leaseId, {
+        deletedPayments: result.deletedPayments,
+      });
+
+      res.json({ deleted: true, deletedPayments: result.deletedPayments });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // ---------------------------------------------------------------------------
   // Rent payments
   //
@@ -269,8 +307,17 @@ export function registerLeaseRoutes(app: Express, storage: IStorage) {
       // The (lease_id, due_date) unique index is the guard against double-counting a
       // month into a history that a furnishing run would eventually read. Answer 409
       // rather than letting a constraint violation surface as a 500.
-      if ((err as { code?: string })?.code === "23505") {
+      //
+      // isUniqueViolation, not a bare `err.code` check: drizzle 0.45 wraps driver
+      // errors, putting the pg code on `err.cause` — the bare check shipped here
+      // and 500'd on every duplicate, proven live by the 2026-08-17 audit.
+      if (isUniqueViolation(err)) {
         return res.status(409).json({ error: "A payment for that period already exists" });
+      }
+      // A POST racing this lease's DELETE loses the FK between the owner check and
+      // the insert. The lease is gone, so answer what a fresh GET would: 404.
+      if (isForeignKeyViolation(err)) {
+        return res.status(404).json({ error: "Lease not found" });
       }
       next(err);
     }
