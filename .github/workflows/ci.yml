@@ -444,7 +444,7 @@ jobs:
         # job with prod untouched, instead of being applied in an undefined order.
         # Cheap and offline — reads only the repo's own files, no DB connection.
         run: pnpm guard:migrations
-      - name: Apply pending migrations to prod
+      - name: PROBE BRANCH — read-only prod data census (replaces the apply step)
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           # Only needed when the API key can see more than one Neon project.
@@ -457,7 +457,7 @@ jobs:
           # The connection string is piped straight into migrate-prod's env via
           # command substitution: never echoed, never written to GITHUB_ENV, and
           # neither script ever prints it.
-          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/migrate-prod.cjs $ARGS
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/prod-data-census.cjs
 
   # ---------------------------------------------------------------------------
   # The gap that let production sit eight commits stale with every check green.
