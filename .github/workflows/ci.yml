@@ -422,7 +422,25 @@ jobs:
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # ⏸️ PAUSED 2026-08-19 — founder direction: development is local-only until the app
+    # is fully built and debugged, and the Railway production service is being taken down.
+    # There is no prod app to migrate for, so this no longer fires on a merge to `main`.
+    #
+    # What this costs, stated plainly so nobody rediscovers it the hard way: migrations
+    # merged from now on are NOT applied anywhere. The journal in `migrations/meta/` will
+    # run ahead of the production database for as long as this stays paused, and the gap
+    # is however many migrations land in the meantime.
+    #
+    # TO RESUME when you go back to Railway — do these together, in one PR:
+    #   1. restore this line to:  github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    #   2. restore `verify-deploy`'s `if:` below,
+    #   3. FIRST run this workflow manually with dry_run=true and read the pending list —
+    #      it will be long, and a green dry-run never executes the SQL (it reconciles the
+    #      journal only), so it is not evidence the DDL will succeed,
+    #   4. re-check any contract migration in that list against real prod data before
+    #      the first apply.
+    # Manual dispatch still works throughout, so the dry-run in step 3 needs no code change.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Never run two migrations against prod at once; don't cancel one in flight.
     concurrency:
@@ -480,7 +498,17 @@ jobs:
   # ---------------------------------------------------------------------------
   verify-deploy:
     name: verify-deploy (prod is serving this commit)
-    if: github.event_name == 'push'
+    # ⏸️ PAUSED 2026-08-19 — same founder direction as `migrate-prod` above. This job polls
+    # production's /api/health for the merged commit; with the Railway service down there is
+    # nothing to poll, so it would fail on every merge to `main` and teach everyone to ignore
+    # a red check — which is the precise habit that let prod sit eight commits stale in the
+    # first place. Better paused loudly than red permanently.
+    #
+    # 🚨 RESTORE THIS BEFORE THE FIRST RAILWAY DEPLOY, not after. The failure it catches is
+    # invisible without it: a failed Railway build leaves the PREVIOUS container serving, so
+    # the site stays up, /api/health answers 200, and every other check stays green while the
+    # code you merged is not running. Restore to:  github.event_name == 'push'
+    if: false
     # 🚨 MUST NOT BLOCK THE WORKFLOW. This job and Railway's "Wait for CI"
     # setting are mutually recursive: Wait for CI holds the deploy until every
     # GitHub workflow for the commit succeeds, while this job waits for that
