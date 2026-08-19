@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| frontend-wiring-audit 2026-08-19 | `client/src/pages/borrower/URLAForm.tsx` (application-progress scope) + `URLAForm.test.tsx` | pensive-noether-5232f2 | claude/agitated-chatterjee-af3449 | 2026-08-19T13:20Z | The URLA progress bar is labelled "Application progress" but counts only the borrower tab you are on — it reads 7 of 7 with the co-borrower's sections empty, and drops when you switch tabs. No overlap: `URLAForm.tsx` is in none of the 7 open PRs' file lists. |
 | directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); was stacked on #554's branch (now merged as a402bef), cut over to main — PR #556, founder merges |
 
 ## Recently released
