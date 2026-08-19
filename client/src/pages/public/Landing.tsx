@@ -38,6 +38,11 @@ import { lenderAdvocacyClause, lenderAdvocacyLine } from "@shared/lenderPanel";
  * `shared/lenderPanel.ts` so its tense tracks whether a counterparty is actually
  * signed.
  *
+ * Accessibility: the journey CTAs are default-size <Button> (h-11 = 44px). The
+ * three inline links carry `.touch-target` — a phone-only floor from index.css —
+ * because PR #602 raised this page from 26 sub-44px targets to 2, and a rewrite
+ * that silently dropped that would undo an accessibility fix rather than a style.
+ *
  * Advertising rails: no rate, APR, payment or term figure in this page's own copy
  * (Reg Z §1026.24 — rates live at /rates with their disclosures); nothing framed
  * as an approval, offer, or commitment (Reg N); no wholesale-lender names or count
@@ -184,7 +189,7 @@ export default function Landing() {
               Rather not sign up yet?{" "}
               <a
                 href="#buying-power"
-                className="font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"
+                className="touch-target inline-flex items-center font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"
                 data-testid="link-hero-afford"
               >
                 See your buying power
@@ -293,7 +298,7 @@ export default function Landing() {
                           {" — "}
                           <Link
                             href={point.href}
-                            className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                            className="touch-target inline-flex items-center font-medium text-foreground underline underline-offset-4 hover:no-underline"
                             data-testid="link-trust-licensing"
                           >
                             {point.linkLabel}
@@ -317,7 +322,7 @@ export default function Landing() {
               We'll tell you up front if we can't arrange financing where you're buying.{" "}
               <Link
                 href="/disclosures#licensing"
-                className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                className="touch-target inline-flex items-center font-medium text-foreground underline underline-offset-4 hover:no-underline"
                 data-testid="link-footprint-licensing"
               >
                 See the states we're licensed in
