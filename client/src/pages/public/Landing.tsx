@@ -230,7 +230,7 @@ export default function Landing() {
                     <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                       {path.description}
                     </p>
-                    <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
+                    <Button asChild variant="ghost" size="sm" className="touch-target mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
                       <Link href={path.href}>
                         {path.cta}
                         <ArrowRight className="h-3.5 w-3.5" />
