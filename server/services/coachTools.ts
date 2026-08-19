@@ -300,6 +300,16 @@ export type CoachStreamEvent =
       loanStatus?: LoanStatusSnapshot;
       checklistStats?: ChecklistStats;
       tasks?: BorrowerTaskView[];
+      /**
+       * Where this panel's content came from. "file" = derived from the
+       * borrower's records; "assistant" = the model's own suggestion.
+       *
+       * The defect this closes is not that the model suggests things — it is
+       * that a suggestion RENDERED IDENTICALLY to a file-derived panel reads
+       * as fact. The borrower could not tell which was which, and acted on
+       * both the same way.
+       */
+      source?: "file" | "assistant";
     }
   | { type: "lint_replaced"; categories: string[]; citations: string[] };
 
@@ -365,26 +375,9 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
     input_schema: INTAKE_INPUT_SCHEMA,
   },
   {
-    name: "update_readiness",
-    description:
-      "Update the borrower's readiness assessment shown in their side panel. Call whenever the readiness picture changes: the tier moves, an input completes, or the outstanding list changes. statusNote must be factual and procedural — never qualitative words like strong, solid, excellent, or concerning, and never approval likelihood.",
-    input_schema: {
-      type: "object" as const,
-      additionalProperties: false,
-      properties: {
-        readinessTier: { type: "string", enum: ["ready_now", "almost_ready", "building", "exploring"] },
-        statusNote: { type: "string", description: 'Factual procedural status, e.g. "Core financial inputs collected. Document verification pending."' },
-        completedInputs: { type: "array", items: { type: "string" }, description: "Specific inputs already collected." },
-        outstandingInputs: { type: "array", items: { type: "string" }, description: "Specific inputs still required." },
-        estimatedTimeline: { type: "string", description: 'e.g. "1-3 months"' },
-      },
-      required: ["readinessTier", "statusNote", "completedInputs", "outstandingInputs", "estimatedTimeline"],
-    },
-  },
-  {
     name: "set_action_plan",
     description:
-      "Replace the borrower's step-by-step action plan shown in their side panel. Call when the user asks for a plan, or when their situation changes materially. Always send the FULL plan (it replaces the previous one). Keep items concrete and procedural.",
+      "Replace the borrower's step-by-step PREPARATION plan — the educational work that has no record behind it yet (building credit, saving a down payment, seasoning income, timing a move). Call when the user asks for a plan, or when their situation changes materially. Always send the FULL plan (it replaces the previous one). This plan is labelled as YOUR suggestion in the UI, not as a fact from their file, so keep it to advice you can justify. NEVER list documents here — call get_document_checklist, which returns the real ones. NEVER state where their file stands or what stage it is in — call get_loan_status.",
     input_schema: {
       type: "object" as const,
       additionalProperties: false,
@@ -400,7 +393,7 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
               title: { type: "string" },
               description: { type: "string" },
               priority: { type: "string", enum: ["high", "medium", "low"] },
-              category: { type: "string", enum: ["credit", "savings", "income", "debt", "documents", "education"] },
+              category: { type: "string", enum: ["credit", "savings", "income", "debt", "education"] },
               completed: { type: "boolean" },
             },
             required: ["id", "phase", "title", "description", "priority", "category", "completed"],
@@ -408,34 +401,6 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ["items"],
-    },
-  },
-  {
-    name: "set_document_checklist",
-    description:
-      'Replace the borrower\'s document checklist shown in their side panel. Call when the required document set first becomes determinable (e.g. once employment type is known) or when it changes. Always send the FULL checklist. Set plaidEligible: true on items the borrower can satisfy by connecting an account via Plaid — bank statements, assets/reserves, and (for W-2 borrowers) income/employment — so the panel shows a "Connect with Plaid" button. Leave it false/unset for tax returns, P&L, IDs, and other true document uploads.',
-    input_schema: {
-      type: "object" as const,
-      additionalProperties: false,
-      properties: {
-        documents: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              docType: { type: "string", description: 'Machine slug, e.g. "pay_stub", "w2", "tax_return", "bank_statement".' },
-              label: { type: "string", description: 'Human label, e.g. "Recent Pay Stubs (Last 30 Days)".' },
-              reason: { type: "string", description: "Why underwriting systems require it." },
-              priority: { type: "string", enum: ["required", "recommended", "optional"] },
-              category: { type: "string", description: 'Grouping, e.g. "Income", "Assets", "Identity".' },
-              plaidEligible: { type: "boolean", description: "True if the borrower can satisfy this by connecting an account via Plaid (bank statements, assets/reserves, or W-2 income/employment). False/omit for tax returns, P&L, IDs, and other real uploads." },
-            },
-            required: ["docType", "label", "reason", "priority", "category"],
-          },
-        },
-      },
-      required: ["documents"],
     },
   },
   {
@@ -743,26 +708,6 @@ export async function executeCoachTool(
       }
     }
 
-    case "update_readiness": {
-      const base = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-      // completionPercentage is server-derived (deriveCompletionPercentage) —
-      // the model does not control it; 0 is a placeholder overwritten by the
-      // turn runner before persistence/emit.
-      const parsed = coachProfileSchema.safeParse({ completionPercentage: 0, ...base });
-      if (!parsed.success) {
-        return { content: `Invalid readiness update — ${zodIssueSummary(parsed.error)}.`, isError: true };
-      }
-      ctx.state.profile = {
-        readinessTier: parsed.data.readinessTier,
-        completionPercentage: parsed.data.completionPercentage,
-        statusNote: parsed.data.statusNote,
-        completedInputs: parsed.data.completedInputs,
-        outstandingInputs: parsed.data.outstandingInputs,
-        estimatedTimeline: parsed.data.estimatedTimeline,
-      };
-      return { content: "Readiness panel updated." };
-    }
-
     case "set_action_plan": {
       const items = (input as { items?: unknown })?.items;
       const parsed = coachActionPlanSchema.safeParse(items);
@@ -770,19 +715,8 @@ export async function executeCoachTool(
         return { content: `Invalid action plan — ${zodIssueSummary(parsed.error)}.`, isError: true };
       }
       ctx.state.actionPlan = parsed.data;
-      ctx.emit({ type: "panel", actionPlan: parsed.data });
+      ctx.emit({ type: "panel", actionPlan: parsed.data, source: "assistant" });
       return { content: `Action plan set (${parsed.data.length} items).` };
-    }
-
-    case "set_document_checklist": {
-      const documents = (input as { documents?: unknown })?.documents;
-      const parsed = coachDocumentChecklistSchema.safeParse(documents);
-      if (!parsed.success) {
-        return { content: `Invalid document checklist — ${zodIssueSummary(parsed.error)}.`, isError: true };
-      }
-      ctx.state.documentChecklist = parsed.data;
-      ctx.emit({ type: "panel", documentChecklist: parsed.data });
-      return { content: `Document checklist set (${parsed.data.length} documents).` };
     }
 
     case "generate_borrower_package": {
@@ -866,7 +800,7 @@ export async function executeCoachTool(
       if (truth === "unavailable") return FILE_TRUTH_UNAVAILABLE;
 
       const { status } = truth;
-      ctx.emit({ type: "panel", loanStatus: status });
+      ctx.emit({ type: "panel", loanStatus: status, source: "file" });
 
       const lines: string[] = [];
       if (status.stage) {
@@ -924,7 +858,7 @@ export async function executeCoachTool(
       // The client gets the FULL list either way — the panel is the borrower's
       // real checklist, byte-identical to what their Documents page renders.
       // Only the model's summary is filtered and capped.
-      ctx.emit({ type: "panel", documentChecklist: documents, checklistStats: stats });
+      ctx.emit({ type: "panel", documentChecklist: documents, checklistStats: stats, source: "file" });
 
       if (shown.length === 0) {
         return {
@@ -934,7 +868,16 @@ export async function executeCoachTool(
         };
       }
 
-      const rendered = shown.slice(0, MODEL_CHECKLIST_CAP).map((d) => {
+      // Rejected first. The list is capped at MODEL_CHECKLIST_CAP and read in
+      // order, and a rejection is the only item where the borrower is BLOCKED
+      // — leaving it eighth behind seven "needed" rows is how its reason gets
+      // summarized away. Ordering by what matters beats asking the model to
+      // remember what mattered.
+      const ordered = [...shown].sort((a, b) => {
+        const rank = (s: string) => (s === "rejected" ? 0 : s === "needed" ? 1 : 2);
+        return rank(a.status) - rank(b.status);
+      });
+      const rendered = ordered.slice(0, MODEL_CHECKLIST_CAP).map((d) => {
         const why = d.description ? ` Why: ${d.description}` : "";
         const rejected = d.status === "rejected" && d.rejectionReason
           ? ` MUST FIX: ${d.rejectionReason}`
@@ -942,8 +885,8 @@ export async function executeCoachTool(
         const year = d.documentYear ? ` (${d.documentYear})` : "";
         return `- ${d.label}${year} [${d.status}]${why}${rejected}`;
       });
-      const overflow = shown.length > MODEL_CHECKLIST_CAP
-        ? `\n…and ${shown.length - MODEL_CHECKLIST_CAP} more (all of them are shown to the borrower in the checklist panel).`
+      const overflow = ordered.length > MODEL_CHECKLIST_CAP
+        ? `\n…and ${ordered.length - MODEL_CHECKLIST_CAP} more (all of them are shown to the borrower in the checklist panel).`
         : "";
 
       // A rejected item is the only place on this list where the borrower is
@@ -987,7 +930,7 @@ export async function executeCoachTool(
         ? all
         : all.filter((t) => t.status !== "COMPLETED" && t.status !== "EXPIRED");
 
-      ctx.emit({ type: "panel", tasks: shown });
+      ctx.emit({ type: "panel", tasks: shown, source: "file" });
 
       if (shown.length === 0) {
         return { content: "No open tasks — nothing is waiting on the borrower outside the document checklist." };

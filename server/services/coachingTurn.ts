@@ -14,7 +14,7 @@ import {
   MAX_COMPLETION_TOKENS,
   HISTORY_WINDOW_MESSAGES,
 } from "./coachingClient";
-import { type VerifiedUserContext, type CoachResponse, buildVerifiedContextPrompt, deriveCompletionPercentage } from "./coachingContext";
+import { type VerifiedUserContext, type CoachResponse, buildVerifiedContextPrompt, deriveCompletionPercentage, deriveReadinessProfile } from "./coachingContext";
 import { STATIC_COACH_PROMPT } from "./coachingPrompt";
 import { type CoachLintHit, findStreamingHardBlock, applyCoachLintFilter, COACH_LINT_SAFE_MESSAGE } from "./coachingLint";
 import { COACH_TOOLS, executeCoachTool, type CoachEmit, type CoachToolContext, type CoachToolTurnState } from "./coachTools";
@@ -132,6 +132,17 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
 
   const state: CoachToolTurnState = {};
   const deadline = Date.now() + TURN_BUDGET_MS;
+
+  // The readiness panel is now SERVER-DERIVED and emitted before the model
+  // says a word, rather than waiting for the model to call update_readiness.
+  //
+  // Two things this fixes. The panel used to appear only if the model chose to
+  // call the tool, so on a turn where it did not, the borrower saw whatever
+  // the last turn happened to leave there. And when it did call it, the model
+  // was restating tier / completed / outstanding figures the server had just
+  // handed it in context — a lossy round-trip through a language model whose
+  // only possible outcomes were "identical" or "wrong".
+  state.profile = deriveReadinessProfile(opts.verifiedContext);
 
   let lintAbortHit: CoachLintHit | null = null;
   let visible = "";
@@ -281,14 +292,10 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
     messages.push({ role: "user", content: results });
   }
 
-  // completionPercentage is server-derived — the model never controls it.
-  if (state.profile) {
-    state.profile = {
-      ...state.profile,
-      completionPercentage: deriveCompletionPercentage(opts.verifiedContext),
-    };
-    guardedEmit({ type: "panel", profile: state.profile });
-  }
+  // Emitted after the tool loop so a record_intake writeback this turn is
+  // reflected. The values are the server's either way — the model has no tool
+  // that can touch them any more.
+  guardedEmit({ type: "panel", profile: state.profile, source: "file" });
 
   // Deterministic compliance post-filter on the full reply.
   let finalMessage = visible.trim();
