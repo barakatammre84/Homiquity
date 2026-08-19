@@ -22,24 +22,43 @@ import { execFileSync } from "node:child_process";
  * names; churning them costs links and tests for no user-visible gain.
  */
 
-const BANNED = ["AI Coach", "AI Homebuyer Coach", "Homiquity Coach", "AI coach"];
+/**
+ * Names the assistant has actually been called in shipped copy. This is a
+ * VOCABULARY list, not a semantic check — it can only catch spellings someone
+ * has already thought of, exactly like the §9 security guard's PII vocabulary.
+ * "readiness assistant" was invisible to the first version of this list and
+ * greeted every first-time chatter with a fifth name; a journey walker found it,
+ * the suite could not. When a new one turns up, add it here.
+ */
+const BANNED = [
+  "AI Coach",
+  "AI Homebuyer Coach",
+  "Homiquity Coach",
+  "AI coach",
+  "readiness assistant",
+];
 
 /**
  * Source files that can render user-visible strings.
  *
- * `server/` is in scope on purpose: five of the assistant's stale names were in
- * API response copy (`server/routes/coach.ts` insight descriptions,
- * `server/services/nextAction.ts`), which a client-only sweep cannot see and
- * which the borrower reads on their dashboard.
+ * 🚨 The pathspec is a DIRECTORY list, not a `**` glob, and that is load-bearing.
+ * `git ls-files "client/src/**\/*.tsx"` matches **zero top-level files** — verify
+ * with `git ls-files "client/src/**\/*.tsx" | grep -c '^client/src/[^/]*\.tsx$'`,
+ * which returns 0 while `git ls-files client/src/App.tsx` returns 1. The first
+ * version of this guard used that glob, so `App.tsx` and `main.tsx` sat outside a
+ * check that claimed to cover the client. A journey walker found it, not the suite.
+ *
+ * `shared/` is in scope for the same reason `server/` is: the assistant is named
+ * in comments and copy there too, and the first version omitted it entirely while
+ * four stale references sat in `shared/readinessMapping.ts`, `shared/intakeClearable.ts`,
+ * `shared/schema/lendingCore.ts` and `shared/schema/ai.ts`.
  */
 function userVisibleSourceFiles(): string[] {
-  return execFileSync(
-    "git",
-    ["ls-files", "client/src/**/*.tsx", "client/src/**/*.ts", "server/**/*.ts"],
-    { encoding: "utf8" },
-  )
+  return execFileSync("git", ["ls-files", "client/src", "shared", "server"], {
+    encoding: "utf8",
+  })
     .split("\n")
-    .filter((f) => f && !f.includes(".test."));
+    .filter((f) => /\.tsx?$/.test(f) && !f.includes(".test."));
 }
 
 describe("assistant naming", () => {

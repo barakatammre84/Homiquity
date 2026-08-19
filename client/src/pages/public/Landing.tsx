@@ -54,8 +54,15 @@ const JOURNEYS = [
     id: "renting",
     icon: Icons.home,
     title: "You're renting now",
+    // 🚨 This said "…and what your rent already proves about you", which reads as
+    // "your rent is building your credit file". Nothing downstream furnishes rent:
+    // /first-time-buyer never mentions a bureau, and MyLease.tsx:160 states flatly
+    // that "Saving a lease does not report anything to the credit bureaus." A promise
+    // the product disclaims one surface away is a Reg N / MAP Rule §1014.3
+    // misrepresentation, not a copy nit. What the destination DOES deliver is a
+    // rent-to-price calculator, so that is what this now promises.
     description:
-      "See what you'd need to buy — and what your rent already proves about you.",
+      "See what you'd need to buy — and what the rent you already pay could buy instead.",
     cta: "See where you stand",
     href: "/first-time-buyer",
   },

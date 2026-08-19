@@ -491,7 +491,7 @@ ${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`,
     }
 
     return {
-      message: `Welcome! I'm your Homiquity readiness assistant. I'll help you organize your information and prepare everything needed for underwriting review — step by step, at your own pace.
+      message: `Welcome! I'm Homi, your Homiquity assistant. I'll help you organize your information and prepare everything needed for underwriting review — step by step, at your own pace.
 
 ${formatNextRequiredInput(
   "Your employment type",

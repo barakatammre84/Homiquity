@@ -35,7 +35,7 @@ const QUICK_PROMPTS = [
   "What could I afford?",
   "I'm self-employed — how does that work?",
   "Is refinancing worth it for me?",
-  "Can my rent history help?",
+  "What would I need to stop renting?",
 ] as const;
 
 export function CoachPromptBar() {

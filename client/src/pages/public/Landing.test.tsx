@@ -121,6 +121,17 @@ describe("Landing", () => {
     expect(copy).not.toMatch(/\b\d+\+?\s+(?:lenders|lending partners)\b/i);
   });
 
+  it("does not imply rent history reaches a credit file", () => {
+    render(<Landing />);
+    // The renting door used to promise "what your rent already proves about you".
+    // Nothing downstream furnishes rent — MyLease.tsx states outright that saving a
+    // lease reports nothing to the bureaus — so that phrasing promised a benefit the
+    // product disclaims one surface away (Reg N / MAP Rule §1014.3).
+    const copy = marketingCopy();
+    expect(copy).not.toMatch(/credit (file|bureau|report)/i);
+    expect(copy).not.toMatch(/rent (?:history|already) (?:proves|builds|counts)/i);
+  });
+
   it("does not claim a way to qualify that isn't built", () => {
     render(<Landing />);
     // Jumbo is a real supported product, so naming it is fine. Asset depletion
