@@ -90,6 +90,9 @@ describe("detectTriggers — §9 path triggers", () => {
     ["server/services/rentFurnishing.ts", "consumer-data furnishing (CRA)"],
     ["shared/lib/metro2/compiler.ts", "consumer-data furnishing (CRA)"],
     ["shared/lib/metro2/format.ts", "consumer-data furnishing (CRA)"],
+    // Added 2026-08-19. loginLockout.ts is the per-account brute-force control and it
+    // sat outside every auth path §9 named — detectTriggers() on it returned [].
+    ["server/services/loginLockout.ts", "auth & sessions"],
   ];
 
   it.each(cases)("flags %s as %s", (file, label) => {
@@ -103,6 +106,20 @@ describe("detectTriggers — §9 path triggers", () => {
   // that class of bug (the inbound SMS webhook trusted anyone who found the URL).
   it("flags the signature-verification delegate on its own, not just the route that calls it", () => {
     expect(detectTriggers(["server/services/twilioSignature.ts"], [])).toHaveLength(1);
+  });
+
+  // loginLockout.ts is §9 for what depends on it, the same shape as clientIp.ts.
+  // server/app.ts's authLimiter caps ONE IP at 20 auth requests / 15 min, so against a
+  // DISTRIBUTED credential-stuffing attacker rotating source IPs the per-account lockout
+  // in this file is the only control still applying. A PR raising LOCKOUT_THRESHOLD or
+  // shortening the backoff window touches nothing else — so if this file alone does not
+  // trigger, that PR merges with no security review. It did not, until 2026-08-19.
+  it("flags the per-account lockout control on its own, with no other §9 file in the PR", () => {
+    const got = detectTriggers(
+      ["server/services/loginLockout.ts", "tests/loginLockout.test.ts", "CHANGELOG.md"],
+      [],
+    );
+    expect(got.map((t: { label: string }) => t.label)).toEqual(["auth & sessions"]);
   });
 
   // clientIp.ts is §9 because of its consumers: rateLimitKey (abuse control) and
@@ -119,9 +136,12 @@ describe("detectTriggers — §9 path triggers", () => {
 
   it("does not flag a lookalike outside the named path", () => {
     // tests/ssnVault.test.ts is not server/services/ssnVault.ts. tests/clientIp.test.ts
-    // is a real file in this repo, so the new trigger's anchoring is load-bearing: an
-    // unanchored /clientIp/ would red every PR that merely touches its test.
-    expect(detectTriggers(["tests/ssnVault.test.ts", "tests/clientIp.test.ts"], [])).toEqual([]);
+    // and tests/loginLockout.test.ts are real files in this repo, so the triggers'
+    // anchoring is load-bearing: an unanchored /clientIp/ or /loginLockout/ would red
+    // every PR that merely touches their tests.
+    expect(
+      detectTriggers(["tests/ssnVault.test.ts", "tests/clientIp.test.ts", "tests/loginLockout.test.ts"], []),
+    ).toEqual([]);
   });
 
   it("reports each triggered area once, not once per file", () => {
