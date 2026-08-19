@@ -22,6 +22,10 @@ doc-drift bug to fix):
 ## Sections
 
 ### Handbook — how the system is built · [`handbook/`](handbook/)
+- [FEATURE_MAP.md](handbook/FEATURE_MAP.md) — **what has actually been built**: all 41 shipped
+  feature areas, what each does, its key files, and the `hq-*-owner` agent that owns it. Also
+  records which areas have never had a feature review. Start here when the question is "does this
+  exist, and who works on it".
 - [DEVELOPER_PLAYBOOK.md](handbook/DEVELOPER_PLAYBOOK.md) — the map: where code lives, the core
   workflows, the golden rules.
 - [URLA_FORM_REFACTOR_TRAP.md](handbook/URLA_FORM_REFACTOR_TRAP.md) — why the "obviously pure"
