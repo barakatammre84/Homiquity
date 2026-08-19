@@ -98,7 +98,7 @@ export const Icons = {
   trend: TrendingUp, // upward trend
   settings: Settings, // settings
   rate: Percent, // rate / pricing
-  coach: Sparkles, // the AI Homebuyer Coach (dominant glyph on /ai-coach)
+  coach: Sparkles, // the Homi (dominant glyph on /ai-coach)
   send: Send, // submit a chat message (dominant: coach Composer)
 } satisfies Record<string, LucideIcon>;
 

@@ -16,7 +16,7 @@ export function Footer() {
               <span className="text-xl font-bold tracking-tight text-sidebar-foreground">homiquity</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
-              Clarity for every stage of homeownership. Pre-approval, property search, and AI coaching — all in one place.
+              Clarity for every stage of homeownership. Pre-approval, property search, and AI guidance from Homi — all in one place.
             </p>
             <div className="mt-5">
               <VeteranFoundedBadge variant="compact" className="text-sidebar-foreground/85" data-testid="badge-footer-veteran" />
@@ -57,7 +57,7 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-sidebar-foreground">Products</h3>
             <ul className="mt-4 space-y-1 text-sm text-sidebar-foreground/70">
               <li><Link href="/apply" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-lend">Homiquity Lend</Link></li>
-              <li><Link href="/ai-coach" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homiquity Coach</Link></li>
+              <li><Link href="/ai-coach" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homi</Link></li>
               <li><Link href="/rent-reporting" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rent-reporting">Rent Reporting</Link></li>
               <li><Link href="/rates" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rates">Rates</Link></li>
               <li><Link href="/resources" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources-2">Resources</Link></li>

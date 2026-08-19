@@ -27,7 +27,7 @@ import type {
   DocumentRequirement,
 } from "@/components/coach/types";
 
-// The AI Homebuyer Coach — streaming chat (SSE via useCoachStream) with a live
+// The Homi — streaming chat (SSE via useCoachStream) with a live
 // "Pre-App Profile" capture panel. Everything the model captures through the
 // record_intake tool is auto-saved to the borrower's draft application
 // server-side and surfaced here as a visible trail.
@@ -233,7 +233,7 @@ export default function AICoach() {
     <>
       <div className="flex items-center gap-2 mb-4 px-1">
         <Sparkles className="h-5 w-5 text-success-subtle-foreground" />
-        <h2 className="font-semibold text-foreground text-sm">AI Coach</h2>
+        <h2 className="font-semibold text-foreground text-sm">Homi</h2>
       </div>
       {loadingConvs ? (
         <div className="flex justify-center py-8">
@@ -304,7 +304,7 @@ export default function AICoach() {
           <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-2 text-xs text-muted-foreground" data-testid="banner-degraded">
             <WifiOff className="h-3.5 w-3.5 shrink-0" />
             <span>
-              Offline guidance mode — the AI coach isn't configured in this environment. Answers are standard
+              Offline guidance mode — Homi isn't configured in this environment. Answers are standard
               guidance and nothing is saved to your profile.
             </span>
           </div>

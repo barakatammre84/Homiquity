@@ -86,7 +86,7 @@ export interface CoachTurnResult {
 
 function mapAnthropicError(err: unknown): CoachTurnError {
   if (err instanceof Anthropic.AuthenticationError) {
-    return new CoachTurnError("not_configured", "The AI coach credentials are invalid on this environment.", false);
+    return new CoachTurnError("not_configured", "Homi's credentials are invalid on this environment.", false);
   }
   if (err instanceof Anthropic.RateLimitError) {
     return new CoachTurnError("provider_rate_limited", "The AI service is briefly rate-limited. Please try again in a moment.", true);
@@ -119,7 +119,7 @@ function mapAnthropicError(err: unknown): CoachTurnError {
 export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnResult> {
   if (!isCoachConfigured()) {
     const fallback = generateOfflineResponse(opts.userMessage, opts.history, opts.verifiedContext);
-    const message = `**Offline guidance mode** — the AI coach isn't configured in this environment, so here is standard guidance:\n\n${fallback.message}`;
+    const message = `**Offline guidance mode** — Homi isn't configured in this environment, so here is standard guidance:\n\n${fallback.message}`;
     opts.emit({ type: "text", delta: message });
     return {
       message,

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { setPendingCoachQuestion } from "@/lib/pendingCoachQuestion";
 
 /**
- * The landing hero's front door to the AI Homebuyer Coach.
+ * The landing hero's front door to Homi, the Homiquity assistant.
  *
  * This is an ENTRY POINT, not a chat surface: it never streams, never renders a
  * reply, and never calls the coach API. It takes one question and hands it to

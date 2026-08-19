@@ -100,6 +100,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
+- [JOURNEYS.md](feature-review/JOURNEYS.md) — the 4 client-journey charters walked in the browser.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
 The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**

@@ -15,7 +15,7 @@ import {
   Briefcase,
 } from "lucide-react";
 
-// Shared client-side types + catalogs for the AI Coach surface
+// Shared client-side types + catalogs for the Homi surface
 // (client/src/components/coach/*). Server contracts: server/routes/coach.ts
 // (REST + SSE) and server/services/coachTools.ts (event payloads).
 

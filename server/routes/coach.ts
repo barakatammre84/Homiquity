@@ -741,7 +741,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "readiness_check",
           title: "Get Your Readiness Assessment",
-          description: "You have application data on file. Ask the coach to assess your mortgage readiness for a personalized action plan.",
+          description: "You have application data on file. Ask Homi to assess your mortgage readiness for a personalized action plan.",
           action: "Assess my mortgage readiness based on my application",
         });
       }
@@ -752,7 +752,7 @@ export function registerCoachRoutes(app: Express) {
           insights.push({
             type: "missing_docs",
             title: "Upload Your Documents",
-            description: "No documents uploaded yet. The coach can create a personalized checklist for you.",
+            description: "No documents uploaded yet. Homi can create a personalized checklist for you.",
             action: "What documents do I need to upload?",
           });
         }
@@ -762,7 +762,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "credit_improvement",
           title: "Credit Score Tips",
-          description: `Your credit score is ${verifiedContext.creditScore}. The coach can help you create a plan to improve it.`,
+          description: `Your credit score is ${verifiedContext.creditScore}. Homi can help you create a plan to improve it.`,
           action: "How can I improve my credit score for a better mortgage rate?",
         });
       }
@@ -771,7 +771,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "dti_high",
           title: "DTI Ratio Guidance",
-          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. The coach can help you strategize to lower it.`,
+          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. Homi can help you strategize to lower it.`,
           action: "My DTI is high. What can I do to bring it down?",
         });
       }
@@ -780,7 +780,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "get_started",
           title: "Start Your Homebuying Journey",
-          description: "Chat with the coach to understand what you need for a mortgage and create a personalized plan.",
+          description: "Chat with Homi to understand what you need for a mortgage and create a personalized plan.",
         });
       }
 
