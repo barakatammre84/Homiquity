@@ -87,7 +87,7 @@ export default function RentToOwnReadiness() {
           />
         )}
 
-        <div className="grid gap-8 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           {/* Inputs */}
           <div className="lg:col-span-3 space-y-6">
             <RentCard monthlyRent={inputs.monthlyRent} onChange={(value) => updateInput("monthlyRent", value)} />
