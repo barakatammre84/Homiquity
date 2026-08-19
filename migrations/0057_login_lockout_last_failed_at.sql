@@ -1,0 +1,15 @@
+-- Login lockout: make failedLoginAttempts a run of CONSECUTIVE failures.
+--
+-- Before this column, users.failed_login_attempts was a lifetime cumulative
+-- counter: nothing decayed it, and only a successful PASSWORD login or a
+-- password reset cleared it. A Google-signin user with a passwordHash therefore
+-- accumulated failures forever, and once the total reached 12 the escalating
+-- window clamped to its 24h maximum, so every later typo locked the account for
+-- a day. See server/services/loginLockout.ts.
+--
+-- Expand-only and idempotent: one nullable timestamp, no backfill. The
+-- currently-deployed app ignores the column; the new app reads NULL as "no run
+-- in progress", which discards a stale lifetime count on the owner's next
+-- failure. Backfilling a guessed timestamp would instead FORGE the provenance
+-- of failures whose real time nobody recorded.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_failed_login_at TIMESTAMP;

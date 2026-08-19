@@ -130,6 +130,9 @@ export default defineConfig({
       "tests/borrowerStateMachine.test.ts",
       "tests/ssnVault.test.ts",
       "tests/loginLockout.test.ts",
+      // The policy is pure; the defect was that it never reached the DB.
+      // This one asserts on the columns the storage layer actually writes.
+      "tests/loginLockoutPersistence.test.ts",
       "tests/socialAuthProviders.test.ts",
       "tests/marketDataParsers.test.ts",
       "tests/valueEstimate.test.ts",

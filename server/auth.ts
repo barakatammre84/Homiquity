@@ -6,7 +6,7 @@ import { authStorage } from "./integrations/auth/storage";
 import { setupSocialAuth } from "./socialAuth";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { isLockedOut, recordFailure, recordSuccess } from "./services/loginLockout";
+import { isLockedOut, recordFailure, recordSuccess, type LockoutState } from "./services/loginLockout";
 import {
   issuePasswordReset,
   issueEmailVerification,
@@ -159,9 +159,10 @@ function setupEmailPasswordAuth(app: Express) {
       // Per-account lockout (see services/loginLockout.ts). The response body
       // is identical to a wrong password so the lockout can't be used to
       // probe whether an account exists.
-      const lockoutState = {
+      const lockoutState: LockoutState = {
         failedLoginAttempts: user.failedLoginAttempts ?? 0,
         lockoutUntil: user.lockoutUntil ?? null,
+        lastFailedLoginAt: user.lastFailedLoginAt ?? null,
       };
       if (isLockedOut(lockoutState)) {
         return res.status(401).json({ error: "Invalid email or password" });
@@ -173,7 +174,11 @@ function setupEmailPasswordAuth(app: Express) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      if (lockoutState.failedLoginAttempts > 0 || lockoutState.lockoutUntil) {
+      if (
+        lockoutState.failedLoginAttempts > 0 ||
+        lockoutState.lockoutUntil ||
+        lockoutState.lastFailedLoginAt
+      ) {
         await authStorage.setLockoutState(user.id, recordSuccess());
       }
 
