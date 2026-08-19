@@ -26,12 +26,16 @@ import { setPendingCoachQuestion } from "@/lib/pendingCoachQuestion";
  * (The guard's regex reads comments too, so don't spell the literal here.)
  */
 
-/** Openers that map to a real Homiquity capability, phrased as a visitor would. */
+/**
+ * One opener per door on the home page — renting, self-employed, owner, moving up
+ * — phrased the way a visitor would actually ask. Each maps to a real capability;
+ * none of them invites a rate, payment or approval answer.
+ */
 const QUICK_PROMPTS = [
-  "What can I afford?",
-  "Could refinancing lower my payment?",
-  "How much can I borrow against my equity?",
-  "I'm self-employed — will that be a problem?",
+  "What could I afford?",
+  "I'm self-employed — how does that work?",
+  "Is refinancing worth it for me?",
+  "Can my rent history help?",
 ] as const;
 
 export function CoachPromptBar() {
@@ -66,14 +70,14 @@ export function CoachPromptBar() {
         </span>
 
         <label htmlFor="coach-hero-question" className="sr-only">
-          Ask the Homiquity AI Coach a question about buying, refinancing, or your equity
+          Ask Homi, the Homiquity assistant, a question about buying, refinancing, or your equity
         </label>
         <input
           id="coach-hero-question"
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about buying, refinancing, or your equity…"
+          placeholder="Ask Homi anything about buying a home…"
           autoComplete="off"
           onKeyDown={(e) => {
             // Enter is the primary gesture on a chat-style bar — most visitors
@@ -95,7 +99,7 @@ export function CoachPromptBar() {
           size="icon"
           className="h-11 w-11 shrink-0 rounded-xl"
           disabled={!question.trim()}
-          aria-label="Ask the AI Coach"
+          aria-label="Ask Homi"
           data-testid="button-coach-ask"
         >
           <Icons.send className={iconSize.emphasis} />
@@ -116,9 +120,13 @@ export function CoachPromptBar() {
         ))}
       </div>
 
-      {/* Reg N: the coach explains and estimates. It never approves anything. */}
+      {/* Two things at once. Reg N: Homi explains and estimates, never approves.
+          And the broker fact — Homiquity does not make credit decisions or fund
+          loans (Footer.tsx), so the page must never leave the impression that the
+          assistant, or we, decide anything. */}
       <p className="mt-4 text-center text-sm text-primary-foreground/75" data-testid="text-coach-disclaimer">
-        Educational guidance and estimates — not a loan approval, offer, or commitment.
+        Homi explains and prepares — lenders make the credit decision. Guidance and
+        estimates, not a loan approval, offer, or commitment.
       </p>
     </div>
   );

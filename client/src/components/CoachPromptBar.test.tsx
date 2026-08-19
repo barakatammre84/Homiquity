@@ -62,9 +62,9 @@ describe("CoachPromptBar", () => {
     const user = userEvent.setup();
     render(<CoachPromptBar />);
 
-    await user.click(screen.getByTestId("button-coach-prompt-what-can-i-afford"));
+    await user.click(screen.getByTestId("button-coach-prompt-what-could-i-afford"));
 
-    expect(localStorage.getItem(PENDING_COACH_QUESTION_KEY)).toBe("What can I afford?");
+    expect(localStorage.getItem(PENDING_COACH_QUESTION_KEY)).toBe("What could I afford?");
     expect(navigate).toHaveBeenCalledWith("/signup");
   });
 
@@ -103,10 +103,14 @@ describe("CoachPromptBar", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("states the Reg N limit on what the coach produces", () => {
+  it("states the Reg N limit AND who actually decides", () => {
     render(<CoachPromptBar />);
-    expect(screen.getByTestId("text-coach-disclaimer").textContent).toMatch(
-      /not a loan approval, offer, or commitment/i,
-    );
+    const disclaimer = screen.getByTestId("text-coach-disclaimer").textContent ?? "";
+
+    expect(disclaimer).toMatch(/not a loan approval, offer, or commitment/i);
+    // Homiquity is a broker and does not make credit decisions (Footer.tsx). An
+    // assistant sitting in the hero is exactly where a visitor would assume
+    // otherwise, so the page says who decides right underneath it.
+    expect(disclaimer).toMatch(/lenders make the credit decision/i);
   });
 });

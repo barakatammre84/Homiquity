@@ -7,87 +7,116 @@ import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { CoachPromptBar } from "@/components/CoachPromptBar";
 import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
-import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { Icons, iconSize } from "@/lib/icons";
+import { lenderAdvocacyClause, lenderAdvocacyLine } from "@shared/lenderPanel";
 
 /**
  * The public home page.
  *
- * Deliberately short. The previous version ran eight stacked sections — hero,
- * estimator, six audience cards, a four-step explainer, an image band, a rates
- * teaser, a four-card trust grid and a founder note — which is a sitemap, not a
- * front door. This is one dominant hero built around the AI Coach, the buying-power
- * estimator, three ways in, a single trust row, and the footer.
+ * WHO THIS PAGE IS ABOUT. The previous version talked about Homiquity: the hero
+ * eyebrow was the founder's CV and all four trust points were about us — years in
+ * banking, our architecture ("rules-based decisions, not a black box"), our
+ * compliance, our encryption. It promised a MECHANISM ("ask anything") rather than
+ * an outcome, and never named a customer problem. Every line here is now about
+ * what the visitor can do.
  *
- * The estimator earns its band: it is the only thing here that answers a visitor
- * who will not create an account, so it is the counterweight to a coach that
- * requires one.
+ * THE PROMISE: "see what you have the power to do". Deliberately audience-agnostic
+ * — the same sentence works for a renter who does not know if they can start, a
+ * business owner whose returns understate them, an owner weighing a refinance, and
+ * a move-up buyer carrying equity and a jumbo balance. One promise, four doors.
+ * That is what keeps this from collapsing back into the six-persona sitemap the
+ * old page was.
  *
- * What the coach replaced: the hero used to ask the visitor to self-select from
- * six personas before anything would answer them. Asking a question in their own
- * words is a better first move, and the coach can route to the same six paths.
+ * 🚨 WE ARE A BROKER, AND THE COPY MUST SAY SO. Homiquity arranges financing with
+ * third-party wholesale lenders; it does not make credit decisions or fund loans
+ * (the standing disclosure in Footer.tsx). Marketing that implies we approve,
+ * decide, or lend contradicts our own footer and is the Reg N / UDAAP exposure.
+ * Being a broker is not fine print — it is the reason we can act for the customer
+ * instead of selling them a house product. The advocacy line comes from
+ * `shared/lenderPanel.ts` so its tense tracks whether a counterparty is actually
+ * signed.
  *
- * Advertising rails on this surface: no rate, payment, term or APR figure appears
- * here at all (Reg Z §1026.24 trigger terms — the rates teaser moved off the home
- * page and lives at /rates with its disclosures), and nothing is framed as an
- * approval or a commitment (Reg N). Proof points are limited to facts we can
- * substantiate about the company, never volume or outcome claims.
+ * Advertising rails: no rate, APR, payment or term figure in this page's own copy
+ * (Reg Z §1026.24 — rates live at /rates with their disclosures); nothing framed
+ * as an approval, offer, or commitment (Reg N); no wholesale-lender names or count
+ * (borrower-transparency doctrine); no asset-depletion claim until that path
+ * module ships. All pinned by Landing.test.tsx.
  */
 
-/** The three ways in, matching the top-level nav. Fewer, larger, unmissable. */
-const PATHS = [
+/**
+ * Four doors on one promise. Each is a SITUATION, not a product name, so nobody
+ * has to know mortgage vocabulary to pick one. 2×2 on desktop, stacked on mobile.
+ */
+const JOURNEYS = [
   {
-    id: "buy",
+    id: "renting",
     icon: Icons.home,
-    title: "Buy a home",
+    title: "You're renting now",
     description:
-      "See what fits your budget, then start a pre-approval you can shop with.",
-    cta: "Start your pre-approval",
-    href: "/apply",
+      "See what you'd need to buy — and what your rent already proves about you.",
+    cta: "See where you stand",
+    href: "/first-time-buyer",
   },
   {
-    id: "refinance",
-    icon: Icons.trend,
-    title: "Refinance",
+    id: "self-employed",
+    icon: Icons.person,
+    title: "Your income is your own",
     description:
-      "Check whether a new loan would improve on the one you have.",
-    cta: "Check refinance options",
+      "1099s, K-1s, write-offs, rentals. We work out every way your income can count.",
+    cta: "See how it works",
+    href: "/self-employed",
+  },
+  {
+    id: "owner",
+    icon: Icons.trend,
+    title: "You already own",
+    description:
+      "Worth refinancing? Worth tapping your equity? Get a straight answer before you commit.",
+    cta: "Weigh your options",
     href: "/refinance",
   },
   {
-    id: "equity",
-    icon: Icons.assets,
-    title: "Use your equity",
+    id: "moving-up",
+    // Jumbo is a real, supported product (shared/loanProducts.ts, lendingLimits.ts),
+    // so naming it is substantiated. Qualifying on ASSETS is not — that path module
+    // is unbuilt, so this card must never imply asset depletion.
+    icon: Icons.lender,
+    title: "You're moving up",
     description:
-      "Find out how much you could borrow against the home you already own.",
-    cta: "Explore home equity",
-    href: "/apply?type=heloc",
+      "A bigger home, a bigger balance, more moving parts — jumbo included. We'll map the whole picture.",
+    cta: "Start your file",
+    href: "/apply",
   },
 ] as const;
 
-/** Substantiated, non-numeric-offer proof points. No volume or outcome claims. */
+/**
+ * Trust, stated as what the customer gets — not as our credentials. The old row
+ * was four facts about Homiquity; a visitor cannot use any of those.
+ */
 const TRUST_POINTS = [
   {
-    id: "experience",
-    icon: Icons.person,
-    label: "15+ years in banking and lending",
+    id: "guidance",
+    icon: Icons.coach,
+    label: "Homi answers your questions any hour, in plain English",
   },
   {
-    id: "rules",
-    icon: Icons.tasks,
-    label: "Rules-based decisions, not a black box",
-  },
-  {
-    id: "fair-lending",
+    id: "income",
     icon: Icons.done,
-    label: "Built to Fannie Mae and Freddie Mac guidelines",
+    label: "We work out every way your income can count — not just the obvious one",
   },
   {
-    id: "security",
+    id: "advocacy",
+    icon: Icons.people,
+    label: `We work for you. ${lenderAdvocacyLine()}`,
+  },
+  {
+    id: "licensing",
     icon: Icons.security,
-    label: "Encrypted, and never sold",
+    label: "Licensed, regulated, and straight with you",
+    href: "/disclosures#licensing",
+    linkLabel: "See where we're licensed",
   },
 ] as const;
 
@@ -97,8 +126,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead
-        title="Homiquity — Ask about buying, refinancing, or your equity"
-        description="Ask Homiquity's AI Coach a question in your own words and get a clear, educational answer about buying a home, refinancing, or using your equity. Estimates and guidance, not an approval."
+        title="Homiquity — a mortgage broker that works for you"
+        description="See what you have the power to do. Homi, our AI assistant, walks you through buying, refinancing, or using your equity — and we take your file to our lending partners. Guidance and estimates, not a loan approval."
         ogType="website"
         ogImage={lifestyleImages.landingHero.src}
       />
@@ -116,22 +145,24 @@ export default function Landing() {
               className="text-sm font-medium text-primary-foreground/75"
               data-testid="text-hero-eyebrow"
             >
-              Built by a military veteran with 15+ years in banking
+              Renting, self-employed, refinancing, or moving up — start anywhere
             </p>
 
             <h1
               className="mt-5 text-balance text-4xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl"
               data-testid="text-hero-title"
             >
-              Ask anything about your mortgage. Get a straight answer.
+              See what you have the power to do.
             </h1>
 
             <p
               className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-primary-foreground/80"
               data-testid="text-hero-subtitle"
             >
-              Our AI Coach walks you through buying, refinancing, or tapping your
-              equity — in plain language, at your pace, with no sales pressure.
+              Buying a home is stressful because nobody tells you where you stand until
+              it's too late. Homi walks you through it, connects what you tell us with
+              what we verify, and shows you what's actually within reach —{" "}
+              {lenderAdvocacyClause()}.
             </p>
 
             <div className="mx-auto mt-10 max-w-3xl text-left">
@@ -158,7 +189,7 @@ export default function Landing() {
 
         {/* Buying power — the one thing on this page that answers a visitor
             without an account. Its own band directly under the hero, because it
-            is the alternative to the coach, not a footnote to it. */}
+            is the alternative to Homi, not a footnote to it. */}
         <section
           id="buying-power"
           className="scroll-mt-20 border-b bg-muted/30 px-4 py-20 sm:px-6 lg:px-8"
@@ -181,21 +212,21 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Three ways in. */}
-        <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-paths">
+        {/* Four doors. */}
+        <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
           <div className="mx-auto max-w-6xl">
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-              Or pick where you're headed
+              Wherever you're starting from
             </h2>
 
-            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {PATHS.map((path) => {
-                const Icon = path.icon;
+            <div className="mt-12 grid gap-6 sm:grid-cols-2">
+              {JOURNEYS.map((journey) => {
+                const Icon = journey.icon;
                 return (
                   <Card
-                    key={path.id}
+                    key={journey.id}
                     className="hover-elevate"
-                    data-testid={`card-path-${path.id}`}
+                    data-testid={`card-journey-${journey.id}`}
                   >
                     <CardContent className="p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -203,21 +234,21 @@ export default function Landing() {
                       </div>
                       <h3
                         className="mt-5 text-xl font-semibold"
-                        data-testid={`text-path-title-${path.id}`}
+                        data-testid={`text-journey-title-${journey.id}`}
                       >
-                        {path.title}
+                        {journey.title}
                       </h3>
                       <p className="mt-2 leading-relaxed text-muted-foreground">
-                        {path.description}
+                        {journey.description}
                       </p>
                       <Button
                         asChild
                         variant="ghost"
                         className="-ml-2 mt-4 gap-1.5"
-                        data-testid={`button-path-${path.id}`}
+                        data-testid={`button-journey-${journey.id}`}
                       >
-                        <Link href={path.href}>
-                          {path.cta}
+                        <Link href={journey.href}>
+                          {journey.cta}
                           <Icons.next className={iconSize.dense} aria-hidden="true" />
                         </Link>
                       </Button>
@@ -229,7 +260,7 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* One trust row, replacing the old four-card grid plus founder note. */}
+        {/* One trust row — what the customer gets, not who we are. */}
         <section
           className="border-y bg-muted/30 px-4 py-14 sm:px-6 lg:px-8"
           data-testid="section-trust"
@@ -250,15 +281,42 @@ export default function Landing() {
                     />
                     <span className="text-sm leading-relaxed text-muted-foreground">
                       {point.label}
+                      {"href" in point && point.href ? (
+                        <>
+                          {" — "}
+                          <Link
+                            href={point.href}
+                            className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                            data-testid="link-trust-licensing"
+                          >
+                            {point.linkLabel}
+                          </Link>
+                        </>
+                      ) : null}
                     </span>
                   </li>
                 );
               })}
             </ul>
 
-            <div className="mt-10 flex justify-center border-t pt-8">
-              <VeteranFoundedBadge data-testid="badge-landing-veteran" />
-            </div>
+            {/* Audience-led means national traffic. An out-of-state visitor used
+                to discover the footprint only at StateStep, deep in the funnel —
+                after signing up. Say it here instead, and link to the live list
+                rather than naming states in copy that would go stale. */}
+            <p
+              className="mt-10 border-t pt-8 text-center text-sm text-muted-foreground"
+              data-testid="text-footprint"
+            >
+              We'll tell you up front if we can't arrange financing where you're buying.{" "}
+              <Link
+                href="/disclosures#licensing"
+                className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                data-testid="link-footprint-licensing"
+              >
+                See the states we're licensed in
+              </Link>
+              .
+            </p>
           </div>
         </section>
       </main>

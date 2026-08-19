@@ -2,16 +2,20 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 /**
- * The public home page, pinned on the two things that are easy to undo by
- * accident when someone adds "just one more section".
+ * The public home page, pinned on what makes it a front door rather than a
+ * brochure about us.
  *
- * 1. It stays a front door, not a sitemap. The page it replaced stacked eight
- *    sections; the coach bar is meant to be the first thing a visitor deals
- *    with, and a re-added estimator/rates/persona-grid band would bury it.
- * 2. The advertising rails hold. This is a soliciting surface, so a stray rate,
+ * 1. It talks about the customer. The version this replaced led with the
+ *    founder's CV and a trust row that was four facts about Homiquity — years in
+ *    banking, our architecture, our compliance, our encryption. A visitor cannot
+ *    use any of those, and credential copy creeps back in easily.
+ * 2. It stays a front door, not a sitemap. Four journey cards, one trust row.
+ * 3. The advertising rails hold. This is a soliciting surface, so a stray rate,
  *    payment or APR figure is a Reg Z §1026.24 trigger-term problem with no
- *    disclosure attached, and approval language is a Reg N problem. Both have
- *    been re-introduced by well-meaning copy edits before.
+ *    disclosure attached, and approval language is a Reg N problem.
+ * 4. 🚨 It never claims Homiquity lends, approves, decides, or funds. We are a
+ *    mortgage broker — Footer.tsx says so in the standing disclosure — and
+ *    marketing that contradicts our own footer is the real exposure here.
  */
 
 // Keep every prop — a Link mock that drops className/data-testid silently hides
@@ -33,26 +37,116 @@ vi.mock("@/components/Navigation", () => ({ Navigation: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/SEOHead", () => ({ SEOHead: () => null }));
 vi.mock("@/components/SkipLink", () => ({ SkipLink: () => null }));
-vi.mock("@/components/VeteranFoundedBadge", () => ({ VeteranFoundedBadge: () => null }));
 
 import Landing from "./Landing";
 
+/**
+ * The page's own marketing copy — excludes the estimator, which is a tool.
+ *
+ * 🚨 `textContent` concatenates sibling nodes with NO separator, so a link ending
+ * in "…we lend" followed by a paragraph starting "We'll…" reads as "we lendWe'll".
+ * That silently defeats a trailing `\b` in any pattern below — this exact copy
+ * shipped past this exact assertion once. Patterns here therefore anchor only at
+ * the START of a phrase, never at its end.
+ */
+function marketingCopy(): string {
+  return [
+    screen.getByTestId("section-hero"),
+    screen.getByTestId("section-journeys"),
+    screen.getByTestId("section-trust"),
+  ]
+    .map((el) => el.textContent ?? "")
+    .join(" ");
+}
+
 describe("Landing", () => {
-  it("leads with the AI Coach, above the three paths", () => {
+  it("leads with Homi, above the journey cards", () => {
     render(<Landing />);
 
     const hero = screen.getByTestId("section-hero");
     expect(hero.contains(screen.getByTestId("coach-prompt-bar"))).toBe(true);
 
-    // Document order: the coach comes before the path cards.
-    const paths = screen.getByTestId("section-paths");
-    expect(hero.compareDocumentPosition(paths) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const journeys = screen.getByTestId("section-journeys");
+    expect(hero.compareDocumentPosition(journeys) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("opens four doors — renting, self-employed, owner, moving up", () => {
+    render(<Landing />);
+
+    // All four audiences the business serves. Dropping one strands a segment;
+    // adding a fifth is how this page became a six-persona sitemap last time.
+    expect(screen.getAllByTestId(/^card-journey-/)).toHaveLength(4);
+    for (const id of ["renting", "self-employed", "owner", "moving-up"]) {
+      expect(screen.getByTestId(`card-journey-${id}`)).toBeTruthy();
+    }
+  });
+
+  it("says nothing about the founder's credentials", () => {
+    render(<Landing />);
+    const copy = marketingCopy();
+
+    // These were the hero eyebrow and the first trust point. They are about us,
+    // not about the visitor, and they belong on /about.
+    expect(copy).not.toMatch(/veteran/i);
+    expect(copy).not.toMatch(/\b15\+?\s*years?\b/i);
+    expect(copy).not.toMatch(/banking/i);
+  });
+
+  it("never claims Homiquity lends, approves, decides, or funds", () => {
+    render(<Landing />);
+    const copy = marketingCopy();
+
+    // Footer.tsx: "Homiquity does not make credit decisions or fund loans."
+    // Marketing that contradicts the standing disclosure is the Reg N/UDAAP risk.
+    expect(copy).not.toMatch(/\bdirect lender\b/i);
+    // No trailing \b — see the note on marketingCopy().
+    expect(copy).not.toMatch(/\bwe (?:lend|fund|approve|underwrite)/i);
+    expect(copy).not.toMatch(/\bour loans?/i);
+    // And it must positively say who decides.
+    expect(screen.getByTestId("text-coach-disclaimer").textContent).toMatch(
+      /lenders make the credit decision/i,
+    );
+  });
+
+  it("never names or counts our wholesale lending partners", () => {
+    render(<Landing />);
+    const copy = marketingCopy();
+
+    // Borrower-transparency doctrine (shared/borrowerActivityView.ts): lender
+    // identity is masked from borrowers everywhere. "Our lending partners" is the
+    // only permitted phrasing.
+    for (const name of ["UWM", "United Wholesale", "Rocket Pro", "Plaza", "Angel Oak", "Newrez"]) {
+      expect(copy).not.toContain(name);
+    }
+    expect(copy).not.toMatch(/\b\d+\+?\s+(?:lenders|lending partners)\b/i);
+  });
+
+  it("does not claim a way to qualify that isn't built", () => {
+    render(<Landing />);
+    // Jumbo is a real supported product, so naming it is fine. Asset depletion
+    // has no path module yet (non-W2 plan §4.2) — claiming it would advertise a
+    // capability the engine cannot perform.
+    expect(marketingCopy()).not.toMatch(/asset[- ]depletion|qualify on your assets/i);
+  });
+
+  it("points at the live licensing list rather than naming states in copy", () => {
+    render(<Landing />);
+
+    // A hardcoded state list goes stale the day a license is issued; the
+    // /disclosures card renders from LICENSED_STATE_DETAILS.
+    expect(screen.getByTestId("link-trust-licensing").getAttribute("href")).toBe(
+      "/disclosures#licensing",
+    );
+    expect(screen.getByTestId("link-footprint-licensing").getAttribute("href")).toBe(
+      "/disclosures#licensing",
+    );
+    expect(screen.getByTestId("text-footprint").textContent).toMatch(
+      /tell you up front if we can't arrange financing/i,
+    );
   });
 
   it("keeps a no-account route to buying power, pointing at the band on this page", () => {
     render(<Landing />);
-    // An in-page anchor, not /afford: the no-signup answer lives here now, and a
-    // hero link that leaves the page to find it is a step for nothing.
     expect(screen.getByTestId("link-hero-afford").getAttribute("href")).toBe("#buying-power");
     expect(screen.getByTestId("section-estimator").id).toBe("buying-power");
   });
@@ -63,16 +157,15 @@ describe("Landing", () => {
     expect(estimator.contains(screen.getByTestId("card-buying-power-estimator"))).toBe(true);
   });
 
-  it("stays short — three path cards, one trust row, and no re-added sections", () => {
+  it("stays short — no re-added marketing bands", () => {
     render(<Landing />);
-
-    expect(screen.getAllByTestId(/^card-path-/)).toHaveLength(3);
     expect(screen.getByTestId("section-trust")).toBeTruthy();
-    // The bands that made the old page a sitemap. If one comes back, it belongs
-    // on its own route, not here. (The estimator is deliberately NOT in this
-    // list — it is a working tool, not another block of marketing copy.)
+    // The bands that made the old page a sitemap. If one comes back it belongs on
+    // its own route. (The estimator is deliberately not listed — it is a working
+    // tool, not another block of copy.)
     expect(screen.queryByTestId("section-rates-teaser")).toBeNull();
     expect(screen.queryByTestId("section-audience-paths")).toBeNull();
+    expect(screen.queryByTestId("card-founder-note")).toBeNull();
   });
 
   it("carries no Reg Z trigger term in the page's own marketing copy", () => {
@@ -81,30 +174,18 @@ describe("Landing", () => {
     // Scoped to what the PAGE asserts, not to the estimator, which is an
     // interactive tool rendering figures the visitor chose. §1026.24(d) trigger
     // terms are a down-payment amount/percentage, a number of payments, a
-    // repayment period, a payment amount, or a finance-charge amount — a
-    // purchase-price range the visitor generated is none of those, and the tool
-    // carries its own non-offer line (asserted below).
-    const marketing = [
-      screen.getByTestId("section-hero"),
-      screen.getByTestId("section-paths"),
-      screen.getByTestId("section-trust"),
-    ]
-      .map((el) => el.textContent ?? "")
-      .join(" ");
-
-    expect(marketing).not.toMatch(/\d+(\.\d+)?\s*%/); // a rate or APR
-    expect(marketing).not.toMatch(/\$\s?[\d,]+/); // a payment or dollar amount
-    expect(marketing).not.toMatch(/\b(30|20|15|10)[-\s]year\b/i); // a repayment term
-    expect(marketing).not.toMatch(/as low as/i);
+    // repayment period, a payment amount, or a finance-charge amount.
+    const copy = marketingCopy();
+    expect(copy).not.toMatch(/\d+(\.\d+)?\s*%/); // a rate or APR
+    expect(copy).not.toMatch(/\$\s?[\d,]+/); // a payment or dollar amount
+    expect(copy).not.toMatch(/\b(30|20|15|10)[-\s]year\b/i); // a repayment term
+    expect(copy).not.toMatch(/as low as/i);
   });
 
   it("opens the estimator with no figure on screen and no ask for contact details", () => {
     render(<Landing />);
     const band = screen.getByTestId("section-estimator").textContent ?? "";
 
-    // At rest the band states its terms and shows nothing numeric. The figure
-    // and the qualifier that must accompany it are pinned together in
-    // BuyingPowerEstimator.test.tsx, where the flow can be driven to step 3.
     expect(screen.queryByTestId("text-estimator-result")).toBeNull();
     expect(band).toMatch(/no credit check/i);
     expect(band).toMatch(/no sign-up/i);
@@ -114,9 +195,6 @@ describe("Landing", () => {
     const { container } = render(<Landing />);
     const copy = container.textContent ?? "";
 
-    // "Start your pre-approval" is an action the visitor takes, not a promise
-    // the page makes — that phrasing is allowed and is what the nav uses. What
-    // must never appear is the page asserting an outcome.
     expect(copy).not.toMatch(/you(?:'re| are) (?:pre-?)?approved/i);
     expect(copy).not.toMatch(/guaranteed (?:approval|rate)/i);
     expect(screen.getByTestId("text-coach-disclaimer").textContent).toMatch(
