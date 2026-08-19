@@ -946,12 +946,23 @@ export async function executeCoachTool(
         ? `\n…and ${shown.length - MODEL_CHECKLIST_CAP} more (all of them are shown to the borrower in the checklist panel).`
         : "";
 
+      // A rejected item is the only place on this list where the borrower is
+      // BLOCKED and cannot self-diagnose: the file is uploaded, so it looks
+      // done, and only the reviewer's reason says why it bounced. Measured at
+      // roughly a coin flip without this line, so it is stated where the model
+      // reads it last rather than only in the system prompt.
+      const rejectedNote = stats.rejected > 0
+        ? "\nOne or more items were REJECTED. You MUST tell the user the exact reason shown above " +
+          "for each one — it is the only thing standing between them and clearing it, and they " +
+          "cannot work it out from the file itself. Never report a rejection without its reason."
+        : "";
       return {
         content:
           `${stats.total} items — ${stats.verified} verified, ${stats.uploaded} in review, ` +
           `${stats.needed} needed, ${stats.rejected} rejected.\n${rendered.join("\n")}${overflow}\n` +
           "These are the borrower's REAL requirements. Name only what is listed here; never add a " +
-          "document that is not on it, and never tell them an item is done when its status says otherwise.",
+          "document that is not on it, and never tell them an item is done when its status says otherwise." +
+          rejectedNote,
       };
     }
 

@@ -14,9 +14,9 @@ import type { VerifiedUserContext } from "../../server/services/coachingService"
  *
  *  1. TRIGGER      — a file question must produce the matching tool call.
  *  2. RESTRAINT    — a general-education question must NOT. Calling
- *                    get_loan_status on "how does PMI work?" burns the turn's
- *                    single tool round-trip (MAX_MODEL_CALLS_PER_TURN = 2) and
- *                    trains the borrower that the assistant is slow.
+ *                    get_loan_status on "how does PMI work?" spends a model
+ *                    call out of MAX_MODEL_CALLS_PER_TURN for nothing, adding
+ *                    a round-trip of latency to a question that needed none.
  *  3. GROUNDING    — the reply must repeat the figures the tool returned and
  *                    invent no others. Sentinel values make this checkable:
  *                    any number in the reply that is not in the tool result is
@@ -84,6 +84,9 @@ export const CHECKLIST_TOOL_RESULT = [
   "- Government ID [uploaded]",
   "These are the borrower's REAL requirements. Name only what is listed here; never add a",
   "document that is not on it, and never tell them an item is done when its status says otherwise.",
+  "One or more items were REJECTED. You MUST tell the user the exact reason shown above for each",
+  "one — it is the only thing standing between them and clearing it, and they cannot work it out",
+  "from the file itself. Never report a rejection without its reason.",
 ].join("\n");
 
 export const UNAVAILABLE_TOOL_RESULT =
@@ -169,8 +172,17 @@ export const TOOL_TRIGGER_SAMPLES: ToolTriggerSample[] = [
     verifiedContext: IN_FLIGHT,
     expectTools: ["get_document_checklist"],
     toolResult: CHECKLIST_TOOL_RESULT,
-    // The rejection reason is the single most actionable fact on the list; an
-    // assistant that lists the item without WHY it bounced wastes the trip.
+    // The rejection reason is the single most actionable fact on the list. A
+    // rejected item is the one place the borrower is BLOCKED and cannot
+    // self-diagnose: the file is uploaded, so it looks done, and only the
+    // reviewer's reason says why it bounced.
+    //
+    // KNOWN FLAKY, and deliberately left red rather than loosened. Measured
+    // 2026-08-19 on claude-sonnet-5: ~50% adherence before the tool result
+    // spelled the rule out, ~70-80% after. This is the weakest of the four
+    // properties. Re-measure once set_document_checklist is deleted — the
+    // model currently re-authors the checklist through it, and prose that
+    // follows the re-authored copy is where the reason gets dropped.
     mustMention: ["Page 3"],
   },
 

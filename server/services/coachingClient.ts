@@ -51,13 +51,41 @@ export const COACH_MODEL = "claude-sonnet-5";
  * ai_interactions row instead of the full prompt text — the exact prompt is
  * reconstructable from git at this version. Bump on ANY prompt/tool change.
  */
-export const COACH_PROMPT_VERSION = "coach-2.3.0";
+export const COACH_PROMPT_VERSION = "coach-2.3.1";
 
-export const MAX_MODEL_CALLS_PER_TURN = 2;
+/**
+ * Raised 2 → 4 on 2026-08-19, when the server-truth read tools landed.
+ *
+ * 2 was sized for a coach with no read tools. With them, a "where does my
+ * application stand?" turn genuinely needs more, and the sequence is stable
+ * across trials:
+ *
+ *     get_loan_status → get_document_checklist → suggest_next_steps → (text)
+ *
+ * — four calls, because the prompt asks for suggest_next_steps on EVERY turn
+ * and a tool call cannot share a message with the closing prose.
+ *
+ * At 2 the turn ended mid-chain with tools executed and no reply, and the
+ * empty-reply guard served "I didn't finish composing a reply" to a borrower
+ * asking where their loan stood. Measured, not guessed: at 2 calls the model
+ * emitted zero text in 12/12 trials across effort low/medium/high; at 4 it
+ * answered every time, grounded in the tool figures (962-1236 chars).
+ *
+ * `tool_choice: {type:"none"}` on the final call was tried first and rejected
+ * — it returns an EMPTY message rather than forcing prose (4/4 empty at effort
+ * low, still 2/4 at high). Blocking the model mid-plan makes it give up, not
+ * summarize. The budget was the real constraint.
+ *
+ * Cost is bounded by the cache: the ~19.6k-token tools+system prefix is a
+ * cache READ on every call after the first (0.1x), so extra calls cost output
+ * tokens, not a re-read of the prompt.
+ */
+export const MAX_MODEL_CALLS_PER_TURN = 4;
 // Product turn budget, not a platform ceiling (the persistent host has none):
 // bounds a runaway multi-tool turn so a wedged upstream stream cannot pin a
-// coach turn open indefinitely, while leaving room for both model calls plus
-// tool round-trips to finish instead of truncating mid-answer.
+// coach turn open indefinitely, while leaving room for every model call plus
+// tool round-trips to finish instead of truncating mid-answer. At 4 calls with
+// a 15s per-call ceiling the worst case is 60s, inside this budget.
 export const TURN_BUDGET_MS = 90_000;
 export const MAX_COMPLETION_TOKENS = 2_048;
 export const HISTORY_WINDOW_MESSAGES = 24; // ≈12 exchanges resent per turn

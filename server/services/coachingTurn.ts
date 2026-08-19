@@ -105,7 +105,7 @@ function mapAnthropicError(err: unknown): CoachTurnError {
 }
 
 /**
- * Run one coach turn: Claude Sonnet 5 streaming tool-loop (max 2 model calls),
+ * Run one coach turn: Claude Sonnet 5 streaming tool-loop (MAX_MODEL_CALLS_PER_TURN),
  * side effects through coachTools executors, deterministic lint post-filter,
  * one ai_interactions row per model call.
  *

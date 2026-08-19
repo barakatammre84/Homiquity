@@ -37,8 +37,9 @@ import {
  * investigate, not a build to block.
  */
 
-const MAX_MODEL_CALLS_PER_TURN = 2; // mirrors coachingClient.ts
-const MAX_COMPLETION_TOKENS = 2_048;
+// Imported rather than duplicated: a harness that drifts from production
+// stops being evidence about production.
+import { MAX_MODEL_CALLS_PER_TURN, MAX_COMPLETION_TOKENS } from "../server/services/coachingClient";
 const PER_CALL_TIMEOUT_MS = 20_000;
 
 const args = process.argv.slice(2);
@@ -48,6 +49,7 @@ const flag = (name: string) => {
 };
 const MODEL = flag("--model") ?? COACH_MODEL;
 const VERBOSE = args.includes("--verbose");
+const ONLY = flag("--only"); // run a single fixture by id while debugging
 const SUPPORTS_EFFORT = !MODEL.includes("haiku"); // Haiku 4.5 400s on output_config.effort
 
 const apiKey = process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
@@ -69,6 +71,8 @@ interface Outcome {
   reply: string;
   failures: string[];
   error?: string;
+  /** Per-call stop reasons — the first thing to look at when a reply is empty. */
+  stopReasons: string[];
 }
 
 async function runSample(sample: ToolTriggerSample): Promise<Outcome> {
@@ -80,6 +84,7 @@ async function runSample(sample: ToolTriggerSample): Promise<Outcome> {
   messages.push({ role: "user", content: sample.userMessage });
 
   const toolsCalled: string[] = [];
+  const stopReasons: string[] = [];
   let reply = "";
 
   try {
@@ -94,6 +99,7 @@ async function runSample(sample: ToolTriggerSample): Promise<Outcome> {
       if (SUPPORTS_EFFORT) params.output_config = { effort: "low" };
 
       const message = await client.messages.create(params, { timeout: PER_CALL_TIMEOUT_MS });
+      stopReasons.push(message.stop_reason ?? "null");
 
       for (const block of message.content) {
         if (block.type === "text") reply += block.text;
@@ -127,6 +133,7 @@ async function runSample(sample: ToolTriggerSample): Promise<Outcome> {
       toolsCalled,
       reply,
       failures: [],
+      stopReasons,
       error: err instanceof Error ? err.message : String(err),
     };
   }
@@ -150,14 +157,17 @@ async function runSample(sample: ToolTriggerSample): Promise<Outcome> {
     failures.push("reply does not admit the file was unreadable — it answered anyway");
   }
 
-  return { sample, toolsCalled, reply, failures };
+  return { sample, toolsCalled, reply, failures, stopReasons };
 }
 
 async function main() {
-  console.log(`\ncoach tool-trigger check — model ${MODEL}, ${TOOL_TRIGGER_SAMPLES.length} turns\n`);
+  console.log(`\ncoach tool-trigger check — model ${MODEL}${ONLY ? ` — only ${ONLY}` : `, ${TOOL_TRIGGER_SAMPLES.length} turns`}\n`);
 
   const outcomes: Outcome[] = [];
-  for (const sample of TOOL_TRIGGER_SAMPLES) {
+  const selected = ONLY
+    ? TOOL_TRIGGER_SAMPLES.filter((s) => s.id === ONLY)
+    : TOOL_TRIGGER_SAMPLES;
+  for (const sample of selected) {
     const outcome = await runSample(sample);
     outcomes.push(outcome);
     const mark = outcome.error ? "ERR " : outcome.failures.length === 0 ? "PASS" : "FAIL";
@@ -167,8 +177,13 @@ async function main() {
     );
     for (const f of outcome.failures) console.log(`         · ${f}`);
     if (outcome.error) console.log(`         · ${outcome.error}`);
-    if (VERBOSE && outcome.reply) {
-      console.log(`         reply: ${outcome.reply.replace(/\s+/g, " ").slice(0, 240)}…`);
+    if (VERBOSE) {
+      console.log(`         stop_reasons: ${outcome.stopReasons.join(" → ") || "(none)"}`);
+      console.log(
+        `         reply (${outcome.reply.length} chars): ${
+          outcome.reply.replace(/\s+/g, " ").slice(0, 400) || "(EMPTY)"
+        }`,
+      );
     }
   }
 
