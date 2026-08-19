@@ -145,7 +145,7 @@ export function WhatIfPanel({
         </div>
 
         <Button
-          size="sm"
+          size="sm" className="touch-target"
           disabled={!canRun || runMutation.isPending}
           onClick={() => runMutation.mutate()}
           data-testid="button-run-what-if"

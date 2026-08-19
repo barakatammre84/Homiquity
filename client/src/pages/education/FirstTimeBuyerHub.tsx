@@ -208,7 +208,7 @@ export default function FirstTimeBuyerHub() {
                       </div>
                     ))}
                   </div>
-                  <Button variant="outline" size="sm" className="mt-2" asChild data-testid={`button-step-${step.step}`}>
+                  <Button variant="outline" size="sm" className="touch-target mt-2" asChild data-testid={`button-step-${step.step}`}>
                     <Link href={step.href}>
                       {step.action}
                       <ChevronRight className="h-3 w-3 ml-1" />

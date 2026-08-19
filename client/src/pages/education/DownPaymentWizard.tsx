@@ -215,7 +215,7 @@ export default function DownPaymentWizard() {
               other states. Your state's housing finance agency or a HUD-approved housing counselor can point you to
               local programs.
             </p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setFilters({ state: "all", firstTimeBuyer: "all", minCreditScore: "" })} data-testid="button-clear-filters">
+            <Button variant="outline" size="sm" className="touch-target mt-3" onClick={() => setFilters({ state: "all", firstTimeBuyer: "all", minCreditScore: "" })} data-testid="button-clear-filters">
               Clear All Filters
             </Button>
           </CardContent>

@@ -162,7 +162,7 @@ export function Navigation() {
             <span className="text-sm text-foreground/80" data-testid="text-resume-banner">
               You have an application in progress
             </span>
-            <Button asChild variant="ghost" size="sm" className="gap-1 text-primary text-sm font-medium" data-testid="button-resume-app">
+            <Button asChild variant="ghost" size="sm" className="touch-target gap-1 text-primary text-sm font-medium" data-testid="button-resume-app">
               <Link href="/dashboard">
                 Resume <ArrowRight className="h-3 w-3" />
               </Link>
@@ -216,7 +216,7 @@ export function Navigation() {
               asChild
               variant="ghost"
               size="sm"
-              className="hidden gap-2 text-muted-foreground hover:text-foreground sm:inline-flex"
+              className="touch-target hidden gap-2 text-muted-foreground hover:text-foreground sm:inline-flex"
               data-testid="button-phone"
             >
               <a href={contactPhoneTel()}>
@@ -230,7 +230,7 @@ export function Navigation() {
             ) : isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2" data-testid="user-menu-button">
+                  <Button variant="ghost" size="sm" className="touch-target gap-2" data-testid="user-menu-button">
                     <Avatar className="h-7 w-7">
                       <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "User"} />
                       <AvatarFallback className="bg-primary text-xs text-primary-foreground">
@@ -309,7 +309,7 @@ export function Navigation() {
                 <Button asChild
                     variant="ghost"
                     size="sm"
-                    className="hidden text-foreground/80 hover:text-foreground sm:inline-flex"
+                    className="touch-target hidden text-foreground/80 hover:text-foreground sm:inline-flex"
                     data-testid="button-login"
                   >
                   <Link href="/login">
@@ -319,7 +319,7 @@ export function Navigation() {
                 {!PRELAUNCH_GATED && (
                   <Button asChild
                       size="sm"
-                      className="font-semibold"
+                      className="touch-target font-semibold"
                       data-testid="button-get-started"
                     >
                     <Link href="/apply">

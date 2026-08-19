@@ -17,13 +17,13 @@ export function ApplyCtaCard() {
               Based on your numbers, see what you qualify for with a 3-minute pre-approval.
             </p>
             <div className="flex gap-2 mt-2 flex-wrap">
-              <Button asChild size="sm" className="gap-1" data-testid="button-gap-apply">
+              <Button asChild size="sm" className="touch-target gap-1" data-testid="button-gap-apply">
                 <Link href="/apply">
                   Start Pre-Approval
                   <ArrowRight className="h-3 w-3" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="sm" className="gap-1" data-testid="button-gap-coach">
+              <Button asChild variant="outline" size="sm" className="touch-target gap-1" data-testid="button-gap-coach">
                 <Link href="/ai-coach">
                   <Bot className="h-3 w-3" />
                   Ask AI Coach

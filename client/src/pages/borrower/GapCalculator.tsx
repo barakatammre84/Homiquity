@@ -237,7 +237,7 @@ export default function GapCalculator() {
           </Badge>
           <Button
             variant="outline"
-            size="sm"
+            size="sm" className="touch-target"
             onClick={() => setShowOnboarding(true)}
             data-testid="button-update-info"
           >
