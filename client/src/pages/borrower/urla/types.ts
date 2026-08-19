@@ -1,5 +1,6 @@
 import { AMORTIZATION_TYPES, PREFERRED_LOAN_TYPES } from "@shared/statusVocabularies";
 import type { AmortizationType, BorrowerDeclarations, EmploymentHistory, HmdaDemographics, LoanApplication, OtherIncomeSource, PreferredLoanType, UrlaAsset, UrlaLiability, UrlaLoanDetails, UrlaPersonalInfo, UrlaPropertyInfo } from "@shared/schema";
+import { OTHER_INCOME_LABELS } from "@shared/incomeTypes";
 // SSN and account numbers are WRITE-ONLY virtual fields: the server encrypts
 // them at rest and never returns the value — responses carry only ssnLast4 /
 // accountNumberLast4, which the inputs surface via their placeholders.
@@ -171,11 +172,10 @@ export const LIABILITY_TYPES = [
   "Alimony", "Child Support", "Other"
 ];
 
-export const INCOME_SOURCES = [
-  "Alimony", "Child Support", "Interest and Dividends", "Notes Receivable",
-  "Royalty Payments", "Unemployment Benefits", "Automobile Allowance",
-  "Disability", "Mortgage Credit Certificate", "Public Assistance",
-  "Retirement (e.g., Pension, IRA)", "Social Security", "Boarder Income",
-  "Foster Care", "Housing or Parsonage", "Separate Maintenance",
-  "Trust", "VA Compensation", "Capital Gains", "Other"
-];
+// Section 1e income sources. The list itself moved to `shared/incomeTypes.ts`
+// so the server can READ what this picker writes: the column behind it is a
+// free-text varchar, and until the catalog existed nothing downstream could
+// tell Social Security from Child Support — so the engine summed every source
+// at face value. Re-exported under the original name; the strings are byte-
+// identical, so no stored row changes meaning.
+export const INCOME_SOURCES = OTHER_INCOME_LABELS;

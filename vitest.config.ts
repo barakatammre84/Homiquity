@@ -112,6 +112,7 @@ export default defineConfig({
       "tests/lifecycleEngine.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/incomeOrchestrator.test.ts",
+      "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
       "tests/nonQmProgramGate.test.ts",
       "tests/halalLaneGate.test.ts",
