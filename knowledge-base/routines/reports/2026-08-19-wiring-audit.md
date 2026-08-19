@@ -272,4 +272,108 @@ Claim added `2026-08-19T13:20Z`, released in this PR (CHARTER §5.6). No overlap
 appears in none of the seven open PRs' file lists, and the only active claim (F-077 FHA leg) is
 `server/services/**`.
 
+STATUS: WARN  *(superseded by the addendum's verdict below — ⛔ 2 is resolved)*
+
+---
+
+# Addendum — founder-directed queue close-out (same run, ~14:00)
+
+The founder directed "fix #587 too and do what is best to close out and get all these caught up".
+This section supersedes ⛔ 2 above and adds a disposition for every open PR. **Nothing was merged**
+(L3, CHARTER §1b) and **nothing was pushed to a peer's branch**.
+
+## ⛔ 2 is STALE — #587 was fixed by its own session at 13:38Z, before I could act
+
+The three ux-30 files are gone from its diff (`gh pr view 587 --json files` now lists nine calculator
+files and nothing else), head is `a0683ba9`, and its gate is **SUCCESS**. Its owner is live: a
+worktree sits at `…/ad2158fc-…/scratchpad/wt-fix` on that exact head. Correct action was therefore
+to verify and stand off, not to push into an active branch (CHARTER §5, "assist without hijacking").
+
+**But #587 now has a different problem, and it is a merge decision, not a defect:** its own root
+cause was fixed on `main` an hour earlier by **#594** (merged as `24256ff1`), using a *different
+mechanism*. #594 traced the five overflows to a grid whose multi-column template is breakpoint-
+prefixed (`grid gap-8 lg:grid-cols-N`) with no template below it, so the implicit column is `auto`
+and sizes to min-content, and fixed the containers with `grid-cols-1` — `repeat(1, minmax(0,1fr))`,
+where the `minmax(0,…)` is the load-bearing half. It measured no overflow across 34 pages after.
+#587 fixes the same five pages from the other end, with `whitespace-normal h-auto min-h-12 py-3` on
+the CTA, applied to nine sites.
+
+Both are defensible and they compose (`twMerge`), but **#587's PR body — "five of eleven calculator
+routes overflow" — is no longer true of `main`.** Two calls for you:
+
+- **Merge it as defence-in-depth** (a long CTA label can still blow past a `minmax(0,1fr)` track's
+  content box; #594 itself used `whitespace-normal` for exactly that on `/find-an-agent`), knowing
+  the four never-broken pages change appearance on a narrow screen; **or**
+- **close it as superseded**, recording that the nine sites keep `whitespace-nowrap`.
+
+I have no measurement to break the tie: `scripts/browser-probe.cjs` needs a running server, and the
+`preview_start` path boots the **primary checkout**, which is on a peer's branch — so any number I
+produced would describe the wrong code. That measurement is the one thing that would decide it.
+
+## Queue disposition — every open PR, 14:00Z
+
+| PR | State | Behind `main` | Disposition |
+|---|---|---|---|
+| **#600** | green, CLEAN | 0 | ready — yours to merge |
+| **#599** | green, CLEAN | — | ready — yours to merge |
+| **#598** | green, CLEAN | 0 | this run's fix — ready |
+| **#597** | green | 1 | ready |
+| **#596** | green | 1 | ready; #587's stray copy of it is gone, so nothing blocks it |
+| **#595** | gate **pending**, actively being pushed (13:51Z) | 4 | leave alone — live session |
+| **#589** | green | 7 | ready |
+| **#587** | green, CLEAN | 11 | **decide** — superseded-in-mechanism by #594 (above) |
+| **#542** | draft, **no checks ever ran** | **114** | **decide** — see the audit below |
+
+**Nothing in the queue is red.** The earlier "PR #587 is red" is resolved. The blocker across the
+board is review capacity, which is a founder decision and not something a routine can assist.
+
+## #542 — the content audit CHARTER §5 says must exist before any kill
+
+Draft since 2026-08-17, 13 commits, 114 behind `main`, never once ran CI. Its 3-dot diff reads
+"1,543 insertions", which **overstates it** — the known hazard of diffing an old branch. Compared
+blob-by-blob against `main` instead:
+
+**Already landed (byte-identical on `main`) — 4 of its 5 test files:**
+`tests/fcraConsentGateBehavior.test.ts`, `tests/intakeNeverDenies.test.ts`,
+`tests/inviteValidateAudit.test.ts`, `tests/vaResidualEngineParity.test.ts`.
+
+**Also landed, by a different implementation:** the F-042 MCP soft-pull gate. `main` carries
+`tests/mcpSoftPullGate.test.ts` (primary-engineer, 2026-08-17, gate-first made structural); #542's
+`tests/mcpSoftPullConsentOrder.test.ts` is that leg's older sibling. **Also landed:** the
+invite-validate PII read audit — `server/routes/agent-broker/invites.ts:169` has
+`logAudit(req, "application_invite.viewed", …)` on `main`. (My first pass called this unlanded; it
+was matching comment text, not behaviour. Corrected here.)
+
+**Genuinely still unlanded — three items, in priority order:**
+
+1. **The funnel footer never shows the NMLS number.** `FunnelChrome.tsx` on `main` links "NMLS
+   Consumer Access" (`:242`) and names it in the disclaimer (`:258`), but the *identifier itself*
+   (#427468) appears nowhere in the funnel chrome. #542 adds `companyNmlsDisplay()` to the copyright
+   line. **Whether it is required there is an NMLS question and I am not answering it from memory** —
+   CLAUDE.md routes that to `docs/nmls/`, and the display rule belongs to **Compliance Watch**
+   (Tue 13:21). Raising it, not deciding it.
+2. **`server/underwritingEngine.ts` re-states three VA constants as literals** — `0.14` (`:440`),
+   `41.0` (`:490`), `1.2` (`:491`) — while `server/services/underwritingNuance.ts:206-208` already
+   **exports** `VA_UTILITY_RATE_PER_SQFT`, `VA_DTI_CUSHION_TRIGGER` and `VA_CUSHION_MULTIPLIER`, the
+   same three values. #542 de-forks the engine onto them, and is cherry-pickable as-is. Hygiene, not
+   a live defect: the parity test that pins the two paths **already landed** and passes, so they
+   agree today — they simply agree by coincidence of two literals rather than by construction. The
+   engine is on §6's always-off-limits list for **every** routine, so this is a human's to take.
+3. **`Footer.tsx`'s `/apply` link is not `PRELAUNCH_GATED`.** **De-escalated on inspection:**
+   `PRELAUNCH_GATED` is `true` in a production build *unless* `VITE_PRELAUNCH_GATED="false"`
+   (`client/src/lib/prelaunch.ts:17-19`), and the site has been publicly taking applications since
+   2026-08-06 — so prod is running with the gate open and this change is a **no-op there today**. It
+   matters only if the gate is ever re-armed. Not a live compliance defect; recording it so nobody
+   re-raises it as one.
+
+Plus doc updates (feature-review `FINDINGS`/`DOMAINS`/`CHARTER`, `TEAM_PRACTICES` test-quality
+rules, the SAFE/MLO map, a roadmap line) and 9 lines of `tests/complianceInvariants.test.ts`.
+
+**Recommended disposition: do not close it as superseded — it is ~90% landed, and the remaining 10%
+is real.** Cut items 1–3 into one small PR against current `main` and close #542 pointing at it.
+**I did not do that here:** every file it needs is `client/src/components/Footer.tsx`,
+`FunnelChrome.tsx` and `underwritingEngine.ts` — the first two are claimed by #542 itself (§5.2: a
+file in an open PR is claimed by it), and the third is off-limits to every routine. Say the word and
+I will take the two client files.
+
 STATUS: WARN
