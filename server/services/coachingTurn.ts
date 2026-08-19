@@ -145,7 +145,10 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
   const toolCtx: CoachToolContext = {
     req: opts.req,
     userId: opts.userId,
+    userRole: opts.userRole ?? "",
     conversationId: opts.conversationId,
+    // Resolved from the session in the route, never from tool input.
+    workableApplicationId: opts.verifiedContext.workableApplicationId ?? null,
     emit: guardedEmit,
     state,
   };

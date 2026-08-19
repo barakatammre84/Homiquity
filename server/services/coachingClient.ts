@@ -51,7 +51,7 @@ export const COACH_MODEL = "claude-sonnet-5";
  * ai_interactions row instead of the full prompt text — the exact prompt is
  * reconstructable from git at this version. Bump on ANY prompt/tool change.
  */
-export const COACH_PROMPT_VERSION = "coach-2.2.0";
+export const COACH_PROMPT_VERSION = "coach-2.3.0";
 
 export const MAX_MODEL_CALLS_PER_TURN = 2;
 // Product turn budget, not a platform ceiling (the persistent host has none):

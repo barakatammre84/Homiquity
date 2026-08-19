@@ -13,7 +13,7 @@ import {
 import { scanForEscalationTriggers } from "@shared/compliance/complaintEscalation";
 import { escalateFlaggedMessage } from "../services/complaintEscalation";
 import { logAudit } from "../auditLog";
-import { pickActiveLoanApplication } from "@shared/schema";
+import { pickActiveLoanApplication, pickWorkableLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
 
@@ -41,6 +41,18 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
     const activeApp = pickActiveLoanApplication(applications)
       ?? applications.find(a => a.status === "funded")
       ?? applications[0];
+
+    // TWO resolutions on purpose, and they are not interchangeable.
+    //
+    // `activeApp` above is deliberately wide — it falls back to the most recent
+    // file of ANY status so the narrative context is never blind to history.
+    // That is right for prose ("your last application was withdrawn") and wrong
+    // for a tool that tells a borrower which documents to upload: the `??
+    // applications[0]` tail silently resurrects denied/withdrawn/funded files,
+    // which is how uploads once landed on a closed loan (see
+    // pickWorkableLoanApplication's docblock). The server-truth tools target
+    // the workable file or nothing at all.
+    const workableApp = pickWorkableLoanApplication(applications);
 
     if (!activeApp) {
       return {
@@ -142,6 +154,7 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
 
     const context: VerifiedUserContext = {
       hasApplication: true,
+      workableApplicationId: workableApp?.id ?? null,
       applicationStatus: activeApp.status,
       annualIncome: activeApp.annualIncome,
       monthlyDebts: activeApp.monthlyDebts,

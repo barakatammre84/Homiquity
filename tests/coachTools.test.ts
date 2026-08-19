@@ -20,14 +20,19 @@ import {
 import { syncCoachIntakeToApplication } from "../server/services/coachProfileSync";
 import { storage } from "../server/storage";
 
-function makeCtx(): { ctx: CoachToolContext; events: CoachStreamEvent[] } {
+function makeCtx(
+  overrides: Partial<CoachToolContext> = {},
+): { ctx: CoachToolContext; events: CoachStreamEvent[] } {
   const events: CoachStreamEvent[] = [];
   const ctx: CoachToolContext = {
     req: { user: { id: "user-1" }, headers: {} } as never,
     userId: "user-1",
+    userRole: "active_buyer",
     conversationId: "conv-1",
+    workableApplicationId: null,
     emit: (e) => events.push(e),
     state: {},
+    ...overrides,
   };
   return { ctx, events };
 }
@@ -44,7 +49,26 @@ describe("COACH_TOOLS definition stability (prompt-cache contract)", () => {
       // Appended 2026-08-04 (renter-incubation adjudication Leg C) — new tools
       // append at the END only.
       "lookup_dpa_programs",
+      // Appended 2026-08-19 — the server-truth read tools.
+      "get_loan_status",
+      "get_document_checklist",
+      "get_borrower_tasks",
     ]);
+  });
+
+  // The read tools resolve the application from the authenticated session.
+  // A tool that ACCEPTS an id hands the model an IDOR primitive: it can be
+  // argued into emitting someone else's uuid, and the request looks legitimate
+  // by the time it reaches storage. Asserted over the whole array so a tool
+  // added later inherits the rule instead of quietly opting out of it.
+  it("no tool accepts an identifier as input", async () => {
+    const FORBIDDEN = ["applicationId", "userId", "conversationId", "loanId", "borrowerId"];
+    for (const tool of COACH_TOOLS) {
+      const props = Object.keys((tool.input_schema as { properties?: object }).properties ?? {});
+      for (const key of FORBIDDEN) {
+        expect(props, `${tool.name} must not accept ${key}`).not.toContain(key);
+      }
+    }
   });
 
   it("every tool description states WHEN to call it", () => {

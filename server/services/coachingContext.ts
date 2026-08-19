@@ -55,6 +55,17 @@ export type ReadinessState = "not_started" | "intake_started" | "intake_complete
 export interface VerifiedUserContext {
   hasApplication: boolean;
   applicationStatus?: string;
+  /**
+   * The file the assistant's server-truth tools may read — resolved with
+   * `pickWorkableLoanApplication`, so never a denied/withdrawn/funded one.
+   *
+   * Deliberately NOT the same application the narrative context above is built
+   * from. That one falls back to the most recent file of any status so the
+   * assistant is never blind to history, which is right for prose and wrong
+   * for a tool that tells a borrower which documents to upload — that is how
+   * uploads once landed on a closed loan (see the selector's own docblock).
+   */
+  workableApplicationId?: string | null;
   annualIncome?: string | null;
   monthlyDebts?: string | null;
   creditScore?: number | null;

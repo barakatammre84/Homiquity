@@ -251,6 +251,7 @@ export default defineConfig({
       "tests/vaResidualEngineParity.test.ts",
       "tests/inviteValidateAudit.test.ts",
       "tests/mutationErrorHandling.test.ts",
+      "tests/homiFileTruth.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
