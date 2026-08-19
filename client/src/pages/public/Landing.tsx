@@ -6,6 +6,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { CoachPromptBar } from "@/components/CoachPromptBar";
+import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -17,8 +18,12 @@ import { Icons, iconSize } from "@/lib/icons";
  * Deliberately short. The previous version ran eight stacked sections — hero,
  * estimator, six audience cards, a four-step explainer, an image band, a rates
  * teaser, a four-card trust grid and a founder note — which is a sitemap, not a
- * front door. This is one dominant hero built around the AI Coach, three ways in,
- * a single trust row, and the footer.
+ * front door. This is one dominant hero built around the AI Coach, the buying-power
+ * estimator, three ways in, a single trust row, and the footer.
+ *
+ * The estimator earns its band: it is the only thing here that answers a visitor
+ * who will not create an account, so it is the counterweight to a coach that
+ * requires one.
  *
  * What the coach replaced: the hero used to ask the visitor to self-select from
  * six personas before anything would answer them. Asking a question in their own
@@ -133,17 +138,46 @@ export default function Landing() {
               <CoachPromptBar />
             </div>
 
+            {/* The escape hatch for visitors who will not hand over an email yet.
+                It points at the band below rather than off to /afford — the
+                no-signup answer is on this page, so sending them to another
+                route to find it was a needless step. */}
             <p className="mt-8 text-sm text-primary-foreground/80">
               Rather not sign up yet?{" "}
-              <Link
-                href="/afford"
+              <a
+                href="#buying-power"
                 className="font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"
                 data-testid="link-hero-afford"
               >
                 See your buying power
-              </Link>{" "}
+              </a>{" "}
               — no account, no credit check.
             </p>
+          </div>
+        </section>
+
+        {/* Buying power — the one thing on this page that answers a visitor
+            without an account. Its own band directly under the hero, because it
+            is the alternative to the coach, not a footnote to it. */}
+        <section
+          id="buying-power"
+          className="scroll-mt-20 border-b bg-muted/30 px-4 py-20 sm:px-6 lg:px-8"
+          data-testid="section-estimator"
+        >
+          <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+                No account needed
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                Find out what you could afford — in about a minute
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
+                Pick a few ranges and get a realistic estimate. No sign-up, no credit
+                check, and nothing leaves your device until you decide to continue.
+              </p>
+            </div>
+            <BuyingPowerEstimator />
           </div>
         </section>
 
