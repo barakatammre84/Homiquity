@@ -229,7 +229,7 @@ export function DocumentReviewPanel({
               </div>
             )}
             <Button
-              size="sm"
+              size="sm" className="touch-target"
               variant="outline"
               disabled={extractMutation.isPending}
               onClick={() => extractMutation.mutate(doc)}
@@ -268,7 +268,7 @@ export function DocumentReviewPanel({
         {canReview && isPending && (
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              size="sm"
+              size="sm" className="touch-target"
               disabled={verifyMutation.isPending}
               onClick={() => verifyMutation.mutate({ id: doc.id, status: "verified" })}
               data-testid={`button-verify-doc-${doc.id}`}
@@ -277,7 +277,7 @@ export function DocumentReviewPanel({
               Verify
             </Button>
             <Button
-              size="sm"
+              size="sm" className="touch-target"
               variant="outline"
               disabled={verifyMutation.isPending}
               onClick={() => {

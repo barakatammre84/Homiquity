@@ -145,7 +145,7 @@ export function LoanComparisonMatrix({
                       </div>
                     ) : (
                       <Button
-                        size="sm"
+                        size="sm" className="touch-target"
                         onClick={() => onLockRate(o.id)}
                         disabled={lockPending || !steeringAcknowledged}
                         title={!steeringAcknowledged ? "Review the loan options disclosure above first" : undefined}

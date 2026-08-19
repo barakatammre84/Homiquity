@@ -116,7 +116,7 @@ export function ReviewWorkbenchPanel({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
-                    size="sm"
+                    size="sm" className="touch-target"
                     onClick={() => resolve.mutate({ id: item.id, action: "confirmed" })}
                     disabled={resolve.isPending}
                     data-testid={`button-confirm-${idx}`}
@@ -134,7 +134,7 @@ export function ReviewWorkbenchPanel({
                         data-testid={`input-override-${idx}`}
                       />
                       <Button
-                        size="sm"
+                        size="sm" className="touch-target"
                         variant="outline"
                         disabled={resolve.isPending || !(overrideValues[item.id] ?? "").trim()}
                         onClick={() =>
@@ -147,7 +147,7 @@ export function ReviewWorkbenchPanel({
                     </>
                   )}
                   <Button
-                    size="sm"
+                    size="sm" className="touch-target"
                     variant="ghost"
                     onClick={() => resolve.mutate({ id: item.id, action: "dismissed" })}
                     disabled={resolve.isPending}

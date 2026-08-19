@@ -79,7 +79,7 @@ export function PackageConformanceBadge({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-xs"
+            className="touch-target h-6 px-2 text-xs"
             onClick={() => setExpanded(v => !v)}
             aria-expanded={expanded}
             data-testid={`xsd-elements-toggle-${submissionId}`}

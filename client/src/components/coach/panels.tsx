@@ -244,7 +244,7 @@ function ChecklistItemRow({
               <Button asChild
                   size="sm"
                   variant="outline"
-                  className="h-7 gap-1.5 text-xs"
+                  className="touch-target h-7 gap-1.5 text-xs"
                   data-testid={`button-plaid-connect-${doc.docType}`}
                 >
                 <Link href="/verification">

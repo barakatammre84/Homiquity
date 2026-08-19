@@ -51,7 +51,7 @@ export function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: s
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden"
+              className="touch-target lg:hidden"
               onClick={onBack}
               aria-label="Back to pipeline"
               data-testid="cockpit-back"
@@ -73,7 +73,7 @@ export function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: s
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <DocRequestDraftDialog applicationId={app.id} />
-          <Button asChild variant="outline" size="sm" data-testid="cockpit-open-full-file">
+          <Button asChild variant="outline" size="sm" className="touch-target" data-testid="cockpit-open-full-file">
             <Link href={`/borrower-file/${app.id}`}>
               <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
               Full file
@@ -192,7 +192,7 @@ export function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: s
                 <Badge variant="destructive">{messages.unreadFromBorrower} unread</Badge>
               )}
             </h3>
-            <Button asChild variant="ghost" size="sm" data-testid="cockpit-open-messages">
+            <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="cockpit-open-messages">
               <Link href="/messages">Open thread</Link>
             </Button>
           </div>

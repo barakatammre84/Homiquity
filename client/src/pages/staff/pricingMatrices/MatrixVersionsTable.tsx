@@ -124,7 +124,7 @@ export function MatrixVersionsTable({
                     <TableCell>
                       <div className="flex items-center justify-end gap-1 flex-wrap">
                         <Button
-                          size="sm"
+                          size="sm" className="touch-target"
                           variant="outline"
                           onClick={() => onView(m)}
                           data-testid={`button-view-${m.id}`}
@@ -134,7 +134,7 @@ export function MatrixVersionsTable({
                         </Button>
                         {canManage && m.lifecycleStatus === "DRAFT" && (
                           <Button
-                            size="sm"
+                            size="sm" className="touch-target"
                             onClick={() => onActivate(m)}
                             data-testid={`button-activate-${m.id}`}
                           >
@@ -145,7 +145,7 @@ export function MatrixVersionsTable({
                         {canManage && m.lifecycleStatus === "ACTIVE" && (
                           <>
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="outline"
                               onClick={() => onSchedule(m)}
                               data-testid={`button-schedule-${m.id}`}
@@ -154,7 +154,7 @@ export function MatrixVersionsTable({
                               Schedule
                             </Button>
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="destructive"
                               onClick={() => onRetire(m)}
                               data-testid={`button-retire-${m.id}`}

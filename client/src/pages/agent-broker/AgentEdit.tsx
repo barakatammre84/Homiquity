@@ -258,7 +258,7 @@ export default function AgentEdit() {
                       </option>
                     ))}
                   </select>
-                  <Button type="button" onClick={addSpecialty} size="sm" variant="outline">
+                  <Button type="button" onClick={addSpecialty} size="sm" className="touch-target" variant="outline">
                     Add
                   </Button>
                 </div>
@@ -298,7 +298,7 @@ export default function AgentEdit() {
                       }
                     }}
                   />
-                  <Button type="button" onClick={addArea} size="sm" variant="outline">
+                  <Button type="button" onClick={addArea} size="sm" className="touch-target" variant="outline">
                     Add
                   </Button>
                 </div>

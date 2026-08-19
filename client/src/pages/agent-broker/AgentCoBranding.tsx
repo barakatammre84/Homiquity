@@ -421,7 +421,7 @@ function DealDeskTab() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" data-testid="button-new-scenario">
+            <Button size="sm" className="touch-target" data-testid="button-new-scenario">
               <Plus className="h-4 w-4 mr-1" /> New Scenario
             </Button>
           </DialogTrigger>

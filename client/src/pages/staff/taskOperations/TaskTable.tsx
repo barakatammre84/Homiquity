@@ -94,7 +94,7 @@ export function TaskTable({
                   {task.status !== "COMPLETED" && (
                     <>
                       <Button
-                        size="sm"
+                        size="sm" className="touch-target"
                         variant="outline"
                         onClick={() => onUpdateStatus(task.id, "COMPLETED")}
                         data-testid={`button-complete-${task.id}`}
@@ -102,7 +102,7 @@ export function TaskTable({
                         <CheckCircle2 className="h-4 w-4" />
                       </Button>
                       <Button
-                        size="sm"
+                        size="sm" className="touch-target"
                         variant="outline"
                         onClick={() => onEscalate(task.id)}
                         data-testid={`button-escalate-${task.id}`}

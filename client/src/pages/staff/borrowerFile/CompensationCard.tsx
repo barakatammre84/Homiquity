@@ -205,7 +205,7 @@ export function CompensationCard({
             <DialogTrigger asChild>
               <Button
                 variant={elected ? "outline" : "default"}
-                size="sm"
+                size="sm" className="touch-target"
                 data-testid="button-elect-compensation"
               >
                 {elected ? "Edit election" : "Elect compensation"}

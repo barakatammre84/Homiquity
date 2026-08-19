@@ -241,7 +241,7 @@ export function NotificationsBell() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs h-auto py-1 px-2"
+                className="touch-target text-xs h-auto py-1 px-2"
                 onClick={handleMarkAllRead}
                 data-testid="button-mark-all-read"
               >
@@ -306,7 +306,7 @@ export function NotificationsBell() {
           )}
         </ScrollArea>
         <div className="border-t p-2">
-          <Button asChild variant="ghost" size="sm" className="w-full text-xs" data-testid="button-view-all-notifications">
+          <Button asChild variant="ghost" size="sm" className="touch-target w-full text-xs" data-testid="button-view-all-notifications">
             <Link href="/dashboard">
               View all activity
               <ArrowRight className="h-3 w-3 ml-1" />

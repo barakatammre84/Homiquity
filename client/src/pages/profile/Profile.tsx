@@ -269,7 +269,7 @@ export default function Profile() {
                     <Badge variant="outline" className="text-[10px] font-normal">Self-reported</Badge>
                   )}
                   {application?.editable && !editing && (
-                    <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={startEditing} data-testid="button-edit-profile">
+                    <Button variant="outline" size="sm" className="touch-target gap-1 text-xs" onClick={startEditing} data-testid="button-edit-profile">
                       <Pencil className="h-3 w-3" />
                       Edit
                     </Button>
@@ -278,7 +278,7 @@ export default function Profile() {
                     <>
                       <Button
                         size="sm"
-                        className="text-xs"
+                        className="touch-target text-xs"
                         onClick={() => saveEdits.mutate()}
                         disabled={saveEdits.isPending}
                         data-testid="button-save-profile"

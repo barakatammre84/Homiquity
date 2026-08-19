@@ -98,7 +98,7 @@ export function InviteTable({
               <div className="flex items-center justify-end gap-1">
                 {!invite.isExpired && invite.status !== "applied" && (
                   <Button
-                    size="sm"
+                    size="sm" className="touch-target"
                     variant="ghost"
                     onClick={() => onCopy(`${window.location.origin}/apply/${invite.token}`)}
                     data-testid={`button-copy-${invite.id}`}

@@ -38,7 +38,7 @@ export function EquitySection({ profileId }: { profileId: string }) {
           <CardDescription>Track your home equity over time</CardDescription>
         </div>
         <Button
-          size="sm"
+          size="sm" className="touch-target"
           variant="outline"
           onClick={() => recordMutation.mutate()}
           disabled={recordMutation.isPending}

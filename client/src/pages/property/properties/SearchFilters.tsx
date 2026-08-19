@@ -110,7 +110,7 @@ export function SearchFilters({
                 variant={searchMode === "buy" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => onSearchModeChange("buy")}
-                className="toggle-elevate"
+                className="touch-target toggle-elevate"
                 data-testid="button-mode-buy"
               >
                 For Sale
@@ -119,7 +119,7 @@ export function SearchFilters({
                 variant={searchMode === "sold" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => onSearchModeChange("sold")}
-                className="toggle-elevate"
+                className="touch-target toggle-elevate"
                 data-testid="button-mode-sold"
               >
                 Recently Sold
