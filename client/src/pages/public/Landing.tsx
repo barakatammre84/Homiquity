@@ -75,8 +75,17 @@ const JOURNEYS = [
     id: "self-employed",
     icon: Icons.person,
     title: "Your income is your own",
+    // 🚨 This said "1099s, K-1s, write-offs, rentals. We work out every way your
+    // income can count." A journey walk proved every part of that false in the
+    // running product: adding Rental Income dead-ends the funnel (the address
+    // never commits, so Continue silently refuses), the funnel's self-employment
+    // entry is never read by the income orchestrator — which books the whole
+    // amount as AGENCY WAGE and reports "Employment income" as the only source —
+    // and a second business entity cannot be entered at all. What IS built and
+    // verified: the dedicated self-employed funnel branch, the URLA K-1 worksheet
+    // (payload round-trips), and the self-employed document set. Promise those.
     description:
-      "1099s, K-1s, write-offs, rentals. We work out every way your income can count.",
+      "1099s, K-1s, business returns. Your application is built for how you actually get paid.",
     cta: "See how it works",
     href: "/self-employed",
   },
@@ -116,7 +125,11 @@ const TRUST_POINTS = [
   {
     id: "income",
     icon: Icons.done,
-    label: "We work out every way your income can count — not just the obvious one",
+    // Was "We work out every way your income can count — not just the obvious
+    // one". The multi-path engine exists (shared/incomePaths.ts) but the funnel
+    // does not feed self-employment into it, so the claim is false at the only
+    // place a borrower would test it. This states the part that is delivered.
+    label: "Business returns and K-1s get their own worksheet, not a wage box",
   },
   {
     id: "advocacy",

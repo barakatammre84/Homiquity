@@ -238,7 +238,7 @@ export function computeNextAction(input: NextActionInput): NextAction {
       title: "Let's explore your options",
       description: "Chat with Homi to learn what you can do next.",
       href: "/ai-coach",
-      buttonLabel: "Talk to Coach",
+      buttonLabel: "Talk to Homi",
     };
   }
 
