@@ -12,7 +12,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div>
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="touch-target flex items-center gap-2">
               <span className="text-xl font-bold tracking-tight text-sidebar-foreground">homiquity</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
