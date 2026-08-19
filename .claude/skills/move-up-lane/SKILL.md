@@ -78,6 +78,15 @@ every guard in the repo was green.
   the only merger. §9-tripping diffs ship as draft PRs.
 - **M10 — Prove every fix by reintroducing the bug.** Paste both directions. A test that passes
   with and without the fix is not a test.
+- **M11 — Your lane crosses other people's files, so say whose.** This seat is scoped by *subject*,
+  not by path, and every path it touches belongs to an `hq-*-owner`
+  (`knowledge-base/handbook/FEATURE_MAP.md`): the funnel advisory is `hq-intake-funnel-owner`'s,
+  the Landing doors are `hq-seo-content-owner`'s, jumbo products and rates are `hq-pricing-owner`'s,
+  the eligibility push is `hq-data-intel-owner`'s. Name the owner of every file you touch in the PR
+  body. **Precedence, per those charters: a live `REGISTER.md` claim and another session's open PR
+  both outrank ownership** — so check both before writing, and prefer handing the change to the
+  owner when it is squarely inside one area and only incidentally jumbo. Your value is the work that
+  is *nobody's* because it spans four owners; work that belongs to one of them should go to them.
 
 ## Phase 0 — Orient
 

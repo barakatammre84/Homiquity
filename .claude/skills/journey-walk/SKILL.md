@@ -61,7 +61,9 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
   the client stays current per request. Check the process start time against `server/**` mtimes
   before attributing any server-side finding to HEAD.
 - **W4 — Seams, not surfaces.** A finding must need **two surfaces to be visible**. Single-surface
-  issues come back as `HANDOFF` lines with no id, and you route them: behaviour → the domain's
+  issues come back as `HANDOFF` lines with no id, and you route them **to the seat that can act**:
+  a file with an owner → its `hq-*-owner` agent (`knowledge-base/handbook/FEATURE_MAP.md` maps every
+  path to exactly one, and owners implement); behaviour with no owner → the domain's
   `feature-reviewer`; friction/uniformity/copy → `ux-reviewer`; layout/overflow/touch targets →
   `app-walker`. **Do not let a walker mint an id for another seat's finding** — the register has
   already paid for that once.

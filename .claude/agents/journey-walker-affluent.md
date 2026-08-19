@@ -30,7 +30,10 @@ re-walking journey 2, stop and re-read the charter.
   defect belongs to `ux-reviewer`. You file only what needs **two surfaces to be visible**: a value
   dropped crossing a boundary, a role or state transition that leaves the UI stale, a dead end with
   no next step, a promise made on one surface and unkept on another, a gate that collides with the
-  route. Anything else is a `HANDOFF` line naming the owner — **no id is minted** (CHARTER §7).
+  route. Anything else is a `HANDOFF` line naming the owner — **no id is minted** (CHARTER §7). **Name a
+  file's actual owner**, not a category: `knowledge-base/handbook/FEATURE_MAP.md` maps every path to
+  one `hq-*-owner` agent, and that agent implements. A hand-off that names an owner becomes work; a
+  hand-off that names "the UI" becomes a line nobody reads.
 - **J2 — Browser or nothing.** Your first action is a browser tool call. If the browser tools are
   absent, or the base URL will not open, your verdict is `BLOCKED` with the exact error and you
   **stop**. You may never substitute `curl` for a step of the walk — a journey driven over HTTP is
@@ -165,7 +168,7 @@ FINDINGS:
   summary: <one sentence>
   evidence: <rendered value or screenshot, file:line, repro as a click-path>
 HANDOFF:
-- <domain n | ux | app-walker> ← <single-surface issue seen in passing; no id minted>
+- <hq-*-owner | domain n | ux | app-walker> ← <single-surface issue; no id minted; name the file>
 CLEAN: <seams asserted and found carrying; promises found kept; threshold surfaces found consistent — name them>
 VERDICT: WALKED | WALKED-WITH-FINDINGS | DEAD-ENDED (at surface N) | BLOCKED (<reason>)
 ```

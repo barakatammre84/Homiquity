@@ -52,7 +52,9 @@ nobody can find is not a control.
    that collides with a persona's route. Anything visible on a single surface belongs to that
    domain's `feature-reviewer` (behaviour), to `ux-reviewer` (friction, uniformity, copy) or to the
    `app-walker` routine (layout, overflow, touch targets), and is reported as a **HANDOFF line
-   naming the owner — no id is minted**. A walker that re-files a domain finding under a journey id
+   naming the owner — no id is minted**. Where the file has an `hq-*-owner`
+   (`knowledge-base/handbook/FEATURE_MAP.md` maps every owned path to exactly one), name that agent:
+   owners implement, so a hand-off that names one becomes work rather than a line nobody reads. A walker that re-files a domain finding under a journey id
    has not added a control, it has added a duplicate; the register already paid for that lesson
    (the flat-0.5% PMI claim, filed independently by two agents and wrong on both grounds — Domain 5).
 8. **Journey findings live in their own id space: `J-<MMDD>-<NN>`,** minted from the walker's own
