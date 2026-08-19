@@ -64,6 +64,20 @@ anything else in this file being true.
   "Expected — Waiting for status", and nobody can bypass it. PRs whose gate went green before the
   flip keep their recorded pass and remain mergeable. The read-only prod census (KTLO-1) is
   blocked on this too.
+  **DECISION 2026-08-19 — the required check was REMOVED rather than the bill paid.** Development
+  is local-only and not launching, so the gate moved from GitHub to the laptop: `main`'s
+  `required_status_checks.contexts` is now `[]`. Force-push and deletion protection and
+  `enforce_admins` are untouched. This is safe *only because* the local gate was hardened the same
+  day — `.githooks/pre-push` now BLOCKS instead of skipping when it cannot check anything, and
+  `scripts/hooks-installed-guard.cjs` fails when a clone has `core.hooksPath` unset, which is how a
+  fresh clone used to start ungated. Run `pnpm preflight` before opening a PR; it is the same 16
+  checks CI ran.
+  🚨 **RESTORE THIS BEFORE ANY RETURN TO LAUNCH.** One command — the separators are U+00B7 MIDDLE
+  DOTs, not periods, and the string must match verbatim or every PR deadlocks on a check that never
+  arrives:
+  ```bash
+  echo '{"strict":false,"contexts":["gate (typecheck · tests · schema guard)"]}' | gh api -X PATCH repos/barakatammre84/Homiquity/branches/main/protection/required_status_checks --input -
+  ```
   **Fix:** GitHub → Settings → Billing & plans — resolve the failed payment and/or raise the
   Actions spending limit. The alternative is re-publishing the repo, which re-exposes
   `knowledge-base/feature-review/FINDINGS.md` and `governance/security/`. **Founder-held, and it
