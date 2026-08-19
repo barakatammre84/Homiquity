@@ -10,6 +10,9 @@ import {
   SENSITIVE_INPUT_MESSAGES,
   SENSITIVE_INPUT_REDACTED_PLACEHOLDER,
 } from "../services/sensitiveInputGuard";
+import { scanForEscalationTriggers } from "@shared/compliance/complaintEscalation";
+import { escalateFlaggedMessage } from "../services/complaintEscalation";
+import { logAudit } from "../auditLog";
 import { pickActiveLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
@@ -333,7 +336,17 @@ export function registerCoachRoutes(app: Express) {
   // the new user message (the old flow inserted first and re-fetched, so the
   // model saw the user's message twice), then persist it and build context.
   // Writes the error response itself and returns null when the turn must not run.
-  async function prepareCoachTurn(req: Request, res: Response): Promise<PreparedCoachTurn | null> {
+  //
+  // `scanText` is the message as the borrower actually typed it, BEFORE the
+  // sensitive-input guard swaps in its placeholder. Only the CS2 complaint
+  // scan reads it, and that scan is pure — it returns categories and keeps
+  // nothing. Passing the redacted placeholder instead would silently lose a
+  // discrimination allegation that happened to share a message with an SSN.
+  async function prepareCoachTurn(
+    req: Request,
+    res: Response,
+    scanText?: string,
+  ): Promise<PreparedCoachTurn | null> {
     const user = req.user as User;
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -385,6 +398,28 @@ export function registerCoachRoutes(app: Express) {
       role: "user",
       content: message,
     });
+
+    // CS2: the same escalation scan the Messages surface runs, on the same
+    // vocabulary, with the same fire-and-forget posture — it NEVER blocks,
+    // alters, or delays the turn, and the borrower sees no tip-off. Without
+    // this, a borrower could allege discrimination or a credit-reporting
+    // error to the assistant and nobody would ever be told, while the same
+    // words typed into Messages escalate to the founder immediately.
+    const complaintScan = scanForEscalationTriggers(scanText ?? message);
+    if (complaintScan.flagged) {
+      logAudit(req, "complaint.flagged", "coach_message", userMsg.id, {
+        categories: complaintScan.categories,
+        conversationId: conversation.id,
+        senderId: user.id,
+      });
+      escalateFlaggedMessage(storage, {
+        messageId: userMsg.id,
+        surface: "coach_message",
+        userId: user.id,
+        applicationId: null,
+        categories: complaintScan.categories,
+      }).catch((e) => console.error("[complaints] founder escalation failed:", e));
+    }
 
     const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
 
@@ -489,14 +524,13 @@ export function registerCoachRoutes(app: Express) {
       // never lands in a log. The stored user message becomes the redacted
       // placeholder; the reply is canned (no model call, no ai_interactions
       // row — nothing was invoked).
-      const guardHit = detectSensitiveInput(
-        typeof req.body?.message === "string" ? req.body.message : "",
-      );
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message : "";
+      const guardHit = detectSensitiveInput(rawMessage);
       if (guardHit) {
         req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
       }
 
-      const prep = await prepareCoachTurn(req, res);
+      const prep = await prepareCoachTurn(req, res, rawMessage);
       if (!prep) return;
 
       if (guardHit) {
@@ -587,14 +621,13 @@ export function registerCoachRoutes(app: Express) {
   app.post("/api/coach/message", isAuthenticated, async (req, res) => {
     try {
       // Same input-side sensitive-data guard as the streaming variant.
-      const guardHit = detectSensitiveInput(
-        typeof req.body?.message === "string" ? req.body.message : "",
-      );
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message : "";
+      const guardHit = detectSensitiveInput(rawMessage);
       if (guardHit) {
         req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
       }
 
-      const prep = await prepareCoachTurn(req, res);
+      const prep = await prepareCoachTurn(req, res, rawMessage);
       if (!prep) return;
 
       if (guardHit) {
