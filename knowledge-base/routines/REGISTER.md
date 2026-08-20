@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| workflow-completion 2026-08-20 | `server/services/extractionPersistence.ts` (new) · `server/routes/lending/documents.ts` (auto-extract branch) · `server/routes/documents.ts` (staff `/extract` branch) · `tests/extractionPersistence.test.ts` (new) · `vitest.config.ts` | wfc-wt | routine/workflow-completion-2026-08-20 | 2026-08-20T15:05Z | Workflow 4 step 3: the borrower's own upload auto-extracts but discards the values — `persistDocumentFacts`/`wireExtractionToReadiness` are called only from the staff `/extract` route. Unify both paths behind one helper so they cannot diverge again. |
 | directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); was stacked on #554's branch (now merged as a402bef), cut over to main — PR #556, founder merges |
 
 ## Recently released
