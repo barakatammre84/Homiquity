@@ -1,12 +1,18 @@
-# The core team — seven seats, one working day
+# The core team — eight seats, one working day
 
 **Status:** binding on the seats named below. **Owner:** founder (Amr).
 **Authority:** [`CHARTER.md`](CHARTER.md) wins over this file on any conflict, and every rail there
 applies to every seat here. This file adds the seating chart and the hand-off protocol; it relaxes
 nothing.
-**Last verified against the code:** 2026-08-18.
+**Last verified against the code:** 2026-08-19.
 
-> **Freshness:** last verified 2026-08-18 · review every 60 days
+> ⚠️ **Partly superseded 2026-08-19 by the prove-it-first suite rewrite** ([`CHARTER.md`](CHARTER.md)
+> §1a, §3). The *role* mapping below still holds; the **clock and the seat list do not**. Three seats
+> were retired, two were reshaped, one was promoted to daily, and two new build lanes were added.
+> **Read `CHARTER.md` §3 and `list_scheduled_tasks` for who actually runs** — this file is a
+> seating chart, not a registration, and §0 there is about exactly that confusion.
+
+> **Freshness:** last verified 2026-08-19 · review every 60 days
 
 ---
 
@@ -25,9 +31,16 @@ good each one is alone.
 
 ## 1. The seating chart
 
-Seven seats. **Four were already staffed** — the finding that produced this file is that the
+Eight seats. **Four were already staffed** — the finding that produced this file is that the
 fleet's gaps and the hiring plan's gaps are the *same* gaps, and both are on the non-engineering
 side. We had built the builders and skipped the domain, the vendor edge, and the adversarial check.
+
+**The eighth seat was added the same evening, from the other direction.** The Complex File Engine
+(CHARTER §6d) is a *builder*, but it was missing for the same structural reason the three above
+were: the qualification layer — can a messy borrower qualify at all — sat inside the Primary
+Engineer's company-wide lane, so no run was ever judged on it. It pairs with the Domain seat by
+design: when it reaches regulated math it may not implement, it asks the **Domain Oracle** for a
+cited verdict and posts a `WAITING` row rather than guessing (its rails C2/C3).
 
 | Seat | Hiring-plan role | Routine | Cadence | Writes code? |
 |---|---|---|---|---|
@@ -36,13 +49,21 @@ side. We had built the builders and skipped the domain, the vendor edge, and the
 | **Build — product** | Senior full-stack (§2.3) | Primary Engineer | daily 07:21 | yes |
 | **Build — backend** | Senior full-stack (§2.3) | Backend Data Engineer | daily 11:00 UTC | yes |
 | **Build — capture path** | Senior full-stack (§2.3) | Frontend Wiring Audit | daily 09:20 | yes |
+| **Build — qualification layer** | Senior full-stack (§2.3) | **Complex File Engine** *(new)* | daily 09:53 | yes |
 | **QA — find** | QA engineer (§2.4) | Deliverable QA Sweep | daily 15:05 | no |
 | **QA — prove** | QA engineer (§2.4) | **QA Mutation Verifier** *(new)* | daily 16:20 | throwaway only |
 
 **Supporting seats, unchanged:** Launch Gate (07:48) holds the `RELEASABLE` verdict · Lender
 Delivery Gate (12:31) judges the package · Compliance Watch (Tue 13:21) holds the licensing ladder
 and is the counsel seat · Vendor & Procurement (Mon 09:37) holds commercial state · Refactor Radar
-(Sun 20:00) · Evening Triage (21:10) consolidates the day.
+(Sun 20:00) · Evening Triage (21:10) consolidates the day. · **Move-Up Lane (Wed 14:10)** owns the
+above-conforming borrower — the one door with no explainer, the conforming boundary, and the
+honesty of what we tell a borrower above the limit.
+
+**Review seats reachable by name:** the four `journey-walker-*` agents walk one client journey each
+in a real browser (`knowledge-base/feature-review/JOURNEYS.md`), fronted by the **`/journey-walk`**
+skill. They are the only lens in the fleet whose subject is the space *between* surfaces, and the
+only ones that can re-verify Move-Up Lane's work — **no seat signs off its own.**
 
 ### Seats with no routine, and deliberately so
 
@@ -64,6 +85,9 @@ Each new seat had to pass one test: **what does it catch that nothing else does?
 | Domain Oracle | **added** | Nothing in the fleet can say whether a rule is *real*. Compliance Watch tracks licensing; the delivery gate checks edits, not the guideline the package asserts. |
 | Integration Readiness | **added** | Nothing records, per adapter, the distance between simulation and a signed contract. That distance currently gets discovered at contract time. |
 | QA Mutation Verifier | **added** | The sweep *finds* defects; nothing verifies a **fix** is load-bearing. A test that passes with and without the fix is invisible to every guard. |
+| Move-Up Lane | **added 2026-08-19** | Nothing owns the above-conforming borrower. Complex File Engine owns income *complexity*; jumbo is loan *size*, a different axis. Primary Engineer is launch-ranked, and launch is Illinois-first conforming business, so this lane never reaches the top of its queue. Weekly, not daily, so it does not contend with the three daily builders. **What it caught on day one:** the funnel gated its jumbo advisory on the 2024 limit (`766550` vs `806_500`), telling conforming borrowers they were jumbo across a $40k band — green under a one-limit test that named two files and could not see the funnel. |
+| Client-journey walkers (×4) | **added 2026-08-19** | Report-only, so no file contention. Every existing seat is discontinuous — a domain reviewer never leaves its domain, a workflow verifier never re-renders a nav, a surface auditor sees one page at one role. Nothing could see a value dropped crossing a boundary or a promise with no surface that keeps it. |
+| A white-glove / concierge service tier | **rejected — not a routine at all** | No such tier exists in the product, and a service promise is a staffing and Reg N commitment, not code. Move-Up Lane rail M2 forbids any routine from creating one; it is a founder decision, escalated as a proposal. |
 | A full-stack routine | rejected | Three seats already build daily. A fourth would contend for the same files and the founder's merge throughput, which is the real constraint. |
 | A standup routine | rejected | Evening Triage (21:10) already consolidates the day. A second consolidator is two sources of truth — the failure that closed PR #558. |
 | A counsel routine | rejected | Compliance Watch is that seat. |

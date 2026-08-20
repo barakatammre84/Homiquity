@@ -25,6 +25,9 @@ after any significant change — the teams are durable agents in `.claude/agents
 | `journey-walker-self-employed` | Walks the self-employed buyer journey in the browser; proves the funnel's `complexIncome` branch is carried, not merely taken |
 | `journey-walker-affluent` | Walks the affluent move-up journey in the browser; owns the door with no explainer, the jumbo threshold, and promise-vs-reachability |
 
+All four are reachable without knowing their names via the **`/journey-walk`** skill — a subagent
+nobody can find is not a control.
+
 ## Program rules (binding)
 
 1. **Findings-first.** Review phases are strictly read-only on product code. No reviewer,
@@ -49,7 +52,9 @@ after any significant change — the teams are durable agents in `.claude/agents
    that collides with a persona's route. Anything visible on a single surface belongs to that
    domain's `feature-reviewer` (behaviour), to `ux-reviewer` (friction, uniformity, copy) or to the
    `app-walker` routine (layout, overflow, touch targets), and is reported as a **HANDOFF line
-   naming the owner — no id is minted**. A walker that re-files a domain finding under a journey id
+   naming the owner — no id is minted**. Where the file has an `hq-*-owner`
+   (`knowledge-base/handbook/FEATURE_MAP.md` maps every owned path to exactly one), name that agent:
+   owners implement, so a hand-off that names one becomes work rather than a line nobody reads. A walker that re-files a domain finding under a journey id
    has not added a control, it has added a duplicate; the register already paid for that lesson
    (the flat-0.5% PMI claim, filed independently by two agents and wrong on both grounds — Domain 5).
 8. **Journey findings live in their own id space: `J-<MMDD>-<NN>`,** minted from the walker's own
@@ -63,7 +68,9 @@ after any significant change — the teams are durable agents in `.claude/agents
    see a stale nav, a value that renders blank, or a next step that was never offered. A walker
    whose browser tools are absent reports `BLOCKED` with the exact error and stops; substituting
    HTTP calls and reporting a walk is a `FAIL` for the run, not a degraded pass. Same rail, same
-   reason, as `.claude/skills/app-walker/SKILL.md` R3.
+   reason, as `.claude/skills/app-walker/SKILL.md` R3. *(Verified 2026-08-19: pointed at a dead
+   port, `journey-walker-aspiring-owner` returned `BLOCKED` and explicitly refused to substitute a
+   live port on its own initiative.)*
 
 ## Reality Map — read BEFORE reviewing (stops false-positive findings)
 
@@ -166,6 +173,11 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
   the deployed site, where a failed Railway build leaves the previous container serving. A local
   `/api/health` answers `commit: null` on every branch, so identify the serving checkout with
   `lsof -a -p <pid> -d cwd` plus the process start time before trusting any measurement. Stale
-  listeners are the norm: on 2026-08-19 the `:5002` "worktree" port was still served by a 14-day-old
-  orphan from the deleted `launch-hygiene` worktree, whose `/api/health` returned only
-  `{status,timestamp}` while current code also returns `commit` and `email`.
+  listeners are the norm — two distinct staleness traps, both observed 2026-08-19: the `:5002`
+  "worktree" port was still served by a **14-day-old orphan** from the deleted `launch-hygiene`
+  worktree (its `/api/health` returns only `{status,timestamp}` while current code also returns
+  `commit` and `email` — the cheapest tell); and even the *right* checkout serves stale **server**
+  code, because `pnpm dev` is `tsx server/index-dev.ts` with **no watch flag** — the server half
+  freezes at process start while the client is Vite-transformed per request and stays current.
+  Compare process start time against `server/**` mtimes before attributing any server-side finding
+  to HEAD.

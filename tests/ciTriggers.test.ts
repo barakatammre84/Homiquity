@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 /**
@@ -77,17 +77,38 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
     return m?.[1] ?? "";
   };
 
-  it("migrate-prod runs only on push or manual dispatch", () => {
-    const cond = jobCondition("migrate-prod");
-    expect(cond).toMatch(/github\.event_name == 'push'/);
-    expect(cond).toMatch(/workflow_dispatch/);
-    expect(cond).not.toMatch(/pull_request/);
+  // PAUSED STATE, 2026-08-19. Development is local-only and the Railway production
+  // service is being taken down, so both deploy jobs are switched off (see their `if:`
+  // comments in ci.yml for the restore procedure). These two tests therefore accept the
+  // live wiring OR the exact paused wiring — and nothing else. They are deliberately NOT
+  // relaxed to a wildcard: any third value still fails, so the jobs cannot drift to some
+  // other trigger unnoticed while nobody is looking at them.
+  //
+  // The assertion this file exists for — that a pull_request can never reach a deploy
+  // job — stays unconditional in both states. Widening `on.pull_request` must never be
+  // able to fire a deploy, paused or not.
+  const LIVE_MIGRATE = "github.event_name == 'push' || github.event_name == 'workflow_dispatch'";
+  const PAUSED_MIGRATE = "github.event_name == 'workflow_dispatch'";
+  const LIVE_VERIFY = "github.event_name == 'push'";
+  const PAUSED_VERIFY = "false";
+
+  it("migrate-prod is wired for push+dispatch, or explicitly paused to dispatch only", () => {
+    const cond = jobCondition("migrate-prod").trim();
+    expect([LIVE_MIGRATE, PAUSED_MIGRATE]).toContain(cond);
   });
 
-  it("verify-deploy runs only on push", () => {
-    const cond = jobCondition("verify-deploy");
-    expect(cond).toMatch(/github\.event_name == 'push'/);
-    expect(cond).not.toMatch(/pull_request/);
+  it("verify-deploy is wired for push, or explicitly paused off", () => {
+    const cond = jobCondition("verify-deploy").trim();
+    expect([LIVE_VERIFY, PAUSED_VERIFY]).toContain(cond);
+  });
+
+  it("no pull_request event can reach a deploy job, paused or live", () => {
+    // The security property. Unconditional, and the reason this describe block exists.
+    for (const job of ["migrate-prod", "verify-deploy"]) {
+      expect(jobCondition(job), `${job} must never fire on a pull_request`).not.toMatch(
+        /pull_request/,
+      );
+    }
   });
 
   it("gate runs only on pull_request", () => {
@@ -148,5 +169,80 @@ describe("the §9 guard diffs the PR's real base", () => {
 describe("push still drives deploy from main only", () => {
   it("the push trigger stays pinned to main", () => {
     expect(onBlock).toMatch(/push:\s*\n\s{4}branches:\s*\[main\]/);
+  });
+});
+
+describe("the docs-only fast path cannot skip a gate that matters", () => {
+  // The `scope` step turns the expensive half of `gate` off when a PR changes
+  // nothing but inert prose (KTLO-2: 36 of 137 commits to main in the 14 days to
+  // 2026-08-20 were prose-only, each paying a full ~4-minute billed run).
+  //
+  // The whole safety argument is that "inert" is decided correctly. These tests
+  // pin the two ways it could rot.
+
+  const scopeStep = (() => {
+    const start = CI.indexOf("      - name: Change scope (inert docs vs code)");
+    expect(start, "the scope step was removed or renamed").toBeGreaterThan(-1);
+    const rest = CI.slice(start + 1);
+    const next = rest.search(/\n {6}- name: /);
+    return next === -1 ? rest : rest.slice(0, next);
+  })();
+
+  it("fails closed — every unclassifiable diff resolves to code", () => {
+    // An empty diff, a missing sha, or a git failure must all mean "run everything".
+    // The cost of a wrong `code=false` is a COMPLETELY ungated PR.
+    expect(scopeStep).toMatch(/code=true.*cannot classify/s);
+    expect(scopeStep, "a missing base/head sha must resolve to code").toMatch(
+      /if \[ -z "\$\{BASE_SHA:-\}" \] \|\| \[ -z "\$\{HEAD_SHA:-\}" \]/,
+    );
+    expect(scopeStep, "an empty/failed diff must resolve to code").toMatch(
+      /if \[ -z "\$changed" \]/,
+    );
+    // The only path to `code=false` is the affirmative all-prose branch.
+    expect(scopeStep.match(/decide false/g) ?? []).toHaveLength(1);
+  });
+
+  it("every doc a test reads from disk is on the code path", () => {
+    // THE ROT THIS PREVENTS: someone adds a test that reads a .md file, a later PR
+    // edits only that .md, the scope step calls it inert, the unit tests never run,
+    // and a red suite lands on main. The coupling is invisible in both files —
+    // so it is asserted here instead of remembered.
+    const testDir = join(__dirname);
+    const testFiles = readdirSync(testDir)
+      .filter((f) => f.endsWith(".test.ts"))
+      // This file is the detector; its own explanatory examples are prose, not reads.
+      // Scanning it registered `<path>.md` and then `x.md` as corpus files on the
+      // first two runs of this test — the detector detecting its own documentation.
+      .filter((f) => f !== "ciTriggers.test.ts");
+
+    const docsRead = new Set<string>();
+    for (const f of testFiles) {
+      const src = readFileSync(join(testDir, f), "utf8");
+      // A real read call, not a mention: `readFileSync(join(__dirname, "../x.md")`.
+      // Requiring the reader is what keeps this file's own explanatory prose from
+      // registering as a corpus read (it did, on the first run of this test).
+      for (const m of src.matchAll(
+        /readFileSync?\(\s*join\(__dirname,\s*"\.\.\/([^"]+\.md)"/g,
+      )) {
+        docsRead.add(m[1]);
+      }
+    }
+
+    // Sanity: if this finds nothing the regex has drifted and the test is vacuous.
+    expect(
+      docsRead.size,
+      "found no .md reads in tests/ — the detector regex has drifted, so this test " +
+        "would pass no matter what the scope step allowed",
+    ).toBeGreaterThan(0);
+
+    for (const doc of docsRead) {
+      expect(
+        scopeStep,
+        `tests/ reads ${doc} from disk, so editing it can red the unit tests — but ` +
+          `TEST_BEARING_RE in ci.yml's scope step does not cover it. A prose-only PR ` +
+          `touching that file would skip the very suite it can break. Add it to ` +
+          `TEST_BEARING_RE.`,
+      ).toContain(doc.replace(/\./g, "\\."));
+    }
   });
 });

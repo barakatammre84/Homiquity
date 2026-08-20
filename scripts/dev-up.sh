@@ -63,7 +63,19 @@ case "$CMD" in
     [ -f "$DEVLOG" ] || { echo "no log at $DEVLOG"; exit 1; }
     tail -f "$DEVLOG" ;;
   status)
-    if running; then
+    # ARM THE PRE-PUSH GATE. `.githooks/` is tracked, but `core.hooksPath` lives in
+# .git/config, which is per-clone and untracked — so a fresh clone starts with the gate
+# OFF and nothing says so. This script exists to make one-time setup correct, and that
+# is one-time setup. Idempotent; safe to re-run.
+#
+# It matters more than it used to: CI is down and `main` carries no required status
+# check, so the pre-push hook is currently the only gate there is.
+if [ "$(git config --get core.hooksPath 2>/dev/null)" != ".githooks" ]; then
+  git config core.hooksPath .githooks
+  echo "armed the pre-push gate (core.hooksPath -> .githooks)"
+fi
+
+if running; then
       echo "running  pid $(cat "$PIDFILE")  port $PORT"
       curl -s "http://localhost:$PORT/api/health" | head -c 400; echo
     else echo "not running on port $PORT"; fi
