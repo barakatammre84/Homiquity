@@ -60,6 +60,30 @@ const SOURCE_FILES = [
 ];
 
 /**
+ * Read each source file once and reuse the text.
+ *
+ * Seventeen scans below each walked the same ~1,000 files and re-read every one
+ * of them from disk — ~17,000 reads to answer seventeen questions about the same
+ * bytes. Under full-suite load that pushed individual tests past vitest's 15 s
+ * per-test limit, so this file failed intermittently, in a different test each
+ * time, with a timeout rather than an assertion. It reds CI at random and, via
+ * the pre-push hook, blocks pushes of branches that never touched it.
+ *
+ * The scans are pure text matching, so caching is behaviour-identical: the same
+ * bytes go into the same regexes. Add new scans through `readSource`, not
+ * `readFileSync`.
+ */
+const SOURCE_CACHE = new Map<string, string>();
+function readSource(file: string): string {
+  let cached = SOURCE_CACHE.get(file);
+  if (cached === undefined) {
+    cached = readSource(file);
+    SOURCE_CACHE.set(file, cached);
+  }
+  return cached;
+}
+
+/**
  * Read every source file ONCE.
  *
  * Seventeen tests in this file each looped `SOURCE_FILES` and called `readFileSync`
