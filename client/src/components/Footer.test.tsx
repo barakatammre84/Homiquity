@@ -3,6 +3,15 @@ import { render, screen } from "@testing-library/react";
 import { Footer } from "./Footer";
 import { COMPANY_IDENTITY, contactPhoneTel } from "@shared/companyIdentity";
 
+// The footer's Homi link routes by auth state (useCoachHref), because
+// /ai-coach is auth-gated and this footer renders on every public page. That
+// makes useAuth — a useQuery under the hood — part of the render, so stub it
+// rather than standing a QueryClientProvider up around every case here. The
+// destination itself is pinned in coachCtaDestination.test.tsx.
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ isAuthenticated: false }),
+}));
+
 // PRELAUNCH_GATED is a build-time const (false in the test environment), so
 // mock the module with a getter over a mutable flag — the component reads it
 // at render time, which lets one file exercise both states of the gate.
