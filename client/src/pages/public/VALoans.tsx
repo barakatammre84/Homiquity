@@ -194,7 +194,7 @@ export default function VALoans() {
         >
           <p>
             The VA home loan is one of the strongest benefits of your service — no down payment
-            required and no monthly mortgage insurance. We underwrite it against the VA's own
+            required and no monthly mortgage insurance. Your file is prepared and reviewed against the VA's own
             residual-income standard, the way it's meant to be read.
           </p>
           <p>

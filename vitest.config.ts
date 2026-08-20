@@ -12,6 +12,12 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/amortization.test.ts",
+      // The advertising gate on "we shop your file" — a compliance rail, so it
+      // runs in the gate rather than living as an untested constant.
+      "tests/lenderPanel.test.ts",
+      // One name for the assistant in user-visible copy. It drifted to four
+      // across a single visitor journey with the suite fully green.
+      "tests/assistantNaming.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       // The CI trigger surface. A `branches:` filter under pull_request means a

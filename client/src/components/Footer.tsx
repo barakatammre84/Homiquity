@@ -12,11 +12,11 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div>
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="touch-target flex items-center gap-2">
               <span className="text-xl font-bold tracking-tight text-sidebar-foreground">homiquity</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
-              Clarity for every stage of homeownership. Pre-approval, property search, and AI coaching — all in one place.
+              Clarity for every stage of homeownership. Pre-approval, property search, and AI guidance from Homi — all in one place.
             </p>
             <div className="mt-5">
               <VeteranFoundedBadge variant="compact" className="text-sidebar-foreground/85" data-testid="badge-footer-veteran" />
@@ -27,42 +27,42 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-sidebar-foreground">Contact Us</h3>
             <ul className="mt-4 space-y-1 text-sm text-sidebar-foreground/70">
               <li>
-                <a href={`mailto:${COMPANY_IDENTITY.contactEmail}`} className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-email">
+                <a href={`mailto:${COMPANY_IDENTITY.contactEmail}`} className="touch-target flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-email">
                   <Mail className="h-4 w-4 shrink-0" />
                   {COMPANY_IDENTITY.contactEmail}
                 </a>
               </li>
               <li>
-                <a href={contactPhoneTel()} className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-phone">
+                <a href={contactPhoneTel()} className="touch-target flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-phone">
                   <Phone className="h-4 w-4 shrink-0" />
                   {COMPANY_IDENTITY.contactPhone}
                 </a>
               </li>
-              <li><Link href="/faq" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
-              <li><Link href="/resources" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources">Resources</Link></li>
+              <li><Link href="/faq" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
+              <li><Link href="/resources" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources">Resources</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold text-sidebar-foreground">Legal</h3>
             <ul className="mt-4 space-y-1 text-sm text-sidebar-foreground/70">
-              <li><a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-nmls">NMLS Consumer Access</a></li>
-              <li><Link href="/privacy" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-terms">Terms of Use</Link></li>
-              <li><Link href="/disclosures" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-disclosures">Disclosures & Licensing</Link></li>
+              <li><a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-nmls">NMLS Consumer Access</a></li>
+              <li><Link href="/privacy" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-terms">Terms of Use</Link></li>
+              <li><Link href="/disclosures" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-disclosures">Disclosures & Licensing</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold text-sidebar-foreground">Products</h3>
             <ul className="mt-4 space-y-1 text-sm text-sidebar-foreground/70">
-              <li><Link href="/apply" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-lend">Homiquity Lend</Link></li>
-              <li><Link href="/ai-coach" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homiquity Coach</Link></li>
-              <li><Link href="/rent-reporting" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rent-reporting">Rent Reporting</Link></li>
-              <li><Link href="/rates" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rates">Rates</Link></li>
-              <li><Link href="/resources" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources-2">Resources</Link></li>
-              <li><Link href="/partners" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-partners">Partner with us</Link></li>
-              <li><Link href="/for-cpas" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-for-cpas">For CPAs</Link></li>
+              <li><Link href="/apply" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-lend">Homiquity Lend</Link></li>
+              <li><Link href="/ai-coach" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homi</Link></li>
+              <li><Link href="/rent-reporting" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rent-reporting">Rent Reporting</Link></li>
+              <li><Link href="/rates" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rates">Rates</Link></li>
+              <li><Link href="/resources" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources-2">Resources</Link></li>
+              <li><Link href="/partners" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-partners">Partner with us</Link></li>
+              <li><Link href="/for-cpas" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-for-cpas">For CPAs</Link></li>
             </ul>
           </div>
         </div>

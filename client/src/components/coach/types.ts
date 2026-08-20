@@ -16,7 +16,7 @@ import {
   Briefcase,
 } from "lucide-react";
 
-// Shared client-side types + catalogs for the AI Coach surface
+// Shared client-side types + catalogs for the Homi surface
 // (client/src/components/coach/*). Server contracts: server/routes/coach.ts
 // (REST + SSE) and server/services/coachTools.ts (event payloads).
 
@@ -45,13 +45,24 @@ export interface CoachConversation {
   updatedAt: string;
 }
 
+/**
+ * The readiness profile as it ACTUALLY arrives, which is not always complete.
+ *
+ * Everything except `completionPercentage` is optional on purpose. The column is
+ * written from two places: a full `set_readiness` tool result, and (historically)
+ * a bare server-derived percentage — which left rows holding literally
+ * `{"completionPercentage": 88}`. This interface used to declare all six fields
+ * required, so `ReadinessPanel` read `completedInputs.length` off `undefined` and
+ * crashed the whole coach page. The server no longer writes that shape, but rows
+ * in it already exist, so the type tells the truth and consumers default.
+ */
 export interface CoachProfile {
-  readinessTier: string;
   completionPercentage: number;
-  statusNote: string;
-  completedInputs: string[];
-  outstandingInputs: string[];
-  estimatedTimeline: string;
+  readinessTier?: string;
+  statusNote?: string;
+  completedInputs?: string[];
+  outstandingInputs?: string[];
+  estimatedTimeline?: string;
 }
 
 export interface ActionPlanItem {

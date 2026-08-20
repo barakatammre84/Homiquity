@@ -84,6 +84,11 @@ step "design tokens"                  node scripts/design-token-guard.cjs
 step "UI standard ratchet"            node scripts/ui-standard-guard.cjs
 step "knowledge-base index"           node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"          node scripts/doc-staleness-guard.cjs
+# tsc covers the app; nothing covered scripts/*.cjs. #594 shipped a syntax error
+# in browser-probe.cjs to main green, and every probe run crashed while a sweep
+# grepping its output reported the pages clean. A parse is not a test — but it is
+# the check that would have caught it.
+step "guard scripts parse"            bash -c 'for f in scripts/*.cjs; do node --check "$f" || exit 1; done'
 step "query-key convergence"          node scripts/query-key-guard.cjs
 
 # §9 needs the PR's changed-file set, which CI computes from the pull request.

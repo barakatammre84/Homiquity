@@ -69,7 +69,7 @@ export function DocumentUploadButton({
       // This used to fire `["/api/documents"]`, which no client query has ever
       // read — the borrower Documents page moved to the checklist endpoint and
       // the invalidation was never migrated. The result was that a document
-      // uploaded from the AI Coach panel (the only place this button mounts)
+      // uploaded from the Homi panel (the only place this button mounts)
       // refreshed nothing, while the same upload through UploadDocumentDialog
       // refreshed correctly.
       queryClient.invalidateQueries({ queryKey: applicationResourceKeys.all() });
