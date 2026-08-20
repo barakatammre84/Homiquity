@@ -291,7 +291,7 @@ const extractionLimiter = rateLimit({
   message: { error: "Too many document extraction requests, please try again later" },
 });
 
-// Paid-LLM chat endpoints (AI Coach). Same cost-DoS rationale as extraction:
+// Paid-LLM chat endpoints (Homi). Same cost-DoS rationale as extraction:
 // every message invokes a paid model. The per-user 30/day cap in the route is
 // the primary ceiling; this per-IP limiter blunts bursts and scripted abuse.
 const aiCoachLimiter = rateLimit({

@@ -156,7 +156,7 @@ export default function ApprovalStrength() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function ApprovalStrength() {
               </div>
 
               <div className="space-y-2">
-                <Label>Annual Household Income (gross)</Label>
+                <Label htmlFor="as-annual-income">Annual Household Income (gross)</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -185,13 +185,14 @@ export default function ApprovalStrength() {
                     inputMode="numeric"
                     value={formatInputCurrency(inputs.annualIncome)}
                     onChange={(e) => setInputs({ ...inputs, annualIncome: parseCurrencyInput(e.target.value) })}
+                    id="as-annual-income"
                     data-testid="input-annual-income"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Monthly Debt Payments (car, student loans, cards — not rent)</Label>
+                <Label htmlFor="as-monthly-debts">Monthly Debt Payments (car, student loans, cards — not rent)</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -199,13 +200,14 @@ export default function ApprovalStrength() {
                     inputMode="numeric"
                     value={formatInputCurrency(inputs.monthlyDebts)}
                     onChange={(e) => setInputs({ ...inputs, monthlyDebts: parseCurrencyInput(e.target.value) })}
+                    id="as-monthly-debts"
                     data-testid="input-monthly-debts"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Down Payment Saved So Far</Label>
+                <Label htmlFor="as-down-payment">Down Payment Saved So Far</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -213,6 +215,7 @@ export default function ApprovalStrength() {
                     inputMode="numeric"
                     value={formatInputCurrency(inputs.downPaymentSaved)}
                     onChange={(e) => setInputs({ ...inputs, downPaymentSaved: parseCurrencyInput(e.target.value) })}
+                    id="as-down-payment"
                     data-testid="input-down-payment"
                   />
                 </div>

@@ -9,7 +9,7 @@ import {
 } from "./coachProfileSync";
 
 // ---------------------------------------------------------------------------
-// AI Coach tool surface — Claude Sonnet 5 tool-use replaces the old
+// Homi tool surface — Claude Sonnet 5 tool-use replaces the old
 // <coach_data> text-block extraction. Structured capture now arrives as typed
 // tool calls, validated server-side with the SAME Zod schemas the old parser
 // used, so malformed data is returned to the model as an is_error tool_result
