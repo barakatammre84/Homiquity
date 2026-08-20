@@ -6,11 +6,17 @@
 
 ## Source of the charter
 
-`knowledge-base/feature-review/JOURNEYS.md` **is absent from `origin/main`** (`git cat-file -e
-origin/main:…` → absent; its founding PR **#607** is open, not merged). Per the routine's own
-rule I therefore walked the **persona summaries in the task prompt**, not JOURNEYS.md. The file
-does exist on the branch checked out in the primary worktree, and its §1 corroborates the prompt's
-route; nothing in this report depends on it.
+At the moment I started, `knowledge-base/feature-review/JOURNEYS.md` was **absent from `origin/main`**
+(`git cat-file -e origin/main:…` → absent). Per the routine's own rule I therefore walked the
+**persona summaries in the task prompt**. Its §1 on the branch copy corroborated the prompt's route,
+and nothing in this report depends on it.
+
+> **Now stale, and worth being precise about why.** I attributed that absence to PR **#607** not
+> having merged. #607 is indeed still open (`DIRTY`) — but `JOURNEYS.md` reached `main` by a
+> different road: **#595** carried it, and merged at **12:47Z**, fifteen minutes into the walk. So
+> `JOURNEYS.md` **is on `main` now** and is authoritative from the next run onward. The file a doc
+> is *expected* to arrive by is not evidence about whether it has arrived — the check is
+> `git cat-file`, and it needs re-running at the end of a long run, not only at the start.
 
 ## Server under test — and why it is not the primary checkout
 
@@ -29,11 +35,35 @@ ux-30 disclosure-gate work). Journey 1 begins at the Landing doors, so walking t
 have reported findings against unmerged code. Everything below is `origin/main`.
 
 **One consequence worth stating:** the prompt's route describes a *"You're renting now"* door on
-Landing. **That door does not exist on `origin/main`.** `client/src/pages/public/Landing.tsx:36-84`
-offers six persona cards — First-Time Buyers, Current Homeowners, Move-Up Buyers, Complex Income,
-Veterans & Military, Real Estate Investors — and the string "renting" appears **zero** times. The
-renting/self-employed/owner/move-up door set is on `feat/landing-coach-first`. I took the
-**First-Time Buyers → `/first-time-buyer`** door, which is this persona's door on `main`.
+Landing. At `b799b91d` **that door did not exist** — `Landing.tsx:36-84` offered six persona cards
+(First-Time Buyers, Current Homeowners, Move-Up Buyers, Complex Income, Veterans & Military, Real
+Estate Investors) and the string "renting" appeared **zero** times. So I took the **First-Time
+Buyers → `/first-time-buyer`** door, which was this persona's door on the commit I walked.
+
+> ## ⚠️ CORRECTED after the walk — `main` moved underneath it
+>
+> **[PR #595](https://github.com/barakatammre84/Homiquity/pull/595) merged at 2026-08-20T12:47:38Z**
+> — roughly **fifteen minutes into this walk** (my server started 12:32Z). `origin/main` is now
+> `8260d734`, and it **does** carry the four doors: `Landing.tsx:59-61` is `id: "renting"` /
+> `title: "You're renting now"`.
+>
+> So the charter's route was **not stale — I was.** My original claim above ("that door does not
+> exist on `origin/main`") was true of the commit I walked and false by the time I wrote it. The
+> walk itself stands: it was a coherent read of one real commit, stated with its hash throughout.
+> **The recommendation it produced was wrong and has been withdrawn** — I amended the seat guidance
+> in `JOURNEYS.md`, not the Landing route, which needed no fix.
+>
+> Two further consequences of that merge, both verified rather than assumed:
+> - **`JOURNEYS.md` is now ON `main`.** It is authoritative from the next run; this report is the
+>   last one entitled to use the `SKILL.md` summaries.
+> - **Every finding below was re-verified against `8260d734`.** #595 touched `borrowerGraph.ts`,
+>   `HomeReadinessPassport.tsx`, `Profile.tsx` and `RenterHome.tsx` — all files this report cites.
+>   **All findings survive**; the only edits were line numbers (`borrowerGraph.ts:582-592` →
+>   **`:583-593`**; #595's sole change to that file was a copy string). Re-verification also turned
+>   up a *new* regression that PR shipped — **ux-50**, below.
+>
+> This is the charter's own "date every standing claim" rail firing on the routine that quotes it.
+> Fifteen minutes was enough.
 
 ## Environment notes (mine, not the product's)
 
@@ -198,8 +228,9 @@ And "how ready am I?" now has four answers at the same instant on the same accou
 ### JW-01 — The renter's rent is counted as a debt that survives the purchase (**F-0820-01**)
 - **Surface:** `/dashboard` (`HomeReadinessPassport.tsx:176` "Estimated max"), and everything else
   fed by `/api/borrower-graph`.
-- **File:** `server/services/borrowerGraph.ts:582-592` (the push), `:700-708` (`totalMonthlyDebts`),
-  `:735` (`estimatedDTI`), `:765-771` (`estimatedMaxPurchase`).
+- **File:** `server/services/borrowerGraph.ts:583-593` (the push), `:700-708` (`totalMonthlyDebts`),
+  `:735` (`estimatedDTI`), `:765-771` (`estimatedMaxPurchase`). Line numbers are against `8260d734`;
+  the push sat at `:582-592` on the `b799b91d` I walked — #595 shifted it by one and changed nothing else.
 - **Observed:** income $60,000/yr, real debts $500/mo, rent $1,500/mo →
   `liabilities` contains `"Current rent payment (goal tracker)": 1500`; `totalMonthlyDebts: 2000`;
   `estimatedDTI: 40`; `estimatedMaxPurchase: 20172`. The dashboard renders
@@ -320,6 +351,27 @@ supplied, and `/profile`'s bare "Nothing captured yet" has no such scoping.
   full internal staff roster including Tech/Ops is an access-control question, not a walker's call.
   Flagged, **not** asserted as a vulnerability.
 
+### ux-50 — The assistant rename shipped "yHomi" to the profile page, and its own guard can't see it
+- **Found during the post-walk re-verification**, not the walk — #595 landed mid-run and I re-read
+  every file this report cites against `8260d734`.
+- **File:** `client/src/pages/profile/Profile.tsx:298`, `:312`, `:445`.
+- **Observed on `main` right now:** *"captured by **yHomi** ·"*, *"Nothing captured yet. Chat with
+  **yHomi** — every detail you share is saved here automatically."*, *"Continue with **yHomi**"*.
+  All three are `+` lines in #595: the replace matched `our AI Coach` inside **y**`our AI Coach` and
+  substituted `Homi`, orphaning the `y`. A comment in the same diff carries the matching slip —
+  *"the same record **the Homi** writes to"*.
+- **The half that makes it worth a row:** #595 also shipped `tests/assistantNaming.test.ts`
+  *specifically* to stop the name drifting again. Its `BANNED` list holds the five **old** names
+  (`AI Coach`, `AI Homebuyer Coach`, `Homiquity Coach`, `AI coach`, `readiness assistant`), and its
+  own docstring concedes it is *"a VOCABULARY list, not a semantic check — it can only catch
+  spellings someone has already thought of."* **A corruption produced by the rename is not an old
+  name**, so the suite is green while three user-visible strings are misspelt. A rename guard that
+  only knows what it renamed *away from* is blind to what the rename *did*.
+- **Expected:** fix the three strings, and add a positive assertion the guard can fail on — `Homi`
+  must never be preceded by a word character.
+- ⚠️ **Scope honesty:** the three strings on their own are a single-surface copy defect and belong
+  to another seat (CHARTER §7). Registered here for the **guard gap**, which is not single-surface.
+
 ### JW-11 — The persona's own door drops its figures at the seam
 - **File:** `client/src/pages/public/FirstTimeBuyer.tsx:313`, `:485`.
 - **Observed:** the page's rent→buying-power calculator produces rent, savings and a home price,
@@ -358,7 +410,7 @@ real. `/onboarding` and `/messages` are the two that have nothing to say to this
   record ToS/Privacy assent is a compliance question → **Compliance Watch**, not a walker ticket.
 - **`/properties`** serves 12 seeded national listings. Simulated inventory; a launch-readiness fact.
 - **7 sub-44px controls on `/gap-calculator`** — covered by open **PR #605**. Not filed.
-- **The charter's Landing route is stale against `main`** (no renting door) — see §1.
+- ~~The charter's Landing route is stale against `main`~~ — **WITHDRAWN**: #595 landed the four doors mid-walk. The route was right; see the corrected box in §1.
 - **The charter's journey-1 account cannot reach journey 1's core surface** (§1.7).
 
 ---
@@ -367,7 +419,7 @@ real. `/onboarding` and `/messages` are the two that have nothing to say to this
 
 | id | ticket | suggested lane | acceptance test |
 |---|---|---|---|
-| **F-0820-01** | Stop counting `currentRent` as a liability in `borrowerGraph.ts:582-592`; it must not enter `totalMonthlyDebts`, `estimatedDTI` or `estimatedMaxPurchase`. Keep the rent datum — it is used elsewhere — but exclude it from debt aggregation. | **Backend Data Engineer** (`server/**`) | Goal with income $60k/yr, debts $500/mo, rent $1,500/mo → `/api/borrower-graph` returns `totalMonthlyDebts: 500`, `estimatedDTI: 10`, `estimatedMaxPurchase ≈ 221,900`. Regression test asserts no liability row is sourced from `currentRent`. |
+| **F-0820-01** | Stop counting `currentRent` as a liability in `borrowerGraph.ts:583-593`; it must not enter `totalMonthlyDebts`, `estimatedDTI` or `estimatedMaxPurchase`. Keep the rent datum — it is used elsewhere — but exclude it from debt aggregation. | **Backend Data Engineer** (`server/**`) | Goal with income $60k/yr, debts $500/mo, rent $1,500/mo → `/api/borrower-graph` returns `totalMonthlyDebts: 500`, `estimatedDTI: 10`, `estimatedMaxPurchase ≈ 221,900`. Regression test asserts no liability row is sourced from `currentRent`. |
 | **F-0820-02** | In `affordabilityEstimate.ts`: derive the down-payment percentage from `downPaymentSaved / maxHomePrice` (floored at the credit-based minimum), zero PMI at ≥20%, compute T&I on the same basis the solver budgets, and solve so the returned price satisfies the displayed 28% target. | **Primary Engineer** (+ Algorithm Auditor to re-verify) | Income $137k, saved $400k, credit 680 → `monthlyPMI === 0` and `withinGuidelines === true`. A ≤5%-down case still charges PMI. |
 | **ux-44** | Make `GapCalculator.tsx:275` `<TabsList>` reachable at 320px — horizontal scroll, wrap, or a select. | **Wiring Audit** / UI Conformance | At 320px, `Milestones` is reachable by scroll or tap; no element's right edge exceeds the viewport without a scroll path. |
 | **ux-43** | One selector for borrower readiness, consumed by `/dashboard`, `/gap-calculator`, `/profile` and the coach panel — the `lib/outstandingWork.ts` pattern applied to readiness. | **Wiring Audit** (`client/src/**`) | One account, one moment → all four surfaces render the same percentage; a test pins them to one source. |
@@ -376,6 +428,7 @@ real. `/onboarding` and `/messages` are the two that have nothing to say to this
 | **ux-47** | Remove the public view counter (`LearningCenter.tsx:75`, `ArticleDetail.tsx:178`) or threshold + pluralize it. | **UI Conformance Sweep** | `/learn` renders no "0 views" and no "1 views". |
 | **ux-48** | Fix the three-cards-one-article collision in `Resources.tsx:72,105,116`. | **Primary Engineer** (content) | No two `/resources` cards with different titles share an `href`; every filter category has at least one card that goes where it says. |
 | **ux-49** | `/api/team-members` returns only assigned staff and never the `admin` role; `/messages` gets an honest empty state. **Ships as a draft PR with a §9 review** (access control). | **Backend Data Engineer** + §9 review | A borrower with 0 applications sees an empty state, not six staff; no response contains `role: "admin"`. |
+| **ux-50** | Fix `yHomi` at `Profile.tsx:298,312,445` **and** give `tests/assistantNaming.test.ts` a positive assertion (`Homi` never preceded by a word character) so the guard can fail on the rename's own damage, not only on old names. | **UI Conformance Sweep** | Reintroduce `yHomi` → the naming test reds. Today it stays green. |
 | **JW-11** | Call `writeCalculatorPrefill({downPayment, purchasePrice})` on the `/apply` navigate path in `FirstTimeBuyer.tsx:313,485`, and reconcile the "we don't store any of it" copy. | **Capture Path Engineer** | Tuning rent/savings then clicking through lands on `/apply` with those figures reflected in LIVE ANALYSIS. |
 | **JW-12** | Split `GapGoalOnboardingForm` to ≤3 inputs per step and stop pre-filling fabricated financial values (empty + placeholder, not a default). | **Wiring Audit** (§12) | No step renders >3 inputs; a fresh user's first render has no numeric value in any financial field. |
 | **JW-13** | Give `/onboarding` a renter track, or route `aspiring_owner` with no application to the gap plan instead. | **Feature Completion Engine** | An `aspiring_owner` with 0 applications sees at least one next step that is not "apply". |

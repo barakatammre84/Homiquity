@@ -3,9 +3,19 @@
 Cross-run memory for the `client-journey-walk` seat (daily since 2026-08-19). One persona per run,
 **strict rotation 1 → 2 → 3 → 4 → 1**. A fresh session reads this file to know where to resume.
 
-Charters: the persona summaries in the routine's `SKILL.md` are authoritative **until
-`knowledge-base/feature-review/JOURNEYS.md` lands on `origin/main`** (founding PR #607), at which
-point that file wins. Record which source each run used.
+**Charter: `knowledge-base/feature-review/JOURNEYS.md` is ON `origin/main` and WINS.** It arrived
+**2026-08-20 via #595**, not via its founding PR #607 (still open, `DIRTY` — and now partly
+redundant, since the file it exists to add already landed). From the next run on, read `JOURNEYS.md`
+and treat the `SKILL.md` summaries as a convenience copy. Record which source each run used.
+
+> ⚠️ **Two definition copies are laptop-only and cannot ride a PR.**
+> `.claude/skills/journey-walk/SKILL.md` and `.claude/agents/journey-walker-*.md` are excluded in
+> **`.git/info/exclude`** (a local, uncommitted file — deliberate, so `git add -A` on an unrelated
+> branch cannot sweep them again as it did in `3636c3b7`). They land via **#607**. The 2026-08-20
+> account amendment below was applied to both **on this laptop**; **whoever lands #607 must carry
+> it**, or the merge will reinstate the `renter@test.com` instruction this ledger just retired.
+> `~/.claude/scheduled-tasks/client-journey-walk/SKILL.md` — the copy the scheduler actually
+> fires — is outside the repo entirely and was amended in place.
 
 ## Rotation state
 
@@ -17,7 +27,7 @@ point that file wins. Record which source each run used.
 
 | date | journey | source used | server (commit) | verdict | report |
 |---|---|---|---|---|---|
-| 2026-08-20 | **1 — Aspiring owner** | SKILL.md summaries (JOURNEYS.md absent from `origin/main`) | `b799b91d` (`origin/main`) via a dedicated worktree on :5001 | **WARN** — 2 data-correctness defects, 1 mobile-unreachable surface, 10 tickets | [2026-08-20-journey-walk.md](../reports/2026-08-20-journey-walk.md) |
+| 2026-08-20 | **1 — Aspiring owner** | `SKILL.md` summaries — JOURNEYS.md was absent from `origin/main` at 12:31Z and **arrived at 12:47Z, mid-walk**, via #595 | `b799b91d` (`origin/main` tip at start; main advanced to `8260d734` during the run) via a dedicated worktree on :5001 | **WARN** — 2 data-correctness defects, 1 surface unreachable at 320px, 11 tickets. Findings re-verified against `8260d734` after the merge; **one claim withdrawn**, one new finding (`ux-50`) found by that re-verification | [2026-08-20-journey-walk.md](../reports/2026-08-20-journey-walk.md) |
 
 ## Standing notes for the next walker
 
@@ -30,15 +40,30 @@ point that file wins. Record which source each run used.
 - **`mcp__Claude_Browser__computer left_click` by `ref` did not deliver clicks** on this page set —
   the button was topmost per `elementFromPoint` and nothing fired. Confirm any "dead control" by
   invoking the handler before filing it; I nearly filed a false one.
-- **⚠️ The seeded `renter@test.com` seat carries a `self_employed` application in `processing`
-  (created 2026-07-02).** The incubator gate therefore correctly withholds `RenterHome`, so **that
-  seat cannot demonstrate journey 1's core surface.** `/test-login` re-writes the role but **not**
-  application rows. Walk `RenterHome` on a fresh `/signup` account instead. The charter should be
-  amended; flagged in the 2026-08-20 report.
-- **The Landing route in the charter is stale against `main`.** There is no *"You're renting now"*
-  door on `origin/main` — `Landing.tsx:36-84` has six persona cards and the word "renting" appears
-  zero times. That door set lives on `feat/landing-coach-first`. Journey 1's door on `main` is
-  **First-Time Buyers → `/first-time-buyer`**.
+- **⚠️ Journey 1 now takes a FRESH SIGNUP (`jr+<MMDD>@test.local`), not `renter@test.com`.**
+  **Amended 2026-08-20** in `JOURNEYS.md` §1, the local `client-journey-walk/SKILL.md`, the in-repo
+  `journey-walk` skill (W6) and the `journey-walker-aspiring-owner` agent. Reason: the incubator
+  gate keys on the **file**, not the role — that seat carried a `self_employed` application in
+  `processing` from **2026-07-02**, so `RenterHome` was unreachable on the very account the charter
+  named for it. `/test-login` re-writes the role but not application rows, and `server/seed.ts`
+  creates none, so it is dev-DB drift that any submitting run recreates. If you take the seeded seat
+  anyway, probe `GET /api/loan-applications` first (`[]` ⇒ `RenterHome` renders) and say which.
+- **🚨 `main` can move under you mid-run — it did, by fifteen minutes.** #595 merged at
+  **2026-08-20T12:47Z** while a walk started at 12:32Z was in flight. That run reported
+  "`origin/main` has no renting door" — true of the commit it walked (`b799b91d`), false by the time
+  it was written, and the recommendation it produced had to be withdrawn. **So: `git fetch` and
+  re-check `origin/main` at the END of the walk, not only the start, then re-verify every finding's
+  file and line refs against the new tip before writing them down.** Doing exactly that is what
+  caught **ux-50**.
+- **The charter's Landing route is CORRECT** (four doors: renting, self-employed, owner, moving-up).
+  Its `Landing.tsx` line refs were stale after #595 and were corrected the same day — renting
+  `:58-73`, self-employed `:74-91`, owner `:92-100`, moving-up `:101-112`; the "Homi answers your
+  questions" line is a `TRUST_POINTS` entry at `:123`, **not** a door.
+- **Two promises the charter used to send you after have been RETRACTED — do not re-file their
+  absence.** #595 removed *"…and what your rent already proves about you"* (a Reg N / MAP Rule
+  §1014.3 misrepresentation — nothing downstream furnishes rent) and *"We work out every way your
+  income can count"* (the funnel never feeds self-employment into the multi-path engine). The
+  retractions are the fix. New copy that re-implies either **is** a finding.
 - **Before filing any 320px or touch-target finding, check open PRs.** #587 (public calculator
   overflow) and #605 (touch targets, 232 → 0) were both open on 2026-08-20 and already covered
   findings this walk would otherwise have re-reported.
