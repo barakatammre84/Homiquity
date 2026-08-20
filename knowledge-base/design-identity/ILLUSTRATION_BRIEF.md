@@ -23,8 +23,15 @@ page and it is a scroll-reveal — the same thing as our `Reveal`.
 
 ## What to commission
 
-**Format:** square 1:1. Deliver a `.webm` (VP9, muted, seamless loop, 2–5s) **plus**
-a matching `_poster.png` still at 864×864. The poster must be the loop's resting
+**Format:** any aspect ratio — nothing is cropped by default. Supply ~1024px on the
+long edge (the tile renders ~300–400px wide, so that is 3× for retina). Deliver a
+`.webm` (VP9, muted, seamless loop, 2–5s) **plus** a matching `_poster.png` still.
+
+> The reference's scenes are all square and this brief originally said square 1:1
+> because of it. The first real asset arrived at 1024×576, which a square box
+> would have cropped through the middle of the roof. **Copying a reference's asset
+> dimensions is not the same as copying its technique** — only the technique was
+> worth taking, and `Scene` now defaults to preserving whatever it is given. The poster must be the loop's resting
 frame, because it is the base layer the video fades in over — a poster that differs
 from frame one produces a visible jump.
 

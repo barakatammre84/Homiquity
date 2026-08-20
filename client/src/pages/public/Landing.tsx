@@ -7,6 +7,8 @@ import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { CoachPromptBar } from "@/components/CoachPromptBar";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { Scene } from "@/components/motion/Scene";
+import { getScene, type SceneId } from "@/lib/sceneAssets";
 import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -257,9 +259,24 @@ export default function Landing() {
                     data-testid={`card-journey-${journey.id}`}
                   >
                     <CardContent className="p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <Icon className={iconSize.feature} aria-hidden="true" />
-                      </div>
+                      {(() => {
+                        // Auto-discovered from attached_assets/scenes/. Absent
+                        // until the illustrator delivers, so the icon tile is the
+                        // real state today rather than a placeholder box.
+                        const scene = getScene(journey.id as SceneId);
+                        return scene ? (
+                          <Scene
+                            poster={scene.poster}
+                            video={scene.video}
+                            alt={scene.alt}
+                            className="mb-5 w-full"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Icon className={iconSize.feature} aria-hidden="true" />
+                          </div>
+                        );
+                      })()}
                       <h3
                         className="mt-5 text-xl font-semibold"
                         data-testid={`text-journey-title-${journey.id}`}

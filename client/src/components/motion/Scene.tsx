@@ -42,10 +42,21 @@ export interface SceneProps {
   alt: string;
   /** Above the fold: load eagerly and decode synchronously, as the hero should. */
   priority?: boolean;
+  /**
+   * Box shape. Defaults to `"auto"` — the artwork keeps its own proportions and
+   * nothing is cropped.
+   *
+   * The reference's scenes are all square, and an earlier version of this
+   * component hard-coded `aspect-square` because of it. The first real asset that
+   * arrived was 1024x576, which that assumption would have cropped through the
+   * middle of the roof. Copying a reference's ASSET DIMENSIONS is not the same as
+   * copying its technique; only the technique was worth taking.
+   */
+  aspect?: "auto" | "square" | "video";
   className?: string;
 }
 
-export function Scene({ poster, video, alt, priority = false, className }: SceneProps) {
+export function Scene({ poster, video, alt, priority = false, aspect = "auto", className }: SceneProps) {
   const reduced = useReducedMotion();
   const ref = React.useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = React.useState(false);
@@ -74,13 +85,20 @@ export function Scene({ poster, video, alt, priority = false, className }: Scene
   }, [reduced]);
 
   return (
-    <div className={cn("relative aspect-square overflow-hidden rounded-3xl", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-3xl",
+        aspect === "square" && "aspect-square",
+        aspect === "video" && "aspect-video",
+        className,
+      )}
+    >
       <img
         src={poster}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
         decoding={priority ? "sync" : "async"}
-        className="h-full w-full object-cover"
+        className={cn("w-full", aspect === "auto" ? "h-auto" : "h-full object-cover")}
       />
       {video && !reduced ? (
         <video

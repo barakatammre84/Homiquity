@@ -63,6 +63,22 @@ describe("Scene", () => {
     expect(v.getAttribute("tabindex")).toBe("-1");
   });
 
+  it("does not crop the artwork by default", () => {
+    // The first real asset was 1024x576; an earlier aspect-square default would
+    // have cropped it through the middle. Default is "auto" — artwork keeps its
+    // own proportions.
+    const { container } = render(<Scene poster="/p.avif" alt="A house" />);
+    const box = container.firstElementChild as HTMLElement;
+    expect(box.className).not.toMatch(/aspect-square|aspect-video/);
+    expect((screen.getByAltText("A house") as HTMLImageElement).className).toMatch(/h-auto/);
+  });
+
+  it("crops only when a fixed aspect is asked for", () => {
+    const { container } = render(<Scene poster="/p.avif" alt="A house" aspect="square" />);
+    expect((container.firstElementChild as HTMLElement).className).toMatch(/aspect-square/);
+    expect((screen.getByAltText("A house") as HTMLImageElement).className).toMatch(/object-cover/);
+  });
+
   it("is just a picture when no video is supplied", () => {
     const { container } = render(<Scene poster="/p.avif" alt="A house" />);
     expect(container.querySelector("video")).toBeNull();
