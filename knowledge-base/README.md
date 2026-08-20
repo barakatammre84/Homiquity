@@ -119,6 +119,7 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
   Not the claim lock — every row names the seat that acts next.
 - [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
 - [reports/](routines/reports/) — dated run reports; the proof-of-life record.
+- [feature-completion/LEDGER.md](routines/feature-completion/LEDGER.md) — the Feature Completion Engine's cross-run memory: the domain rotation, the gap taken, and — the load-bearing column — every gap it **refused** and why, so the next run does not re-derive the refusal.
 - [primary-engineer/LEDGER.md](primary-engineer/LEDGER.md) — the Primary Engineer's own work queue (Phase 1 source d); rows cite their source or are invalid.
 - [compliance-watch/STATE_LADDER.md](compliance-watch/STATE_LADDER.md) — the state-launch licensing ladder (Illinois → California → national); every row cited or `UNVERIFIED`, drafts for signature in [compliance-watch/drafts/](compliance-watch/drafts/).
 

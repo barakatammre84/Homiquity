@@ -6,6 +6,11 @@ import { isAuthenticated } from "../../auth";
 import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { firstQueryValue } from "../queryParams";
 import { routeParam } from "../../http/routeParams";
+import {
+  ACCELERATOR_PHASES,
+  deriveAcceleratorProgress,
+  enrollmentProgressPatch,
+} from "@shared/acceleratorProgram";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -165,46 +170,15 @@ export function registerRealtorProgramRoutes(
         userId: req.user!.id,
       });
 
-      const defaultPhases = [
-        {
-          phase: 1,
-          phaseName: "Financial Assessment",
-          milestones: ["Review credit report", "Calculate current DTI", "Set budget"],
-        },
-        {
-          phase: 2,
-          phaseName: "Credit Optimization",
-          milestones: ["Dispute errors on credit report", "Pay down high-utilization cards", "Avoid new credit inquiries"],
-        },
-        {
-          phase: 3,
-          phaseName: "Savings Plan",
-          milestones: ["Open dedicated savings account", "Set up automatic transfers", "Reach 25% of down payment goal"],
-        },
-        {
-          phase: 4,
-          phaseName: "Debt Reduction",
-          milestones: ["Create debt payoff plan", "Reduce DTI below 43%", "Close unnecessary accounts"],
-        },
-        {
-          phase: 5,
-          phaseName: "Pre-Approval Ready",
-          milestones: ["Gather income documents", "Complete pre-approval application", "Get pre-approved"],
-        },
-        {
-          phase: 6,
-          phaseName: "Home Shopping",
-          milestones: ["Connect with real estate agent", "Attend open houses", "Make an offer"],
-        },
-      ];
-
-      for (const phaseData of defaultPhases) {
+      // The plan is seeded from the one shared definition the client also
+      // renders its phase names from — see shared/acceleratorProgram.ts.
+      for (const phaseData of ACCELERATOR_PHASES) {
         for (const title of phaseData.milestones) {
           await storage.createAcceleratorMilestone({
             enrollmentId: enrollment.id,
             phase: phaseData.phase,
             title,
-            category: phaseData.phaseName,
+            category: phaseData.name,
           });
         }
       }
@@ -265,6 +239,18 @@ export function registerRealtorProgramRoutes(
       if (!milestone) {
         return res.status(404).json({ error: "Milestone not found" });
       }
+
+      // The program's phase follows its milestones. Without this the header
+      // read "Phase 1 of 6 · 17%" forever — a borrower could finish all 18
+      // milestones and the progress bar would never move. Derived from the
+      // whole set rather than incremented, so un-ticking walks it back too.
+      const allMilestones = await storage.getAcceleratorMilestones(enrollment.id);
+      const progress = deriveAcceleratorProgress(allMilestones, enrollment.totalPhases ?? undefined);
+      const patch = enrollmentProgressPatch(progress, enrollment, new Date());
+      if (patch) {
+        await storage.updateAcceleratorEnrollment(enrollment.id, patch);
+      }
+
       res.json(milestone);
     } catch (error) {
       console.error("Update accelerator milestone error:", error);
