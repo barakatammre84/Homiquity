@@ -24,6 +24,14 @@ const BANNER_COPY: Record<AutopilotPhase, string> = {
   reviewing: "We're reviewing your information…",
   clean: "Looks good! No issues found.",
   items_needed: "A few items needed.",
+  // Deliberately NOT an all-clear. Nothing has been raised on this file yet,
+  // so there is nothing to have found — saying "no issues found" here would be
+  // a review the product never performed.
+  no_items_yet: "Nothing needed from you yet — anything we need will show up here.",
+  // The conditions read failed. We say so rather than fall back to the
+  // reassuring branch; the SSE poll and the client's fallback query both keep
+  // re-deriving, so this state heals itself.
+  unavailable: "We couldn't check your file's status just now — retrying.",
 };
 
 const bus = new EventEmitter();
@@ -45,19 +53,51 @@ export function publishAutopilotStatus(status: AutopilotStatus): void {
 }
 
 /**
+ * Turn what we know about a file's conditions into a phase.
+ *
+ * Pure and exported so the ordering below is testable without a database — the
+ * whole defect this replaces lived in the fact that three different states
+ * collapsed onto one branch.
+ *
+ * `conditionsKnown === false` wins over everything: an unread count cannot
+ * support "items needed" or "no issues found".
+ */
+export function deriveAutopilotPhase(input: {
+  conditionsKnown: boolean;
+  conditionCount: number;
+  outstandingCount: number;
+}): AutopilotPhase {
+  if (!input.conditionsKnown) return "unavailable";
+  if (input.outstandingCount > 0) return "items_needed";
+  if (input.conditionCount === 0) return "no_items_yet";
+  return "clean";
+}
+
+/**
  * Derive the current status from the DB (source of truth). Never throws —
  * returns a best-effort snapshot so the banner always has something to show.
+ * "Best effort" now means the snapshot reports what it could not read, rather
+ * than defaulting the unread half to zero and reading as an all-clear.
  */
 export async function buildAutopilotStatus(applicationId: string): Promise<AutopilotStatus> {
   let outstanding = 0;
+  let conditionCount = 0;
+  // Starts false on purpose. A read that never succeeded must not be able to
+  // masquerade as a read that returned nothing.
+  let conditionsKnown = false;
   let readyToSubmitToLender = false;
   let completed = 0;
   let total = 0;
   try {
     const conditions = await storage.getLoanConditionsByApplication(applicationId);
+    conditionCount = conditions.length;
     outstanding = conditions.filter((c) => c.status === "outstanding").length;
-  } catch {
-    /* leave outstanding = 0 */
+    conditionsKnown = true;
+  } catch (err) {
+    // Not silent: an all-clear the borrower cannot rely on is exactly the
+    // failure this branch used to produce, so it gets a log line as well as
+    // the honest phase.
+    console.error(`[Autopilot] conditions read failed for ${applicationId}:`, err);
   }
   try {
     const readiness = await evaluateBrokerSubmissionReadiness(applicationId);
@@ -69,7 +109,7 @@ export async function buildAutopilotStatus(applicationId: string): Promise<Autop
     /* readiness is advisory */
   }
 
-  const phase: AutopilotPhase = outstanding > 0 ? "items_needed" : "clean";
+  const phase = deriveAutopilotPhase({ conditionsKnown, conditionCount, outstandingCount: outstanding });
   return {
     applicationId,
     phase,
