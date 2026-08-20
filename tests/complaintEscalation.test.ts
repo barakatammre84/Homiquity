@@ -89,11 +89,53 @@ describe("POST /api/messages wiring", () => {
   });
 });
 
+describe("POST /api/coach/message* wiring — the assistant is a borrower-writable surface too", () => {
+  const src = read("server/routes/coach.ts");
+
+  // The gap this closes: the identical words escalated from Messages and
+  // vanished from the assistant. The assistant is the LOWER-friction channel,
+  // so it is if anything the more likely place a borrower says them.
+  it("scans the assistant's borrower messages and audits the flag", () => {
+    expect(src).toContain("scanForEscalationTriggers(");
+    expect(src).toContain('"complaint.flagged"');
+    expect(src).toContain('"coach_message"');
+  });
+
+  it("escalation is fire-and-forget — a failure can never fail the turn", () => {
+    expect(src).toMatch(/escalateFlaggedMessage\([\s\S]*?\)\.catch\(/);
+  });
+
+  it("scans the text the borrower actually typed, not the redacted placeholder", () => {
+    // The sensitive-input guard rewrites req.body.message BEFORE the turn is
+    // prepared. Scanning post-redaction would silently drop a discrimination
+    // allegation that shared a message with an SSN, so the raw text is
+    // threaded through explicitly.
+    expect(src).toContain("prepareCoachTurn(req, res, rawMessage)");
+    expect(src).toContain("scanForEscalationTriggers(scanText ?? message)");
+  });
+
+  it("covers BOTH message endpoints via the shared pre-flight", () => {
+    // Streaming and buffered both funnel through prepareCoachTurn; the scan
+    // lives there precisely so neither can be wired up and the other missed.
+    expect(src.match(/prepareCoachTurn\(req, res, rawMessage\)/g) ?? []).toHaveLength(2);
+    expect(src.match(/scanForEscalationTriggers\(/g) ?? []).toHaveLength(1);
+  });
+});
+
 describe("founder escalation service data-minimization", () => {
   const src = read("server/services/complaintEscalation.ts");
 
   it("notifies admins only (the founder carries the compliance hat)", () => {
     expect(src).toContain("isAdmin(u)"); // CH-4: the shared predicate, not a raw string compare
+  });
+
+  it("tells the admin which surface to look on", () => {
+    // A team_message can be opened in Messages; a coach_message cannot (yet),
+    // and nobody has replied to it. The copy must not send the founder to the
+    // wrong screen or imply a human already saw it.
+    expect(src).toContain('team_message:');
+    expect(src).toContain('coach_message:');
+    expect(src).toContain("entityType: meta.entityType");
   });
 
   it("never receives or forwards the borrower's message text", () => {
