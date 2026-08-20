@@ -110,12 +110,34 @@ pnpm check (tsc --noEmit)   0 errors
 node lane                   206 files · 3021 passed | 1 skipped   (incl. tests/acceleratorProgress.test.ts, 14)
 client lane                 111 files ·  721 passed               (incl. ProgramHeader.test.tsx, 7)
 guard:tokens                at baseline ✅        guard:querykeys  OK (key + reachability + transport)
+guard:ui                    9 metrics at baseline; §0 table regenerated (110 -> 111 client tests)
 guard:schema                OK                   guard:migrations OK (57, contiguous)
 guard:kb                    172 docs, all indexed guard:docs       ✅
 guard:citations             at baseline ✅        pnpm build       ✓ built in 15.55s
 guard:bundle                eager entry 523,682 raw — 109 bytes UNDER the committed baseline
 §9 detectTriggers()         []  (over the real diff, via parseChangedLines — CHARTER §10)
 ```
+
+**`guard:ui` was missed on the first pass and caught by the pre-push hook** — worth recording,
+because the hook is the only reason it was caught at all. It failed not on a metric (all nine are at
+baseline; nothing regressed) but on **§0's adoption table being stale**, and the cause is this PR's
+own colocated test: the table's *"110 client test file(s)"* is generated from the file count, and
+adding one moved it to 111. Regenerated with `pnpm guard:ui --write-table` and committed
+(`cc25597c`), which is exactly the procedure the guard's failure text prescribes. Verified the
+staleness is **caused by this branch and not inherited**: with `origin/main`'s versions of the two
+changed client files swapped back in and the new test removed, `guard:ui` reports *"UI standard OK:
+508 files scanned"*. The one-line diff will conflict with PRs #619 and #623, which also touch
+`DESIGN_SYSTEM.md` — resolve it by regenerating, never by taking a side.
+
+**Three node-lane failures in the pre-push run were timeouts, not assertions.** Under this machine's
+load (13 peer sessions; the lane took 663s against 66s in the isolated run) `adverseActionPregenerateHardening`
+and `urlaCoApplicantRemoval` both died in `beforeAll` at *"Hook timed out in 60000ms"*, and two
+`intakeNeverDenies` cases at *"Test timed out in 45000ms"*. **The ECOA §1002.9 invariant was not
+violated — those two tests never reached an assertion**, which matters because CHARTER §6 makes a
+compliance-invariant failure an incident rather than a flake, and the distinction is the timeout
+message. All three files pass in isolation (`44 passed`), and none imports anything this PR touches.
+The `security-review-guard: FAIL — CHANGED_FILES is empty` text in that log is the guard's *own test
+fixture* printing its failure copy (its sample path is `server/routes/thing.ts`), not a real trip.
 
 **On the bundle baseline:** the guard offered to tighten it by 109 bytes and I reverted that write.
 The delta is not attributable to this change — the accelerator is a lazy route and nothing eager
