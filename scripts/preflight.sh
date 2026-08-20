@@ -76,6 +76,7 @@ echo "preflight — mirroring CI's \`gate\` job on $(git rev-parse --short HEAD)
 echo
 
 # --- cheap first: a type error should not wait behind three minutes of vitest ---
+step "pre-push gate armed"            node scripts/hooks-installed-guard.cjs
 step "typecheck (tsc)"                npx tsc --noEmit
 step "schema <-> migrations"          node scripts/schema-migration-guard.cjs
 step "migration ledger"               node scripts/migration-ledger-guard.cjs

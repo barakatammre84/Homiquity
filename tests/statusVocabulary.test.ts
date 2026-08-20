@@ -59,6 +59,25 @@ const SOURCE_FILES = [
   ...walk(join(ROOT, "shared"), [".ts"]),
 ];
 
+/**
+ * Read every source file ONCE.
+ *
+ * Seventeen tests in this file each looped `SOURCE_FILES` and called `readFileSync`
+ * per file. At 992 files that is ~16,800 reads per run, and it pushed individual
+ * tests past the 15s `testTimeout` whenever the machine was busy — which, with
+ * several sessions building at once, is most of the time. The suite then failed for
+ * a reason that had nothing to do with the code under test.
+ *
+ * That matters more than a slow test: the pre-push hook is the gate, and a gate that
+ * fails at random teaches `--no-verify`, which disables it permanently.
+ *
+ * No assertion changed — only where the text comes from. Reading at module scope is
+ * safe here because these files are a static snapshot of the tree for the run.
+ */
+const SOURCES: ReadonlyArray<readonly [string, string]> = SOURCE_FILES.map(
+  (f) => [f, readFileSync(f, "utf8")] as const,
+);
+
 // Variable names that hold a loan application across the codebase. Comparing
 // `<name>.status` against a literal is only legal with canonical values.
 const APP_VAR = "(?:application|activeApplication|activeApp|app|updatedApp|loanApplication|loanApp)";
@@ -79,8 +98,7 @@ const INCLUDES_RE = new RegExp(
 describe("loan-application status vocabulary is canonical", () => {
   it("every status literal compared against <app>.status is in LOAN_APP_STATUSES", () => {
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
 
       for (const match of source.matchAll(COMPARISON_RE)) {
@@ -110,8 +128,7 @@ describe("loan-application status vocabulary is canonical", () => {
     // canonical by construction — those are skipped.
     const INARRAY_RE = /inArray\(\s*loanApplications\.status\s*,\s*([^)]*)\)/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
 
       for (const match of source.matchAll(INARRAY_RE)) {
@@ -147,8 +164,7 @@ describe("loan-application status vocabulary is canonical", () => {
     // ("submitted"), so they never trip the threshold.
     const CALL_RE = /\b([A-Za-z_$][\w$]*)\.includes\(/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       const checked = new Set<string>();
 
@@ -191,9 +207,8 @@ describe("loan-application status vocabulary is canonical", () => {
     const SELECT_CONTENT_RE = /<SelectContent[^>]*>([\s\S]*?)<\/SelectContent>/g;
     const ITEM_RE = /<SelectItem[^>]*\bvalue=["']([a-z_]+)["']/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
+    for (const [file, source] of SOURCES) {
       if (!file.endsWith(".tsx")) continue;
-      const source = readFileSync(file, "utf8");
       const rel = relative(ROOT, file);
       for (const block of source.matchAll(SELECT_CONTENT_RE)) {
         const values = [...block[1].matchAll(ITEM_RE)].map((m) => m[1]);
@@ -214,8 +229,7 @@ describe("loan-application status vocabulary is canonical", () => {
     // Companion to the inArray scan: the single-value Drizzle comparators.
     const EQ_RE = /\b(?:eq|ne)\(\s*loanApplications\.status\s*,\s*["']([a-z_]+)["']\s*\)/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(EQ_RE)) {
         if (!CANONICAL.has(match[1])) {
@@ -244,10 +258,9 @@ describe("loan-application status vocabulary is canonical", () => {
       "server/seed.ts",
     ]);
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       if (ALLOWED.has(rel)) continue;
-      const source = readFileSync(file, "utf8");
 
       // Window scan: updateLoanApplication( ... status: ... within the next
       // ~400 chars (covers multi-line payload objects without full parsing).
@@ -350,8 +363,7 @@ describe("task status vocabulary is canonical", () => {
       "g",
     );
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(RE)) {
         if (!TASK_CANONICAL.has(match[1])) {
@@ -368,8 +380,7 @@ describe("task status vocabulary is canonical", () => {
       "g",
     );
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(RE)) {
         for (const litMatch of match[1].matchAll(/["']([A-Za-z_]+)["']/g)) {
@@ -389,8 +400,7 @@ describe("task status vocabulary is canonical", () => {
     // construction — skipped.
     const INARRAY_RE = /inArray\(\s*tasks\.status\s*,\s*([^)]*)\)/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(INARRAY_RE)) {
         let expr = match[1].trim();
@@ -417,8 +427,7 @@ describe("task status vocabulary is canonical", () => {
   it("every literal in eq/ne(tasks.status, …) is canonical", () => {
     const EQ_RE = /\b(?:eq|ne)\(\s*tasks\.status\s*,\s*["']([A-Za-z_]+)["']\s*\)/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(EQ_RE)) {
         if (!TASK_CANONICAL.has(match[1])) {
@@ -434,8 +443,7 @@ describe("task status vocabulary is canonical", () => {
     // the scans above can't see — the optimizationEngine sweep hid this way.
     const RE = /sql`[^`]*\$\{tasks\.status\}\s+IN\s*\(/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       if (RE.test(source)) {
         violations.push(`${rel}: raw sql IN-list on tasks.status`);
@@ -450,8 +458,7 @@ describe("task status vocabulary is canonical", () => {
       "g",
     );
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(RE)) {
         if (!VERIFICATION_CANONICAL.has(match[1])) {
@@ -500,8 +507,7 @@ describe("task priority vocabulary is canonical", () => {
       "g",
     );
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(RE)) {
         if (!PRIORITY_CANONICAL.has(match[1])) {
@@ -518,8 +524,7 @@ describe("task priority vocabulary is canonical", () => {
       "g",
     );
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(RE)) {
         for (const litMatch of match[1].matchAll(/["']([A-Za-z_]+)["']/g)) {
@@ -538,8 +543,7 @@ describe("task priority vocabulary is canonical", () => {
     // TASK_PRIORITIES have no literals and are canonical by construction.
     const INARRAY_RE = /inArray\(\s*tasks\.priority\s*,\s*([^)]*)\)/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(INARRAY_RE)) {
         let expr = match[1].trim();
@@ -566,8 +570,7 @@ describe("task priority vocabulary is canonical", () => {
   it("every literal in eq/ne(tasks.priority, …) is canonical", () => {
     const EQ_RE = /\b(?:eq|ne)\(\s*tasks\.priority\s*,\s*["']([A-Za-z_]+)["']\s*\)/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       for (const match of source.matchAll(EQ_RE)) {
         if (!PRIORITY_CANONICAL.has(match[1])) {
@@ -581,8 +584,7 @@ describe("task priority vocabulary is canonical", () => {
   it("no raw SQL IN-list on tasks.priority (use inArray with typed values)", () => {
     const RE = /sql`[^`]*\$\{tasks\.priority\}\s+IN\s*\(/g;
     const violations: string[] = [];
-    for (const file of SOURCE_FILES) {
-      const source = readFileSync(file, "utf8");
+    for (const [file, source] of SOURCES) {
       const rel = relative(ROOT, file);
       if (RE.test(source)) {
         violations.push(`${rel}: raw sql IN-list on tasks.priority`);
