@@ -57,6 +57,9 @@ doc-drift bug to fix):
 - [NTHLA_609G_SPEC.md](compliance/NTHLA_609G_SPEC.md) — FCRA §609(g) Notice to Home Loan Applicant: absent today, hard-blocking for F3, and the per-bureau data the credit-vendor contract must deliver
 - [security/threat_model.md](compliance/security/threat_model.md)
 
+### SOP Manual — written operating procedures (DRAFT) · [`sop/`](sop/)
+- [SOP-000-manual-charter.md](sop/SOP-000-manual-charter.md) — **DRAFT, unsigned** — charter for the operations/QC manual (TPO written-QC-plan obligation, examiner readiness, numbering scheme, approval workflow). Landed 2026-08-20 from the 08-19 orphan snapshot; its template, RACI table and SOP freshness guard are planned, not yet built; its Fannie A3-3-01 wording is ⚠️ unverified pending procurement.
+
 ### Governance — policies & session rules · [`governance/`](governance/)
 - [TEAM_PRACTICES.md](governance/TEAM_PRACTICES.md) — how we work (the house-style exemplar).
 - [AI_GOVERNANCE_POLICY.md](governance/AI_GOVERNANCE_POLICY.md) · [MODEL_RISK_GOVERNANCE.md](governance/MODEL_RISK_GOVERNANCE.md)
