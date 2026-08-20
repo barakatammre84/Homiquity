@@ -243,11 +243,18 @@ What it does:
 - The checklist is personalised to the borrower's actual situation, not a static list.
 - Uploads fail **honestly** — when storage is unconfigured the copy says so rather than pretending the file landed.
 
-- **Server** — `server/routes/documents.ts`, `server/extractionCore.ts`, `server/extractionDocuments.ts`, `server/extractionValidation.ts`, `server/routes/borrower/documentPackages.ts`, `server/services/documentChecklist.ts`, `server/services/documentConfidence.ts`, `server/services/documentFacts.ts`, `server/services/docRequestDraft.ts`, `server/services/fileHealth.ts`
+- **Server** — `server/routes/documents.ts`, `server/routes/lending/documents.ts`, `server/extractionCore.ts`, `server/extractionDocuments.ts`, `server/extractionValidation.ts`, `server/routes/borrower/documentPackages.ts`, `server/services/documentChecklist.ts`, `server/services/documentConfidence.ts`, `server/services/documentFacts.ts`, `server/services/extractionPersistence.ts`, `server/services/docRequestDraft.ts`, `server/services/fileHealth.ts`
 - **Client** — `client/src/pages/borrower/Documents.tsx`, `client/src/pages/borrower/documents/`, `client/src/components/DocumentDropzone.tsx`, `client/src/components/UploadDocumentDialog.tsx`, `client/src/components/staff/DocumentReviewPanel.tsx`, `client/src/components/staff/DocumentViewer.tsx`, `client/src/components/staff/ReviewWorkbenchPanel.tsx`
 - **Shared / schema** — `shared/schema/documents.ts`, `shared/uploads.ts`, `shared/documentTypes.ts`, `shared/documentStatus.ts`, `shared/borrowerDocumentView.ts`, `shared/dataProvenance.ts`
 - **Hand-back only** — `server/integrations/object_storage/`
-- **Owned tests** — 16 files, listed in the agent
+- **Owned tests** — 17 files, listed in the agent
+
+> `server/routes/lending/documents.ts` — `POST /api/documents/upload`, the route a **borrower**
+> actually uploads through — was absent from this row until 2026-08-20. Its omission was not
+> cosmetic: extraction reaches a document from there *and* from `routes/documents.ts`, and the two
+> implementations drifted for as long as only one of them was owned (the borrower's path extracted
+> pay stubs and discarded the values). The post-extraction behaviour now lives once, in
+> `server/services/extractionPersistence.ts`.
 
 ### 12. Tax document intelligence
 
