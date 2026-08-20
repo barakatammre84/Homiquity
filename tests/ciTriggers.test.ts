@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 /**
@@ -169,5 +169,80 @@ describe("the §9 guard diffs the PR's real base", () => {
 describe("push still drives deploy from main only", () => {
   it("the push trigger stays pinned to main", () => {
     expect(onBlock).toMatch(/push:\s*\n\s{4}branches:\s*\[main\]/);
+  });
+});
+
+describe("the docs-only fast path cannot skip a gate that matters", () => {
+  // The `scope` step turns the expensive half of `gate` off when a PR changes
+  // nothing but inert prose (KTLO-2: 36 of 137 commits to main in the 14 days to
+  // 2026-08-20 were prose-only, each paying a full ~4-minute billed run).
+  //
+  // The whole safety argument is that "inert" is decided correctly. These tests
+  // pin the two ways it could rot.
+
+  const scopeStep = (() => {
+    const start = CI.indexOf("      - name: Change scope (inert docs vs code)");
+    expect(start, "the scope step was removed or renamed").toBeGreaterThan(-1);
+    const rest = CI.slice(start + 1);
+    const next = rest.search(/\n {6}- name: /);
+    return next === -1 ? rest : rest.slice(0, next);
+  })();
+
+  it("fails closed — every unclassifiable diff resolves to code", () => {
+    // An empty diff, a missing sha, or a git failure must all mean "run everything".
+    // The cost of a wrong `code=false` is a COMPLETELY ungated PR.
+    expect(scopeStep).toMatch(/code=true.*cannot classify/s);
+    expect(scopeStep, "a missing base/head sha must resolve to code").toMatch(
+      /if \[ -z "\$\{BASE_SHA:-\}" \] \|\| \[ -z "\$\{HEAD_SHA:-\}" \]/,
+    );
+    expect(scopeStep, "an empty/failed diff must resolve to code").toMatch(
+      /if \[ -z "\$changed" \]/,
+    );
+    // The only path to `code=false` is the affirmative all-prose branch.
+    expect(scopeStep.match(/decide false/g) ?? []).toHaveLength(1);
+  });
+
+  it("every doc a test reads from disk is on the code path", () => {
+    // THE ROT THIS PREVENTS: someone adds a test that reads a .md file, a later PR
+    // edits only that .md, the scope step calls it inert, the unit tests never run,
+    // and a red suite lands on main. The coupling is invisible in both files —
+    // so it is asserted here instead of remembered.
+    const testDir = join(__dirname);
+    const testFiles = readdirSync(testDir)
+      .filter((f) => f.endsWith(".test.ts"))
+      // This file is the detector; its own explanatory examples are prose, not reads.
+      // Scanning it registered `<path>.md` and then `x.md` as corpus files on the
+      // first two runs of this test — the detector detecting its own documentation.
+      .filter((f) => f !== "ciTriggers.test.ts");
+
+    const docsRead = new Set<string>();
+    for (const f of testFiles) {
+      const src = readFileSync(join(testDir, f), "utf8");
+      // A real read call, not a mention: `readFileSync(join(__dirname, "../x.md")`.
+      // Requiring the reader is what keeps this file's own explanatory prose from
+      // registering as a corpus read (it did, on the first run of this test).
+      for (const m of src.matchAll(
+        /readFileSync?\(\s*join\(__dirname,\s*"\.\.\/([^"]+\.md)"/g,
+      )) {
+        docsRead.add(m[1]);
+      }
+    }
+
+    // Sanity: if this finds nothing the regex has drifted and the test is vacuous.
+    expect(
+      docsRead.size,
+      "found no .md reads in tests/ — the detector regex has drifted, so this test " +
+        "would pass no matter what the scope step allowed",
+    ).toBeGreaterThan(0);
+
+    for (const doc of docsRead) {
+      expect(
+        scopeStep,
+        `tests/ reads ${doc} from disk, so editing it can red the unit tests — but ` +
+          `TEST_BEARING_RE in ci.yml's scope step does not cover it. A prose-only PR ` +
+          `touching that file would skip the very suite it can break. Add it to ` +
+          `TEST_BEARING_RE.`,
+      ).toContain(doc.replace(/\./g, "\\."));
+    }
   });
 });
