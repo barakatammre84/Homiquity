@@ -174,7 +174,7 @@ export function OfferCard({
 
         <Collapsible open={isExpanded} onOpenChange={onToggleExpanded}>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full justify-between" data-testid={`button-expand-${offer.id}`}>
+            <Button variant="ghost" size="sm" className="touch-target w-full justify-between" data-testid={`button-expand-${offer.id}`}>
               <span>View Details</span>
               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>

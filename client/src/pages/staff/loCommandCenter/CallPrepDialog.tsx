@@ -37,7 +37,7 @@ export function CallPrepDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" size="sm" className="w-full justify-start" data-testid="action-call-prep">
+        <Button variant="default" size="sm" className="touch-target w-full justify-start" data-testid="action-call-prep">
           <Phone className="mr-2 h-4 w-4" aria-hidden="true" />
           Call Prep
         </Button>

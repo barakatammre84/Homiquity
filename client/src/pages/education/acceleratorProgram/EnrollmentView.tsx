@@ -77,7 +77,7 @@ export function EnrollmentView() {
                   {program.description}
                 </p>
                 <Button
-                  className="w-full"
+                  className="touch-target w-full"
                   size="sm"
                   onClick={() => enrollMutation.mutate(program.key)}
                   disabled={enrollMutation.isPending}

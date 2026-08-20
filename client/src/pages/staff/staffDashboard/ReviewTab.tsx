@@ -83,7 +83,7 @@ export function ReviewTab({
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      size="sm"
+                      size="sm" className="touch-target"
                       variant="outline"
                       onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "OPEN", verificationStatus: "rejected" } })}
                       data-testid={`button-reject-${task.id}`}
@@ -92,7 +92,7 @@ export function ReviewTab({
                       Reject
                     </Button>
                     <Button
-                      size="sm"
+                      size="sm" className="touch-target"
                       onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "COMPLETED", verificationStatus: "verified" } })}
                       data-testid={`button-verify-${task.id}`}
                     >
@@ -149,7 +149,7 @@ export function ReviewTab({
                       {tasks.filter(t => t.applicationId === app.id).length} tasks
                     </span>
                     <Button
-                      size="sm"
+                      size="sm" className="touch-target"
                       variant="outline"
                       onClick={() => onAddTask(app.id)}
                       data-testid={`button-add-task-${app.id}`}

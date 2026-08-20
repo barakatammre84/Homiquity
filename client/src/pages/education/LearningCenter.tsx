@@ -232,7 +232,7 @@ export default function LearningCenter() {
                 <div className="mb-6 flex items-center gap-2">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="sm" className="touch-target"
                     onClick={() => setSelectedCategory(null)}
                     data-testid="button-clear-category"
                   >

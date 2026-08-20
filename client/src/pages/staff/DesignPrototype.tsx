@@ -96,7 +96,7 @@ export default function DesignPrototype() {
                 "You provide the documents we list — we keep everything organized in one place.",
               status: "current",
               actions: (
-                <Button size="sm">
+                <Button size="sm" className="touch-target">
                   <Icons.upload className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   Upload documents
                 </Button>
@@ -279,7 +279,7 @@ export default function DesignPrototype() {
           reassurance="If no gift funds are part of your down payment, there's nothing to add here — your application is complete without it."
           tips={["Ask the giver to sign and date it — a short note is enough."]}
           action={
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="touch-target">
               <Icons.upload className="mr-1.5 h-4 w-4" aria-hidden="true" />
               Upload gift letter
             </Button>

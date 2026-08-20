@@ -138,7 +138,7 @@ export function PropertyManagementCard({ applicationId, application, properties 
             </div>
             <Dialog open={showAddPropertyDialog} onOpenChange={setShowAddPropertyDialog}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline" data-testid="button-add-property">
+                <Button size="sm" className="touch-target" variant="outline" data-testid="button-add-property">
                   <Plus className="mr-1 h-4 w-4" />
                   Add Property
                 </Button>
@@ -327,7 +327,7 @@ export function PropertyManagementCard({ applicationId, application, properties 
                   <div className="flex flex-col gap-1">
                     {!property.isCurrentProperty && property.status !== "deal_fell_through" && (
                       <Button
-                        size="sm"
+                        size="sm" className="touch-target"
                         variant="outline"
                         onClick={() => switchPropertyMutation.mutate(property.id)}
                         disabled={switchPropertyMutation.isPending}
@@ -341,7 +341,7 @@ export function PropertyManagementCard({ applicationId, application, properties 
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-destructive hover:text-destructive"
+                        className="touch-target text-destructive hover:text-destructive"
                         onClick={() => {
                           setSelectedPropertyForAction(property.id);
                           setShowDealFellThroughDialog(true);

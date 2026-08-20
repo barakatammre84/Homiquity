@@ -9,7 +9,7 @@ import {
   extractLeaseData,
 } from "../extractionService";
 import type { ExtractedDocumentData, ExtractedTaxReturnData } from "../extractionCore";
-import { recordCoarseExtraction, markHumanReviewCompleted } from "../services/documentConfidence";
+import { markHumanReviewCompleted } from "../services/documentConfidence";
 import { allowedUploadTypes, bufferMatchesAllowedSignature } from "./utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import {
@@ -331,35 +331,19 @@ export function registerDocumentRoutes(
           });
       }
 
-      const { humanReviewRequired } = await recordCoarseExtraction({
+      // Shared with the fire-and-forget auto-extraction inside
+      // POST /api/documents/upload (the borrower's own path): status, notes +
+      // lineage, document facts (F-028) and readiness wiring (F-030) all live
+      // in one place so the two paths cannot drift apart again.
+      const { applyExtractionToDocument } = await import("../services/extractionPersistence");
+      await applyExtractionToDocument({
+        storage,
+        userId: document.userId,
         documentId: id,
         documentType: document.documentType,
         applicationId: document.applicationId,
-        confidence: extractedData.confidence,
-        extractedFields: extractedData.extractedFields,
         fileSize: document.fileSize ?? undefined,
-      });
-      await storage.updateDocument(id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify);
-        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
-        // able to mark itself verified). main's review-gate signal still routes:
-        // a doc that clears the type-specific confidence threshold is staged
-        // "verifying" for a human to confirm; everything else stays "uploaded".
-        status: !humanReviewRequired ? DOCUMENT_STATUS.VERIFYING : DOCUMENT_STATUS.UPLOADED,
-        notes: JSON.stringify({
-          extractedAt: new Date().toISOString(),
-          extractedFields: extractedData.extractedFields,
-          confidence: extractedData.confidence,
-          humanReviewRequired,
-          warnings: extractedData.warnings,
-          modelId: extractedData.modelId,
-          promptVersion: extractedData.promptVersion,
-          responseHash: extractedData.rawResponseHash,
-        }),
-        extractionResponseHash: extractedData.rawResponseHash,
-        extractionRawEncrypted: extractedData.rawResponseEncrypted,
-        extractionRawIv: extractedData.rawResponseIv,
-        extractionRawKeyId: extractedData.rawResponseKeyId,
+        extracted: extractedData,
       });
 
       if (document.documentType === "tax_return") {
@@ -385,44 +369,6 @@ export function registerDocumentRoutes(
           }
         } catch (insightErr) {
           console.warn("[TaxInsight] Insight derivation failed (non-fatal):", insightErr);
-        }
-      }
-
-      // Persist the VALUES the model read, not just the field names (F-028).
-      // Without this the numbers are discarded after extraction and the file
-      // keeps asking the borrower for figures it has already been shown.
-      // Non-fatal: a lost signal must not fail the extraction.
-      if (extractedData.confidence !== "low") {
-        try {
-          const { persistDocumentFacts } = await import("../services/documentFacts");
-          await persistDocumentFacts(
-            id,
-            document.documentType,
-            extractedData as unknown as Record<string, any>,
-            extractedData.confidence,
-            extractedData.modelId,
-          );
-        } catch (factErr) {
-          console.warn("[DocumentFacts] persist failed (non-fatal):", factErr);
-        }
-      }
-
-      if (extractedData.confidence !== "low") {
-        try {
-          const { wireExtractionToReadiness } = await import("../services/optimizationEngine");
-          // Pass the extraction RESULT, not `extractedFields` — the latter is a
-          // string[] of field NAMES, and handing it to a value-reading map is
-          // what made every value-bearing readiness row silently skip (F-030).
-          const readinessResult = await wireExtractionToReadiness(
-            document.userId,
-            id,
-            document.documentType,
-            extractedData as unknown as Record<string, any>,
-            extractedData.confidence
-          );
-          console.log(`[OPT-1] Readiness fields updated: ${readinessResult.fieldsUpdated.join(", ") || "none"}`);
-        } catch (readinessErr) {
-          console.warn("[OPT-1] Readiness wiring failed (non-fatal):", readinessErr);
         }
       }
 

@@ -19,7 +19,7 @@ export function ConversationSidebar({
       <Button
         variant="outline"
         size="sm"
-        className="w-full justify-start gap-2 mb-2"
+        className="touch-target w-full justify-start gap-2 mb-2"
         onClick={onNew}
         data-testid="button-new-conversation"
       >

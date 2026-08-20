@@ -193,7 +193,7 @@ export default function DocumentViewer({ documentId, fileName, mimeType }: Docum
             <Icons.warning className={`${iconSize.feature} text-warning-subtle-foreground`} aria-hidden="true" />
             <p>Couldn't load this document for preview.</p>
             <p className="text-xs">{content.message}</p>
-            <Button variant="outline" size="sm" onClick={downloadFile}>
+            <Button variant="outline" size="sm" className="touch-target" onClick={downloadFile}>
               <Icons.download className={`${iconSize.inline} mr-2`} />
               Download instead
             </Button>
@@ -207,7 +207,7 @@ export default function DocumentViewer({ documentId, fileName, mimeType }: Docum
           >
             <Icons.document className={iconSize.empty} aria-hidden="true" />
             <p>Inline preview isn't available for this file type.</p>
-            <Button variant="outline" size="sm" onClick={downloadFile} data-testid="button-viewer-download-fallback">
+            <Button variant="outline" size="sm" className="touch-target" onClick={downloadFile} data-testid="button-viewer-download-fallback">
               <Icons.download className={`${iconSize.inline} mr-2`} />
               Download to view
             </Button>

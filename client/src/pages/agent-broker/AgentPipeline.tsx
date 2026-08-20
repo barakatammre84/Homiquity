@@ -279,7 +279,7 @@ export default function AgentPipeline() {
           description="Share your co-branded referral link with clients to start tracking their loan progress here."
           data-testid="card-empty-pipeline"
           action={
-            <Button variant="outline" size="sm" asChild data-testid="button-go-cobranding">
+            <Button variant="outline" size="sm" className="touch-target" asChild data-testid="button-go-cobranding">
               <Link href="/co-branding">
                 <FileText className="mr-1 h-4 w-4" />
                 Set Up Co-Branding

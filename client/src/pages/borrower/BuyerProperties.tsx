@@ -298,7 +298,7 @@ export default function BuyerProperties() {
                     <p className="font-medium text-white">Get Pre-Approved First</p>
                     <p className="text-sm text-white/70">Complete an application to see personalized affordability</p>
                   </div>
-                  <Button asChild variant="secondary" size="sm" className="ml-2">
+                  <Button asChild variant="secondary" size="sm" className="touch-target ml-2">
                     <Link href="/apply">
                       Apply Now
                     </Link>

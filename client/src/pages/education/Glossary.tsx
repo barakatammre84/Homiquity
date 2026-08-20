@@ -211,7 +211,7 @@ export default function Glossary() {
           {/* Breadcrumb / result count */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm">
-              <Button asChild variant="ghost" size="sm" data-testid="link-resources">
+              <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="link-resources">
                 <Link href="/resources">
                   Resources
                 </Link>

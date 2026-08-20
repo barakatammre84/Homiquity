@@ -130,7 +130,7 @@ export function LeasePayments({ leaseId, monthlyRent }: { leaseId: string; month
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Payment history</h3>
         {!showForm ? (
-          <Button variant="ghost" size="sm" onClick={() => setShowForm(true)} data-testid={`button-add-payment-${leaseId}`}>
+          <Button variant="ghost" size="sm" className="touch-target" onClick={() => setShowForm(true)} data-testid={`button-add-payment-${leaseId}`}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Record a month
           </Button>
         ) : null}
@@ -265,7 +265,7 @@ export function LeasePayments({ leaseId, monthlyRent }: { leaseId: string; month
             ) : null}
 
             <div className="flex gap-2">
-              <Button type="submit" size="sm" disabled={record.isPending} data-testid={`button-save-payment-${leaseId}`}>
+              <Button type="submit" size="sm" className="touch-target" disabled={record.isPending} data-testid={`button-save-payment-${leaseId}`}>
                 {record.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…
@@ -277,7 +277,7 @@ export function LeasePayments({ leaseId, monthlyRent }: { leaseId: string; month
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="sm" className="touch-target"
                 onClick={() => {
                   form.reset();
                   setShowForm(false);

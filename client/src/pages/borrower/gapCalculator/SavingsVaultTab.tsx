@@ -92,7 +92,7 @@ export function SavingsVaultTab({ analysis, savingsTransactions }: SavingsVaultT
         </div>
         <Dialog open={showSavingsDialog} onOpenChange={setShowSavingsDialog}>
           <DialogTrigger asChild>
-            <Button size="sm" data-testid="button-add-savings">
+            <Button size="sm" className="touch-target" data-testid="button-add-savings">
               <Plus className="h-4 w-4 mr-2" />
               Add Deposit
             </Button>
