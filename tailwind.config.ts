@@ -131,26 +131,31 @@ export default {
         // persona/landing pages; the light end (500→50) stays neutral slate for
         // micro-copy, borders, and section fills. Prefer the semantic tokens
         // (bg-background, text-foreground, …) in components.
+        flare: {
+          DEFAULT: "hsl(var(--flare))",
+          foreground: "hsl(var(--flare-foreground))",
+        },
         precision: {
-          // Warm clay, 2026-08-20. Was royal blue (#0A1E52 → #2456D6).
+          // Green-black, 2026-08-20. Was clay; before that royal blue.
           //
-          // This ramp is the app's DARK surface — the hero gradient on the
-          // landing and persona pages. Royal blue is what every fintech reaches
-          // for; Better is green-black, Rocket red-black, Tomo white. Nobody in
-          // US mortgage runs warm-dark, so this is the cheapest recognisable
-          // move available: three hex values, no layout change.
+          // Rebuilt on Monzo's structure after measuring their live site: their
+          // whole palette is white + a near-black (#091723) + ONE tint
+          // (#F2F8F3). The restraint is the craft — not the specific hues.
           //
-          // White type on 950 measures 15.70:1 and on 700 measures 11.48:1 —
-          // both far past AA, verified before the values were written here.
-          950: "#2C2118", // deep clay — hero gradient anchor
-          900: "#3B2A1E", // clay — hero gradient mid
-          700: "#4A3527", // warm umber — hero gradient end + glow
-          // The light end stays neutral for micro-copy and hairlines, but warmed
-          // to the same hue family so a slate grey never sits on a warm ground.
-          500: "#7A6A5C", // warm muted — placeholders, micro-copy
-          300: "#A2938A", // warm slate — hover borders, disabled states
-          100: "#E7DFD7", // warm hairline — card borders, active input bg
-          50: "#FAF7F5", // warm ultra-light — data-section separation
+          // Deliberately NOT their navy-black. Homiquity is a mortgage broker,
+          // Monzo is a bank; an indistinguishable palette in the same sector is
+          // trade-dress risk, not homage. So the near-black is tinted with
+          // Homiquity's own emerald instead of their navy, which keeps the
+          // discipline and drops the resemblance.
+          //
+          // White on 950 measures 17.30:1 and on 700 measures 14.07:1.
+          950: "#0B1E19", // green-black — hero anchor
+          900: "#112823", // green-black mid
+          700: "#17302A", // deep emerald-slate — hero end
+          500: "#5A726C", // muted green-grey — micro-copy (5.17:1 on white)
+          300: "#93A5A0", // hover borders, disabled
+          100: "#E2E9E7", // hairlines
+          50: "#F1F8F5", // the single pale tint
         },
       },
       fontFamily: {

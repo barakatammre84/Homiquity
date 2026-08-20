@@ -45,49 +45,73 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
   /* Layer 0: Stark White canvas */
-  --background: 30 40% 99%;
+  --background: 0 0% 100%;
   /* Primary typography: near-black slate #0F172A (cool blue undertone) */
-  --foreground: 28 24% 12%;
+  --foreground: 165 45% 8%;
   /* Slate-200 #E2E8F0 hairlines — soft separation, no harsh borders */
-  --border: 30 20% 89%;
+  --border: 160 14% 90%;
   /* Layer 1: white cards separated by slate hairline */
   --card: 0 0% 100%;
-  --card-foreground: 28 24% 12%;
-  --card-border: 30 20% 89%;
+  --card-foreground: 165 45% 8%;
+  --card-border: 160 14% 90%;
   /* Sidebar: deep royal-blue navigation container (~#122A6B) */
-  --sidebar: 25 31% 22%;
+  --sidebar: 165 35% 14%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 25 22% 32%;
+  --sidebar-border: 165 25% 24%;
   /* Active nav item: light pill on royal blue */
   --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 28 24% 12%;
-  --sidebar-accent: 25 26% 30%;
+  --sidebar-primary-foreground: 165 45% 8%;
+  --sidebar-accent: 165 28% 22%;
   --sidebar-accent-foreground: 210 40% 98%;
   --sidebar-ring: 160 84% 39%;
   --popover: 0 0% 100%;
-  --popover-foreground: 28 24% 12%;
-  --popover-border: 30 20% 86%;
+  --popover-foreground: 165 45% 8%;
+  --popover-border: 160 14% 87%;
   /* Layer 2: conversion action = Emerald #047857 (green means "Go";
      700-depth so white button text passes AA) */
   --primary: 163 94% 24%;
   --primary-foreground: 0 0% 100%;
   /* Secondary surfaces: slate-100 chip */
-  --secondary: 30 30% 95%;
-  --secondary-foreground: 28 24% 12%;
+  --secondary: 155 30% 95%;
+  --secondary-foreground: 165 45% 8%;
   /* Data-section separation: Ultra-Light Gray #F8FAFC */
-  --muted: 30 33% 97%;
+  --muted: 155 35% 96%;
   /* Secondary/micro-copy: green-grey per the 2026-08-18 overhaul direction —
      quiet text carries the brand hue (was blue-grey Muted Slate 215 24% 37%).
      Verified ~5.8:1 on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1).
      Still clearly recessive vs the near-black primary type (~16:1). */
-  --muted-foreground: 28 14% 40%;
+  --muted-foreground: 165 12% 40%;
+
+  /**
+   * Flare — the warm accent, added 2026-08-20.
+   *
+   * Monzo runs a hot coral (#FF4F40) against their near-black: 24 text uses, 24
+   * borders, 31 SVG fills on their home page alone. The JOB it does — one jolt of
+   * warmth against a cold near-black, used sparingly — is what makes their
+   * restraint read as confidence rather than austerity. That job is worth copying.
+   *
+   * The colour is not. #FF4F40 is Monzo's single most recognisable asset, and
+   * Homiquity is a mortgage broker to their bank — the same sector, where an
+   * indistinguishable accent is trade dress rather than homage. So this is a true
+   * orange at hue 24deg against coral's 5deg: adjacent job, different colour.
+   *
+   * 🚨 USAGE IS CONSTRAINED BY CONTRAST, and the same constraint binds Monzo's
+   * coral (theirs is 3.26:1 on white — they never set it as text there either):
+   *   ALLOWED  flare as text ON the dark surface        4.77:1
+   *   ALLOWED  --flare-foreground text ON a flare fill  4.77:1
+   *   ALLOWED  fills, borders, illustration, focus rings on any ground
+   *   FORBIDDEN white text on a flare fill              3.63:1
+   *   FORBIDDEN flare as text on white                  3.63:1
+   */
+  --flare: 24 88% 46%;
+  --flare-foreground: 165 45% 8%;
   /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
      --muted #F8FAFC) that white cards sit ON so their shadow-card reads.
      Public/reading surfaces stay on the white --background. */
-  --surface: 30 30% 96%;
-  --surface-foreground: 28 24% 12%;
+  --surface: 155 30% 96%;
+  --surface-foreground: 165 45% 8%;
   /* Accent: deep royal-blue chip — quieter than the emerald primary */
-  --accent: 25 31% 22%;
+  --accent: 165 35% 14%;
   --accent-foreground: 0 0% 100%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
