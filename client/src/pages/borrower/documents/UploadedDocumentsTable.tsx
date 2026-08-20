@@ -49,7 +49,7 @@ export function UploadedDocumentsTable({ documents }: { documents: Document[] })
         <Button
           size="sm"
           variant="ghost"
-          className="gap-2"
+          className="touch-target gap-2"
           data-testid={`button-download-doc-${doc.id}`}
           onClick={() => window.open(`/api/documents/${doc.id}/download`, "_blank")}
         >

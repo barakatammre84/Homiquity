@@ -76,7 +76,7 @@ export function ComparisonTable({
           </table>
         </div>
         <div className="mt-4 flex justify-end">
-          <Button variant="outline" size="sm" onClick={onClear} data-testid="button-clear-comparison">
+          <Button variant="outline" size="sm" className="touch-target" onClick={onClear} data-testid="button-clear-comparison">
             Clear Comparison
           </Button>
         </div>

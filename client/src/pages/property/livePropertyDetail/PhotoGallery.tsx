@@ -19,7 +19,7 @@ export function PhotoGallery({ photos, address }: { photos: string[]; address: s
       <div>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{photos.length} Photos</h2>
-          <Button variant="outline" size="sm" onClick={() => setShowAll(false)} data-testid="button-close-gallery">
+          <Button variant="outline" size="sm" className="touch-target" onClick={() => setShowAll(false)} data-testid="button-close-gallery">
             Close Gallery
           </Button>
         </div>
@@ -76,7 +76,7 @@ export function PhotoGallery({ photos, address }: { photos: string[]; address: s
         <Button
           variant="secondary"
           size="sm"
-          className="absolute bottom-4 right-4 gap-1 lg:right-4"
+          className="touch-target absolute bottom-4 right-4 gap-1 lg:right-4"
           onClick={() => setShowAll(true)}
           data-testid="button-show-all-photos"
         >

@@ -108,7 +108,7 @@ export default function CpaPortal() {
             <code className="flex-1 truncate rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid="text-referral-link">
               {partner?.referralLink ?? "…"}
             </code>
-            <Button size="sm" variant="outline" onClick={copyLink} disabled={!partner} data-testid="button-copy-link">
+            <Button size="sm" className="touch-target" variant="outline" onClick={copyLink} disabled={!partner} data-testid="button-copy-link">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>

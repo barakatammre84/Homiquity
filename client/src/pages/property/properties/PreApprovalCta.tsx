@@ -44,7 +44,7 @@ export function StickyPreApprovalBanner() {
           <p className="text-sm font-medium sm:hidden">
             Get pre-approved in 3 min
           </p>
-          <Button asChild size="sm" className="gap-1.5 shrink-0" data-testid="button-sticky-preapproval">
+          <Button asChild size="sm" className="touch-target gap-1.5 shrink-0" data-testid="button-sticky-preapproval">
             <Link href="/apply">
               <Sparkles className="h-3.5 w-3.5" />
               Get Pre-Approved

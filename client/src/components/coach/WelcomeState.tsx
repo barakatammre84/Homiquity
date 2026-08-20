@@ -44,7 +44,7 @@ export function InsightsBanner({
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 text-xs"
+              className="touch-target shrink-0 text-xs"
               onClick={() => onAction(insight.action!)}
               data-testid={`button-insight-action-${insight.type}`}
             >
@@ -141,7 +141,7 @@ export function WelcomeState({ onStart, insights }: { onStart: (msg: string) => 
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 text-xs"
+                    className="touch-target shrink-0 text-xs"
                     onClick={() => onStart(insight.action!)}
                     data-testid={`button-welcome-insight-${insight.type}`}
                   >

@@ -17,6 +17,7 @@ import type { Article, ContentCategory } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
 import { articleSchema, breadcrumbSchema } from "@/lib/structuredData";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { PERSONA_ROUTES, personaForArticle } from "@/lib/personaRoutes";
 
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
@@ -132,7 +133,7 @@ export default function ArticleDetail() {
       />
       <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
             <div className="mb-8">
-              <Button asChild variant="ghost" size="sm" className="gap-1 -ml-2 mb-4" data-testid="button-back">
+              <Button asChild variant="ghost" size="sm" className="touch-target gap-1 -ml-2 mb-4" data-testid="button-back">
                 <Link href="/learn">
                   <ChevronLeft className="h-4 w-4" />
                   Back to Learning Center
@@ -180,7 +181,7 @@ export default function ArticleDetail() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1"
+                  className="touch-target gap-1"
                   onClick={handleShare}
                   data-testid="button-share"
                 >
@@ -247,13 +248,27 @@ export default function ArticleDetail() {
                     View FAQs
                   </Link>
                 </Button>
-                {!PRELAUNCH_GATED && (
-                  <Button asChild data-testid="button-get-preapproved">
-                    <Link href="/apply">
-                      Get Pre-Approved
-                    </Link>
-                  </Button>
-                )}
+                {!PRELAUNCH_GATED &&
+                  (() => {
+                    // Route the conversion CTA by the article's loan-product
+                    // taxonomy (migration 0052) so a VA-loan reader lands on
+                    // /va-loans, not the generic funnel. Unclassified content
+                    // keeps the generic CTA.
+                    const persona = personaForArticle(article);
+                    return persona ? (
+                      <Button asChild data-testid={`button-persona-${persona}`}>
+                        <Link href={PERSONA_ROUTES[persona].href}>
+                          {PERSONA_ROUTES[persona].ctaLabel}
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild data-testid="button-get-preapproved">
+                        <Link href="/apply">
+                          Get Pre-Approved
+                        </Link>
+                      </Button>
+                    );
+                  })()}
               </div>
             </div>
       </article>

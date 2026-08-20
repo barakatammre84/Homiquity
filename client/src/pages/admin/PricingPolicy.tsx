@@ -201,7 +201,7 @@ export default function PricingPolicy() {
                   {(active.originationFeeRate * 100).toFixed(3).replace(/\.?0+$/, "")}%
                 </span>
               </div>
-              <Button size="sm" onClick={startEditing} data-testid="button-edit-schedule">
+              <Button size="sm" className="touch-target" onClick={startEditing} data-testid="button-edit-schedule">
                 Edit fee schedule
               </Button>
             </>
@@ -253,7 +253,7 @@ export default function PricingPolicy() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="sm" className="touch-target"
                   disabled={!draftValid || previewMutation.isPending}
                   onClick={() => previewMutation.mutate()}
                   data-testid="button-preview-schedule"
@@ -261,14 +261,14 @@ export default function PricingPolicy() {
                   {previewMutation.isPending ? "Checking…" : "Preview impact"}
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   disabled={!draftValid || note.trim() === "" || publishMutation.isPending}
                   onClick={() => publishMutation.mutate()}
                   data-testid="button-publish-schedule"
                 >
                   {publishMutation.isPending ? "Publishing…" : "Publish new version"}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setDraft(null)}>
+                <Button variant="ghost" size="sm" className="touch-target" onClick={() => setDraft(null)}>
                   Cancel
                 </Button>
               </div>
@@ -449,7 +449,7 @@ function LenderCompensationCard({ lenders }: { lenders: LenderRow[] }) {
                         </TableCell>
                         <TableCell>
                           <Button
-                            size="sm"
+                            size="sm" className="touch-target"
                             disabled={saveMutation.isPending}
                             onClick={() =>
                               saveMutation.mutate({
@@ -479,7 +479,7 @@ function LenderCompensationCard({ lenders }: { lenders: LenderRow[] }) {
                         <TableCell>
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="sm" className="touch-target"
                             onClick={() => {
                               setEditingId(lender.id);
                               setDraft({

@@ -317,27 +317,19 @@ export function registerDocumentRoutes(
         (async () => {
           const svc = await import("../../extractionService");
           const extracted = await svc[extractor](document.storagePath);
-          const { recordCoarseExtraction } = await import("../../services/documentConfidence");
-          const { humanReviewRequired } = await recordCoarseExtraction({
+          // Shared with the staff-triggered POST /api/documents/:id/extract, so
+          // the borrower's own upload persists the VALUES the model read and
+          // credits readiness — not just the field names. These two paths used
+          // to be separate implementations and drifted; see the module docblock.
+          const { applyExtractionToDocument } = await import("../../services/extractionPersistence");
+          await applyExtractionToDocument({
+            storage,
+            userId,
             documentId: document.id,
             documentType,
             applicationId: applicationId || null,
-            confidence: extracted.confidence,
-            extractedFields: extracted.extractedFields,
             fileSize: document.fileSize ?? undefined,
-          });
-          await storage.updateDocument(document.id, {
-            // MR-2: AI confidence never auto-verifies. A doc that clears the
-            // review threshold is staged "verifying" for a human to confirm via
-            // POST /api/documents/:id/verify; the rest stay "uploaded".
-            status: !humanReviewRequired ? DOCUMENT_STATUS.VERIFYING : DOCUMENT_STATUS.UPLOADED,
-            notes: JSON.stringify({
-              extractedAt: new Date().toISOString(),
-              extractedFields: extracted.extractedFields,
-              confidence: extracted.confidence,
-              humanReviewRequired,
-              warnings: extracted.warnings,
-            }),
+            extracted,
           });
         })().catch((err) =>
           console.warn(`[Documents] Auto-extraction failed for ${document.id} (non-fatal):`, err?.message || err),

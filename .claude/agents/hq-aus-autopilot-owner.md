@@ -15,7 +15,7 @@ you **implement** — you land the change, you run the gate, you open the PR. Yo
 - **Server** — `server/routes/aus.ts`, `server/services/ausSubmission.ts`, `server/routes/autopilot.ts`, `server/routes/autopilotAdmin.ts`, `server/services/autopilot/`
 - **Client** — `client/src/pages/admin/AutopilotConsole.tsx`, `client/src/components/AutopilotBanner.tsx`, `client/src/hooks/useAutopilotStatus.ts`
 - **Shared / schema** — `shared/schema/autopilot.ts`, `shared/autopilotStatus.ts`
-- **Tests** — `tests/autopilotConsole.test.ts`, `tests/autopilotDecisionRelay.test.ts`, `tests/autopilotFollowUps.test.ts`, `tests/autopilotAusFollowUps.test.ts`
+- **Tests** — `tests/autopilotConsole.test.ts`, `tests/autopilotDecisionRelay.test.ts`, `tests/autopilotFollowUps.test.ts`, `tests/autopilotAusFollowUps.test.ts`, `tests/autopilotStatus.test.ts`, `client/src/components/AutopilotBanner.test.tsx`
 
 **Not yours** — read freely; anything wrong here is a line in your hand-back, never a fix:
 
@@ -72,7 +72,7 @@ The six that must survive even if you skip that read:
 2. `pnpm test` green in **both** lanes. A new file under `tests/` does not run until it is in
    `vitest.config.ts`'s `include` — assert its filename appears in the run output. Client tests are
    colocated and glob-picked; UI behaviour gets a component test here *first*.
-3. This area's owned tests green: `tests/autopilotConsole.test.ts`, `tests/autopilotDecisionRelay.test.ts`, `tests/autopilotFollowUps.test.ts`, `tests/autopilotAusFollowUps.test.ts`.
+3. This area's owned tests green: `tests/autopilotConsole.test.ts`, `tests/autopilotDecisionRelay.test.ts`, `tests/autopilotFollowUps.test.ts`, `tests/autopilotAusFollowUps.test.ts`, `tests/autopilotStatus.test.ts`, `client/src/components/AutopilotBanner.test.tsx`.
 4. Guards this area trips, green locally: `pnpm guard:schema`, `pnpm guard:citations`.
 5. Server-side changes: integration lane green against a live worktree server on port 5002, with
    `RATE_LIMIT_RELAXED=true` and `X-Forwarded-Proto: https` on every authenticated call.

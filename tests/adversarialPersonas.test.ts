@@ -577,19 +577,103 @@ describe("Persona 3 — Boundary Surgeon (exact 2026 conforming limits)", () => 
   it("FIXED(#3): the codebase agrees on ONE conforming limit (borrowerGraph no longer uses the 2024 value)", () => {
     const graphSrc = fs.readFileSync(path.resolve(__dirname, "../server/services/borrowerGraph.ts"), "utf-8");
     const seedSrc = fs.readFileSync(path.resolve(__dirname, "../server/seedMarketPricing.ts"), "utf-8");
-    const seedLimit = Number(seedSrc.match(/const CONFORMING_LIMIT = (\d+)/)?.[1]);
-    // Shared constant is the single source of truth, and the rate sheets agree.
+    // Shared constant is the single source of truth, and the rate sheets agree —
+    // by IMPORTING it, not by spelling the same number a second time. (This used
+    // to regex a numeric literal out of the seed file, which is why re-spelling
+    // the limit there read as agreement rather than as duplication.)
     expect(CONFORMING_LOAN_LIMIT_2026).toBe(806_500);
-    expect(seedLimit).toBe(CONFORMING_LOAN_LIMIT_2026);
+    expect(seedSrc).toMatch(/const CONFORMING_LIMIT = CONFORMING_LOAN_LIMIT_2026;/);
+    expect(seedSrc).toMatch(/from "@shared\/lendingLimits"/);
     // The stale 2024 literal (766550) is gone; the borrower graph references the
     // shared constant instead.
     expect(graphSrc).not.toMatch(/766550/);
     expect(graphSrc).toMatch(/CONFORMING_LOAN_LIMIT_2026/);
   });
 
+  // Drop `//` line comments and `/* */` block fragments so a source sweep grades
+  // code, never prose. Deliberately conservative: it does not parse strings, which
+  // for numeric-literal checks errs toward reporting, not toward silence.
+  const stripComment = (line: string) =>
+    line.replace(/\/\*.*?\*\//g, "").replace(/\/\/.*$/, "");
+
+  it("no stale conforming literal survives ANYWHERE — the two-file check above could not see the funnel", () => {
+    // Why this exists: the assertion above named borrowerGraph and seedMarketPricing
+    // explicitly, so it enforced "one conforming limit" across exactly two files.
+    // client/src/pages/lending/preApproval/AdvisoryPanel.tsx held `loanAmount > 766550`
+    // for the whole life of that test and stayed green — the funnel told borrowers
+    // between $766,500 and $806,500 that a CONFORMING loan was jumbo. A guard that
+    // names its files can only ever be as wide as the day it was written, so this
+    // one sweeps the tree instead.
+    const root = path.resolve(__dirname, "..");
+    const roots = ["client/src", "server", "shared"];
+    const offenders: string[] = [];
+
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+        const src = fs.readFileSync(full, "utf-8");
+        src.split("\n").forEach((line, i) => {
+          // Strip comments first. A guard that matches inside a comment flags its
+          // own explanation and teaches the next person to widen the allowlist —
+          // this repo has already shipped that mistake once (design-token-guard).
+          const code = stripComment(line);
+          // Any 2024/2025-era conforming literal, however spelled.
+          if (/\b766[_,]?550\b/.test(code)) {
+            offenders.push(`${path.relative(root, full)}:${i + 1}: ${line.trim()}`);
+          }
+        });
+      }
+    };
+    for (const r of roots) walk(path.join(root, r));
+
+    expect(offenders, `stale conforming limit still hardcoded:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("every consumer of the conforming boundary reads the shared constant", () => {
+    // The companion to the sweep above: absence of the stale number is necessary
+    // but not sufficient — a file could hardcode the CURRENT limit and be wrong
+    // again the day it changes. Any file that compares against the boundary must
+    // import it rather than spell it.
+    const root = path.resolve(__dirname, "..");
+    const roots = ["client/src", "server", "shared"];
+    const offenders: string[] = [];
+
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+        // The constant's own home is allowed to spell it.
+        if (path.relative(root, full) === "shared/lendingLimits.ts") continue;
+        const src = fs.readFileSync(full, "utf-8");
+        src.split("\n").forEach((line, i) => {
+          const code = stripComment(line);
+          if (/\b806[_,]?500\b/.test(code) && !/CONFORMING_LOAN_LIMIT_2026/.test(code)) {
+            // A test asserting the constant's VALUE is legitimate; product code
+            // spelling the number is not.
+            offenders.push(`${path.relative(root, full)}:${i + 1}: ${line.trim()}`);
+          }
+        });
+      }
+    };
+    for (const r of roots) walk(path.join(root, r));
+
+    expect(offenders, `conforming limit hardcoded instead of imported:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
   it("FIXED: no dead zone between conforming max and jumbo min (cent-continuous at $806,500)", () => {
     const seedSrc = fs.readFileSync(path.resolve(__dirname, "../server/seedMarketPricing.ts"), "utf-8");
-    const conformingMax = Number(seedSrc.match(/const CONFORMING_LIMIT = (\d+)/)?.[1]);
+    const conformingMax = CONFORMING_LOAN_LIMIT_2026;
     // Jumbo eligibility is now CONFORMING_LIMIT + one cent — "jumbo" means any
     // amount OVER the limit. The old +1 (whole dollar) left the open interval
     // (806500, 806501) unpriceable by every product in the market.

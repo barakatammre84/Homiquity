@@ -134,12 +134,26 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
   // share the cited constants; duplicated regulated math is itself a violation.
   it("the live engine shares the cited VA residual constants — no forked regulated math", () => {
     const engine = read("server/underwritingEngine.ts");
-    expect(engine).toContain("RESIDUAL_TAX_RATE");
-    expect(engine).toContain("VA_RESIDUAL_REDUCTION_FACTOR");
-    expect(engine).toContain("VA_EXTRA_MEMBER_FAMILY_CAP");
-    // The retired inline literals must not reappear:
+    for (const constant of [
+      "RESIDUAL_TAX_RATE",
+      "VA_RESIDUAL_REDUCTION_FACTOR",
+      "VA_EXTRA_MEMBER_FAMILY_CAP",
+      // Three stragglers de-forked 2026-08-20: the 2026-07-04 pass shared the
+      // constants it knew about and these survived as literals.
+      "VA_UTILITY_RATE_PER_SQFT",
+      "VA_CUSHION_MULTIPLIER",
+      "VA_DTI_CUSHION_TRIGGER",
+    ]) {
+      expect(engine, `engine must use the shared ${constant}`).toContain(constant);
+    }
+    // The retired inline literals must not reappear (a ban-list only bans what
+    // someone already thought of — the real guard is the behavioral parity
+    // suite in vaResidualEngineParity.test.ts; this is belt-and-braces):
     expect(engine).not.toMatch(/\*\s*0\.18\b/);
     expect(engine).not.toMatch(/\*\s*0\.95\b/);
+    expect(engine).not.toMatch(/\*\s*0\.14\b/);
+    expect(engine).not.toMatch(/\*\s*1\.2\b/);
+    expect(engine).not.toMatch(/>\s*41\.0\b/);
   });
 
   it("the VA residual reduction stays 5% and DISJUNCTIVE (26-7 Ch. 4, Topic 9, Item 43)", () => {

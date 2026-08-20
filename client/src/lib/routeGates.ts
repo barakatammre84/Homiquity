@@ -51,6 +51,24 @@ export const ROUTE_GATES = {
   underwriterOps: ["admin", "underwriter"],
 
   /**
+   * Disclosure surfaces the BORROWER must be able to reach, and staff preview
+   * as work product. The Loan Estimate is the case that named this gate
+   * (ux-30): `/loan-estimate/:id` shipped behind `staff`, so the one act that
+   * discharges TRID delivery — the borrower retrieving their own LE — was
+   * unreachable from the product, and `leIssuedDate` (stamped ONLY on borrower
+   * retrieval, server/routes/underwriting/delivery.ts:95) had never fired from
+   * a UI click. The page was always built for them: it renders the borrower's
+   * `e_disclosure` ConsentGateCard, which was dead code behind a staff gate.
+   *
+   * Widening, not narrowing: the server endpoint is already
+   * `isAuthenticated + requireConsent("e_disclosure")` with NO role gate, and
+   * object-level access is enforced by `getLoanApplicationWithAccess`, so a
+   * borrower reaches only their own file. This gate stops bouncing a user the
+   * server would have served.
+   */
+  disclosure: [...CLIENT_ROLES, ...STAFF_ROLES],
+
+  /**
    * Market-data moat surfaces (PricingIntelligence). Mirrors the exact
    * server list on /api/market-data/* — internal staff MINUS closer
    * (server/routes/market-data.ts STAFF const). Offering the page to a

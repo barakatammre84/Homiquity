@@ -123,7 +123,7 @@ export default function ApplicationSummary() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" className="shrink-0" data-testid="button-contact">
+                  <Button variant="outline" size="sm" className="touch-target shrink-0" data-testid="button-contact">
                     Contact info
                   </Button>
                 </div>
@@ -206,7 +206,7 @@ export default function ApplicationSummary() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-primary shrink-0" data-testid="button-add-agent">
+                  <Button variant="ghost" size="sm" className="touch-target text-primary shrink-0" data-testid="button-add-agent">
                     Add
                   </Button>
                 </div>
@@ -253,7 +253,7 @@ export default function ApplicationSummary() {
                       Let us know if you plan on making an offer soon. We're here to help you make your offer as strong as possible.
                     </p>
                   </div>
-                  <Button size="sm" className="shrink-0 gap-1" data-testid="button-make-offer">
+                  <Button size="sm" className="touch-target shrink-0 gap-1" data-testid="button-make-offer">
                     Get started
                     <ChevronRight className="h-4 w-4" />
                   </Button>

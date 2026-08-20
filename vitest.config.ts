@@ -28,6 +28,7 @@ export default defineConfig({
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/inertButtons.test.ts",
       "tests/amortization.test.ts",
       // The advertising gate on "we shop your file" — a compliance rail, so it
       // runs in the gate rather than living as an untested constant.
@@ -134,8 +135,10 @@ export default defineConfig({
       "tests/letterIntegrity.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
+      "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/incomeOrchestrator.test.ts",
+      "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
       "tests/nonQmProgramGate.test.ts",
       "tests/halalLaneGate.test.ts",
@@ -201,6 +204,7 @@ export default defineConfig({
       "tests/documentFacts.test.ts",
       "tests/readinessSelfAttestation.test.ts",
       "tests/extractionReadinessWiring.test.ts",
+      "tests/extractionPersistence.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
       "tests/cpaPartners.test.ts",
@@ -226,6 +230,7 @@ export default defineConfig({
       "tests/autopilotAusFollowUps.test.ts",
       "tests/autopilotDecisionRelay.test.ts",
       "tests/autopilotConsole.test.ts",
+      "tests/autopilotStatus.test.ts",
       "tests/riskBrief.test.ts",
       "tests/sensitiveInputGuard.test.ts",
       "tests/licensedStates.test.ts",
@@ -275,6 +280,8 @@ export default defineConfig({
       "tests/vaResidualEngineParity.test.ts",
       "tests/inviteValidateAudit.test.ts",
       "tests/mutationErrorHandling.test.ts",
+      "tests/homiFileTruth.test.ts",
+      "tests/homiReadinessDerivation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
