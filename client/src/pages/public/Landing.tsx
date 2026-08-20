@@ -6,6 +6,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { CoachPromptBar } from "@/components/CoachPromptBar";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -167,14 +168,14 @@ export default function Landing() {
         >
           <div className="mx-auto max-w-4xl text-center">
             <p
-              className="text-sm font-medium text-primary-foreground/75"
+              className="text-sm font-semibold uppercase tracking-widest text-flare"
               data-testid="text-hero-eyebrow"
             >
               Renting, self-employed, refinancing, or moving up — start anywhere
             </p>
 
             <h1
-              className="mt-5 text-balance text-4xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl"
+              className="mt-5 text-balance text-4xl font-extrabold leading-none tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl"
               data-testid="text-hero-title"
             >
               See what you have the power to do.
@@ -240,17 +241,19 @@ export default function Landing() {
         {/* Four doors. */}
         <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-              Wherever you're starting from
-            </h2>
+            <Reveal>
+              <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+                Wherever you're starting from
+              </h2>
+            </Reveal>
 
-            <div className="mt-12 grid gap-6 sm:grid-cols-2">
+            <Stagger className="mt-12 grid gap-6 sm:grid-cols-2">
               {JOURNEYS.map((journey) => {
                 const Icon = journey.icon;
                 return (
+                  <StaggerItem key={journey.id}>
                   <Card
-                    key={journey.id}
-                    className="hover-elevate"
+                    className="h-full rounded-3xl hover-elevate"
                     data-testid={`card-journey-${journey.id}`}
                   >
                     <CardContent className="p-6">
@@ -279,9 +282,10 @@ export default function Landing() {
                       </Button>
                     </CardContent>
                   </Card>
+                  </StaggerItem>
                 );
               })}
-            </div>
+            </Stagger>
           </div>
         </section>
 
