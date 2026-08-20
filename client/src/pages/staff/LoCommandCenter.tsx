@@ -12,6 +12,7 @@ import { AttentionRail } from "./loCommandCenter/AttentionRail";
 import { ActiveBorrowerPane } from "./loCommandCenter/ActiveBorrowerPane";
 import { ActionsRail } from "./loCommandCenter/ActionsRail";
 import { IntakeInboxCard } from "./loCommandCenter/IntakeInboxCard";
+import { SessionRequestsCard } from "./loCommandCenter/SessionRequestsCard";
 import type { QueueData, StaffSignal } from "./loCommandCenter/types";
 
 // -----------------------------------------------------------------------------
@@ -144,6 +145,7 @@ export default function LoCommandCenter() {
         {/* Left: attention rail (hidden on mobile once a file is open) */}
         <aside className={`overflow-y-auto ${selectedId ? "hidden lg:block" : "block"}`} aria-label="Attention rail">
           {canClaim && <IntakeInboxCard />}
+          {canClaim && <SessionRequestsCard />}
           <AttentionRail
             queue={queue}
             signals={signals}

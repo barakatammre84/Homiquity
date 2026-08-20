@@ -13,6 +13,7 @@ import {
   Bot,
   Calculator,
   ClipboardList,
+  GraduationCap,
   Home,
   PiggyBank,
   Scale,
@@ -63,6 +64,15 @@ const TOOLKIT = [
     title: "Rent-to-Own Path",
     description: "Structured plans for getting to the down payment.",
     testId: "renter-tool-rent-to-own",
+  },
+  {
+    // Same orphan-route class as /my-lease below: a built program with no
+    // inbound link anywhere in the app until 2026-08-20.
+    href: "/accelerator",
+    icon: GraduationCap,
+    title: "Homebuyer Accelerator",
+    description: "A six-phase plan, with a loan officer to talk it through.",
+    testId: "renter-tool-accelerator",
   },
   {
     // The rent ledger's front door for the renter persona. Shipped 2026-08-17 as an

@@ -105,6 +105,12 @@ const aspiringOwnerNavigation: NavSection[] = [
       { title: "Gap Calculator", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
       // The rent-ledger surface — shipped 2026-08-17 with no inbound nav at all.
       { title: "My Lease", href: "/my-lease", icon: ClipboardList, testId: "link-my-lease" },
+      // Same defect as My Lease above: a fully built program (enrollment, 18
+      // seeded milestones, phase tracking) that no link anywhere reached, so it
+      // was URL-only. Opened 2026-08-20 once a session request actually reached
+      // a loan officer — a door to a surface that promises what it cannot keep
+      // is worse than no door.
+      { title: "Accelerator", href: "/accelerator", icon: GraduationCap, testId: "link-accelerator" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
   },

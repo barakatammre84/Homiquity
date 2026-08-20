@@ -181,3 +181,129 @@ export function enrollmentProgressPatch(
 
   return Object.keys(patch).length > 0 ? patch : null;
 }
+
+// ---------------------------------------------------------------------------
+// 1:1 sessions with a loan officer
+//
+// The borrower asks for a time; a loan officer confirms it. Those are two
+// different facts and the product used to conflate them: the request was
+// written straight to `coaching_sessions` with status "scheduled" and the UI
+// said *"Coaching session has been scheduled."* — while `getCoachingSessions`
+// had exactly one reader in the whole codebase, the borrower's own page. Nobody
+// on our side ever learned the meeting existed.
+//
+// So `requested` is the only status a borrower can create, and only a loan
+// officer moves it to `confirmed`. This mirrors the intake inbox
+// (`/api/pipeline/unassigned` → claim → `assignLoanOfficer`), which already
+// solves the same problem for self-serve applicants who arrive with no LO.
+//
+// Naming: the borrower-facing word is "loan officer", never "coach" — a coach
+// is not a role this company staffs, and the person who talks to a borrower
+// about mortgage readiness is a loan officer. The TABLE and the API path keep
+// their original `coaching` names on purpose: renaming a table is a contract
+// migration, and the wire is not what a borrower reads.
+
+export const SESSION_STATUSES = [
+  /** The borrower asked. Nothing is booked yet, and the UI must not imply it is. */
+  "requested",
+  /** A loan officer accepted it and is named on the record. */
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+export type SessionStatus = (typeof SESSION_STATUSES)[number];
+
+/** The only status a borrower-created session may have. */
+export const BORROWER_CREATED_SESSION_STATUS: SessionStatus = "requested";
+
+/** Statuses that still need a loan officer to act. */
+export const PENDING_SESSION_STATUSES: readonly SessionStatus[] = ["requested"];
+
+export function isSessionStatus(value: unknown): value is SessionStatus {
+  return typeof value === "string" && (SESSION_STATUSES as readonly string[]).includes(value);
+}
+
+// ---------------------------------------------------------------------------
+// The session lifecycle
+//
+// Shipping `requested` → `confirmed` and stopping there left three of the five
+// statuses unreachable: nothing could write `completed`, `cancelled` or
+// `no_show`. A confirmed session was frozen for good — neither side could
+// decline, cancel or move it — so the borrower's page would go on showing a
+// confirmed meeting for a date that had already passed. That is the same defect
+// class the request → confirm split fixed, one step later in the flow.
+//
+// Transitions are a table, not scattered `if`s, because the interesting rule is
+// WHO may make each move and that is exactly what gets lost in branching code.
+
+/** Who is asking for the transition. */
+export type SessionActor = "borrower" | "staff";
+
+export interface SessionTransition {
+  from: SessionStatus;
+  to: SessionStatus;
+  by: readonly SessionActor[];
+}
+
+/**
+ * Every legal move. Anything not listed here is refused — including every move
+ * out of a terminal state, which is what makes `completed`, `cancelled` and
+ * `no_show` final rather than merely current.
+ */
+export const SESSION_TRANSITIONS: readonly SessionTransition[] = [
+  // A loan officer takes the meeting.
+  { from: "requested", to: "confirmed", by: ["staff"] },
+  // Declined by the desk, or withdrawn by the borrower. Same destination:
+  // the meeting is not happening, and the record says so either way.
+  { from: "requested", to: "cancelled", by: ["staff", "borrower"] },
+  // Moving a time re-opens the ask, because the loan officer agreed to a
+  // specific slot and has not agreed to the new one yet.
+  { from: "requested", to: "requested", by: ["borrower"] },
+  { from: "confirmed", to: "requested", by: ["borrower"] },
+  // Either side can call it off once it is booked.
+  { from: "confirmed", to: "cancelled", by: ["staff", "borrower"] },
+  // Only the loan officer who was there can say what happened.
+  { from: "confirmed", to: "completed", by: ["staff"] },
+  { from: "confirmed", to: "no_show", by: ["staff"] },
+];
+
+/**
+ * Rows written before the request → confirm split carry the table's old default,
+ * `"scheduled"`, which is not in the vocabulary. Treating it as `confirmed`
+ * *for transition purposes only* keeps those rows movable instead of stranding
+ * them; nothing re-writes them to `confirmed` behind the borrower's back.
+ */
+export const LEGACY_SESSION_STATUS = "scheduled";
+
+export function normalizeSessionStatus(status: string): SessionStatus | null {
+  if (status === LEGACY_SESSION_STATUS) return "confirmed";
+  return isSessionStatus(status) ? status : null;
+}
+
+/** Is this move allowed, for this actor, from this state? */
+export function canTransitionSession(
+  from: string,
+  to: SessionStatus,
+  actor: SessionActor,
+): boolean {
+  const current = normalizeSessionStatus(from);
+  if (current === null) return false;
+  return SESSION_TRANSITIONS.some(
+    (t) => t.from === current && t.to === to && t.by.includes(actor),
+  );
+}
+
+/** Statuses nothing can move out of. Derived, so it cannot drift from the table. */
+export const TERMINAL_SESSION_STATUSES: readonly SessionStatus[] = SESSION_STATUSES.filter(
+  (s) => !SESSION_TRANSITIONS.some((t) => t.from === s),
+);
+
+/**
+ * A meeting cannot be reported as having happened before it starts. This is the
+ * falsification rail on the one pair of transitions that make a claim about the
+ * past: `completed` and `no_show`.
+ */
+export function outcomeIsReportable(scheduledAt: Date, now: Date): boolean {
+  return scheduledAt.getTime() <= now.getTime();
+}
