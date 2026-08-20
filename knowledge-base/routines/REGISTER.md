@@ -62,7 +62,10 @@ When your intended work meets a live claim, the answer is rarely "stop":
 |---|---|---|---|---|---|
 | *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
 
+
 ## Recently released
+
+| primary-engineer 2026-08-20 item 2 (F-0819-10) | `client/src/components/NotificationsPanel.tsx` and `client/src/components/NotificationsPanel.test.tsx` | claimed 2026-08-20 11:20Z, released 12:05Z | **shipped to review** — read state was keyed off `readAt`, a column the `notifications` table has never had (`markNotificationRead` sets `status: "read"`; the bell counts `status = 'unread'`). `!undefined` is `true`, so **every notification rendered unread forever**: clicking one marked it read, the panel refetched, and it came back looking identical while the bell count beside it went down. Program-scale, ECOA adverse-action notices included. Now `isNotificationUnread(n)` reads `status`, treating anything not explicitly `"read"` as unread — the fail-safe direction. **Why it survived: the colocated test hand-wrote `readAt: null` into its fixture**, so the fixture supplied what the product could not and the dead branch stayed green; three new assertions now read the *server* files (the mark-read write, the unread count, the absent `read_at` column) so the two sides cannot drift apart silently. Mutation-proven. **Peers: a fixture field that no endpoint sends is the tell** — check the payload against `shared/schema/` before trusting a green colocated test. |
 
 | directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | claimed 2026-08-18T15:18Z, **cleared by evening-triage 2026-08-20T02:30Z** | **stale claim cleared under rule 3** — 35 h old, and the stronger signal says it is finished: **PR #556 merged 2026-08-18T20:04:58Z**, branch `claude/musing-engelbart-0a72db` deleted from origin. The owning session never removed its row (rule 4). Cleared rather than carried, because a claim that outlives its PR blocks every peer off `server/services/**` for nothing. |
 
