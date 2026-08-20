@@ -73,8 +73,19 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
     const rest = CI.slice(start + 1);
     const next = rest.slice(1).search(/\n {2}[\w-]+:\n/);
     const body = next === -1 ? rest : rest.slice(0, next + 1);
+    // `if:` may be a single line OR a folded block scalar (`if: >-` followed by
+    // indented continuation lines). Reading only the first form silently returned
+    // ">-" and made every assertion below vacuous.
     const m = body.match(/^\s{4}if:\s*(.+)$/m);
-    return m?.[1] ?? "";
+    if (!m) return "";
+    if (!/^[>|][-+]?$/.test(m[1].trim())) return m[1];
+    const after = body.slice(body.indexOf(m[0]) + m[0].length);
+    const lines: string[] = [];
+    for (const line of after.split("\n").slice(1)) {
+      if (!/^\s{6,}\S/.test(line)) break;
+      lines.push(line.trim());
+    }
+    return lines.join(" ");
   };
 
   it("migrate-prod runs only on push or manual dispatch", () => {
@@ -92,6 +103,28 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
 
   it("gate runs only on pull_request", () => {
     expect(jobCondition("gate")).toMatch(/github\.event_name == 'pull_request'/);
+  });
+
+  // Cost control (KTLO-2), measured 2026-08-20: the account exhausted its Actions
+  // minutes. 91 CI runs in 40 hours, 67 of them repeat runs on a branch that
+  // already had one. These two conditions remove whole classes of run that could
+  // never have changed a verdict.
+  it("gate skips draft PRs — a draft cannot merge, so gating each push buys nothing", () => {
+    expect(jobCondition("gate")).toMatch(/github\.event\.pull_request\.draft == false/);
+  });
+
+  it("gate skips a TITLE-only edit but never a body edit or a retarget", () => {
+    const cond = jobCondition("gate");
+    // `edited` stays in `types` because guard:security reads the PR BODY from the
+    // event payload — a security review added after the fact must re-gate. A title
+    // cannot change any guard's verdict, so it must not cost a run.
+    expect(cond).toMatch(/github\.event\.action == 'edited'/);
+    expect(cond, "a body edit MUST still re-gate — guard:security reads it").toMatch(
+      /!github\.event\.changes\.body/,
+    );
+    expect(cond, "a base retarget MUST still re-gate — it is a new base").toMatch(
+      /!github\.event\.changes\.base/,
+    );
   });
 });
 

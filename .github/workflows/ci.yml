@@ -97,7 +97,35 @@ jobs:
     # Recovery if it does deadlock: re-point the rule with the PATCH above, or turn
     # enforce_admins off temporarily (Settings → Branches). Both need repo admin.
     name: gate (typecheck · tests · schema guard)
-    if: github.event_name == 'pull_request'
+    # COST (KTLO-2). Three conditions, each measured, not guessed:
+    #
+    #   pull_request   — the gate never runs on push; main's CI cost is
+    #                    migrate-prod + verify-deploy only. (Unchanged.)
+    #
+    #   not a draft    — a draft cannot merge, so gating every push to one buys
+    #                    nothing a later run does not also buy. `ready_for_review`
+    #                    is in `types`, so the FIRST thing that happens when a
+    #                    draft becomes mergeable is a full gate. This repo's
+    #                    practice of parking an orphan branch behind a draft PR
+    #                    (rather than leaving it bare) made drafts a standing,
+    #                    invisible cost.
+    #
+    #   body actually  — `edited` is in `types` because guard:security reads the
+    #   changed          PR BODY from the event payload, so a security review
+    #                    added after the fact needs a re-gate. But `edited` also
+    #                    fires on a TITLE edit, and a title cannot change any
+    #                    guard's verdict. `changes.body` is present only when the
+    #                    body is what changed, so this keeps the re-gate that
+    #                    matters and drops the one that never could.
+    #                    (A base-branch RETARGET arrives as `edited` with
+    #                    `changes.base`, which this deliberately does not skip —
+    #                    a new base is a real re-gate.)
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.draft == false
+      && !(github.event.action == 'edited'
+           && !github.event.changes.body
+           && !github.event.changes.base)
     # One in-flight gate per PR — a new push supersedes the old run instead of
     # racing it. Without this, every push to a branch started a fresh ~5-minute
     # run while the superseded one ran to completion for a commit nobody would
@@ -507,18 +535,39 @@ jobs:
         env:
           EXPECTED: ${{ github.sha }}
         run: |
-          # Railway builds + boots in ~90s; 60 x 20s = 20 min of headroom for a
-          # queued build. `curl -f` keeps a 5xx from being parsed as a payload.
-          for i in $(seq 1 60); do
-            got="$(curl -sf --max-time 10 https://www.homiquity.com/api/health \
-                   | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit") or "")' \
-                   2>/dev/null || true)"
+          # COST NOTE (KTLO-2). This job is billed idle time: it does nothing but
+          # wait. A flat 20s cadence from t=0 spent its first four polls asking a
+          # question that CANNOT be true yet — Railway needs ~90s to build and
+          # boot — and then kept the same slow cadence through the window where
+          # the answer actually flips. Measured over 27 merges: ~5.2 min per
+          # merge, 140 minutes in 40 hours, 27% of the whole account's usage.
+          #
+          # The schedule below matches the shape of the thing it is waiting for:
+          #   phase 1  sleep 80s   — before the earliest possible success
+          #   phase 2  10s x 18    — 3 min of TIGHT polling across the likely window
+          #   phase 3  30s x 32    — 16 min of cheap headroom for a queued build
+          # Same ~20-minute ceiling, but a normal deploy is now caught within
+          # ~10s of going live instead of up to 20s late, and the common case
+          # costs roughly half.
+          #
+          # `curl -f` keeps a 5xx from being parsed as a payload.
+          probe() {
+            curl -sf --max-time 10 https://homiquity-production.up.railway.app/api/health \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit") or "")' \
+              2>/dev/null || true
+          }
+          echo "waiting 80s — Railway cannot have finished building before then"
+          sleep 80
+          i=0
+          for delay in $(for _ in $(seq 1 18); do echo 10; done; for _ in $(seq 1 32); do echo 30; done); do
+            i=$((i + 1))
+            got="$(probe)"
             if [ "$got" = "$EXPECTED" ]; then
               echo "prod is serving $EXPECTED"
               exit 0
             fi
-            echo "attempt $i/60 — serving '${got:-<none>}', want '$EXPECTED'"
-            sleep 20
+            echo "attempt $i/50 — serving '${got:-<none>}', want '$EXPECTED'"
+            sleep "$delay"
           done
           echo "::error::prod is NOT serving $EXPECTED after 20 minutes. The merge did not ship."
           echo "Check Railway → project Homiquity → service Homiquity → Deployments for a FAILED build."
