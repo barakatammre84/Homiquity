@@ -25,8 +25,12 @@ import {
 // AICoach.tsx (markup unchanged).
 
 export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
-  const tier = TIER_CONFIG[profile.readinessTier] || TIER_CONFIG.exploring;
+  const tier = TIER_CONFIG[profile.readinessTier ?? ""] || TIER_CONFIG.exploring;
   const TierIcon = tier.icon;
+  // A partially-written profile is a real wire shape (see CoachProfile) — an
+  // incomplete panel is the right degradation, a blank /ai-coach page is not.
+  const completedInputs = profile.completedInputs ?? [];
+  const outstandingInputs = profile.outstandingInputs ?? [];
 
   return (
     <Card data-testid="card-readiness-panel">
@@ -54,11 +58,11 @@ export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
         <Progress value={profile.completionPercentage} className="h-2" data-testid="progress-readiness" />
         <p className="text-sm text-muted-foreground" data-testid="text-readiness-summary">{profile.statusNote}</p>
 
-        {profile.completedInputs.length > 0 && (
+        {completedInputs.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">COMPLETED INPUTS</p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.completedInputs.map((s, i) => (
+              {completedInputs.map((s, i) => (
                 <Badge key={i} variant="secondary" className="text-xs font-normal">
                   {s}
                 </Badge>
@@ -67,11 +71,11 @@ export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
           </div>
         )}
 
-        {profile.outstandingInputs.length > 0 && (
+        {outstandingInputs.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">OUTSTANDING INPUTS</p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.outstandingInputs.map((g, i) => (
+              {outstandingInputs.map((g, i) => (
                 <Badge key={i} variant="outline" className="text-xs font-normal">
                   {g}
                 </Badge>

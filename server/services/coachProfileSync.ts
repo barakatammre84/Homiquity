@@ -10,7 +10,7 @@ import { evaluateTridTrigger } from "./trid";
 // ---------------------------------------------------------------------------
 // Coach → loan-application writeback.
 //
-// The AI Coach captures self-reported intake in chat (via the record_intake
+// Homi captures self-reported intake in chat (via the record_intake
 // tool). This service is the ONLY bridge from that capture into the borrower's
 // real records: it normalizes the chat values, validates them with the SAME
 // shared schema the funnel PATCH uses (loanApplicationIntakeUpdateSchema — so
