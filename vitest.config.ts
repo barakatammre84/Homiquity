@@ -28,6 +28,7 @@ export default defineConfig({
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/inertButtons.test.ts",
       "tests/amortization.test.ts",
       // The advertising gate on "we shop your file" — a compliance rail, so it
       // runs in the gate rather than living as an untested constant.
@@ -133,8 +134,10 @@ export default defineConfig({
       "tests/letterIntegrity.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
+      "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/incomeOrchestrator.test.ts",
+      "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
       "tests/nonQmProgramGate.test.ts",
       "tests/halalLaneGate.test.ts",

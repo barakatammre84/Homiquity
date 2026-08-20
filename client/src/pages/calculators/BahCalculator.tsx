@@ -368,7 +368,7 @@ export default function BahCalculator() {
               </CardContent>
             </Card>
 
-            <Button size="lg" className="w-full" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
+            <Button size="lg" className="w-full whitespace-normal h-auto min-h-12 py-3" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
               {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved for a VA Loan"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

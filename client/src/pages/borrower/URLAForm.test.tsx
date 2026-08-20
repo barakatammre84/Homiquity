@@ -229,3 +229,106 @@ describe("URLAForm — the step rail is reachable on a phone", () => {
     expect((await screen.findByTestId("text-urla-step-label")).textContent).toBe("About you");
   });
 });
+
+
+/**
+ * The progress bar describes the APPLICATION, and says so — `aria-label`
+ * "Application progress", visible text "N of M sections complete". It was
+ * computed from the ACTIVE borrower's slice alone, so on a file with a
+ * co-borrower it described a person while claiming to describe the file:
+ *
+ *   - open on the primary, whose sections are done → "5 of 7 sections
+ *     complete", a nearly full bar, with the co-borrower's six sections empty;
+ *   - click Co-Borrower and the same bar reads "1 of 7" — finished work
+ *     rendering as less progress (DESIGN_SYSTEM §13 Agreement: no two elements
+ *     disagree about the same fact).
+ *
+ * The higher reading is the harmful one: URLA is what the ULDD/URLA package is
+ * built from, and a borrower told their application is nearly done has no
+ * reason to open the other tab.
+ *
+ * The fix counts every per-borrower section once per borrower and the shared
+ * property/loan section once — so the number cannot change with the tab, and
+ * the numerator only ever rises. Verified honest by reverting to
+ * `STEPS.filter((s) => s.isComplete(stepContext)).length`: the first two
+ * assertions below then read "5 of 7" and "1 of 7", which is the bug.
+ */
+describe("URLAForm — the progress bar counts the application, not the open tab", () => {
+  beforeEach(() => {
+    apiRequest.mockReset();
+    apiRequest.mockResolvedValue({ json: async () => ({ ok: true }) });
+    toast.mockReset();
+    window.sessionStorage.clear();
+  });
+
+  /** Primary finished through Liabilities; the property/loan section is shared. */
+  const PRIMARY_DONE = {
+    application,
+    allPersonalInfo: [
+      {
+        borrowerSequenceNumber: 1,
+        firstName: "Ada",
+        lastName: "Primary",
+        dateOfBirth: "1985-04-02",
+        ssnLast4: "1234",
+      },
+    ],
+    employmentHistory: [{ borrowerSequenceNumber: 1, employerName: "Acme" }],
+    assets: [{ borrowerSequenceNumber: 1, accountType: "checking" }],
+    liabilities: [{ borrowerSequenceNumber: 1, liabilityType: "auto_loan" }],
+    allDeclarations: [],
+    hmdaDemographics: [],
+    otherIncomeSources: [],
+    propertyInfo: { propertyStreet: "1 Main St", propertyValue: "400000" },
+  };
+
+  /** Same file, plus a co-borrower with nothing but a name. */
+  const WITH_COBORROWER = {
+    ...PRIMARY_DONE,
+    allPersonalInfo: [
+      ...PRIMARY_DONE.allPersonalInfo,
+      { borrowerSequenceNumber: 2, firstName: "Cleo", lastName: "Coborrower" },
+    ],
+  };
+
+  function renderWith(urla: Record<string, unknown>) {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity, queryFn: () => new Promise(() => {}) },
+        mutations: { retry: false },
+      },
+    });
+    client.setQueryData(dashboardKeys.root(), { applications: [application] });
+    client.setQueryData(urlaKeys.detail(APP_ID), urla);
+    return render(
+      <QueryClientProvider client={client}>
+        <URLAForm />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("counts the co-borrower's unfinished sections instead of reporting the file nearly done", async () => {
+    renderWith(WITH_COBORROWER);
+
+    // 4 primary sections + 1 shared, out of 6 per-borrower × 2 + 1 shared.
+    const progress = await screen.findByTestId("text-urla-progress");
+    expect(progress.textContent).toContain("5 of 13 sections complete");
+  });
+
+  it("does not change when the borrower switches tabs — one file, one number", async () => {
+    renderWith(WITH_COBORROWER);
+
+    fireEvent.click(await screen.findByTestId("button-borrower-co"));
+
+    const progress = await screen.findByTestId("text-urla-progress");
+    expect(progress.textContent).toContain("5 of 13 sections complete");
+  });
+
+  it("stays at seven sections on a single-borrower file", async () => {
+    renderWith(PRIMARY_DONE);
+
+    const progress = await screen.findByTestId("text-urla-progress");
+    expect(progress.textContent).toContain("5 of 7 sections complete");
+    expect(progress.textContent).not.toContain("co-borrower");
+  });
+});

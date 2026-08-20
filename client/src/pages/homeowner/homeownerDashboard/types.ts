@@ -35,3 +35,26 @@ export interface EquitySnapshot {
   equityAmount: string | null;
   equityPercent: string | null;
 }
+
+/**
+ * What the Hub's two action buttons actually did. Both endpoints derive their
+ * result server-side and answer with the outcome rather than an empty 201, so
+ * the surface can say "nothing changed, and here is why" instead of reporting a
+ * success that did not happen. Mirrors `EquitySnapshotOutcome` and
+ * `RefiOpportunityOutcome` in `server/services/lifecycleEngine.ts`.
+ */
+export type EquitySnapshotOutcome =
+  | { created: true; pmiAlert: boolean }
+  | { created: false; reason: "already-recorded-today" };
+
+export type RefiOpportunityOutcome =
+  | { created: true; currentRate: number; marketRate: number; monthlySavings: number }
+  | {
+      created: false;
+      reason:
+        | "clawback-window"
+        | "no-market-rate"
+        | "no-note-rate"
+        | "rate-not-lower"
+        | "open-alert-exists";
+    };

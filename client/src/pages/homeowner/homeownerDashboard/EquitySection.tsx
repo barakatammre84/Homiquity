@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import { format } from "date-fns";
-import type { EquitySnapshot } from "./types";
+import type { EquitySnapshot, EquitySnapshotOutcome } from "./types";
 
 export function EquitySection({ profileId }: { profileId: string }) {
   const queryClient = useQueryClient();
@@ -17,11 +17,29 @@ export function EquitySection({ profileId }: { profileId: string }) {
     queryKey: ["/api/homeowner/equity", profileId],
   });
 
+  // The server measures the snapshot from the profile — there is nothing for the
+  // client to supply — and answers with what it actually did. At most one
+  // snapshot exists per day, so a second press must not claim a second reading.
   const recordMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/homeowner/equity", { homeownerProfileId: profileId }),
-    onSuccess: () => {
+    mutationFn: async (): Promise<EquitySnapshotOutcome> => {
+      const res = await apiRequest("POST", "/api/homeowner/equity", {});
+      return (await res.json()) as EquitySnapshotOutcome;
+    },
+    onSuccess: (outcome) => {
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/equity", profileId] });
-      toast({ title: "Snapshot Recorded", description: "Equity snapshot has been saved." });
+      toast(
+        outcome.created
+          ? {
+              title: "Snapshot recorded",
+              description: outcome.pmiAlert
+                ? "Your equity reached the 80% mark — we've sent you a note about removing PMI."
+                : "Today's equity reading has been saved.",
+            }
+          : {
+              title: "Already up to date",
+              description: "Today's snapshot was already recorded — your equity is measured once a day.",
+            },
+      );
     },
     onError: () => toast({ title: "Error", description: "Failed to record snapshot.", variant: "destructive" }),
   });
