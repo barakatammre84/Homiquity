@@ -123,6 +123,18 @@ const SCENARIOS: Scenario[] = [
   // residual $1,084: clears 1.2× ($1,066.80) but not 1.3× ($1,155.70) — so any
   // upward drift in the multiplier flips this file to a fail.
   { name: "cushion MULTIPLIER decisive — residual just above the 1.2x requirement", state: "TX", familySize: 3, sqft: 1600, baseMonthlyIncome: 3600, existingMonthlyDebts: 100, proposedPiti: 1400 },
+
+  // The BOUNDARY case, added with the 2026-08-20 de-fork: DTI of exactly
+  // 41.00% does NOT trigger the cushion — the handbook's rule is "greater
+  // than 41%". The engine's trigger is now the shared FRACTION constant ×100
+  // (0.41 × 100 === 41 exactly in IEEE 754, so the unit conversion cannot move
+  // the boundary), and this scenario is what proves that: obligations
+  // ($100 + $1,130) / $3,000 income is 41.00% on the nose, and residual $900
+  // sits between the bare guideline ($889) and the cushioned one ($1,066.80).
+  // An engine that fires the cushion AT the boundary (>= drift, or a
+  // conversion that lands the threshold a hair low) fails this file while the
+  // reference passes it. Figures are exact — do not "tidy" them.
+  { name: "cushion boundary — exactly 41.00% DTI stays uncushioned", state: "TX", familySize: 3, sqft: 1500, baseMonthlyIncome: 3000, existingMonthlyDebts: 100, proposedPiti: 1130 },
 ];
 
 function engineInput(s: Scenario): UnderwritingInput {
