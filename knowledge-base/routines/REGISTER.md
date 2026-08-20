@@ -4,8 +4,15 @@
 code** claims its target here first. Rules live in [`CHARTER.md`](CHARTER.md) §5; this file is the
 table plus the overlap protocol.
 
-Without this, the Frontend Wiring Audit (09:10), the Primary Engineer (07:15 — absorbed Sprint Blitz 2026-08-17) and Refactor Radar (Sun 20:00)
-all write to `client/src/**` with no idea the others exist.
+Without this, the **four daily build lanes** — Primary Engineer (07:15, company-wide), Capture Path
+Engineer (09:10, capture path), Workflow Completion Engine (09:53, one seam), Feature Completion
+Engine (12:34, one domain) — plus Refactor Radar (Sun 20:00) all write to overlapping code with no
+idea the others exist.
+
+> 🚨 **The 2026-08-19 suite rewrite doubled the number of routines that need this board** (two daily
+> code-writing seats → four) and their windows are only ~40–150 minutes apart, so a long run
+> overlaps the next by construction. Claim before you write; treat an open PR as outranking the
+> board; release in the same PR as the work. See [`CHARTER.md`](CHARTER.md) §3 for the new clock.
 
 > **Absorbed `knowledge-base/SESSION_CLAIMS.md` on 2026-08-12.** Two boards briefly existed — this
 > one from PR #493 and SESSION_CLAIMS from PR #496, written hours apart by sessions that could not
