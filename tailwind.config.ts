@@ -132,13 +132,25 @@ export default {
         // micro-copy, borders, and section fills. Prefer the semantic tokens
         // (bg-background, text-foreground, …) in components.
         precision: {
-          950: "#0A1E52", // deep royal navy — hero gradient anchor
-          900: "#1B3B9E", // royal blue — hero gradient mid
-          700: "#2456D6", // vivid royal blue — hero gradient end + glow
-          500: "#64748B", // Muted Slate — placeholders, micro-copy
-          300: "#94A3B8", // slate-400 — hover borders, disabled states
-          100: "#E2E8F0", // slate-200 — card hairlines, active input bg
-          50: "#F8FAFC", // Ultra-Light Gray — data-section separation
+          // Warm clay, 2026-08-20. Was royal blue (#0A1E52 → #2456D6).
+          //
+          // This ramp is the app's DARK surface — the hero gradient on the
+          // landing and persona pages. Royal blue is what every fintech reaches
+          // for; Better is green-black, Rocket red-black, Tomo white. Nobody in
+          // US mortgage runs warm-dark, so this is the cheapest recognisable
+          // move available: three hex values, no layout change.
+          //
+          // White type on 950 measures 15.70:1 and on 700 measures 11.48:1 —
+          // both far past AA, verified before the values were written here.
+          950: "#2C2118", // deep clay — hero gradient anchor
+          900: "#3B2A1E", // clay — hero gradient mid
+          700: "#4A3527", // warm umber — hero gradient end + glow
+          // The light end stays neutral for micro-copy and hairlines, but warmed
+          // to the same hue family so a slate grey never sits on a warm ground.
+          500: "#7A6A5C", // warm muted — placeholders, micro-copy
+          300: "#A2938A", // warm slate — hover borders, disabled states
+          100: "#E7DFD7", // warm hairline — card borders, active input bg
+          50: "#FAF7F5", // warm ultra-light — data-section separation
         },
       },
       fontFamily: {

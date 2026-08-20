@@ -45,49 +45,49 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
   /* Layer 0: Stark White canvas */
-  --background: 0 0% 100%;
+  --background: 30 40% 99%;
   /* Primary typography: near-black slate #0F172A (cool blue undertone) */
-  --foreground: 222 47% 11%;
+  --foreground: 28 24% 12%;
   /* Slate-200 #E2E8F0 hairlines — soft separation, no harsh borders */
-  --border: 214 32% 91%;
+  --border: 30 20% 89%;
   /* Layer 1: white cards separated by slate hairline */
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
+  --card-foreground: 28 24% 12%;
+  --card-border: 30 20% 89%;
   /* Sidebar: deep royal-blue navigation container (~#122A6B) */
-  --sidebar: 224 71% 24%;
+  --sidebar: 25 31% 22%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 224 40% 34%;
+  --sidebar-border: 25 22% 32%;
   /* Active nav item: light pill on royal blue */
   --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 224 52% 32%;
+  --sidebar-primary-foreground: 28 24% 12%;
+  --sidebar-accent: 25 26% 30%;
   --sidebar-accent-foreground: 210 40% 98%;
   --sidebar-ring: 160 84% 39%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 88%;
+  --popover-foreground: 28 24% 12%;
+  --popover-border: 30 20% 86%;
   /* Layer 2: conversion action = Emerald #047857 (green means "Go";
      700-depth so white button text passes AA) */
   --primary: 163 94% 24%;
   --primary-foreground: 0 0% 100%;
   /* Secondary surfaces: slate-100 chip */
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 30 30% 95%;
+  --secondary-foreground: 28 24% 12%;
   /* Data-section separation: Ultra-Light Gray #F8FAFC */
-  --muted: 210 40% 98%;
+  --muted: 30 33% 97%;
   /* Secondary/micro-copy: green-grey per the 2026-08-18 overhaul direction —
      quiet text carries the brand hue (was blue-grey Muted Slate 215 24% 37%).
      Verified ~5.8:1 on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1).
      Still clearly recessive vs the near-black primary type (~16:1). */
-  --muted-foreground: 168 12% 37%;
+  --muted-foreground: 28 14% 40%;
   /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
      --muted #F8FAFC) that white cards sit ON so their shadow-card reads.
      Public/reading surfaces stay on the white --background. */
-  --surface: 210 40% 97%;
-  --surface-foreground: 222 47% 11%;
+  --surface: 30 30% 96%;
+  --surface-foreground: 28 24% 12%;
   /* Accent: deep royal-blue chip — quieter than the emerald primary */
-  --accent: 224 60% 24%;
+  --accent: 25 31% 22%;
   --accent-foreground: 0 0% 100%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
@@ -144,6 +144,31 @@
   --font-mono: "Geist Mono", "JetBrains Mono", monospace;
   /* Precision radius: 12px cards, tighter than consumer-soft */
   --radius: .75rem;
+
+  /**
+   * Motion tokens — added 2026-08-20. There were none.
+   *
+   * DESIGN_SYSTEM §5's entire motion spec was one line
+   * (`transition-all duration-150 ease-in-out`), so every animation in the app
+   * either reused that single duration or invented its own. Without a scale,
+   * "add some animation" means every author picks a number and the result reads
+   * as assembled rather than designed.
+   *
+   * Three durations, not seven: micro for state changes the eye should barely
+   * catch, base for anything that moves across the screen, slow for a deliberate
+   * entrance. The easing is a single custom curve — a gentle overshoot-free
+   * ease-out that settles rather than snaps, which is what the warm direction
+   * calls for. `--ease-exit` is faster and linear-ish because leaving should not
+   * be savoured.
+   *
+   * These are consumed by the motion primitives; the reduced-motion floor above
+   * overrides all of them to 0.01ms.
+   */
+  --duration-micro: 120ms;
+  --duration-base: 240ms;
+  --duration-slow: 420ms;
+  --ease-entrance: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* Near-flat neutral shadows; hairlines and whitespace carry the depth */
   --shadow-2xs: 0 1px 2px 0 hsl(215 25% 10% / 0.03);
   --shadow-xs: 0 1px 3px 0 hsl(215 25% 10% / 0.04), 0 1px 2px -1px hsl(215 25% 10% / 0.03);
