@@ -27,10 +27,22 @@ name: CI
 #   • Repo variable NEON_PROJECT_ID — ONLY if the key can see more than one Neon
 #     project (the script fails with the list of ids when it's ambiguous).
 #   • Branch protection on `main` requiring the "gate" check (makes the gate binding).
-#     ✅ CONFIGURED 2026-07-17: gate required · enforce_admins ON (it binds the repo
-#     owner too — auto-merge runs AS the admin, so without this the rule would be
-#     decorative) · no required reviews (autonomous merge of a GREEN PR still works)
-#     · force-push and deletion of `main` blocked. See the rename warning on the job.
+#     🚨 NOT CONFIGURED AS OF 2026-08-20 — `main` requires NOTHING. Measured, not assumed:
+#         gh api repos/<owner>/<repo>/branches/main/protection \
+#           --jq '.required_status_checks.contexts'      # → []
+#         gh api repos/<owner>/<repo>/rules/branches/main --jq 'length'   # → 0
+#     Check BOTH: classic protection and rulesets are separate mechanisms, and a
+#     requirement living in one shows as empty in the other.
+#     This was REMOVED DELIBERATELY (2026-08-19) so work could continue through the
+#     GitHub Actions billing failure — a required check that cannot run blocks every
+#     PR in the repo. It is not an oversight; restore it when Actions is paying again,
+#     together with the `migrate-prod` / `verify-deploy` restores at :505 and :580.
+#     ⚠️ `enforce_admins` is still ON, which reads reassuring and means nothing while
+#     the required-check list is empty: it binds admins to zero checks.
+#     This comment previously read "✅ CONFIGURED 2026-07-17: gate required". That was
+#     true when written and false by 2026-08-19, and a stale ✅ on a security control is
+#     exactly the defect this file names 27 lines below — the thing an auditor reads
+#     instead of running the command. Re-measure before trusting either state.
 
 on:
   pull_request:
