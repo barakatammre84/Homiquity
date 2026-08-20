@@ -66,11 +66,12 @@ export const PROGRAM_TYPES = [
   },
 ];
 
-export const PHASE_NAMES: Record<number, string> = {
-  1: "Foundation",
-  2: "Financial Fitness",
-  3: "Pre-Approval Ready",
-  4: "House Hunting",
-  5: "Under Contract",
-  6: "Closing & Beyond",
-};
+/**
+ * The phase names, from the same definition the server seeds milestones with.
+ *
+ * This used to be a second, hand-written map ("Foundation", "Financial
+ * Fitness", …) that had drifted away from the phases the server actually
+ * creates — so the header named phase 1 "Foundation" while every milestone
+ * inside it was badged "Financial Assessment" (DESIGN_SYSTEM §13, Agreement).
+ */
+export { ACCELERATOR_PHASE_NAMES as PHASE_NAMES } from "@shared/acceleratorProgram";
