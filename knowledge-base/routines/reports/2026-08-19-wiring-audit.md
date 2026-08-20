@@ -376,4 +376,60 @@ is real.** Cut items 1–3 into one small PR against current `main` and close #5
 file in an open PR is claimed by it), and the third is off-limits to every routine. Say the word and
 I will take the two client files.
 
+STATUS: WARN  *(superseded by Addendum 2 below)*
+
+---
+
+# Addendum 2 — standing in for the dead CI gate (founder-directed, ~15:30)
+
+With Actions billing down, branch protection's `strict: false` means every mergeable PR carries a
+gate that ran against an **older** `main`. I re-ran the gate's own 15-step list locally against
+`PR + current main` for each merge candidate. Driver: `scratchpad/verify-pr.sh`.
+
+| PR | merge with `main` | 15-step gate | verdict |
+|---|---|---|---|
+| **#587** calculator CTA wrap | clean | **15/15 PASS** | safe to merge |
+| **#597** inert-button ratchet | clean | **15/15 PASS** | safe to merge |
+| **#598** URLA progress scope | clean | **15/15 PASS** | safe to merge |
+| **#599** assistant complaint scan | clean | **15/15 PASS** | safe to merge |
+| **#603** owner agents / feature map | clean | **15/15 PASS** | safe to merge |
+
+Steps run per PR, mirroring `.github/workflows/ci.yml`'s `gate` job: typecheck · unit tests (node +
+client) · `pnpm audit --prod --audit-level=high` · schema↔migration · migration ledger · delivery
+freeze · design tokens · UI ratchet · KB index · doc staleness · citations · query keys · §9
+security-review (fed the real PR body) · production build · bundle ratchet.
+
+## 🚨 The trap this exercise found — a guard that MUTATES a tracked file
+
+`scripts/citation-guard.cjs` **rewrites `scripts/citation-baseline.json`** when the count comes in
+at or under the baseline. Git carries an uncommitted change across a `checkout`, so in a sequential
+local run **one PR's tightened baseline silently judges the next one.**
+
+It produced three wrong results before I caught it, and the wrongest was the most alarming:
+
+- #597's tree legitimately measures **24** (it lands `tests/inertButtons.test.ts`, which resolves the
+  citation at `knowledge-base/feature-review/FINDINGS.md:156`), so the guard wrote `24` into the
+  working tree;
+- that file then persisted into the #599 and #603 runs, which measure 25 — **two false FAILs**;
+- and reading the same contaminated tree, I measured `main`'s baseline as 24 against a count of 25
+  and **concluded `main` was red on a gate. It is not.** `main`'s committed baseline is **25**, its
+  count is **25**, and it passes. Corrected here rather than quietly.
+
+**The rule for anyone verifying locally: `git checkout -- . && git clean -fd scripts` between
+branches.** The driver now does this and says why. Any guard with a baseline file is suspect —
+`citation`, `design-token`, `ui-standard`, `doc-staleness`, `bundle-size` all carry one.
+
+**Second measurement hazard, unrelated but same session:** `tests/statusVocabulary.test.ts` timed out
+at 27s against a 15s limit during the first #598 run and passes **41/41 in 2.7s** in isolation. Eight
+peer Claude sessions were running on this machine. **A single test FAIL on a loaded box is not a
+result until it is re-run alone.**
+
+## One thing #597 should carry before it merges
+
+Its tree ratchets citations **25 → 24**, but the PR changes only `tests/inertButtons.test.ts` and
+`vitest.config.ts` — **it does not commit the tightened baseline.** The repo's own ratchet
+convention is that the tightened baseline lands in the same PR. Merged as-is it is not a failure
+(the guard only fails on a *rise*), but the ratchet sits one notch loose and the next unresolved
+citation slips in free. One line, in `scripts/citation-baseline.json`: `25` → `24`.
+
 STATUS: WARN
