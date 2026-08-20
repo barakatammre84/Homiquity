@@ -325,7 +325,7 @@ export default function DownPaymentWizard() {
             <Button variant="outline" asChild data-testid="button-dpa-coach">
               <Link href="/ai-coach">
                 <Bot className="h-3.5 w-3.5" />
-                Ask AI Coach
+                Ask Homi
               </Link>
             </Button>
           </div>

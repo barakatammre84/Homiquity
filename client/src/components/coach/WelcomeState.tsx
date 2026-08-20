@@ -99,7 +99,7 @@ export function WelcomeState({ onStart, insights }: { onStart: (msg: string) => 
           </div>
           <div>
             <h2 className="text-2xl font-bold text-foreground sm:text-3xl" data-testid="text-coach-welcome">
-              Your AI Homebuyer Coach
+              Meet Homi
             </h2>
             <p className="text-muted-foreground mt-3 leading-relaxed max-w-lg mx-auto">
               Tell me about your situation and I'll organize everything for you — your answers are

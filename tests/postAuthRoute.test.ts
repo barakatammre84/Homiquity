@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { getPostAuthRoute, getRoleHomeRoute } from "@/lib/roleRoutes";
+import { getPostAuthRoute } from "@/lib/postAuthRoute";
+import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import {
   PREAPPROVAL_PENDING_SUBMIT_KEY,
   hasPendingPreApprovalSubmit,

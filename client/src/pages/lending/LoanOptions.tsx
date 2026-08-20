@@ -143,12 +143,18 @@ export default function LoanOptions() {
                     Under Review
                   </span>
                 </div>
+                {/* Broker rail: Homiquity arranges financing and does not make
+                    credit decisions or fund loans — the standing disclosure in
+                    this page's own footer. This read "Your application is with
+                    our underwriting team / A licensed underwriter is reviewing
+                    your numbers", which two independent journey walks flagged
+                    against that disclosure a few hundred pixels below it. */}
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                  Your application is with our underwriting team
+                  Your file is being prepared for review
                 </h1>
                 <p className="mt-4 text-muted-foreground" data-testid="text-under-review">
-                  A licensed underwriter is reviewing your numbers — check your dashboard for what
-                  was flagged. The scenarios below are estimates, not offers.
+                  We're getting your numbers ready for a lending partner to review — check your
+                  dashboard for what was flagged. The scenarios below are estimates, not offers.
                 </p>
               </>
             ) : (

@@ -274,7 +274,7 @@ export function Navigation() {
                   <DropdownMenuItem asChild>
                     <Link href="/ai-coach" className="w-full cursor-pointer" data-testid="menu-ai-coach">
                       <Bot className="mr-2 h-4 w-4" />
-                      AI Coach
+                      Homi
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

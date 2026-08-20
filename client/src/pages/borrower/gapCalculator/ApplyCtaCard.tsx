@@ -26,7 +26,7 @@ export function ApplyCtaCard() {
               <Button asChild variant="outline" size="sm" className="touch-target gap-1" data-testid="button-gap-coach">
                 <Link href="/ai-coach">
                   <Bot className="h-3 w-3" />
-                  Ask AI Coach
+                  Ask Homi
                 </Link>
               </Button>
             </div>

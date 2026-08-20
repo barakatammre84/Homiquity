@@ -59,7 +59,7 @@
  *
  * Adding a field here is a decision, not a formality: it makes erasure
  * reachable from a route. `tests/intakeClearSemantics.test.ts` pins the
- * catalog, the three states, and the fact that the AI coach can never reach
+ * catalog, the three states, and the fact that Homi can never reach
  * this path.
  */
 export const CLEARABLE_INTAKE_FIELDS = [
