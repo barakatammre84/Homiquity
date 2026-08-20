@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Clock, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +6,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { format } from "date-fns";
 import { ScheduleSessionDialog } from "./ScheduleSessionDialog";
+import { RescheduleSessionButton } from "./RescheduleSessionButton";
 import type { CoachingSession } from "./types";
-import { isSessionStatus, type SessionStatus } from "@shared/acceleratorProgram";
+import {
+  canTransitionSession,
+  isSessionStatus,
+  type SessionStatus,
+} from "@shared/acceleratorProgram";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 // The badge is the whole honesty of this surface: "Requested" and "Confirmed"
 // are different facts, and the product used to render the first as the second.
@@ -34,6 +42,8 @@ function SessionStatusBadge({ status }: { status: string }) {
 }
 
 export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const {
     data: sessions = [],
     isLoading,
@@ -42,6 +52,24 @@ export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string
     refetch,
   } = useQuery<CoachingSession[]>({
     queryKey: ["/api/accelerator/coaching", enrollmentId],
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["/api/accelerator/coaching", enrollmentId] });
+
+  const withdraw = useMutation({
+    mutationFn: (sessionId: string) =>
+      apiRequest("POST", `/api/accelerator/sessions/${sessionId}/withdraw`, {}),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "Cancelled", description: "You can ask for another time whenever you like." });
+    },
+    onError: (error) =>
+      toast({
+        title: "We couldn't cancel that",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      }),
   });
 
   return (
@@ -100,6 +128,30 @@ export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string
                         {session.durationMinutes} min
                       </span>
                     </div>
+                    {/* Only the moves the SERVER would accept are offered.
+                        Both sides read the same transition table, so a button
+                        can never exist for an action that 409s. */}
+                    {canTransitionSession(session.status, "cancelled", "borrower") && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="touch-target h-8 px-2 text-xs"
+                          onClick={() => withdraw.mutate(session.id)}
+                          disabled={withdraw.isPending}
+                          data-testid={`button-withdraw-session-${session.id}`}
+                        >
+                          {withdraw.isPending && withdraw.variables === session.id
+                            ? "Cancelling…"
+                            : "Cancel"}
+                        </Button>
+                        <RescheduleSessionButton
+                          sessionId={session.id}
+                          enrollmentId={enrollmentId}
+                          disabled={withdraw.isPending}
+                        />
+                      </div>
+                    )}
                     {session.notes && (
                       <p className="text-xs text-muted-foreground mt-2" data-testid={`text-session-notes-${session.id}`}>
                         {session.notes}

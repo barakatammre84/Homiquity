@@ -39,7 +39,7 @@ sites actually use it.
 
 | Capability | State | Measured |
 |---|---|---|
-| `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 283 page files import it — *pnpm guard:ui → `pageShellDrift`* |
+| `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 284 page files import it — *pnpm guard:ui → `pageShellDrift`* |
 | Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 20 file(s) import the registry, 322 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |

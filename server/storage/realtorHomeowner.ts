@@ -208,6 +208,19 @@ export class RealtorHomeownerStorage extends IdentityStorage {
     return enrollment;
   }
 
+  /**
+   * One enrollment by its own id. `getAcceleratorEnrollment` keys off the USER,
+   * which is the wrong direction when you are holding a session and need the
+   * borrower it belongs to.
+   */
+  async getAcceleratorEnrollmentById(id: string): Promise<AcceleratorEnrollment | undefined> {
+    const [enrollment] = await db
+      .select()
+      .from(acceleratorEnrollments)
+      .where(eq(acceleratorEnrollments.id, id));
+    return enrollment;
+  }
+
   async createAcceleratorEnrollment(data: InsertAcceleratorEnrollment): Promise<AcceleratorEnrollment> {
     const [enrollment] = await db.insert(acceleratorEnrollments).values(data).returning();
     return enrollment;
@@ -255,6 +268,40 @@ export class RealtorHomeownerStorage extends IdentityStorage {
     return db.select().from(coachingSessions)
       .where(eq(coachingSessions.enrollmentId, enrollmentId))
       .orderBy(desc(coachingSessions.createdAt));
+  }
+
+  /**
+   * A loan officer's own confirmed sessions, soonest first — the surface that
+   * makes `completed` and `no_show` reachable from the UI at all. Confirmed
+   * only: a terminal session has nothing left to do, and a `requested` one is
+   * already in the desk queue.
+   */
+  async getCoachingSessionsForLoanOfficer(
+    loanOfficerId: string,
+  ): Promise<Array<CoachingSession & { borrowerName: string }>> {
+    const rows = await db
+      .select({
+        session: coachingSessions,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(coachingSessions)
+      .innerJoin(acceleratorEnrollments, eq(coachingSessions.enrollmentId, acceleratorEnrollments.id))
+      .innerJoin(users, eq(acceleratorEnrollments.userId, users.id))
+      .where(
+        and(
+          eq(coachingSessions.assignedToUserId, loanOfficerId),
+          inArray(coachingSessions.status, ["confirmed", "scheduled"]),
+        ),
+      )
+      .orderBy(coachingSessions.scheduledAt);
+
+    return rows.map((r) => ({
+      ...r.session,
+      borrowerName:
+        [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email || "A borrower",
+    }));
   }
 
   async getCoachingSessionById(id: string): Promise<CoachingSession | undefined> {

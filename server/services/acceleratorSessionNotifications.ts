@@ -83,3 +83,100 @@ export async function notifySessionRequested(
     console.error("[accelerator] failed to notify the session desk:", error);
   }
 }
+
+/**
+ * Tell the BORROWER what happened to their request.
+ *
+ * The first cut of this fanned out in one direction only — staff learned a
+ * request existed, and the borrower learned the outcome by happening to revisit
+ * the page. A loan officer accepting or declining a meeting is exactly the kind
+ * of thing the person waiting on it should be told.
+ *
+ * In-app only, same rule as above: no email, no SMS.
+ */
+export interface SessionOutcomeRef {
+  sessionId: string;
+  borrowerUserId: string;
+  scheduledAt: Date;
+  /** The loan officer's display name, when one is on the record. */
+  loanOfficerName: string | null;
+}
+
+type BorrowerFacingOutcome = "confirmed" | "cancelled" | "completed" | "no_show";
+
+export async function notifyBorrowerOfSessionOutcome(
+  storage: IStorage,
+  outcome: BorrowerFacingOutcome,
+  ref: SessionOutcomeRef,
+): Promise<void> {
+  try {
+    const who = ref.loanOfficerName ?? "A loan officer";
+    const when = ref.scheduledAt.toISOString();
+
+    // No "we'll be in touch" on a cancellation: that is a promise about a
+    // follow-up nothing in this codebase schedules. The borrower is told what
+    // is true and where to act.
+    const copy: Record<BorrowerFacingOutcome, { title: string; body: string }> = {
+      confirmed: {
+        title: "Your 1:1 is confirmed",
+        body: `${who} confirmed your session for ${when}.`,
+      },
+      cancelled: {
+        title: "Your 1:1 was cancelled",
+        body: `The session for ${when} is not going ahead. You can ask for another time in the Accelerator.`,
+      },
+      completed: {
+        title: "Your 1:1 is marked complete",
+        body: `${who} marked your ${when} session as done. Ask for another whenever you want one.`,
+      },
+      no_show: {
+        title: "We missed you",
+        body: `Your ${when} session was marked as missed. You can ask for a new time in the Accelerator.`,
+      },
+    };
+
+    await storage.createNotification({
+      userId: ref.borrowerUserId,
+      type: `accelerator_session_${outcome}`,
+      title: copy[outcome].title,
+      body: copy[outcome].body,
+      entityType: "accelerator_session",
+      entityId: ref.sessionId,
+      status: "unread",
+    });
+  } catch (error) {
+    console.error("[accelerator] failed to notify the borrower:", error);
+  }
+}
+
+/**
+ * Tell the assigned loan officer that the borrower moved or dropped the meeting
+ * they had agreed to. Nothing when no loan officer has taken it — there is
+ * nobody with an expectation to correct.
+ */
+export async function notifyLoanOfficerOfBorrowerChange(
+  storage: IStorage,
+  change: "cancelled" | "rescheduled",
+  ref: { sessionId: string; assignedToUserId: string | null; borrowerName: string; scheduledAt: Date },
+): Promise<void> {
+  if (!ref.assignedToUserId) return;
+  try {
+    await storage.createNotification({
+      userId: ref.assignedToUserId,
+      type: `accelerator_session_${change}_by_borrower`,
+      title:
+        change === "cancelled"
+          ? `${ref.borrowerName} cancelled your 1:1`
+          : `${ref.borrowerName} asked to move your 1:1`,
+      body:
+        change === "cancelled"
+          ? `The session is off. Nothing to do unless you want to reach out.`
+          : `They asked for ${ref.scheduledAt.toISOString()} instead. It is back in the requests queue for you to confirm.`,
+      entityType: "accelerator_session",
+      entityId: ref.sessionId,
+      status: "unread",
+    });
+  } catch (error) {
+    console.error("[accelerator] failed to notify the loan officer:", error);
+  }
+}

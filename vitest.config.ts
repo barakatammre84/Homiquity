@@ -109,6 +109,7 @@ export default defineConfig({
       "tests/signalEngine.test.ts",
       "tests/acceleratorProgress.test.ts",
       "tests/acceleratorSessionRequests.test.ts",
+      "tests/acceleratorSessionLifecycle.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",

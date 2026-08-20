@@ -117,5 +117,100 @@ is blocked in this repo and prints why.
 | 2 | MEDIUM | **`GET /api/leads` and `GET /api/leads/:id` have zero client callers.** Staff cannot see leads anywhere; the bell is the only channel, and it dead-ends. The same shape as the accelerator defect, one surface over. |
 | 3 | LOW | **`POST`/`PUT /api/accelerator/enrollment` still pass `req.body` straight to storage** — carried forward from the first run's report, still open. The session routes are now validated; the enrollment routes are not. |
 | 4 | LOW | **A confirmed session has no cancel or reschedule path** for either side. Confirming is now real, so the next honest gap is un-confirming. |
+---
+
+## Addendum — the session lifecycle (same PR, founder said "go")
+
+The first cut of this shipped `requested` → `confirmed` and stopped, which left **three of the five
+statuses unreachable**: nothing could write `completed`, `cancelled` or `no_show`. A confirmed
+session was frozen for good — neither side could decline, cancel or move it — so the borrower's page
+would go on showing a confirmed meeting for a date that had already passed. That is the same defect
+class the request → confirm split fixed, one step later in the flow, and it is the answer to the
+founder's *"what is missing"*.
+
+**Transitions are now a table, not scattered `if`s** (`SESSION_TRANSITIONS` in
+`shared/acceleratorProgram.ts`), because the interesting rule is *who may make each move* and that
+is exactly what branching code loses. Both the routes and the borrower's buttons read it, so **a
+control can never exist for an action the server would 409**.
+
+| from → to | who |
+|---|---|
+| `requested` → `confirmed` | staff |
+| `requested` → `cancelled` | staff (decline) or borrower (withdraw) |
+| `requested` → `requested` | borrower (move the time) |
+| `confirmed` → `requested` | borrower (moving re-opens the ask) |
+| `confirmed` → `cancelled` | either |
+| `confirmed` → `completed` / `no_show` | staff |
+| anything out of a terminal state | **nobody** |
+
+Two rails worth naming:
+
+- **Moving a time re-opens the ask.** A loan officer agreed to a *slot*, not to the borrower's
+  calendar, so a rescheduled session returns to `requested` and to the desk queue with `confirmedAt`
+  cleared. It does **not** stay confirmed at a time nobody on our side has agreed to — that would be
+  the original lie, rebuilt.
+- **A meeting cannot be reported before it starts.** `outcomeIsReportable` gates `completed` and
+  `no_show`, the only pair of transitions that makes a claim about the past.
+
+**`completed`/`no_show` are reachable from the UI**, not just the API: the LO Command Center card
+grew a second section listing that officer's own confirmed sessions. Without it those statuses would
+have existed in the vocabulary and in the routes and been unwritable from any screen — the exact
+"engine nobody can reach" defect this program keeps producing.
+
+**And the notification now runs both ways.** The first cut told staff a request existed and left the
+borrower to find out by revisiting the page. Confirm, decline and outcome all notify the borrower;
+the borrower cancelling or moving notifies the assigned loan officer. Still in-app only.
+
+### Live proof — every transition, on :5002 against real Postgres
+
+```
+A. the LO DECLINES a request
+   decline                 -> cancelled
+   borrower cancels it too -> HTTP 409 | This session is already cancelled.
+B. the BORROWER withdraws their own request
+   withdraw                -> cancelled
+C. the BORROWER moves a CONFIRMED session
+   after the move          -> status=requested confirmedAt=None assignedTo=test-lo
+   back in the LO queue?   -> True
+D. reporting an outcome BEFORE the meeting starts
+   mark done early         -> HTTP 409 | This session has not started yet.
+E. outcome once the meeting has started
+   mark done               -> HTTP 200 | status=completed completedAt=2026-08-20T21:12:38.757Z
+   change it afterwards    -> HTTP 409 | This session is already completed. (terminal)
+   still in the LO's list? -> False
+F. a DIFFERENT loan officer tries to report on it
+   loa reports on lo's     -> HTTP 409 | This session belongs to another loan officer.
+G. what the BORROWER was told
+   borrower notifications  -> 6   (accelerator_session_confirmed, _completed, …)
+```
+
+Row E is the pair that had no writer at all before this.
+
+### Proven by reintroducing each rail
+
+| mutation | result |
+|---|---|
+| add `cancelled → requested` to the table | **1 failed** — *"cancelled, completed and no_show have no way out"* |
+| replace the clock rail with `if (false)` | **1 failed** — *"the outcome route enforces it"* |
+| add `requested → completed` for staff | **1 failed** — *"an outcome cannot be reported on a session nobody confirmed"* |
+
+All three reverted; 19/19 green.
+
+### Still missing after this
+
+- **The financial snapshot is 100% self-reported.** `FinancialUpdateDialog` has no `useQuery` at
+  all — nothing prefills credit score, DTI or savings from data the platform already holds, while
+  `FEATURE_MAP`'s intent line for this area says *"the borrower's own data, not an estimate dressed
+  as one."*
+- **No staff can see the plan.** An LO confirms a call with no way to see the borrower's 18
+  milestones, phase or financials first; `/borrower-file/:id` is application-shaped.
+- **Both enrollment routes still take raw `req.body`** (`createAcceleratorEnrollment({...req.body})`,
+  `updateAcceleratorEnrollment(id, req.body)`) — no Zod, no `userId` strip. Flagged three times now,
+  fixed none of them; it is a different gap and folding it in would muddy this diff.
+- **Milestones still render backwards** (`orderBy(desc(createdAt))`), and there is no way to leave
+  the program.
+- **`NotificationsPanel` still has no `accelerator_session` href**, so both directions' bell items
+  land on `/dashboard`. Blocked on PR #634 holding that file.
+
 
 STATUS: WARN
