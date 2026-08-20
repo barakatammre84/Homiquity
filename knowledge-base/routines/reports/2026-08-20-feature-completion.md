@@ -2,7 +2,7 @@
 
 **Domain:** 12 — Property, listings & homeowner · **area 22, Homebuyer accelerator program**
 (`FEATURE_MAP.md` row 22, **Last reviewed: never** — one of the 23 of 41 unmeasured areas).
-**Gap:** the program's progress never moved. **PR:** [#626](https://github.com/barakatammre84/Homiquity/pull/626).
+**Gap:** the program's progress never moved. **PR:** [#632](https://github.com/barakatammre84/Homiquity/pull/632).
 **Open `FINDINGS.md` rows:** 161 before · 161 after — **this run closed none and added none**; see
 *Proposed tickets*, and *Honesty* for why it did not write to that register.
 
