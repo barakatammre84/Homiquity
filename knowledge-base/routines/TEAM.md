@@ -4,7 +4,7 @@
 **Authority:** [`CHARTER.md`](CHARTER.md) wins over this file on any conflict, and every rail there
 applies to every seat here. This file adds the seating chart and the hand-off protocol; it relaxes
 nothing.
-**Last verified against the code:** 2026-08-18.
+**Last verified against the code:** 2026-08-19.
 
 > ⚠️ **Partly superseded 2026-08-19 by the prove-it-first suite rewrite** ([`CHARTER.md`](CHARTER.md)
 > §1a, §3). The *role* mapping below still holds; the **clock and the seat list do not**. Three seats
@@ -12,7 +12,7 @@ nothing.
 > **Read `CHARTER.md` §3 and `list_scheduled_tasks` for who actually runs** — this file is a
 > seating chart, not a registration, and §0 there is about exactly that confusion.
 
-> **Freshness:** last verified 2026-08-18 · review every 60 days
+> **Freshness:** last verified 2026-08-19 · review every 60 days
 
 ---
 
@@ -56,7 +56,14 @@ cited verdict and posts a `WAITING` row rather than guessing (its rails C2/C3).
 **Supporting seats, unchanged:** Launch Gate (07:48) holds the `RELEASABLE` verdict · Lender
 Delivery Gate (12:31) judges the package · Compliance Watch (Tue 13:21) holds the licensing ladder
 and is the counsel seat · Vendor & Procurement (Mon 09:37) holds commercial state · Refactor Radar
-(Sun 20:00) · Evening Triage (21:10) consolidates the day.
+(Sun 20:00) · Evening Triage (21:10) consolidates the day. · **Move-Up Lane (Wed 14:10)** owns the
+above-conforming borrower — the one door with no explainer, the conforming boundary, and the
+honesty of what we tell a borrower above the limit.
+
+**Review seats reachable by name:** the four `journey-walker-*` agents walk one client journey each
+in a real browser (`knowledge-base/feature-review/JOURNEYS.md`), fronted by the **`/journey-walk`**
+skill. They are the only lens in the fleet whose subject is the space *between* surfaces, and the
+only ones that can re-verify Move-Up Lane's work — **no seat signs off its own.**
 
 ### Seats with no routine, and deliberately so
 
@@ -78,6 +85,9 @@ Each new seat had to pass one test: **what does it catch that nothing else does?
 | Domain Oracle | **added** | Nothing in the fleet can say whether a rule is *real*. Compliance Watch tracks licensing; the delivery gate checks edits, not the guideline the package asserts. |
 | Integration Readiness | **added** | Nothing records, per adapter, the distance between simulation and a signed contract. That distance currently gets discovered at contract time. |
 | QA Mutation Verifier | **added** | The sweep *finds* defects; nothing verifies a **fix** is load-bearing. A test that passes with and without the fix is invisible to every guard. |
+| Move-Up Lane | **added 2026-08-19** | Nothing owns the above-conforming borrower. Complex File Engine owns income *complexity*; jumbo is loan *size*, a different axis. Primary Engineer is launch-ranked, and launch is Illinois-first conforming business, so this lane never reaches the top of its queue. Weekly, not daily, so it does not contend with the three daily builders. **What it caught on day one:** the funnel gated its jumbo advisory on the 2024 limit (`766550` vs `806_500`), telling conforming borrowers they were jumbo across a $40k band — green under a one-limit test that named two files and could not see the funnel. |
+| Client-journey walkers (×4) | **added 2026-08-19** | Report-only, so no file contention. Every existing seat is discontinuous — a domain reviewer never leaves its domain, a workflow verifier never re-renders a nav, a surface auditor sees one page at one role. Nothing could see a value dropped crossing a boundary or a promise with no surface that keeps it. |
+| A white-glove / concierge service tier | **rejected — not a routine at all** | No such tier exists in the product, and a service promise is a staffing and Reg N commitment, not code. Move-Up Lane rail M2 forbids any routine from creating one; it is a founder decision, escalated as a proposal. |
 | A full-stack routine | rejected | Three seats already build daily. A fourth would contend for the same files and the founder's merge throughput, which is the real constraint. |
 | A standup routine | rejected | Evening Triage (21:10) already consolidates the day. A second consolidator is two sources of truth — the failure that closed PR #558. |
 | A counsel routine | rejected | Compliance Watch is that seat. |

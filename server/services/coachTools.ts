@@ -7,6 +7,14 @@ import {
   type AppliedField,
   type SkippedField,
 } from "./coachProfileSync";
+import {
+  loadFileTruth,
+  type FileTruth,
+  type LoanStatusSnapshot,
+} from "./coachFileTruth";
+import type { ChecklistItemDto, ChecklistStats } from "./documentChecklist";
+import type { BorrowerTaskView } from "@shared/borrowerTaskView";
+import type { User } from "@shared/schema";
 
 // ---------------------------------------------------------------------------
 // Homi tool surface — Claude Sonnet 5 tool-use replaces the old
@@ -284,9 +292,24 @@ export type CoachStreamEvent =
       type: "panel";
       profile?: CoachingProfile;
       actionPlan?: ActionPlanItem[];
-      documentChecklist?: DocumentRequirement[];
+      documentChecklist?: DocumentRequirement[] | ChecklistItemDto[];
       borrowerPackage?: BorrowerPackage;
       suggestions?: string[];
+      // Server-truth payloads. These are read from the borrower's file, not
+      // authored by the model — the client renders them as fact.
+      loanStatus?: LoanStatusSnapshot;
+      checklistStats?: ChecklistStats;
+      tasks?: BorrowerTaskView[];
+      /**
+       * Where this panel's content came from. "file" = derived from the
+       * borrower's records; "assistant" = the model's own suggestion.
+       *
+       * The defect this closes is not that the model suggests things — it is
+       * that a suggestion RENDERED IDENTICALLY to a file-derived panel reads
+       * as fact. The borrower could not tell which was which, and acted on
+       * both the same way.
+       */
+      source?: "file" | "assistant";
     }
   | { type: "lint_replaced"; categories: string[]; citations: string[] };
 
@@ -307,7 +330,16 @@ export interface CoachToolTurnState {
 export interface CoachToolContext {
   req: Request;
   userId: string;
+  /** Needed by the read tools' re-authorization (getLoanApplicationWithAccess). */
+  userRole: string;
   conversationId: string;
+  /**
+   * The file the read tools may read, resolved server-side from the session.
+   * Null when the borrower has no workable file — the tools say so rather than
+   * letting the model improvise. NO tool accepts this as input: a model can be
+   * talked into emitting someone else's uuid, which is an IDOR primitive.
+   */
+  workableApplicationId: string | null;
   emit: CoachEmit;
   state: CoachToolTurnState;
 }
@@ -343,26 +375,9 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
     input_schema: INTAKE_INPUT_SCHEMA,
   },
   {
-    name: "update_readiness",
-    description:
-      "Update the borrower's readiness assessment shown in their side panel. Call whenever the readiness picture changes: the tier moves, an input completes, or the outstanding list changes. statusNote must be factual and procedural — never qualitative words like strong, solid, excellent, or concerning, and never approval likelihood.",
-    input_schema: {
-      type: "object" as const,
-      additionalProperties: false,
-      properties: {
-        readinessTier: { type: "string", enum: ["ready_now", "almost_ready", "building", "exploring"] },
-        statusNote: { type: "string", description: 'Factual procedural status, e.g. "Core financial inputs collected. Document verification pending."' },
-        completedInputs: { type: "array", items: { type: "string" }, description: "Specific inputs already collected." },
-        outstandingInputs: { type: "array", items: { type: "string" }, description: "Specific inputs still required." },
-        estimatedTimeline: { type: "string", description: 'e.g. "1-3 months"' },
-      },
-      required: ["readinessTier", "statusNote", "completedInputs", "outstandingInputs", "estimatedTimeline"],
-    },
-  },
-  {
     name: "set_action_plan",
     description:
-      "Replace the borrower's step-by-step action plan shown in their side panel. Call when the user asks for a plan, or when their situation changes materially. Always send the FULL plan (it replaces the previous one). Keep items concrete and procedural.",
+      "Replace the borrower's step-by-step PREPARATION plan — the educational work that has no record behind it yet (building credit, saving a down payment, seasoning income, timing a move). Call when the user asks for a plan, or when their situation changes materially. Always send the FULL plan (it replaces the previous one). This plan is labelled as YOUR suggestion in the UI, not as a fact from their file, so keep it to advice you can justify. NEVER list documents here — call get_document_checklist, which returns the real ones. NEVER state where their file stands or what stage it is in — call get_loan_status.",
     input_schema: {
       type: "object" as const,
       additionalProperties: false,
@@ -378,7 +393,7 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
               title: { type: "string" },
               description: { type: "string" },
               priority: { type: "string", enum: ["high", "medium", "low"] },
-              category: { type: "string", enum: ["credit", "savings", "income", "debt", "documents", "education"] },
+              category: { type: "string", enum: ["credit", "savings", "income", "debt", "education"] },
               completed: { type: "boolean" },
             },
             required: ["id", "phase", "title", "description", "priority", "category", "completed"],
@@ -386,34 +401,6 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ["items"],
-    },
-  },
-  {
-    name: "set_document_checklist",
-    description:
-      'Replace the borrower\'s document checklist shown in their side panel. Call when the required document set first becomes determinable (e.g. once employment type is known) or when it changes. Always send the FULL checklist. Set plaidEligible: true on items the borrower can satisfy by connecting an account via Plaid — bank statements, assets/reserves, and (for W-2 borrowers) income/employment — so the panel shows a "Connect with Plaid" button. Leave it false/unset for tax returns, P&L, IDs, and other true document uploads.',
-    input_schema: {
-      type: "object" as const,
-      additionalProperties: false,
-      properties: {
-        documents: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              docType: { type: "string", description: 'Machine slug, e.g. "pay_stub", "w2", "tax_return", "bank_statement".' },
-              label: { type: "string", description: 'Human label, e.g. "Recent Pay Stubs (Last 30 Days)".' },
-              reason: { type: "string", description: "Why underwriting systems require it." },
-              priority: { type: "string", enum: ["required", "recommended", "optional"] },
-              category: { type: "string", description: 'Grouping, e.g. "Income", "Assets", "Identity".' },
-              plaidEligible: { type: "boolean", description: "True if the borrower can satisfy this by connecting an account via Plaid (bank statements, assets/reserves, or W-2 income/employment). False/omit for tax returns, P&L, IDs, and other real uploads." },
-            },
-            required: ["docType", "label", "reason", "priority", "category"],
-          },
-        },
-      },
-      required: ["documents"],
     },
   },
   {
@@ -593,6 +580,56 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
       required: [],
     },
   },
+  // --- Server-truth read tools ------------------------------------------
+  // These replace guessing. Before them the assistant answered "where does my
+  // file stand?" and "what documents do you need?" from its memory of the
+  // conversation, which goes stale between messages and was never right for a
+  // borrower whose file moved. None of them accepts an id: the application is
+  // resolved server-side from the session (see CoachToolContext).
+  {
+    name: "get_loan_status",
+    description:
+      "Read where this borrower's application ACTUALLY stands right now: stage, how far along, days in process, conditions cleared vs outstanding, and the single next action the server recommends. Call this EVERY time the user asks anything about status, progress, timing, what's happening, what's next, or 'where am I' — and before making any claim about their file. You do NOT know this from the conversation; it changes between messages. Never answer a status question from memory or from earlier in this chat.",
+    input_schema: {
+      type: "object" as const,
+      additionalProperties: false,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "get_document_checklist",
+    description:
+      "Read the borrower's REAL document checklist — the same list their Documents page shows, with each item's true status (needed, uploaded, in review, verified, rejected) and, for rejections, the reason they must fix. Call this whenever the user asks what documents are needed, what's outstanding, whether something was received, or why a document came back. NEVER compose or guess a document list: an invented item does not match any real requirement, so uploading against it silently fails to clear anything.",
+    input_schema: {
+      type: "object" as const,
+      additionalProperties: false,
+      properties: {
+        filter: {
+          type: "string",
+          enum: ["needed", "rejected", "all"],
+          description: "Narrow the list. Omit for everything still outstanding plus anything rejected.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_borrower_tasks",
+    description:
+      "Read the borrower's open to-dos that are NOT document uploads — consents, identity verification, demographic questions, and the closing-prep steps their loan team has made visible. Call this alongside get_document_checklist when the user asks what they need to do, or why something is stuck. These are real task records; do not invent tasks.",
+    input_schema: {
+      type: "object" as const,
+      additionalProperties: false,
+      properties: {
+        includeCompleted: {
+          type: "boolean",
+          description: "Include finished tasks. Omit for open work only.",
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -671,26 +708,6 @@ export async function executeCoachTool(
       }
     }
 
-    case "update_readiness": {
-      const base = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-      // completionPercentage is server-derived (deriveCompletionPercentage) —
-      // the model does not control it; 0 is a placeholder overwritten by the
-      // turn runner before persistence/emit.
-      const parsed = coachProfileSchema.safeParse({ completionPercentage: 0, ...base });
-      if (!parsed.success) {
-        return { content: `Invalid readiness update — ${zodIssueSummary(parsed.error)}.`, isError: true };
-      }
-      ctx.state.profile = {
-        readinessTier: parsed.data.readinessTier,
-        completionPercentage: parsed.data.completionPercentage,
-        statusNote: parsed.data.statusNote,
-        completedInputs: parsed.data.completedInputs,
-        outstandingInputs: parsed.data.outstandingInputs,
-        estimatedTimeline: parsed.data.estimatedTimeline,
-      };
-      return { content: "Readiness panel updated." };
-    }
-
     case "set_action_plan": {
       const items = (input as { items?: unknown })?.items;
       const parsed = coachActionPlanSchema.safeParse(items);
@@ -698,19 +715,8 @@ export async function executeCoachTool(
         return { content: `Invalid action plan — ${zodIssueSummary(parsed.error)}.`, isError: true };
       }
       ctx.state.actionPlan = parsed.data;
-      ctx.emit({ type: "panel", actionPlan: parsed.data });
+      ctx.emit({ type: "panel", actionPlan: parsed.data, source: "assistant" });
       return { content: `Action plan set (${parsed.data.length} items).` };
-    }
-
-    case "set_document_checklist": {
-      const documents = (input as { documents?: unknown })?.documents;
-      const parsed = coachDocumentChecklistSchema.safeParse(documents);
-      if (!parsed.success) {
-        return { content: `Invalid document checklist — ${zodIssueSummary(parsed.error)}.`, isError: true };
-      }
-      ctx.state.documentChecklist = parsed.data;
-      ctx.emit({ type: "panel", documentChecklist: parsed.data });
-      return { content: `Document checklist set (${parsed.data.length} documents).` };
     }
 
     case "generate_borrower_package": {
@@ -782,7 +788,202 @@ export async function executeCoachTool(
       }
     }
 
+    case "get_loan_status": {
+      const truth = await loadTruthForTool(ctx);
+      if (truth === "no_application") {
+        return {
+          content:
+            "This borrower has no application in progress, so there is no status to report. " +
+            "Say so plainly and offer to help them start one — do NOT describe a stage.",
+        };
+      }
+      if (truth === "unavailable") return FILE_TRUTH_UNAVAILABLE;
+
+      const { status } = truth;
+      ctx.emit({ type: "panel", loanStatus: status, source: "file" });
+
+      const lines: string[] = [];
+      if (status.stage) {
+        lines.push(`Stage: ${status.stage.label} — ${status.stage.description}`);
+        lines.push(`Journey progress: ${status.stage.progressPercent}% (phase: ${status.stage.phase})`);
+      }
+      if (status.pipeline) {
+        lines.push(`Day ${status.pipeline.daysInPipeline} in process.`);
+        lines.push(
+          `Conditions: ${status.pipeline.conditionsTotal - status.pipeline.conditionsOutstanding} of ` +
+            `${status.pipeline.conditionsTotal} cleared (${status.pipeline.conditionsOutstanding} outstanding).`,
+        );
+      }
+      for (const step of status.journey) {
+        lines.push(`${step.stepId}: ${step.lines.join("; ")}`);
+      }
+      if (status.nextAction) {
+        lines.push(
+          `Next action for the borrower: ${status.nextAction.title} — ${status.nextAction.description} ` +
+            `(${status.nextAction.href})`,
+        );
+      }
+      return {
+        content:
+          `${lines.join("\n")}\n` +
+          "State ONLY these facts. Do not estimate or promise a closing date, and do not " +
+          "characterize the file as fast, slow, on track, or at risk — none of that is in this data.",
+      };
+    }
+
+    case "get_document_checklist": {
+      const parsed = z
+        .object({ filter: z.enum(["needed", "rejected", "all"]).optional() })
+        .safeParse(input && typeof input === "object" ? input : {});
+      if (!parsed.success) {
+        return { content: `Invalid checklist filter — ${zodIssueSummary(parsed.error)}.`, isError: true };
+      }
+
+      const truth = await loadTruthForTool(ctx);
+      if (truth === "no_application") {
+        return {
+          content:
+            "No application yet, so there is no personalized checklist. Explain what lenders " +
+            "typically ask for in general terms, and do NOT present a list as if it were theirs.",
+        };
+      }
+      if (truth === "unavailable") return FILE_TRUTH_UNAVAILABLE;
+
+      const { documents, stats } = truth.checklist;
+      const filter = parsed.data.filter ?? "all";
+      const shown = filter === "all"
+        ? documents
+        : documents.filter((d) => (filter === "needed" ? d.status === "needed" : d.status === "rejected"));
+
+      // The client gets the FULL list either way — the panel is the borrower's
+      // real checklist, byte-identical to what their Documents page renders.
+      // Only the model's summary is filtered and capped.
+      ctx.emit({ type: "panel", documentChecklist: documents, checklistStats: stats, source: "file" });
+
+      if (shown.length === 0) {
+        return {
+          content:
+            `Nothing matches "${filter}". Totals: ${stats.total} items — ${stats.verified} verified, ` +
+            `${stats.uploaded} in review, ${stats.needed} still needed, ${stats.rejected} rejected.`,
+        };
+      }
+
+      // Rejected first. The list is capped at MODEL_CHECKLIST_CAP and read in
+      // order, and a rejection is the only item where the borrower is BLOCKED
+      // — leaving it eighth behind seven "needed" rows is how its reason gets
+      // summarized away. Ordering by what matters beats asking the model to
+      // remember what mattered.
+      const ordered = [...shown].sort((a, b) => {
+        const rank = (s: string) => (s === "rejected" ? 0 : s === "needed" ? 1 : 2);
+        return rank(a.status) - rank(b.status);
+      });
+      const rendered = ordered.slice(0, MODEL_CHECKLIST_CAP).map((d) => {
+        const why = d.description ? ` Why: ${d.description}` : "";
+        const rejected = d.status === "rejected" && d.rejectionReason
+          ? ` MUST FIX: ${d.rejectionReason}`
+          : "";
+        const year = d.documentYear ? ` (${d.documentYear})` : "";
+        return `- ${d.label}${year} [${d.status}]${why}${rejected}`;
+      });
+      const overflow = ordered.length > MODEL_CHECKLIST_CAP
+        ? `\n…and ${ordered.length - MODEL_CHECKLIST_CAP} more (all of them are shown to the borrower in the checklist panel).`
+        : "";
+
+      // A rejected item is the only place on this list where the borrower is
+      // BLOCKED and cannot self-diagnose: the file is uploaded, so it looks
+      // done, and only the reviewer's reason says why it bounced. Measured at
+      // roughly a coin flip without this line, so it is stated where the model
+      // reads it last rather than only in the system prompt.
+      const rejectedNote = stats.rejected > 0
+        ? "\nOne or more items were REJECTED. You MUST tell the user the exact reason shown above " +
+          "for each one — it is the only thing standing between them and clearing it, and they " +
+          "cannot work it out from the file itself. Never report a rejection without its reason."
+        : "";
+      return {
+        content:
+          `${stats.total} items — ${stats.verified} verified, ${stats.uploaded} in review, ` +
+          `${stats.needed} needed, ${stats.rejected} rejected.\n${rendered.join("\n")}${overflow}\n` +
+          "These are the borrower's REAL requirements. Name only what is listed here; never add a " +
+          "document that is not on it, and never tell them an item is done when its status says otherwise." +
+          rejectedNote,
+      };
+    }
+
+    case "get_borrower_tasks": {
+      const parsed = z
+        .object({ includeCompleted: z.boolean().optional() })
+        .safeParse(input && typeof input === "object" ? input : {});
+      if (!parsed.success) {
+        return { content: `Invalid task filter — ${zodIssueSummary(parsed.error)}.`, isError: true };
+      }
+
+      const truth = await loadTruthForTool(ctx);
+      if (truth === "no_application") {
+        return { content: "No application yet, so there are no tasks on file." };
+      }
+      if (truth === "unavailable") return FILE_TRUTH_UNAVAILABLE;
+
+      // Already masked through borrowerTaskView in loadFileTruth — the raw rows
+      // carry staff notes and escalation internals and never reach this point.
+      const all = truth.tasks;
+      const shown = parsed.data.includeCompleted
+        ? all
+        : all.filter((t) => t.status !== "COMPLETED" && t.status !== "EXPIRED");
+
+      ctx.emit({ type: "panel", tasks: shown, source: "file" });
+
+      if (shown.length === 0) {
+        return { content: "No open tasks — nothing is waiting on the borrower outside the document checklist." };
+      }
+      const rendered = shown.slice(0, MODEL_TASK_CAP).map((t) => {
+        const label = t.title ?? t.borrowerDisplayText ?? "Task";
+        return `- ${label} [${t.status}]`;
+      });
+      const overflow = shown.length > MODEL_TASK_CAP
+        ? `\n…and ${shown.length - MODEL_TASK_CAP} more.`
+        : "";
+      return { content: `${shown.length} open task(s):\n${rendered.join("\n")}${overflow}` };
+    }
+
     default:
       return { content: `Unknown tool: ${name}`, isError: true };
+  }
+}
+
+/** Caps so a long file cannot eat the second model call's input budget. */
+const MODEL_CHECKLIST_CAP = 12;
+const MODEL_TASK_CAP = 10;
+
+/**
+ * A tool asked for file truth and could not get it. Say so — an assistant that
+ * fills the gap from memory is exactly the failure these tools exist to fix.
+ */
+const FILE_TRUTH_UNAVAILABLE: CoachToolResult = {
+  content:
+    "That information is temporarily unavailable. Tell the user you cannot read their file " +
+    "right now and offer to try again — do NOT answer from memory or from earlier in this chat.",
+  isError: true,
+};
+
+/**
+ * Resolve the borrower's file for a read tool. Returns a discriminated result
+ * rather than throwing, because "you have no application" and "I could not
+ * load it" are different things the assistant must say differently.
+ */
+async function loadTruthForTool(
+  ctx: CoachToolContext,
+): Promise<FileTruth | "no_application" | "unavailable"> {
+  if (!ctx.workableApplicationId) return "no_application";
+  try {
+    const truth = await loadFileTruth(ctx.workableApplicationId, {
+      id: ctx.userId,
+      role: ctx.userRole,
+    } as Pick<User, "id" | "role">);
+    // A null here means the access check refused — treat it as unavailable, not
+    // as "no application": we must never describe a file we could not authorize.
+    return truth ?? "unavailable";
+  } catch (err) {
+    console.error("[Coach] file-truth load failed:", err);
+    return "unavailable";
   }
 }

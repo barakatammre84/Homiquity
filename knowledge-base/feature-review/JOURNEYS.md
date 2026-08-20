@@ -23,6 +23,34 @@ ONE numbered charter as its brief. Program rules: `CHARTER.md`.
 > journey that only works ungated is a launch-readiness fact, not a clean run** — the walkability
 > column records which gate state each verdict was earned under.
 
+## Why these seats exist alongside the owner fleet
+
+`knowledge-base/handbook/FEATURE_MAP.md` partitions the codebase into 41 feature areas, each with
+one `hq-*-owner` agent that **implements**. The partition is strict: 667 owned paths, zero
+duplicates. Every owner's charter carries a **"Not yours"** list naming the neighbours it must not
+touch — `hq-borrower-journey-owner` hands the funnel to `hq-intake-funnel-owner`, which hands the
+URLA to `hq-urla-owner`, and so on.
+
+**That partition is exactly what creates this file's subject.** A boundary drawn so no two owners
+collide is also a boundary no owner can see across:
+
+| Seam | Fires in | Renders in | Owners involved |
+|---|---|---|---|
+| `aspiring_owner → active_buyer` promotion | `server/routes/lending/applications.ts:134` | `app-sidebar.tsx:262-264`, `Dashboard.tsx:238-244` | intake-funnel → borrower-journey |
+| `complexIncome` branch carry | `client/src/funnel/preApprovalMachine.ts:114` | `urla/EmploymentSection.tsx:286`, `pipelineEngine.ts:91-122` | intake-funnel → urla → documents |
+| calculator → funnel capture | `client/src/lib/calculatorPrefill.ts` | `pages/lending/PreApproval.tsx` | calculators → intake-funnel |
+| door promise → delivery | `pages/public/Landing.tsx:52-92` | the whole route, or nothing | seo-content → intake-funnel → pricing |
+
+Each of those is **correct inside every owner's scope and broken across them**. The owners' own
+hand-back format has a `LEFT UNDONE: out-of-scope problems observed — findings, not fixes` line,
+which is precisely where a cross-boundary observation goes today and dies, because no seat owned
+cross-boundary findings. These four walkers are that seat.
+
+**So the two fleets are a producer/consumer pair, not competitors.** Walkers produce findings no
+owner can produce; owners produce fixes no walker may attempt. A journey `HANDOFF` line names the
+`hq-*-owner` that can act on it (CHARTER §7), and a `J-` finding a walker files is re-verified by
+the same walker after that owner ships — **no seat signs off its own work.**
+
 Status ledger (updated by the orchestrator after each run):
 
 | # | Journey | Walkability (gate state) | Last walked | Verdict |
@@ -49,12 +77,13 @@ Status ledger (updated by the orchestrator after each run):
   exercises seam 2 (`/signup` → `postAuthRoute`) for free, which the seeded seat skips entirely.
 
   🚨 **The seeded `renter@test.com` seat cannot be trusted to show `RenterHome`, and on the founder's
-  laptop it does not.** `/test-login` (`server/auth.ts:362`) re-writes the *role* on every login, so
-  a polluted role self-heals — but **application rows do not**, and the incubator gate keys on the
-  file, not the role: `Dashboard.tsx:238-244` swaps in `RenterHome` only when there is **no workable
-  file and no funded loan**. On 2026-08-20 that seat carried a `self_employed` application in
-  `processing`, created **2026-07-02**, so `/dashboard` rendered the full borrower dashboard and
-  **journey 1's core surface was unreachable on the account this charter used to name for it.**
+  laptop it does not.** `/test-login` (`server/auth.ts:362`) re-writes the *role* on every login
+  (`server/auth.ts:381`), so a polluted role self-heals — but **application rows do not**, and the
+  incubator gate keys on the file, not the role: `Dashboard.tsx:238-244` swaps in `RenterHome` only
+  when there is **no workable file and no funded loan**. On 2026-08-20 that seat carried a
+  `self_employed` application in `processing`, created **2026-07-02**, so `/dashboard` rendered the
+  full borrower dashboard and **journey 1's core surface was unreachable on the account this charter
+  used to name for it.**
 
   **It is dev-database drift, not a repo fixture — which is why it will happen again.** `server/seed.ts`
   creates content, properties, pricing and templates and **no users and no applications**; the local
@@ -63,7 +92,9 @@ Status ledger (updated by the orchestrator after each run):
   charter already named — it had simply already fired.
 
   **If you want the seeded seat anyway** (for accumulated state — an existing lease, goal or coach
-  history a fresh account cannot have), **probe first and say which you used**:
+  history a fresh account cannot have; login is `renter@test.com` at `DEV_TEST_PASSWORD` via
+  `/test-login`, and the seat is **shared** with every other run), **probe first and say which you
+  used**:
 
   ```
   GET /api/loan-applications   →   [] ⇒ RenterHome will render.   Non-empty ⇒ it will NOT.
@@ -182,6 +213,11 @@ Status ledger (updated by the orchestrator after each run):
   file with nothing to do?); the decision surface on any outcome that is not a clean approval;
   `/loan-estimate/:id` — **ux-30 records that no borrower-reachable UI rendered the LE**, so treat
   the disclosure leg as suspect and re-date that claim before re-reporting it.
+  ⚠️ **That claim is being fixed in flight** (#596, `fix/ux-30-le-reachable-v2`, touching
+  `App.tsx`, `routeGates.ts`, `borrowerDashboard/LoanDetails.tsx`). **Check whether it has landed
+  before reporting anything here** — a walker who re-files ux-30 after the fix has filed a false
+  positive, and one who assumes the fix landed has skipped the only surface TRID delivery depends
+  on. Verify by walking to it, not by reading this line.
 - **Gate collisions**: `<Gated>` on `/apply` (`App.tsx:267`) and `prelaunchGate` on
   `POST /api/loan-applications` — under PRELAUNCH the journey terminates at the waitlist, which is
   correct. `ConsentGate` blocks the disclosure leg until e-consent. Role gates: every borrower

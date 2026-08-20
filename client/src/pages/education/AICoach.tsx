@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, coachConversationKeys } from "@/lib/queryClient";
+import { apiRequest, coachContextKeys, coachConversationKeys } from "@/lib/queryClient";
 import { clearPendingCoachQuestion, readPendingCoachQuestion } from "@/lib/pendingCoachQuestion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Composer } from "@/components/coach/Composer";
 import { CapturePanel } from "@/components/coach/CapturePanel";
 import { ConversationSidebar } from "@/components/coach/ConversationSidebar";
 import { InsightsBanner, WelcomeState } from "@/components/coach/WelcomeState";
-import { ActionPlanPanel, DocumentChecklistInline, DocumentChecklistPanel, ReadinessPanel } from "@/components/coach/panels";
+import { ActionPlanPanel, DocumentChecklistInline, DocumentChecklistPanel, ReadinessPanel, StatusPanel } from "@/components/coach/panels";
 import type {
   ActionPlanItem,
   CoachConversation,
@@ -24,8 +24,9 @@ import type {
   CoachMessage,
   CoachProfile,
   CoachUsage,
-  DocumentRequirement,
+  LoanStatusView,
 } from "@/components/coach/types";
+import type { ChecklistItemView } from "@/lib/documentChecklist";
 
 // The Homi — streaming chat (SSE via useCoachStream) with a live
 // "Pre-App Profile" capture panel. Everything the model captures through the
@@ -113,6 +114,25 @@ export default function AICoach() {
     queryKey: ["/api/coach/insights"],
   });
 
+  /**
+   * The borrower's file, from the same functions the assistant's tools read.
+   *
+   * Fetched on load rather than only mid-turn: before this, a returning
+   * borrower saw whatever the LAST turn left in the conversation row until
+   * they typed again — stale figures presented as current, on a file that may
+   * have moved days ago.
+   */
+  const { data: fileContext } = useQuery<{
+    hasApplication: boolean;
+    loanStatus: LoanStatusView;
+    documentChecklist: ChecklistItemView[];
+    checklistStats: { total: number; verified: number; uploaded: number; needed: number; rejected: number } | null;
+    tasks: unknown[];
+    readiness: CoachProfile;
+  }>({
+    queryKey: coachContextKeys.root(),
+  });
+
   const { turn, send, retry, dismissError, isBusy } = useCoachStream({
     conversationId: activeConversationId,
     onConversationId: setActiveConversationId,
@@ -192,9 +212,21 @@ export default function AICoach() {
   const activeConv = activeData?.conversation;
 
   // Live turn data overrides the persisted conversation while streaming.
-  const profile = (turn.panel.profile ?? activeConv?.financialProfile ?? null) as CoachProfile | null;
+  // The file panels read SERVER TRUTH first and fall back to nothing.
+  //
+  // They used to fall back to activeConv.documentChecklist — the legacy column
+  // the deleted set_document_checklist tool wrote. Those rows are precisely the
+  // invented ones: a docType matching no loan_condition, rendered next to an
+  // Upload button that could never clear it. Reading them again would
+  // reintroduce the bug for every borrower with history.
+  const profile = (turn.panel.profile ?? fileContext?.readiness ?? null) as CoachProfile | null;
+  const loanStatus = (turn.panel.loanStatus ?? fileContext?.loanStatus ?? null) as LoanStatusView | null;
+  const documentChecklist = (turn.panel.documentChecklist
+    ?? fileContext?.documentChecklist
+    ?? null) as ChecklistItemView[] | null;
+  // The action plan is the one panel the assistant still authors, so it keeps
+  // its conversation-scoped fallback — it belongs to the chat, not the file.
   const actionPlan = (turn.panel.actionPlan ?? activeConv?.actionPlan ?? null) as ActionPlanItem[] | null;
-  const documentChecklist = (turn.panel.documentChecklist ?? activeConv?.documentChecklist ?? null) as DocumentRequirement[] | null;
   // Application to attach a Plaid connection to — surfaced by record_intake's
   // captured events; null until the coach has saved intake this session.
   const capturedAppId = useMemo(() => {
@@ -218,6 +250,7 @@ export default function AICoach() {
 
   const sidePanelContent = (
     <div className="space-y-3" data-testid="coach-side-panel">
+      {loanStatus?.hasApplication && <StatusPanel status={loanStatus} />}
       <CapturePanel captured={turn.captured} />
       {profile && <ReadinessPanel profile={profile} />}
       {actionPlan && actionPlan.length > 0 && (
