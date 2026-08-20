@@ -1,11 +1,12 @@
 // Storage domain: Deal desk, DPA, agent pipeline access, rescue escalations, strategy sessions, accelerator, coaching, closing guarantees, homeowner profiles, refi alerts, equity snapshots.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
-import { eq, desc, and, sql, or, isNull, lte, gte } from "drizzle-orm";
+import { eq, desc, and, sql, or, isNull, lte, gte, inArray } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 
 import {
+  users,
   dealDeskThreads,
   dealDeskMessages,
   type DealDeskThread,
@@ -264,6 +265,43 @@ export class RealtorHomeownerStorage extends IdentityStorage {
   async createCoachingSession(data: InsertCoachingSession): Promise<CoachingSession> {
     const [session] = await db.insert(coachingSessions).values(data).returning();
     return session;
+  }
+
+  /**
+   * Every session still waiting on a loan officer, oldest request first, with
+   * the borrower's name resolved.
+   *
+   * Deliberately NOT scoped to one enrollment: this is the staff queue, and the
+   * borrowers it serves are aspiring owners with no loan application, so none
+   * of the application-shaped queues (getUnassignedApplications, the task
+   * engine) can see them. Ordered by the time the borrower ASKED, not the time
+   * they asked FOR — the oldest unanswered request is the one that has been
+   * waiting on us longest.
+   */
+  async getPendingCoachingSessions(
+    statuses: readonly string[],
+  ): Promise<Array<CoachingSession & { borrowerName: string; borrowerUserId: string }>> {
+    if (statuses.length === 0) return [];
+    const rows = await db
+      .select({
+        session: coachingSessions,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        userId: users.id,
+      })
+      .from(coachingSessions)
+      .innerJoin(acceleratorEnrollments, eq(coachingSessions.enrollmentId, acceleratorEnrollments.id))
+      .innerJoin(users, eq(acceleratorEnrollments.userId, users.id))
+      .where(inArray(coachingSessions.status, [...statuses]))
+      .orderBy(coachingSessions.createdAt);
+
+    return rows.map((r) => ({
+      ...r.session,
+      borrowerUserId: r.userId,
+      borrowerName:
+        [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email || "A borrower",
+    }));
   }
 
   async updateCoachingSession(id: string, data: Partial<CoachingSession>, ownerEnrollmentId?: string): Promise<CoachingSession | undefined> {

@@ -7,15 +7,29 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { format } from "date-fns";
 import { ScheduleSessionDialog } from "./ScheduleSessionDialog";
 import type { CoachingSession } from "./types";
+import { isSessionStatus, type SessionStatus } from "@shared/acceleratorProgram";
+
+// The badge is the whole honesty of this surface: "Requested" and "Confirmed"
+// are different facts, and the product used to render the first as the second.
+// Keyed off SESSION_STATUSES in shared/acceleratorProgram.ts so a status the
+// server can write always has a label here (the #247 phantom-status class).
+const SESSION_STATUS_BADGE: Record<
+  SessionStatus,
+  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
+> = {
+  requested: { label: "Requested", variant: "outline" },
+  confirmed: { label: "Confirmed", variant: "secondary" },
+  completed: { label: "Completed", variant: "default" },
+  cancelled: { label: "Cancelled", variant: "destructive" },
+  no_show: { label: "Missed", variant: "destructive" },
+};
 
 function SessionStatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-    scheduled: { label: "Scheduled", variant: "secondary" },
-    completed: { label: "Completed", variant: "default" },
-    cancelled: { label: "Cancelled", variant: "destructive" },
-    no_show: { label: "No Show", variant: "destructive" },
-  };
-  const c = config[status] || { label: status, variant: "secondary" as const };
+  // Rows created before the request → confirm split carry the old "scheduled"
+  // default. Showing the raw value is honest; inventing a label is not.
+  const c = isSessionStatus(status)
+    ? SESSION_STATUS_BADGE[status]
+    : { label: status, variant: "secondary" as const };
   return <Badge variant={c.variant} data-testid={`badge-session-status-${status}`}>{c.label}</Badge>;
 }
 
@@ -35,18 +49,18 @@ export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" />
-          Coaching Sessions
+          Sessions with your loan officer
         </h2>
         <ScheduleSessionDialog enrollmentId={enrollmentId} />
       </div>
       {/* `sessions` defaults to [], so without this branch a failed load would
-          render "No coaching sessions yet" — hiding an already-booked session
+          render "No sessions yet" — hiding a request already in flight
           behind what looks like an empty calendar (ux-01). */}
       {isError ? (
         <QueryErrorState
           error={error}
           onRetry={() => void refetch()}
-          title="We couldn't load your coaching sessions"
+          title="We couldn't load your sessions"
           data-testid="sessions-error"
         />
       ) : isLoading ? (
@@ -57,8 +71,10 @@ export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string
         <Card data-testid="card-no-sessions">
           <CardContent className="py-8 text-center">
             <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-            <p className="font-medium text-foreground">No coaching sessions yet</p>
-            <p className="text-sm text-muted-foreground mt-1">Schedule your first session to get personalized guidance.</p>
+            <p className="font-medium text-foreground">No sessions yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Ask for a time and a loan officer will confirm it with you.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -70,7 +86,7 @@ export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-foreground" data-testid={`text-session-topic-${session.id}`}>
-                        {session.topic || "Coaching Session"}
+                        {session.topic || "1:1 session"}
                       </span>
                       <SessionStatusBadge status={session.status} />
                     </div>

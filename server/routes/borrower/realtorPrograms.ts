@@ -2,15 +2,37 @@
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
 import { type IStorage } from "../../storage";
-import { isAuthenticated } from "../../auth";
+import { isAuthenticated, requireRole } from "../../auth";
 import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { firstQueryValue } from "../queryParams";
 import { routeParam } from "../../http/routeParams";
+import { z } from "zod";
 import {
   ACCELERATOR_PHASES,
+  BORROWER_CREATED_SESSION_STATUS,
+  PENDING_SESSION_STATUSES,
   deriveAcceleratorProgress,
   enrollmentProgressPatch,
+  type SessionStatus,
 } from "@shared/acceleratorProgram";
+import { notifySessionRequested } from "../../services/acceleratorSessionNotifications";
+
+/**
+ * What a borrower may send when asking for a session. Note what is NOT here:
+ * `status` and `assignedToUserId` are server-decided, and `durationMinutes`,
+ * `notes` and `actionItems` belong to the loan officer who runs the meeting.
+ * The route previously accepted the raw body, so all of those were settable by
+ * the borrower.
+ */
+const sessionRequestSchema = z.object({
+  enrollmentId: z.string().min(1),
+  scheduledAt: z.coerce
+    .date()
+    // A request for a time that has already passed is not a request. The old
+    // route accepted any datetime the browser's picker would emit.
+    .refine((d) => d.getTime() > Date.now(), { message: "Pick a time in the future." }),
+  topic: z.string().trim().max(500).optional().nullable(),
+});
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -273,20 +295,116 @@ export function registerRealtorProgramRoutes(
     }
   });
 
+  // A borrower ASKS for a 1:1 with a loan officer. They do not book one.
+  //
+  // This route used to hand `req.body` straight to the insert, so the row took
+  // the column default ("scheduled") and the UI said the session "has been
+  // scheduled" — while nothing on the staff side read the table at all. The
+  // status is now server-decided and the request is fanned out to the session
+  // desk, so a human actually learns it exists.
   app.post("/api/accelerator/coaching", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      const parsed = sessionRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Please pick a date and time in the future.",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
       const enrollment = await storage.getAcceleratorEnrollment(user.id);
-      if (!enrollment || enrollment.id !== req.body.enrollmentId) {
+      if (!enrollment || enrollment.id !== parsed.data.enrollmentId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const session = await storage.createCoachingSession(req.body);
+
+      const session = await storage.createCoachingSession({
+        enrollmentId: enrollment.id,
+        scheduledAt: parsed.data.scheduledAt,
+        topic: parsed.data.topic ?? null,
+        // Server-decided, never client-supplied: a borrower may only ever
+        // create a REQUEST. Only a loan officer moves it to "confirmed".
+        status: BORROWER_CREATED_SESSION_STATUS,
+        assignedToUserId: null,
+      });
+
+      // Fire-and-forget: a notification failure must not cost the borrower
+      // their request (leadNotifications / complaintEscalation pattern).
+      void notifySessionRequested(storage, {
+        sessionId: session.id,
+        borrowerName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "A borrower",
+        requestedFor: parsed.data.scheduledAt,
+        topic: parsed.data.topic ?? null,
+      });
+
       res.status(201).json(session);
     } catch (error) {
       console.error("Create coaching session error:", error);
       res.status(500).json({ error: "Failed to create coaching session" });
     }
   });
+
+  // The session desk: every request still waiting on a loan officer.
+  //
+  // These borrowers are aspiring owners with no loan application, so they are
+  // invisible to every application-shaped queue in the product — the intake
+  // inbox reads loan_applications, and tasks.application_id is NOT NULL. This
+  // is the only surface that can see them.
+  app.get(
+    "/api/accelerator/sessions/pending",
+    requireRole("admin", "lo", "loa"),
+    async (_req, res) => {
+      try {
+        const pending = await storage.getPendingCoachingSessions(PENDING_SESSION_STATUSES);
+        res.json({ total: pending.length, sessions: pending });
+      } catch (error) {
+        console.error("Get pending accelerator sessions error:", error);
+        res.status(500).json({ error: "Failed to get pending sessions" });
+      }
+    },
+  );
+
+  // A loan officer takes the meeting. Mirrors the intake-inbox claim
+  // (POST /api/loan-applications/:id/claim): 409 if someone else already has
+  // it, idempotent if it is already yours.
+  app.post(
+    "/api/accelerator/sessions/:id/confirm",
+    requireRole("admin", "lo", "loa"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const existing = await storage.getCoachingSessionById(routeParam(req, "id"));
+        if (!existing) {
+          return res.status(404).json({ error: "Session not found" });
+        }
+        if (existing.assignedToUserId && existing.assignedToUserId !== user.id) {
+          return res
+            .status(409)
+            .json({ error: "Another loan officer has already confirmed this session." });
+        }
+        if (!PENDING_SESSION_STATUSES.includes(existing.status as SessionStatus)) {
+          return res
+            .status(409)
+            .json({ error: `This session is already ${existing.status}.` });
+        }
+
+        const updated = await storage.updateCoachingSession(routeParam(req, "id"), {
+          status: "confirmed",
+          assignedToUserId: user.id,
+          confirmedAt: new Date(),
+        });
+
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "accelerator_session.confirmed", "coaching_session", existing.id, {
+          loanOfficerId: user.id,
+        });
+
+        res.json({ success: true, session: updated });
+      } catch (error) {
+        console.error("Confirm accelerator session error:", error);
+        res.status(500).json({ error: "Failed to confirm session" });
+      }
+    },
+  );
 
   app.put("/api/accelerator/coaching/:id", isAuthenticated, async (req, res) => {
     try {

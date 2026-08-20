@@ -23,18 +23,28 @@ export const coachingSessions = pgTable("coaching_sessions", {
   topic: varchar("topic", { length: 500 }),
   notes: text("notes"),
   actionItems: jsonb("action_items"),
+  // SESSION_STATUSES in shared/acceleratorProgram.ts is the vocabulary. The
+  // column default stays "scheduled" for the rows that predate the request →
+  // confirm split; every new borrower-created row is written as "requested",
+  // because a borrower asking for a time is not a booking (migration 0057).
   status: varchar("status", { length: 20 }).default("scheduled").notNull(),
+  /** The loan officer who accepted this session. NULL until one does. */
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  confirmedAt: timestamp("confirmed_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_coaching_sessions_enrollment").on(table.enrollmentId),
   index("idx_coaching_sessions_scheduled").on(table.scheduledAt),
+  index("idx_coaching_sessions_status").on(table.status),
+  index("idx_coaching_sessions_assigned").on(table.assignedToUserId),
 ]);
 
 export const insertCoachingSessionSchema = createInsertSchema(coachingSessions).omit({
   id: true,
   createdAt: true,
   completedAt: true,
+  confirmedAt: true,
 });
 export type InsertCoachingSession = z.infer<typeof insertCoachingSessionSchema>;
 export type CoachingSession = typeof coachingSessions.$inferSelect;

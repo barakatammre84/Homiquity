@@ -181,3 +181,45 @@ export function enrollmentProgressPatch(
 
   return Object.keys(patch).length > 0 ? patch : null;
 }
+
+// ---------------------------------------------------------------------------
+// 1:1 sessions with a loan officer
+//
+// The borrower asks for a time; a loan officer confirms it. Those are two
+// different facts and the product used to conflate them: the request was
+// written straight to `coaching_sessions` with status "scheduled" and the UI
+// said *"Coaching session has been scheduled."* — while `getCoachingSessions`
+// had exactly one reader in the whole codebase, the borrower's own page. Nobody
+// on our side ever learned the meeting existed.
+//
+// So `requested` is the only status a borrower can create, and only a loan
+// officer moves it to `confirmed`. This mirrors the intake inbox
+// (`/api/pipeline/unassigned` → claim → `assignLoanOfficer`), which already
+// solves the same problem for self-serve applicants who arrive with no LO.
+//
+// Naming: the borrower-facing word is "loan officer", never "coach" — a coach
+// is not a role this company staffs, and the person who talks to a borrower
+// about mortgage readiness is a loan officer. The TABLE and the API path keep
+// their original `coaching` names on purpose: renaming a table is a contract
+// migration, and the wire is not what a borrower reads.
+
+export const SESSION_STATUSES = [
+  /** The borrower asked. Nothing is booked yet, and the UI must not imply it is. */
+  "requested",
+  /** A loan officer accepted it and is named on the record. */
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+export type SessionStatus = (typeof SESSION_STATUSES)[number];
+
+/** The only status a borrower-created session may have. */
+export const BORROWER_CREATED_SESSION_STATUS: SessionStatus = "requested";
+
+/** Statuses that still need a loan officer to act. */
+export const PENDING_SESSION_STATUSES: readonly SessionStatus[] = ["requested"];
+
+export function isSessionStatus(value: unknown): value is SessionStatus {
+  return typeof value === "string" && (SESSION_STATUSES as readonly string[]).includes(value);
+}

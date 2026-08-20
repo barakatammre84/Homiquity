@@ -108,6 +108,7 @@ export default defineConfig({
       "tests/cockpitScoping.test.ts",
       "tests/signalEngine.test.ts",
       "tests/acceleratorProgress.test.ts",
+      "tests/acceleratorSessionRequests.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",

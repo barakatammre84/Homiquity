@@ -33,7 +33,8 @@ export function EnrollmentView() {
               Homebuyer Accelerator Program
             </h1>
             <p className="text-sm text-muted-foreground">
-              A structured coaching program that takes you from aspiring homeowner to confident buyer in 6 phases.
+              A structured six-phase plan that takes you from aspiring homeowner to confident buyer,
+              with a loan officer from our team to talk it through.
             </p>
           </div>
         </div>
@@ -46,8 +47,9 @@ export function EnrollmentView() {
             <div>
               <p className="font-semibold text-foreground">Your personalized path to homeownership</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Choose a program track below to get started. Each track includes milestone tracking,
-                coaching sessions, and financial goal monitoring tailored to your situation.
+                Choose a program track below to get started. Each track gives you milestones to work
+                through, goals to track, and 1:1 sessions with a loan officer from our team when
+                you want one. Enrolling is not an application and runs no credit check.
               </p>
             </div>
           </div>
