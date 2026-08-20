@@ -14,8 +14,9 @@ remaining inert sites are inside open PR #605 and were reported rather than race
    [#616](https://github.com/barakatammre84/Homiquity/pull/616) ("main is green, the biller is
    not"). Until it is paid, **no PR in the queue can go green**, including this run's. Local gates
    are the only evidence anyone can produce today, and this report says exactly which ones ran.
-2. **Review the branch** `claude/infallible-gould-f06a1b` (3 commits). Not merged, not
-   auto-merged (CHARTER §1b L3).
+2. **Review [PR #619](https://github.com/barakatammre84/Homiquity/pull/619)** — branch
+   `claude/infallible-gould-f06a1b`. Not merged, not auto-merged, `autoMergeRequest: null`
+   (CHARTER §1b L3, §8).
 3. **ux-26 and the GapCalculator CTA are still open and are now measured** — 5 inert controls
    across two files, both inside PR #605. Whoever lands #605 should either fix them in it or say
    plainly that a touch-target sweep does not make a control work. Detail below.
