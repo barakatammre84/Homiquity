@@ -185,6 +185,14 @@ const STEPS: UrlaStep[] = [
   },
 ];
 
+/**
+ * Sections that belong to the FILE rather than to a person: the property and
+ * loan answers are the same whichever borrower tab is open, so the application
+ * total counts them once no matter how many borrowers are on it. Every other
+ * step reads `slice`, and therefore exists once PER borrower.
+ */
+const SHARED_STEP_IDS: ReadonlySet<UrlaStepId> = new Set<UrlaStepId>(["property"]);
+
 export default function URLAForm() {
   const queryClient = useQueryClient();
   const { isLoading: authLoading } = useAuth();
@@ -558,7 +566,42 @@ export default function URLAForm() {
 
   const app = urlaData?.application || activeApplication;
   const stepContext: StepContext = { slice, otherIncomes, propertyInfo, app };
-  const completedCount = STEPS.filter((s) => s.isComplete(stepContext)).length;
+
+  // The rail's check marks are per-borrower — the "Editing for:" control above
+  // says whose, so that scope is right. The progress bar is not: it is labelled
+  // "Application progress", and counting only the ACTIVE slice made it describe
+  // a person while claiming to describe the file. With a co-borrower on the
+  // application it read "7 of 7 sections complete" while their six sections
+  // were empty, then fell to "1 of 7" the instant you switched tabs — the same
+  // file, two answers, neither of them the file's, and the higher one the lie
+  // that stops a borrower filling the rest in.
+  //
+  // So the bar counts the whole application: every per-borrower section once
+  // per borrower, the shared property section once. The numerator can then only
+  // ever rise as sections are finished; adding a co-borrower raises the
+  // denominator, which is the truth about how much work the file now needs.
+  const borrowerSeqs = hasCoBorrower ? [1, 2] : [1];
+  const applicationProgress = STEPS.reduce(
+    (acc, step) => {
+      if (SHARED_STEP_IDS.has(step.id)) {
+        acc.total += 1;
+        if (step.isComplete(stepContext)) acc.done += 1;
+        return acc;
+      }
+      for (const seq of borrowerSeqs) {
+        acc.total += 1;
+        const ctx: StepContext = {
+          slice: borrowerData[seq] ?? emptySlice(),
+          otherIncomes,
+          propertyInfo,
+          app,
+        };
+        if (step.isComplete(ctx)) acc.done += 1;
+      }
+      return acc;
+    },
+    { done: 0, total: 0 },
+  );
   const currentStep = STEPS[stepIndex];
 
   return (
@@ -589,12 +632,13 @@ export default function URLAForm() {
     >
       <div className="mb-8 space-y-2">
         <Progress
-          value={(completedCount / STEPS.length) * 100}
+          value={(applicationProgress.done / applicationProgress.total) * 100}
           className="h-1.5"
-          aria-label={`Application progress: ${completedCount} of ${STEPS.length} sections complete`}
+          aria-label={`Application progress: ${applicationProgress.done} of ${applicationProgress.total} sections complete`}
         />
         <p className="text-xs text-muted-foreground" data-testid="text-urla-progress">
-          {completedCount} of {STEPS.length} sections complete
+          {applicationProgress.done} of {applicationProgress.total} sections complete
+          {hasCoBorrower ? " — you and your co-borrower" : ""}
         </p>
       </div>
 

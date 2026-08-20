@@ -1,6 +1,11 @@
 import type { EmploymentHistory, OtherIncomeSource } from "@shared/schema";
 import type { DtiIncomePathResult } from "@shared/incomePaths";
 import { roundCents, parseFinancialNumber, isPresentFinancialNumber } from "@shared/incomePaths";
+import {
+  classifyOtherIncomeSource,
+  hasUncitedQualifyingTreatment,
+  otherIncomeTypeLabel,
+} from "@shared/incomeTypes";
 
 /**
  * Agency wage path (UAL P3) — the reconciled W-2 / wage income math, the ONE
@@ -71,11 +76,47 @@ export function computeAgencyWageIncome(input: AgencyWageInput): AgencyWageCompu
     }
   }
 
+  // Section 1e other income. Every source is still summed at exactly its declared
+  // amount — that is deliberate and unchanged. What is new is that the TYPE is now
+  // read (shared/incomeTypes.ts) so the file can say which types it is carrying at
+  // face value and why, instead of the fact being invisible.
+  //
+  // Face value is not obviously correct for several of these. A non-taxable benefit
+  // may be eligible to be grossed up, and a support payment may require documented
+  // continuance before it counts at all — the first would UNDER-state this
+  // borrower's income, the second could OVER-state it. Neither adjustment is made
+  // here, because neither has an authority document in this repo (docs/fannie-mae/
+  // carries self-employment and rental income only). No citation, no computation —
+  // the same rule that hard-blocks the DSCR and bank-statement paths. The note is
+  // how the gap reaches a human instead of silently resolving to "100%".
+  const uncitedTypes = new Set<string>();
+  const unclassifiedSources = new Set<string>();
   for (const o of input.otherIncome) {
     if (isPresentNumber(o.monthlyAmount)) {
       variable += toNum(o.monthlyAmount);
       sawLineItem = true;
+      const typeId = classifyOtherIncomeSource(o.incomeSource);
+      if (typeId === null) {
+        const raw = (o.incomeSource ?? "").trim();
+        unclassifiedSources.add(raw === "" ? "(blank)" : raw);
+      } else if (hasUncitedQualifyingTreatment(typeId)) {
+        uncitedTypes.add(otherIncomeTypeLabel(typeId));
+      }
     }
+  }
+  if (uncitedTypes.size > 0) {
+    notes.push(
+      `Other income counted at declared face value, with no cited adjustment: ${[...uncitedTypes]
+        .sort()
+        .join(", ")}. Gross-up eligibility and continuance requirements for these types have no in-repo authority, so no factor was applied in either direction — confirm the treatment before this figure reaches a lender.`,
+    );
+  }
+  if (unclassifiedSources.size > 0) {
+    notes.push(
+      `Other income of an unrecognised type counted at face value: ${[...unclassifiedSources]
+        .sort()
+        .join(", ")}. The stored value matches no entry in the Section 1e catalog, so its type could not be determined and was not guessed.`,
+    );
   }
 
   let usedLineItems = sawLineItem;

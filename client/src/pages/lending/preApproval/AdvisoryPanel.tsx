@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { type PreApprovalFormData } from "@shared/schema";
+import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 import type { MortgageRateWithProgram } from "@/types/rates";
 import { TrendingUp, Info } from "lucide-react";
 
@@ -70,7 +71,11 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
             </span>
           );
         }
-        if (stats.loanAmount > 766550) {
+        // The conforming limit has exactly one home (shared/lendingLimits.ts).
+        // This line held a hardcoded 766550 — the 2024 limit — so every borrower
+        // between $766,500 and $806,500 was told a CONFORMING loan was jumbo, and
+        // warned about credit and down payment on a product they were not taking.
+        if (stats.loanAmount > CONFORMING_LOAN_LIMIT_2026) {
           return (
             <span className="text-warning-subtle-foreground font-medium">
               Note: This loan amount enters 'Jumbo' territory, which may require a higher credit score and larger down payment.
