@@ -139,6 +139,16 @@ coherent push once — one CI cycle, one deploy, one review.
 The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
 discovered trap gets a line here in the same PR.
 
+- **A failed `git push` piped through `tail`/`head` reports SUCCESS.** A shell pipeline exits with
+  the status of its *last* command, so `git push 2>&1 | tail -20` is `0` even when the pre-push gate
+  blocked the push and nothing reached `origin`. Observed independently by two sessions on
+  2026-08-20; one only noticed because a later `git ls-remote` disagreed with what it believed it
+  had pushed. This matters more than it used to: `main` carries no required status check while
+  Actions is down, so the pre-push hook is the only gate, and this masks the one signal that it
+  fired. The hook itself is correct — verified `exit 1` against `origin/main`'s copy. Fix the
+  caller: `set -o pipefail`, read `${PIPESTATUS[0]}`, or do not pipe. **Confirm a push by what is on
+  the remote (`git rev-parse origin/<branch>`), never by an exit code.** Same family as every other
+  entry here — an operation that did not happen while the output says it did
 - **`pnpm db:push` from a worktree** drops other branches' columns on the shared dev DB, and
   `--force` also drops `sessions` (logging out every user); it is an exit-1 stub for that reason
   — [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md).
@@ -290,7 +300,19 @@ PR body (part of the §5.8 contract).
   `server/services/piiVault.ts`, `server/services/encryptionService.ts`, or any
   `shared/schema/` column holding PII.
 - **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`,
-  `server/services/accountRecovery.ts` (mints password-reset tokens).
+  `server/services/accountRecovery.ts` (mints password-reset tokens),
+  `server/services/loginLockout.ts` (per-account brute-force control).
+  *(loginLockout.ts added 2026-08-19. Same shape as the two gaps above — auth-critical
+  code that lives in `services/` rather than on one of the three paths §9 originally
+  named, so `detectTriggers(["server/services/loginLockout.ts"])` returned `[]`. It is
+  §9 for what depends on it, the way `clientIp.ts` is: `authLimiter` in `server/app.ts`
+  caps a **single IP** at 20 auth requests / 15 min, so against a **distributed**
+  credential-stuffing attacker rotating source IPs, `LOCKOUT_THRESHOLD` and the
+  exponential backoff window in this file are the **only** control still applying. A PR
+  raising the threshold or shortening the window touches nothing else, so it would have
+  merged with no security review. The trigger enumerates the two `services/` files by
+  name and must stay that way — `server/services/` as a prefix would fire on most
+  backend PRs, and a guard that over-fires teaches the next author to route around it.)*
 - **Role/permission gates** (`isAdmin`, `requireRole`, staff scoping) and per-resource
   ownership checks on borrower data.
 - **Uploads / object storage:** `server/integrations/object_storage/`, `shared/uploads.ts`.
