@@ -71,7 +71,7 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
               disabled={generateMutation.isPending}
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="touch-target gap-2"
               data-testid="button-generate-prequal-dash"
             >
               {generateMutation.isPending ? (

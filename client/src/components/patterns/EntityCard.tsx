@@ -59,7 +59,7 @@ export function EntityCard({
       >
         <p className="text-sm text-muted-foreground">{emptyPrompt}</p>
         {onStart && (
-          <Button variant="outline" size="sm" onClick={onStart}>
+          <Button variant="outline" size="sm" className="touch-target" onClick={onStart}>
             {startLabel}
           </Button>
         )}
@@ -77,7 +77,7 @@ export function EntityCard({
               {onEdit && (
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="sm" className="touch-target"
                   onClick={onEdit}
                   data-testid={`${testId}-edit`}
                 >
@@ -90,7 +90,7 @@ export function EntityCard({
                   variant="outline"
                   size="sm"
                   onClick={onDelete}
-                  className="border-destructive/40 text-destructive"
+                  className="touch-target border-destructive/40 text-destructive"
                   data-testid={`${testId}-delete`}
                 >
                   Delete
@@ -118,12 +118,12 @@ export function EntityCard({
             {(onSave || onCancel) && (
               <div className="flex items-center gap-2 pt-2">
                 {onSave && (
-                  <Button size="sm" onClick={onSave} data-testid={`${testId}-save`}>
+                  <Button size="sm" className="touch-target" onClick={onSave} data-testid={`${testId}-save`}>
                     Save
                   </Button>
                 )}
                 {onCancel && (
-                  <Button variant="ghost" size="sm" onClick={onCancel}>
+                  <Button variant="ghost" size="sm" className="touch-target" onClick={onCancel}>
                     Cancel
                   </Button>
                 )}

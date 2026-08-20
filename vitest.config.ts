@@ -203,6 +203,7 @@ export default defineConfig({
       "tests/documentFacts.test.ts",
       "tests/readinessSelfAttestation.test.ts",
       "tests/extractionReadinessWiring.test.ts",
+      "tests/extractionPersistence.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
       "tests/cpaPartners.test.ts",
@@ -228,6 +229,7 @@ export default defineConfig({
       "tests/autopilotAusFollowUps.test.ts",
       "tests/autopilotDecisionRelay.test.ts",
       "tests/autopilotConsole.test.ts",
+      "tests/autopilotStatus.test.ts",
       "tests/riskBrief.test.ts",
       "tests/sensitiveInputGuard.test.ts",
       "tests/licensedStates.test.ts",
@@ -277,6 +279,8 @@ export default defineConfig({
       "tests/vaResidualEngineParity.test.ts",
       "tests/inviteValidateAudit.test.ts",
       "tests/mutationErrorHandling.test.ts",
+      "tests/homiFileTruth.test.ts",
+      "tests/homiReadinessDerivation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

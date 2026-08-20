@@ -49,14 +49,14 @@ export default function AdverseActionNotice() {
       titleTestId="text-page-title"
       headerLead={
         <div className="flex items-center justify-between print:hidden">
-          <Button asChild variant="ghost" size="sm" data-testid="button-back-dashboard">
+          <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-back-dashboard">
             <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to dashboard
             </Link>
           </Button>
           {notices.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print-notice">
+            <Button variant="outline" size="sm" className="touch-target" onClick={() => window.print()} data-testid="button-print-notice">
               <Printer className="h-4 w-4 mr-2" />
               Print / Save PDF
             </Button>
@@ -177,10 +177,10 @@ export default function AdverseActionNotice() {
                 <p className="font-semibold text-foreground">{RECOVERY_CARD.title}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{RECOVERY_CARD.body}</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <Button asChild size="sm" data-testid="button-recovery-readiness">
+                  <Button asChild size="sm" className="touch-target" data-testid="button-recovery-readiness">
                     <Link href={RECOVERY_CARD.primaryCta.href}>{RECOVERY_CARD.primaryCta.label}</Link>
                   </Button>
-                  <Button asChild variant="outline" size="sm" data-testid="button-recovery-gap">
+                  <Button asChild variant="outline" size="sm" className="touch-target" data-testid="button-recovery-gap">
                     <Link href={RECOVERY_CARD.secondaryCta.href}>{RECOVERY_CARD.secondaryCta.label}</Link>
                   </Button>
                 </div>

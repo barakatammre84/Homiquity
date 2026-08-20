@@ -167,7 +167,7 @@ export default function Resources() {
             <Button
               key={cat.id}
               variant={activeCategory === cat.id ? "default" : "outline"}
-              size="sm"
+              size="sm" className="touch-target"
               onClick={() => setActiveCategory(cat.id)}
               data-testid={`button-category-${cat.id}`}
             >

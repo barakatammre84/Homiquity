@@ -178,11 +178,42 @@ const METRICS = [
     // Only the unambiguous case. A raw <button> can be sub-44px too, but it can
     // just as easily wrap a whole card, so it is REPORTED as a measure rather
     // than ratcheted here — a guard that cries wolf is one people learn to skip.
+    // `<Button\b[^>]*>` was WRONG and this metric was wrong with it, in both
+    // directions. A JSX opening tag routinely contains `>` inside a handler —
+    // `onClick={(e) => …}` — so the match stopped at the arrow. Where className
+    // came AFTER onClick the truncated tag never showed `touch-target` and a
+    // fixed Button counted as broken (six of those on 2026-08-19); where
+    // `size="sm"` came after the arrow the tag was skipped entirely and a real
+    // one went uncounted. Same defect the browser probe's overflow check had:
+    // a cheap regex standing in for a parse.
+    //
+    // tagEnd walks the tag tracking brace depth and quotes, so a `>` only ends
+    // it at depth 0 outside a string.
     scan: (src, rel) => {
       if (rel.startsWith(path.join("client", "src", "components", "ui"))) return 0;
+      const tagEnd = (from) => {
+        let depth = 0;
+        let quote = null;
+        for (let i = from; i < src.length; i++) {
+          const c = src[i];
+          if (quote) {
+            if (c === quote) quote = null;
+            continue;
+          }
+          if (c === '"' || c === "'" || c === "`") quote = c;
+          else if (c === "{") depth += 1;
+          else if (c === "}") depth -= 1;
+          else if (c === ">" && depth === 0) return i + 1;
+        }
+        return -1;
+      };
       let hits = 0;
-      for (const m of src.matchAll(/<Button\b[^>]*>/g)) {
-        if (/size="sm"/.test(m[0]) && !/touch-target/.test(m[0])) hits += 1;
+      for (let i = src.indexOf("<Button"); i !== -1; i = src.indexOf("<Button", i + 1)) {
+        if (/[A-Za-z0-9_]/.test(src[i + 7] || "")) continue; // <ButtonGroup> etc.
+        const end = tagEnd(i);
+        if (end === -1) continue;
+        const tag = src.slice(i, end);
+        if (/size="sm"/.test(tag) && !/touch-target/.test(tag)) hits += 1;
       }
       return hits;
     },

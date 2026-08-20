@@ -32,7 +32,7 @@ export function ScheduleSessionDialog({ enrollmentId }: { enrollmentId: string }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-schedule-session">
+        <Button size="sm" className="touch-target" data-testid="button-schedule-session">
           <Plus className="h-4 w-4 mr-1" /> Schedule Session
         </Button>
       </DialogTrigger>

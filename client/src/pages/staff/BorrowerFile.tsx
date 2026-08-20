@@ -225,7 +225,7 @@ export default function BorrowerFile() {
     <>
       <div className="flex items-center justify-between border-b bg-background px-6 py-3">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className="touch-target" asChild>
             <Link href="/staff-dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Dashboard
@@ -253,7 +253,7 @@ export default function BorrowerFile() {
           {isInternalStaffRole(user?.role || "") && (
             <Button
               variant="outline"
-              size="sm"
+              size="sm" className="touch-target"
               onClick={handleExportMismo}
               disabled={exportingMismo}
               data-testid="button-export-mismo"
@@ -262,7 +262,7 @@ export default function BorrowerFile() {
               {exportingMismo ? "Exporting…" : "Export MISMO"}
             </Button>
           )}
-          <Button size="sm" data-testid="button-generate-le">
+          <Button size="sm" className="touch-target" data-testid="button-generate-le">
             <FileText className="mr-2 h-4 w-4" />
             Generate LE
           </Button>
@@ -300,7 +300,7 @@ export default function BorrowerFile() {
                       </Badge>
                       {canVerifyFinancials && (
                         <Button
-                          size="sm"
+                          size="sm" className="touch-target"
                           variant="outline"
                           disabled={verifyFinancialsMutation.isPending}
                           onClick={() => verifyFinancialsMutation.mutate()}

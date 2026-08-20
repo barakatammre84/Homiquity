@@ -293,7 +293,7 @@ export function FinancialsTab({ applicationId }: { applicationId: string }) {
                 </div>
                 <div className="flex items-end">
                   <Button
-                    size="sm"
+                    size="sm" className="touch-target"
                     onClick={() => addCost.mutate()}
                     disabled={!amountValid || addCost.isPending}
                     data-testid="button-add-cost"

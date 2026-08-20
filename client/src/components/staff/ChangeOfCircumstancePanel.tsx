@@ -127,7 +127,7 @@ export function ChangeOfCircumstancePanel({ applicationId }: { applicationId: st
         </CardTitle>
         <Dialog open={recordOpen} onOpenChange={setRecordOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" data-testid="record-coc">
+            <Button size="sm" className="touch-target" variant="outline" data-testid="record-coc">
               Record change of circumstance
             </Button>
           </DialogTrigger>
@@ -235,7 +235,7 @@ export function ChangeOfCircumstancePanel({ applicationId }: { applicationId: st
                         />
                         <div className="flex gap-2">
                           <Button
-                            size="sm"
+                            size="sm" className="touch-target"
                             variant="outline"
                             disabled={voidMutation.isPending || voidReason.trim().length === 0}
                             onClick={() => voidMutation.mutate({ id: r.id, reason: voidReason })}
@@ -244,7 +244,7 @@ export function ChangeOfCircumstancePanel({ applicationId }: { applicationId: st
                             Void record
                           </Button>
                           <Button
-                            size="sm"
+                            size="sm" className="touch-target"
                             variant="ghost"
                             onClick={() => {
                               setVoidingId(null);
@@ -260,7 +260,7 @@ export function ChangeOfCircumstancePanel({ applicationId }: { applicationId: st
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="mt-1 h-7 px-2 text-xs"
+                        className="touch-target mt-1 h-7 px-2 text-xs"
                         onClick={() => setVoidingId(r.id)}
                         data-testid={`coc-void-${r.id}`}
                       >

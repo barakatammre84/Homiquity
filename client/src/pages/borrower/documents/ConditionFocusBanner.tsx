@@ -55,7 +55,7 @@ export function ConditionFocusBanner({
                 {(condition.requiredDocumentTypes ?? []).map((type) => (
                   <Button
                     key={type}
-                    size="sm"
+                    size="sm" className="touch-target"
                     variant="outline"
                     onClick={() => onUploadType(type)}
                     disabled={isUploading}

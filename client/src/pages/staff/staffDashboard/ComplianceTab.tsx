@@ -185,7 +185,7 @@ export function ComplianceTab({ complianceData }: { complianceData: ComplianceDa
                             {name}
                           </Badge>
                         ))}
-                      <Button size="sm" variant="outline" asChild>
+                      <Button size="sm" className="touch-target" variant="outline" asChild>
                         <Link href={`/borrower-file/${app.applicationId}`}>View</Link>
                       </Button>
                     </div>
@@ -226,7 +226,7 @@ export function ComplianceTab({ complianceData }: { complianceData: ComplianceDa
             </div>
             <Button
               variant="outline"
-              size="sm"
+              size="sm" className="touch-target"
               onClick={() => refetchRetention()}
               data-testid="button-refresh-retention"
             >

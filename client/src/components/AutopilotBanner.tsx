@@ -1,12 +1,20 @@
+import type { ReactElement } from "react";
 import { Link } from "wouter";
-import { Loader2, CheckCircle2, AlertTriangle, Send, WifiOff } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Send, WifiOff, Clock, HelpCircle } from "lucide-react";
 import type { AutopilotLiveState } from "@/hooks/useAutopilotStatus";
 import type { AutopilotStatus } from "@shared/autopilotStatus";
 
 /**
- * Borrower-facing Autopilot banner (Phase 4) — the three real-time states plus a
- * "package readiness" meter driving toward lender-ready. Broker packaging state,
- * never a credit decision; no approval language (Reg N).
+ * Borrower-facing Autopilot banner (Phase 4) — the real-time status phases plus
+ * a "package readiness" meter driving toward lender-ready. Broker packaging
+ * state, never a credit decision; no approval language (Reg N).
+ *
+ * The success treatment belongs to exactly one phase. `clean` means items were
+ * raised on this file and every one is resolved. `no_items_yet` (nothing has
+ * ever been raised) and `unavailable` (the conditions could not be read) are
+ * NOT that, and both used to render as the green "Looks good! No issues found."
+ * — an assertion that a review happened and came back empty, on files where
+ * neither was true. See shared/autopilotStatus.ts.
  *
  * Takes `live` as well as `status` because the two are not the same claim. A
  * status the SSE stream is still feeding is current; the same status after the
@@ -27,21 +35,35 @@ export function AutopilotBanner({
   const { phase, readiness, readyToSubmitToLender, outstandingConditions } = status;
   const pct = readiness.total > 0 ? Math.round((readiness.completed / readiness.total) * 100) : 0;
 
-  const tone =
-    phase === "items_needed"
-      ? {
-          wrap: "bg-warning-subtle text-warning-subtle-foreground",
-          icon: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
-        }
-      : phase === "reviewing"
-        ? {
-            wrap: "bg-primary/10 text-primary",
-            icon: <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />,
-          }
-        : {
-            wrap: "bg-success-subtle text-success-subtle-foreground",
-            icon: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
-          };
+  // Keyed by phase rather than chained, because the chain's ELSE branch was the
+  // defect: every phase that was not `items_needed` or `reviewing` — including
+  // a file nothing had been raised on, and a file whose conditions could not be
+  // read — fell through to the green check and "Looks good! No issues found."
+  // Only `clean` earns the success treatment now; the two states that know
+  // nothing get a neutral one that asserts nothing.
+  const tone: Record<AutopilotStatus["phase"], { wrap: string; icon: ReactElement }> = {
+    items_needed: {
+      wrap: "bg-warning-subtle text-warning-subtle-foreground",
+      icon: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
+    },
+    reviewing: {
+      wrap: "bg-primary/10 text-primary",
+      icon: <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />,
+    },
+    clean: {
+      wrap: "bg-success-subtle text-success-subtle-foreground",
+      icon: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
+    },
+    no_items_yet: {
+      wrap: "bg-muted text-muted-foreground",
+      icon: <Clock className="h-4 w-4" aria-hidden="true" />,
+    },
+    unavailable: {
+      wrap: "bg-muted text-muted-foreground",
+      icon: <HelpCircle className="h-4 w-4" aria-hidden="true" />,
+    },
+  };
+  const { wrap, icon } = tone[phase] ?? tone.no_items_yet;
 
   const headline =
     phase === "items_needed"
@@ -50,14 +72,15 @@ export function AutopilotBanner({
 
   return (
     <div
-      className={`rounded-xl px-4 py-3 ${tone.wrap}`}
+      className={`rounded-xl px-4 py-3 ${wrap}`}
       role="status"
       aria-live="polite"
       data-testid="autopilot-banner"
+      data-phase={phase}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm font-medium">
-          {tone.icon}
+          {icon}
           <span>{headline}</span>
         </div>
         {phase === "items_needed" && (

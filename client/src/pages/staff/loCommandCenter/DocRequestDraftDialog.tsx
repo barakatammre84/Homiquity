@@ -98,7 +98,7 @@ export function DocRequestDraftDialog({ applicationId }: { applicationId: string
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" data-testid="button-doc-request-draft">
+        <Button variant="outline" size="sm" className="touch-target" data-testid="button-doc-request-draft">
           <FileUp className="mr-1 h-4 w-4" aria-hidden="true" />
           Draft doc request
         </Button>

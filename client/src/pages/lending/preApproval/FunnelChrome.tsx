@@ -47,10 +47,10 @@ export function RestoreDraftBanner({
           <p className="text-xs text-muted-foreground">Pick up where you left off?</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button size="sm" variant="ghost" onClick={onDismiss} data-testid="button-dismiss-restore">
+          <Button size="sm" className="touch-target" variant="ghost" onClick={onDismiss} data-testid="button-dismiss-restore">
             No
           </Button>
-          <Button size="sm" onClick={onRestore} data-testid="button-restore-draft">
+          <Button size="sm" className="touch-target" onClick={onRestore} data-testid="button-restore-draft">
             Restore
           </Button>
         </div>
@@ -126,7 +126,7 @@ export function AffordabilityTeaserOverlay({
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="sm" className="touch-target"
             onClick={onDismiss}
             data-testid="button-teaser-dismiss"
           >
@@ -174,7 +174,7 @@ export function AuthGateOverlay({ onDismiss }: { onDismiss: () => void }) {
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="sm" className="touch-target"
             onClick={onDismiss}
             data-testid="button-auth-gate-dismiss"
           >

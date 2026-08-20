@@ -73,7 +73,7 @@ export default function TaskOperations() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
+            size="sm" className="touch-target"
             onClick={handleRefresh}
             data-testid="button-refresh"
           >
@@ -83,7 +83,7 @@ export default function TaskOperations() {
           {isAdmin && (
             <Button
               variant="outline"
-              size="sm"
+              size="sm" className="touch-target"
               onClick={() => runEscalationMutation.mutate()}
               disabled={runEscalationMutation.isPending}
               data-testid="button-run-escalation"

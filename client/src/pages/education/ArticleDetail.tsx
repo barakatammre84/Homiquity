@@ -132,7 +132,7 @@ export default function ArticleDetail() {
       />
       <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
             <div className="mb-8">
-              <Button asChild variant="ghost" size="sm" className="gap-1 -ml-2 mb-4" data-testid="button-back">
+              <Button asChild variant="ghost" size="sm" className="touch-target gap-1 -ml-2 mb-4" data-testid="button-back">
                 <Link href="/learn">
                   <ChevronLeft className="h-4 w-4" />
                   Back to Learning Center
@@ -180,7 +180,7 @@ export default function ArticleDetail() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1"
+                  className="touch-target gap-1"
                   onClick={handleShare}
                   data-testid="button-share"
                 >

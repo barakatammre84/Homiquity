@@ -1,3 +1,4 @@
+import type { ChecklistItemView } from "@/lib/documentChecklist";
 import {
   CheckCircle2,
   Clock,
@@ -136,9 +137,59 @@ export interface CapturedEvent {
 export interface CoachPanelState {
   profile?: CoachProfile;
   actionPlan?: ActionPlanItem[];
-  documentChecklist?: DocumentRequirement[];
+  /**
+   * The borrower's REAL checklist, as served by /document-checklist — no longer
+   * a model-authored DocumentRequirement[]. The old shape carried an invented
+   * `docType` that matched no loan_condition, so uploading against it cleared
+   * nothing while the panel said otherwise.
+   */
+  documentChecklist?: ChecklistItemView[];
+  checklistStats?: { total: number; verified: number; uploaded: number; needed: number; rejected: number };
+  loanStatus?: LoanStatusView;
+  tasks?: BorrowerTaskLike[];
   borrowerPackage?: Record<string, unknown>;
   suggestions?: string[];
+  /** Whether the last panel payload was file-derived or assistant-authored. */
+  source?: "file" | "assistant";
+}
+
+/** Borrower-safe stage snapshot (server whitelist — see coachFileTruth.ts). */
+export interface LoanStatusView {
+  hasApplication: boolean;
+  stage: {
+    status: string;
+    label: string;
+    description: string;
+    progressPercent: number;
+    phase: string;
+  } | null;
+  pipeline: {
+    daysInPipeline: number;
+    conditionsOutstanding: number;
+    conditionsTotal: number;
+    percentComplete: number;
+    targetCloseDate: string | null;
+  } | null;
+  journey: Array<{ stepId: string; lines: string[] }>;
+  nextAction: {
+    kind: string;
+    title: string;
+    description: string;
+    href: string;
+    buttonLabel: string;
+    whyNeeded?: string;
+    timeEstimate?: string;
+    count?: number;
+  } | null;
+  lastActivityAt: string | null;
+}
+
+/** The masked borrower task view; only the fields this surface renders. */
+export interface BorrowerTaskLike {
+  id: string;
+  title?: string | null;
+  borrowerDisplayText?: string | null;
+  status: string;
 }
 
 export interface CoachStreamError {

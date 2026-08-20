@@ -88,7 +88,7 @@ export function RefiAlertsSection({ profileId }: { profileId: string }) {
           <CardDescription>Get notified when refinancing could save you money</CardDescription>
         </div>
         <Button
-          size="sm"
+          size="sm" className="touch-target"
           variant="outline"
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
@@ -164,7 +164,7 @@ export function RefiAlertsSection({ profileId }: { profileId: string }) {
                     </p>
                   </div>
                   <Button
-                    size="sm"
+                    size="sm" className="touch-target"
                     variant="outline"
                     onClick={() => dismissMutation.mutate(alert.id)}
                     disabled={dismissMutation.isPending}

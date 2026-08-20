@@ -87,7 +87,7 @@ export default function RentReporting() {
         <Link href="/">
           <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
         </Link>
-        <Button asChild variant="ghost" size="sm" data-testid="button-login">
+        <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
           <Link href="/login">Sign in</Link>
         </Button>
       </header>

@@ -200,7 +200,7 @@ export default function MyLease() {
                       <div className="flex gap-2">
                         <Button
                           variant="destructive"
-                          size="sm"
+                          size="sm" className="touch-target"
                           disabled={deleteLease.isPending}
                           onClick={() => deleteLease.mutate(lease.id)}
                           data-testid={`button-confirm-delete-${lease.id}`}
@@ -209,7 +209,7 @@ export default function MyLease() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="sm" className="touch-target"
                           onClick={() => setConfirmingDelete(null)}
                           data-testid={`button-cancel-delete-${lease.id}`}
                         >
@@ -220,7 +220,7 @@ export default function MyLease() {
                   ) : (
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="sm" className="touch-target"
                       onClick={() => setConfirmingDelete(lease.id)}
                       data-testid={`button-delete-lease-${lease.id}`}
                     >

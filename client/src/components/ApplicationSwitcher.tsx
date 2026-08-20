@@ -253,7 +253,7 @@ export function ApplicationSwitcher({
                           variant="ghost"
                           size="sm"
                           onClick={(e) => handleWithdrawClick(app, e)}
-                          className="text-destructive"
+                          className="touch-target text-destructive"
                           data-testid={`button-withdraw-${app.id}`}
                         >
                           <Trash2 className="h-3 w-3" />

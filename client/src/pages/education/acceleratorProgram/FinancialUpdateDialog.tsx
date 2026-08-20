@@ -44,7 +44,7 @@ export function FinancialUpdateDialog({ enrollment }: { enrollment: AcceleratorE
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" data-testid="button-update-financials">
+        <Button variant="outline" size="sm" className="touch-target" data-testid="button-update-financials">
           <TrendingUp className="h-4 w-4 mr-1" /> Update Financials
         </Button>
       </DialogTrigger>

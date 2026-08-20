@@ -43,7 +43,7 @@ export function RiskBriefPanel({ applicationId }: { applicationId: string }) {
             )}
           </CardTitle>
           <Button
-            size="sm"
+            size="sm" className="touch-target"
             onClick={() => briefMutation.mutate()}
             disabled={briefMutation.isPending}
             data-testid="button-generate-risk-brief"
