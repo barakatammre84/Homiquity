@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| frontend-wiring-audit 2026-08-20 | `client/src/pages/lending/loanPipeline/LoanSummarySection.tsx` (NeedHelpCard's two inert CTAs) | infallible-gould-f06a1b | `claude/infallible-gould-f06a1b` | 2026-08-20T13:05Z | The borrower's loan-pipeline page ends on "Need Help? Your loan officer is here to assist" with two leaf `<Button>`s that have no `onClick`, no `asChild` and no wrapping trigger — a dead end at the one place the borrower asks for help. Wiring "Contact" to `/messages` and removing the scheduling promise the product cannot keep (no scheduler exists anywhere in the repo). |
 | directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); was stacked on #554's branch (now merged as a402bef), cut over to main — PR #556, founder merges |
 
 ## Recently released
