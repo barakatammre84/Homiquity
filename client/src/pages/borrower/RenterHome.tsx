@@ -76,7 +76,7 @@ const TOOLKIT = [
   {
     href: "/ai-coach",
     icon: Bot,
-    title: "AI Coach",
+    title: "Homi",
     description: "Ask anything — credit, savings, timelines, programs.",
     testId: "renter-tool-coach",
   },

@@ -285,6 +285,19 @@ const CHECKS = `(() => {
   for (const el of document.querySelectorAll(INTERACTIVE)) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) continue; // not rendered
+    // Not in the accessibility tree, so neither check applies: it has no
+    // accessible name BY DESIGN and no screen reader or pointer will reach it.
+    // Found 2026-08-18 on /partners, whose spam honeypot is exactly this:
+    // off-screen at -9999px, aria-hidden, tabIndex -1. Reporting it as an
+    // unnamed control invites someone to "fix" it by adding a label, which
+    // would defeat the honeypot. Third false-positive class in this check.
+    //
+    // NOTE: this whole block lives inside the CHECKS template literal. Never
+    // put a backtick in here — even in a comment. Doing exactly that shipped a
+    // syntax error to main in #594, and because scripts/ is not typechecked and
+    // nothing runs the probe in CI, the gate stayed green while every probe run
+    // crashed. Two "all pages clean" sweeps were parsed off a stack trace.
+    if (el.closest('[aria-hidden="true"]')) continue;
     if (r.height < 44 || r.width < 44) {
       smallTargets.push({
         tag: el.tagName.toLowerCase(),

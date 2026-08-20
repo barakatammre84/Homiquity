@@ -288,6 +288,8 @@ export function registerMessagingRoutes(
           });
           escalateFlaggedMessage(storage, {
             messageId: newMessage.id,
+            surface: "team_message",
+            userId: user.id,
             applicationId,
             categories: scan.categories,
           }).catch((e) => console.error("[complaints] founder escalation failed:", e));

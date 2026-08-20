@@ -72,6 +72,18 @@ run — see the caveat below.
    the affordability calculator alone, every one properly associated. Since CHARTER §10 now lets
    this output be cited as evidence, over-reporting sends people to fix what is not broken.
 
+   ⚠️ **It also ignored the accessibility tree until the same day.** Anything inside
+   `[aria-hidden="true"]` is now skipped by *both* this check and the touch-target one. The case
+   that found it: `/partners` has a spam honeypot — `absolute -left-[9999px]`, `aria-hidden`,
+   `tabIndex={-1}` — which has no accessible name **by design**. Reporting it invites someone to
+   "fix" it by adding a label, which would defeat the honeypot.
+
+   Once both were fixed, the check immediately earned its keep: the `/rates/*` family and
+   `/approval-strength` reported controls that **were** genuinely unnamed — `<Label>` with no
+   `htmlFor` beside `<Input>` with no `id`, plus an icon-only search button with no `aria-label`.
+   Fixed in #593 and after. That is the whole argument for narrowing a guard: the same check that
+   cried wolf nine times found eleven real WCAG failures once it stopped.
+
 ## What it still cannot do — and what §10 therefore still forbids claiming
 
 - **It does not measure contrast.** No colour-contrast check exists in this repo.
@@ -126,3 +138,20 @@ editing anything: the item went 313 → 288 and the page overflow cleared. Deskt
 
 **Neither `min-width: 0` on the item nor on all of its descendants fixes this** — both were tried
 and measured. The floor is the track, not the box.
+
+### The wider sweep, same day: 34 public pages
+
+**146 sites in `client/src` use `grid` with a prefixed-only template.** That number is not a defect
+count and must not be reported as one — most shrink fine, and a guard flagging all 146 would be the
+cry-wolf failure this file already records twice. **Six pages actually overflowed at 320px**, each
+confirmed by measurement and fixed: `/calculators/affordability`, `/payoff`, `/home-equity`,
+`/rent-to-own`, `/bah`, and `/approval-strength`.
+
+One overflow had a different cause worth knowing: `/find-an-agent` reached **369px** because a
+`Button` label ("Skip Search — Match Me with an Agent" plus an icon) inherits `whitespace-nowrap`
+from the Button base, giving it a 319px min-content that cannot fit the 288px available. The fix is
+`whitespace-normal` on that instance — `cn` uses `twMerge`, so the later class wins.
+
+Final state across the 34 pages walked: **no overflow, no broken images, no uncaught page errors,
+no unnamed controls.** The sub-44px touch-target counts remain (36 on `/rates`, 26 on `/`) — those
+are the 233 `subMinTouchTarget` instances #581 began ratcheting, not new findings.

@@ -22,6 +22,10 @@ doc-drift bug to fix):
 ## Sections
 
 ### Handbook — how the system is built · [`handbook/`](handbook/)
+- [FEATURE_MAP.md](handbook/FEATURE_MAP.md) — **what has actually been built**: all 41 shipped
+  feature areas, what each does, its key files, and the `hq-*-owner` agent that owns it. Also
+  records which areas have never had a feature review. Start here when the question is "does this
+  exist, and who works on it".
 - [DEVELOPER_PLAYBOOK.md](handbook/DEVELOPER_PLAYBOOK.md) — the map: where code lives, the core
   workflows, the golden rules.
 - [URLA_FORM_REFACTOR_TRAP.md](handbook/URLA_FORM_REFACTOR_TRAP.md) — why the "obviously pure"
@@ -73,6 +77,8 @@ doc-drift bug to fix):
 > The living docs above carry a **Freshness** line (`pnpm guard:docs`). Dated logs under
 > [`logs/`](logs/) deliberately do not — a log is history, not a claim about the present.
 - [SESSION_CLAIMS.md](SESSION_CLAIMS.md) — **stub.** Absorbed into [routines/REGISTER.md](routines/REGISTER.md) on 2026-08-12; retained only so existing links resolve.
+- [routines/feature-coverage/LEDGER.md](routines/feature-coverage/LEDGER.md) — per-area coverage:
+  which of the 41 built feature areas has ever been walked. Seeded with 23 of 41 at `never`.
 - [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
   clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
   · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)
@@ -99,7 +105,9 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
+- [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
+- [JOURNEYS.md](feature-review/JOURNEYS.md) — the 4 client-journey charters walked in the browser.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
 The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**
@@ -128,6 +136,19 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
   and an append-only **refusal record** of MISMO names, enumerations and edit codes that could not be
   verified against `docs/fannie-mae/` or the Loan Delivery job aid — so no later run re-derives one from
   memory. The routine owns CHARTER §1's question A on the data side (§6b).
+
+### Complex File Engine — autonomous complex-file qualification routine · [`complex-file-engine/`](complex-file-engine/)
+The daily local-fleet `/complex-file-engine` run (skill in `.claude/skills/complex-file-engine/`):
+owns the [Universal Adaptation Layer](specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md) — the multi-path
+income orchestrator, situation identification, and tax/document intelligence that let a *messy*
+borrower qualify at all. Judged on one recomputed number, never one quoted from a doc: how many real
+borrower situations the platform can qualify, correctly and citably. It **never** edits the three
+underwriting engine files and **never** changes regulated math — both are written up as proposals
+(CHARTER §6d).
+- [LEDGER.md](complex-file-engine/LEDGER.md) — the `CF-<MMDD>-<NN>` findings queue, plus two
+  append-only sections: **verified-not-a-defect** (things a run went looking for and found already
+  built — the guard against rebuilding an engine a doc calls missing) and **refusals** with the gate
+  that reopens each.
 
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
 The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.

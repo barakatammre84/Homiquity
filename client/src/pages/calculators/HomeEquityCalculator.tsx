@@ -127,7 +127,7 @@ export default function HomeEquityCalculator() {
 
         <PresalesDisclaimer className="mb-6" />
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -273,7 +273,7 @@ export default function HomeEquityCalculator() {
               </CardContent>
             </Card>
 
-            <Button size="lg" className="w-full" onClick={handleTapEquity} data-testid="button-tap-equity">
+            <Button size="lg" className="w-full whitespace-normal h-auto min-h-12 py-3" onClick={handleTapEquity} data-testid="button-tap-equity">
               {PRELAUNCH_GATED ? "Join the Waitlist" : "Explore HELOC & Cash-Out Options"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

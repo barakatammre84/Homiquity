@@ -110,6 +110,7 @@ export default function FindAnAgent() {
             </Select>
             <Button
               onClick={() => setHasSearched(true)}
+              aria-label="Search agents"
               data-testid="button-search-agents"
             >
               <Search className="w-4 h-4" />
@@ -192,7 +193,15 @@ export default function FindAnAgent() {
               Enter a city, state, or ZIP code above to discover vetted agents in your area.
               Or skip the search and let us match you directly.
             </p>
-            <Button onClick={() => handleRequestReferral()} data-testid="button-skip-search">
+            {/* whitespace-normal overrides the Button base's whitespace-nowrap
+                (cn uses twMerge, so the later class wins). This label plus its
+                icon has a min-content width of 319px, which does not fit the
+                288px available at 320px and dragged the whole page 49px wide. */}
+            <Button
+              onClick={() => handleRequestReferral()}
+              className="h-auto whitespace-normal py-2 text-center"
+              data-testid="button-skip-search"
+            >
               <Sparkles className="w-4 h-4 mr-2" />
               Skip Search — Match Me with an Agent
             </Button>

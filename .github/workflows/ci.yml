@@ -153,11 +153,72 @@ jobs:
           node-version: 24.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prod=false
+      - name: Change scope (inert docs vs code)
+        id: scope
+        # KTLO-2, measured 2026-08-20: 2,393 billable Actions minutes over 14 days,
+        # of which `gate` was 1,569 (356 runs x ~4 min after per-job round-up).
+        # 36 of the 137 commits to `main` in that window changed NOTHING but prose —
+        # routine reports, ledgers, the knowledge base — and each still paid a
+        # typecheck, 3,000 unit tests, a production build and a self-host boot.
+        #
+        # This step splits the run in two. The doc guards below (kb index, staleness,
+        # citations, §9, guard-script parse) ALWAYS run — they are ~1s combined and
+        # they are exactly what a prose change needs. Everything expensive is skipped
+        # when nothing but inert prose changed, which turns a ~4-minute billed run
+        # into a ~1-minute one.
+        #
+        # 🚨 IT FAILS CLOSED, AND THAT ORDERING IS THE WHOLE SAFETY ARGUMENT. The cost
+        # of a wrong `code=false` is a COMPLETELY UNGATED PR, so every uncertainty —
+        # an empty diff, a missing sha, a git failure — resolves to `code=true`. Only
+        # an affirmative, fully-classified all-prose diff turns the heavy steps off.
+        #
+        # 🚨 "INERT" IS NOT THE SAME AS ".md". `tests/scenarioCatalog.test.ts` reads
+        # knowledge-base/compliance/UNDERWRITING_SCENARIOS.md from disk, so editing
+        # that file CAN red the unit tests and it must stay on the code path. Any doc
+        # a test reads is test-bearing, not inert. That coupling is not left to
+        # memory: tests/ciTriggers.test.ts scans tests/ for .md reads and fails if one
+        # is missing from TEST_BEARING below — so adding a new doc-reading test
+        # without listing it here turns the suite red rather than silently skipping it.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Prose that no test and no guard-with-a-ratchet depends on.
+          DOCS_RE: '(\.md|\.txt)$|^knowledge-base/|^docs/'
+          # Docs a test reads from disk — changing one can red the suite, so it is code.
+          TEST_BEARING_RE: '^knowledge-base/compliance/UNDERWRITING_SCENARIOS\.md$'
+        run: |
+          set -uo pipefail
+          decide() { echo "code=$1" >> "$GITHUB_OUTPUT"; echo "scope: code=$1 ($2)"; }
+
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+            decide true "no base/head sha on the event — cannot classify, so: code"; exit 0
+          fi
+          changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA" 2>/dev/null || true)"
+          if [ -z "$changed" ]; then
+            decide true "diff did not compute or is empty — cannot classify, so: code"; exit 0
+          fi
+
+          echo "--- changed files ---"; printf '%s\n' "$changed" | sed 's/^/  /'
+          nondoc="$(printf '%s\n' "$changed" | grep -vE "$DOCS_RE" || true)"
+          bearing="$(printf '%s\n' "$changed" | grep -E "$TEST_BEARING_RE" || true)"
+
+          if [ -n "$nondoc" ]; then
+            echo "--- non-doc files present ---"; printf '%s\n' "$nondoc" | sed 's/^/  /'
+            decide true "at least one non-doc file changed"
+          elif [ -n "$bearing" ]; then
+            echo "--- test-bearing docs changed ---"; printf '%s\n' "$bearing" | sed 's/^/  /'
+            decide true "a doc that a test reads from disk changed"
+          else
+            decide false "every changed file is inert prose"
+          fi
       - name: Typecheck
+        if: steps.scope.outputs.code == 'true'
         run: pnpm check
       - name: Unit tests
+        if: steps.scope.outputs.code == 'true'
         run: pnpm test
       - name: Dependency vulnerabilities (prod deps, high+)
+        if: steps.scope.outputs.code == 'true'
         # Blocking scan — vulnerability-management program in
         # knowledge-base/governance/security/INFORMATION_SECURITY_POLICY.md §8.
         # High/critical only; moderates stay visible via `pnpm checkup`. (The job
@@ -165,8 +226,10 @@ jobs:
         # required-check string; see the rename warning.)
         run: pnpm audit --prod --audit-level=high
       - name: Schema ↔ migration drift guard
+        if: steps.scope.outputs.code == 'true'
         run: pnpm guard:schema
       - name: Migration ledger integrity
+        if: steps.scope.outputs.code == 'true'
         # prod applies migrations/ automatically on merge, in journal `idx` order, so
         # a duplicate/missing/misnumbered entry is a production-DDL problem that only
         # surfaces after the merge button. Fails on duplicate idx or tag, a gap in the
@@ -177,6 +240,7 @@ jobs:
         # required-check string; see the rename warning.)
         run: pnpm guard:migrations
       - name: Delivery-stack freeze (F-14 channel decision)
+        if: steps.scope.outputs.code == 'true'
         # A broker never delivers to Fannie Mae — the wholesale lender is the
         # seller/servicer. While shared/businessChannel.ts says "broker", the GSE
         # delivery stack may shrink but not grow, so the channel decision is not
@@ -186,6 +250,7 @@ jobs:
         run: pnpm guard:channel
 
       - name: Design-token ratchet
+        if: steps.scope.outputs.code == 'true'
         # Raw-palette / bare-white-black counts vs scripts/design-token-baseline.json
         # (ratchet: counts may only go down). Gated 2026-07-19 — adjudication log §4
         # option 3, after the component-test lane stabilized baselines at 0/97. The
@@ -196,6 +261,7 @@ jobs:
         # string; see the rename warning.)
         run: pnpm guard:tokens
       - name: UI-standard ratchet
+        if: steps.scope.outputs.code == 'true'
         # The other half of DESIGN_SYSTEM.md: seven counts (PageShell drift, icon-registry
         # drift, nested interactive controls, raw hex, arbitrary colour values, palette
         # classes the token guard's regex cannot see, un-prefixed multi-column grids) vs
@@ -299,6 +365,7 @@ jobs:
           CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
             pnpm guard:security
       - name: Query-key convergence guard
+        if: steps.scope.outputs.code == 'true'
         # TWO checks, both behind this one script. `invalidateQueries` is the only
         # write→read feedback mechanism in the client, so a key that matches
         # nothing is a mutation that silently refreshes nothing.
@@ -321,7 +388,26 @@ jobs:
         # client/src/lib/queryClient.ts. (Job `name:` above deliberately unchanged
         # — verbatim required-check string; see the rename warning.)
         run: pnpm guard:querykeys
+      - name: Guard scripts parse
+        # `tsc` covers the app; NOTHING covered scripts/*.cjs, and none of them is
+        # executed by any other gate step. So a syntax error in a guard shipped to
+        # `main` green — #594 put a backtick inside browser-probe.cjs's CHECKS
+        # template literal, which terminated the string. Every probe run crashed
+        # from then on, and a sweep that grepped the output for defects found none
+        # in a stack trace and reported the pages CLEAN. That is the
+        # guard-with-no-artifact trap (routines/LESSONS.md 2026-08-12) reached by a
+        # new route: not a guard that never ran, a guard that could not run and
+        # whose silence was read as a pass.
+        #
+        # `node --check` is a parse, not a test: it would not catch a logic error,
+        # and it cannot see inside CHECKS (that string is evaluated in the browser,
+        # not by node). It catches exactly the class that got through, in ~1s.
+        run: |
+          set -e
+          for f in scripts/*.cjs; do node --check "$f"; done
+          echo "$(ls scripts/*.cjs | wc -l) guard script(s) parse"
       - name: Production build
+        if: steps.scope.outputs.code == 'true'
         # The gate used to prove only that the code TYPECHECKS. `tsc --noEmit` never
         # runs vite or esbuild, so a broken import, a failing vite plugin, or a
         # client-library bump that only explodes at bundle time reached `main` green
@@ -340,6 +426,7 @@ jobs:
         # verbatim required-check string; see the rename warning.)
         run: pnpm build
       - name: Client bundle-size ratchet
+        if: steps.scope.outputs.code == 'true'
         # Measures the ARTIFACT the step above just produced, so it must stay after
         # it — the guard fails loudly rather than skipping if dist/public is absent,
         # because a size guard that passes with nothing to measure is the one state
@@ -365,6 +452,7 @@ jobs:
         # — verbatim required-check string; see the rename warning.)
         run: pnpm guard:bundle
       - name: Self-host artifact boots (Railway migration path)
+        if: steps.scope.outputs.code == 'true'
         # Build success ≠ boot success (the 2026-07-17 postmortem rule, aimed at
         # the persistent-host bundle Railway actually runs). The `Production
         # build` step above produced dist/index.js; this step applies the
@@ -404,7 +492,25 @@ jobs:
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # ⏸️ PAUSED 2026-08-19 — founder direction: development is local-only until the app
+    # is fully built and debugged, and the Railway production service is being taken down.
+    # There is no prod app to migrate for, so this no longer fires on a merge to `main`.
+    #
+    # What this costs, stated plainly so nobody rediscovers it the hard way: migrations
+    # merged from now on are NOT applied anywhere. The journal in `migrations/meta/` will
+    # run ahead of the production database for as long as this stays paused, and the gap
+    # is however many migrations land in the meantime.
+    #
+    # TO RESUME when you go back to Railway — do these together, in one PR:
+    #   1. restore this line to:  github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    #   2. restore `verify-deploy`'s `if:` below,
+    #   3. FIRST run this workflow manually with dry_run=true and read the pending list —
+    #      it will be long, and a green dry-run never executes the SQL (it reconciles the
+    #      journal only), so it is not evidence the DDL will succeed,
+    #   4. re-check any contract migration in that list against real prod data before
+    #      the first apply.
+    # Manual dispatch still works throughout, so the dry-run in step 3 needs no code change.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Never run two migrations against prod at once; don't cancel one in flight.
     concurrency:
@@ -462,7 +568,17 @@ jobs:
   # ---------------------------------------------------------------------------
   verify-deploy:
     name: verify-deploy (prod is serving this commit)
-    if: github.event_name == 'push'
+    # ⏸️ PAUSED 2026-08-19 — same founder direction as `migrate-prod` above. This job polls
+    # production's /api/health for the merged commit; with the Railway service down there is
+    # nothing to poll, so it would fail on every merge to `main` and teach everyone to ignore
+    # a red check — which is the precise habit that let prod sit eight commits stale in the
+    # first place. Better paused loudly than red permanently.
+    #
+    # 🚨 RESTORE THIS BEFORE THE FIRST RAILWAY DEPLOY, not after. The failure it catches is
+    # invisible without it: a failed Railway build leaves the PREVIOUS container serving, so
+    # the site stays up, /api/health answers 200, and every other check stays green while the
+    # code you merged is not running. Restore to:  github.event_name == 'push'
+    if: false
     # 🚨 MUST NOT BLOCK THE WORKFLOW. This job and Railway's "Wait for CI"
     # setting are mutually recursive: Wait for CI holds the deploy until every
     # GitHub workflow for the commit succeeds, while this job waits for that
@@ -483,15 +599,26 @@ jobs:
     # rather than as a mysterious stale deployment.
     needs: migrate-prod
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - name: Poll /api/health until it reports this commit
         env:
           EXPECTED: ${{ github.sha }}
         run: |
-          # Railway builds + boots in ~90s; 60 x 20s = 20 min of headroom for a
+          # Railway builds + boots in ~90s; 18 x 20s = 6 min of headroom for a
           # queued build. `curl -f` keeps a 5xx from being parsed as a payload.
-          for i in $(seq 1 60); do
+          #
+          # WAS 60 x 20s = 20 min. Measured over the 14 days to 2026-08-20: 125 runs,
+          # MEDIAN 84s, and 83 of them finished inside 2 minutes. The tail is not a
+          # slow deploy — it is a deploy that never happened: 15 runs polled the full
+          # 20 minutes and then failed, which is 300 billable minutes of a runner
+          # sleeping to re-learn something it already knew at minute six. Every one of
+          # those 15 is a FAILED Railway build, and the fix for that is the runbook,
+          # not more waiting. Shortening the window makes the alarm arrive SOONER and
+          # costs nothing but the ability to wait out a >6-minute queue, which the
+          # measured distribution has never contained. If a legitimately slow build
+          # ever trips this, the recovery is unchanged and cheap: re-run the job.
+          for i in $(seq 1 18); do
             got="$(curl -sf --max-time 10 https://www.homiquity.com/api/health \
                    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit") or "")' \
                    2>/dev/null || true)"
@@ -499,10 +626,10 @@ jobs:
               echo "prod is serving $EXPECTED"
               exit 0
             fi
-            echo "attempt $i/60 — serving '${got:-<none>}', want '$EXPECTED'"
+            echo "attempt $i/18 — serving '${got:-<none>}', want '$EXPECTED'"
             sleep 20
           done
-          echo "::error::prod is NOT serving $EXPECTED after 20 minutes. The merge did not ship."
+          echo "::error::prod is NOT serving $EXPECTED after 6 minutes. The merge did not ship."
           echo "Check Railway → project Homiquity → service Homiquity → Deployments for a FAILED build."
           echo "A failed deploy leaves the previous one serving, so the site being UP is not evidence it shipped."
           exit 1

@@ -1,4 +1,4 @@
-// Storage domain: Lookup matrices, AI coach, underwriting rules DSL, policy profiles/thresholds/approval/overlays, wholesale lenders, rate sheets + products, pricing adjustments, lender offers.
+// Storage domain: Lookup matrices, Homi, underwriting rules DSL, policy profiles/thresholds/approval/overlays, wholesale lenders, rate sheets + products, pricing adjustments, lender offers.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
 import {
@@ -177,7 +177,7 @@ export class PricingPolicyStorage extends NotificationsOpsStorage {
     return updated;
   }
 
-  // AI Coach
+  // Homi
   async createCoachConversation(data: InsertCoachConversation): Promise<CoachConversation> {
     const [conv] = await db.insert(coachConversations).values(data).returning();
     return conv;

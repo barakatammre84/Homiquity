@@ -191,7 +191,7 @@ export default function MortgagePayoffCalculator() {
 
         <PresalesDisclaimer className="mb-6" />
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -375,7 +375,7 @@ export default function MortgagePayoffCalculator() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button size="lg" className="w-full" onClick={handleRefinance} data-testid="button-refinance">
+                <Button size="lg" className="w-full whitespace-normal h-auto min-h-12 py-3" onClick={handleRefinance} data-testid="button-refinance">
                   {PRELAUNCH_GATED ? "Join the Waitlist" : "Compare Refinance Options"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

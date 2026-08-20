@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getPostAuthRoute } from "@/lib/roleRoutes";
+import { getPostAuthRoute } from "@/lib/postAuthRoute";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function Login() {

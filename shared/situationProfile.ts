@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { INCOME_PATH_IDS } from "./incomePaths";
 
 /**
  * SituationProfile — the Situation Identification Engine's output (UAL P2c):
@@ -28,14 +29,13 @@ export const SITUATION_FLAG_IDS = [
 ] as const;
 export type SituationFlagId = (typeof SITUATION_FLAG_IDS)[number];
 
-export const INCOME_PATH_IDS = [
-  "agency_wage",
-  "self_employment",
-  "rental",
-  "dscr",
-  "bank_statement",
-] as const;
-export type IncomePathId = (typeof INCOME_PATH_IDS)[number];
+// Re-exported, not re-declared. This list was a second copy of the canonical
+// one in `shared/incomePaths.ts`; the two agreed by luck, and a sixth path
+// added there would have left this file's z.enum silently rejecting it — so a
+// newly-supported path would vanish from the profile that tells the LO which
+// paths apply. Re-exported BY NAME (never `export *`) to keep the client
+// bundle boundary explicit. Pinned by tests/incomeTypes.test.ts.
+export { INCOME_PATH_IDS, type IncomePathId } from "./incomePaths";
 
 const situationFlagSchema = z.object({
   id: z.enum(SITUATION_FLAG_IDS),
