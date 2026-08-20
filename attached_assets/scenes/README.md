@@ -37,3 +37,15 @@ pnpm dev          # then open the home page — the scene replaces the icon tile
 
 An unrecognised filename is ignored rather than erroring, so if a scene does not
 appear, check the id spelling against the list above first.
+
+## 🚨 Restart the dev server after adding a file
+
+Discovery happens at **build time** (`import.meta.glob({ eager: true })`). A file
+dropped into a *running* dev server does **not** hot-reload — the page keeps
+showing the icon fallback and looks like nothing happened. Stop and restart
+`pnpm dev`. Production builds pick it up automatically; this only affects local dev.
+
+Verified end to end on 2026-08-20 with a stand-in 1024x576 poster: discovered
+after restart, alt text applied, the WCAG pause control appeared, the other three
+ids correctly kept their fallback, and the image rendered 304x171 — **1.78, the
+source ratio, uncropped.**

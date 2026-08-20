@@ -166,6 +166,11 @@ attached_assets/scenes/renting_poster.png     # Tier 2 still   (required)
 attached_assets/scenes/renting.webm           # Tier 2 loop    (optional)
 ```
 
+🚨 **In local dev, restart the server after adding a file.** Discovery is a
+build-time glob, so a file dropped into a *running* `pnpm dev` does not
+hot-reload — the page keeps showing the fallback and looks like nothing
+happened. Production builds are unaffected.
+
 Valid Tier 2 ids: `renting` · `self-employed` · `owner` · `moving-up`.
 A poster with no webm renders as a still picture — **a perfectly good outcome.**
 The loop is an enhancement, never a dependency.
@@ -176,4 +181,5 @@ The loop is an enhancement, never a dependency.
 |---|---|
 | Tier 2 mechanism | **built and tested** — poster-always, video-on-intersection, pause-off-screen, omitted under reduced motion, `preload="none"`, WCAG 2.2.2 pause control |
 | Tier 1 / Tier 3 mechanism | see `spotArt.ts` — falls back to the Lucide glyph until art arrives |
-| Artwork | **none.** Until it exists the site ships Lucide glyphs and six Unsplash photos |
+| Pipeline | **proven end to end 2026-08-20** with a stand-in 1024x576 poster: discovered, alt applied, pause control appeared, other three ids kept their fallback, rendered at the source ratio uncropped |
+| Artwork | **none.** Until it exists the site ships Lucide glyphs and seven committed stock photos under `@assets/lifestyle/` |
