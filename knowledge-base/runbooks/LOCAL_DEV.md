@@ -249,6 +249,32 @@ set -a; source .env; set +a
 TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 ```
 
+### Checking the AI assistant's tool use — the one thing `pnpm test` cannot
+
+`pnpm test` proves the assistant's server-truth tools *return* the right data. It
+cannot prove the model *calls* them, because without `ANTHROPIC_API_KEY` the coach
+runs in offline mode: a canned reply, no model call, no tool invocation. That gap
+matters more than it sounds. A tool the model never calls is, from the borrower's
+seat, identical to a tool that does not exist — and the failure is silent and
+confident, because the assistant just answers from memory the way it always did.
+
+```bash
+pnpm coach:tools
+```
+
+Runs the exact production prompt and tool set against fixture turns and scores four
+properties: **trigger** (a file question calls the tool), **restraint** (a general
+question does not — a wasted tool call burns the turn's single round-trip),
+**grounding** (the reply repeats the tool's figures and invents no others), and
+**honest gap** (when the tool reports the file is unreadable, the reply says so
+instead of answering anyway).
+
+Needs a live `ANTHROPIC_API_KEY` in `.env`. It is a developer check, **not a CI
+gate** — model behaviour is not deterministic, so a red result is a prompt bug to
+investigate, never a build to block. Add `--verbose` to read the replies, or
+`--model=claude-haiku-4-5` to compare tiers (Haiku 4.5 rejects `output_config.effort`,
+which the script handles).
+
 ### Run the gate locally — one-time setup, and why it saves money
 
 ```bash

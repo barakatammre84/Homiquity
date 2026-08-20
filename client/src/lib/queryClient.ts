@@ -283,6 +283,16 @@ export const coachConversationKeys = {
   detail: (id: string) => ["/api/coach/conversations", id] as const,
 };
 
+/**
+ * The borrower's file as the assistant reads it — stage, the real document
+ * checklist, tasks, readiness. Separate from the conversation keys because it
+ * is keyed on the FILE, not on a chat: it must stay correct when the borrower
+ * switches conversations, and it must invalidate when a document is uploaded.
+ */
+export const coachContextKeys = {
+  root: () => ["/api/coach/context"] as const,
+};
+
 export const onboardingStatusKeys = {
   root: () => ["/api/onboarding/status"] as const,
 };
