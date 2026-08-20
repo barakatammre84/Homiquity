@@ -166,7 +166,7 @@ export function PreApprovalLetterCard({
                 onOpenChange={(o) => setRevokeDialog((prev) => ({ ...prev, open: o }))}
               >
                 <DialogTrigger asChild>
-                  <Button variant="destructive" size="sm" data-testid="button-revoke-letter">
+                  <Button variant="destructive" size="sm" className="touch-target" data-testid="button-revoke-letter">
                     <Icons.reject className={`${iconSize.inline} mr-2`} />
                     Revoke letter
                   </Button>

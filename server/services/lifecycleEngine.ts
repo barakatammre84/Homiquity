@@ -413,11 +413,32 @@ async function sweepMissingConditionDocuments(counters: SweepResult): Promise<vo
   }
 }
 
-async function sweepProfile(
+/**
+ * The homeowner's current position: refreshed value, aged balance, and the
+ * equity figures both the snapshot and the refi check are derived from.
+ *
+ * `null` means the profile does not carry enough to say anything — no property
+ * value, or no balance and nothing to age one from. That is a gap to report,
+ * never a zero to display.
+ */
+export interface HomeownerPosition {
+  estimatedValue: number;
+  balance: number;
+  /** The homeowner's note rate, or NaN when the profile does not carry one. */
+  rate: number;
+  equityAmount: number;
+  equityPercent: number;
+  ltv: number;
+}
+
+/**
+ * Resolve the position once. Shared by the daily sweep and by the Hub's own
+ * "Record snapshot" / "Check rates" actions, so a homeowner pressing a button
+ * gets the same derivation the cron would have given them.
+ */
+export async function resolveHomeownerPosition(
   profile: HomeownerProfile,
-  marketRate: number | null,
-  counters: SweepResult,
-): Promise<void> {
+): Promise<HomeownerPosition | null> {
   // --- Value: AVM refresh (simulated until a contract lands) ---------------
   let estimatedValue = toNum(profile.propertyValue);
   if (profile.propertyAddress) {
@@ -439,11 +460,29 @@ async function sweepProfile(
     );
     balance = estimateRemainingBalance(originalAmount, rate, monthsElapsed);
   }
-  if (isNaN(estimatedValue) || estimatedValue <= 0 || isNaN(balance)) return;
+  if (isNaN(estimatedValue) || estimatedValue <= 0 || isNaN(balance)) return null;
 
   const equityAmount = estimatedValue - balance;
   const equityPercent = (equityAmount / estimatedValue) * 100;
   const ltv = (balance / estimatedValue) * 100;
+
+  return { estimatedValue, balance, rate, equityAmount, equityPercent, ltv };
+}
+
+/** What actually happened, so a caller never reports a write that did not occur. */
+export type EquitySnapshotOutcome =
+  | { created: true; pmiAlert: boolean }
+  | { created: false; reason: "already-recorded-today" };
+
+/**
+ * Record today's equity snapshot, at most one per profile per day, and raise the
+ * PMI-removal signal when this snapshot is the one that crosses 80% LTV.
+ */
+export async function recordEquitySnapshot(
+  profile: HomeownerProfile,
+  position: HomeownerPosition,
+): Promise<EquitySnapshotOutcome> {
+  const { estimatedValue, balance, equityAmount, equityPercent, ltv } = position;
 
   // --- Snapshot (idempotent: at most one per profile per day) --------------
   const startOfDay = new Date();
@@ -458,7 +497,7 @@ async function sweepProfile(
       ),
     )
     .limit(1);
-  if (todays) return;
+  if (todays) return { created: false, reason: "already-recorded-today" };
 
   // Previous snapshot BEFORE inserting — needed for threshold-crossing checks.
   const [previous] = await db
@@ -477,7 +516,6 @@ async function sweepProfile(
     equityAmount: equityAmount.toFixed(2),
     equityPercent: equityPercent.toFixed(2),
   });
-  counters.snapshotsCreated += 1;
 
   // --- Signal: 80% LTV crossed → PMI removal may be available --------------
   const crossedThreshold =
@@ -493,8 +531,35 @@ async function sweepProfile(
       entityId: profile.id,
       metadata: { ltv: Number(ltv.toFixed(2)), estimatedValue, balance },
     });
-    counters.pmiAlerts += 1;
   }
+
+  return { created: true, pmiAlert: crossedThreshold };
+}
+
+/** Why no alert was raised — every branch names itself, so nothing reports a silent success. */
+export type RefiOpportunityOutcome =
+  | { created: true; currentRate: number; marketRate: number; monthlySavings: number }
+  | {
+      created: false;
+      reason:
+        | "clawback-window"
+        | "no-market-rate"
+        | "no-note-rate"
+        | "rate-not-lower"
+        | "open-alert-exists";
+    };
+
+/**
+ * Raise a refi alert when the market rate has moved far enough below the
+ * homeowner's note rate, subject to the EPO clawback guard and the open-alert
+ * de-dup. The savings math is `computeRefiSavings` unchanged.
+ */
+export async function evaluateRefiOpportunity(
+  profile: HomeownerProfile,
+  position: HomeownerPosition,
+  marketRate: number | null,
+): Promise<RefiOpportunityOutcome> {
+  const { balance, rate } = position;
 
   // --- Signal: market rate ≥25bps below the homeowner's rate → refi alert --
   //
@@ -509,55 +574,89 @@ async function sweepProfile(
   // commission.
   const clawback = await resolveClawbackForHomeowner(profile);
   if (clawback.atRisk) {
-    counters.refiAlertsSuppressedByClawback += 1;
+    return { created: false, reason: "clawback-window" };
+  }
+  if (marketRate === null) return { created: false, reason: "no-market-rate" };
+  if (isNaN(rate)) return { created: false, reason: "no-note-rate" };
+  if (marketRate > rate - REFI_ALERT_RATE_DROP) {
+    return { created: false, reason: "rate-not-lower" };
   }
 
-  if (!clawback.atRisk && marketRate !== null && !isNaN(rate) && marketRate <= rate - REFI_ALERT_RATE_DROP) {
-    const [openAlert] = await db
-      .select({ id: refiAlerts.id })
-      .from(refiAlerts)
-      .where(
-        and(
-          eq(refiAlerts.homeownerProfileId, profile.id),
-          eq(refiAlerts.isDismissed, false),
-          sql`${refiAlerts.marketRate} <= ${marketRate.toFixed(3)}`,
-        ),
-      )
-      .limit(1);
-    if (!openAlert) {
-      // Lifetime projection runs over the borrower's REMAINING term, not a
-      // fresh 360 months (see computeRefiSavings) — seasoned loans must not
-      // get inflated lifetime-savings claims.
-      const monthsElapsed = profile.loanCloseDate
-        ? Math.max(0, Math.floor((Date.now() - new Date(profile.loanCloseDate).getTime()) / (30.44 * 24 * 3600 * 1000)))
-        : 0;
-      const remainingMonths = Math.max(360 - monthsElapsed, 1);
-      const savings = computeRefiSavings(balance, rate, marketRate, 360, remainingMonths);
-      await db.insert(refiAlerts).values({
-        homeownerProfileId: profile.id,
-        currentRate: rate.toFixed(3),
-        marketRate: marketRate.toFixed(3),
-        potentialSavingsMonthly: savings.monthlySavings.toFixed(2),
-        potentialSavingsLifetime: savings.lifetimeSavings.toFixed(2),
-        isActionable: true,
-      });
-      // Savings claims stay estimates with the material caveats attached
-      // (closing costs, qualification) — factual market data, no promises.
-      await storage.createNotification({
-        userId: profile.userId,
-        type: "refi_opportunity",
-        title: "Rates dipped below your mortgage rate",
-        body:
-          `30-year rates in our system are at ${marketRate.toFixed(3)}% — ${(rate - marketRate).toFixed(2)} points below your ${rate.toFixed(3)}%. ` +
-          `Refinancing your remaining balance could lower your payment by an estimated $${Math.round(savings.monthlySavings).toLocaleString()}/month, ` +
-          `before closing costs and subject to credit approval. See your Homeowner Hub for the full breakdown.`,
-        entityType: "homeowner_profile",
-        entityId: profile.id,
-        metadata: { currentRate: rate, marketRate, monthlySavings: Math.round(savings.monthlySavings), remainingMonths },
-      });
-      counters.refiAlertsCreated += 1;
-    }
-  }
+  const [openAlert] = await db
+    .select({ id: refiAlerts.id })
+    .from(refiAlerts)
+    .where(
+      and(
+        eq(refiAlerts.homeownerProfileId, profile.id),
+        eq(refiAlerts.isDismissed, false),
+        sql`${refiAlerts.marketRate} <= ${marketRate.toFixed(3)}`,
+      ),
+    )
+    .limit(1);
+  if (openAlert) return { created: false, reason: "open-alert-exists" };
+
+  // Lifetime projection runs over the borrower's REMAINING term, not a
+  // fresh 360 months (see computeRefiSavings) — seasoned loans must not
+  // get inflated lifetime-savings claims.
+  const monthsElapsed = profile.loanCloseDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(profile.loanCloseDate).getTime()) / (30.44 * 24 * 3600 * 1000)))
+    : 0;
+  const remainingMonths = Math.max(360 - monthsElapsed, 1);
+  const savings = computeRefiSavings(balance, rate, marketRate, 360, remainingMonths);
+  await db.insert(refiAlerts).values({
+    homeownerProfileId: profile.id,
+    currentRate: rate.toFixed(3),
+    marketRate: marketRate.toFixed(3),
+    potentialSavingsMonthly: savings.monthlySavings.toFixed(2),
+    potentialSavingsLifetime: savings.lifetimeSavings.toFixed(2),
+    isActionable: true,
+  });
+  // Savings claims stay estimates with the material caveats attached
+  // (closing costs, qualification) — factual market data, no promises.
+  await storage.createNotification({
+    userId: profile.userId,
+    type: "refi_opportunity",
+    title: "Rates dipped below your mortgage rate",
+    body:
+      `30-year rates in our system are at ${marketRate.toFixed(3)}% — ${(rate - marketRate).toFixed(2)} points below your ${rate.toFixed(3)}%. ` +
+      `Refinancing your remaining balance could lower your payment by an estimated $${Math.round(savings.monthlySavings).toLocaleString()}/month, ` +
+      `before closing costs and subject to credit approval. See your Homeowner Hub for the full breakdown.`,
+    entityType: "homeowner_profile",
+    entityId: profile.id,
+    metadata: { currentRate: rate, marketRate, monthlySavings: Math.round(savings.monthlySavings), remainingMonths },
+  });
+  return {
+    created: true,
+    currentRate: rate,
+    marketRate,
+    monthlySavings: savings.monthlySavings,
+  };
+}
+
+/**
+ * One profile's leg of the daily sweep.
+ *
+ * Sequencing is unchanged from before the legs were extracted: a profile whose
+ * snapshot already exists for today is skipped entirely, refi check included.
+ * The Hub's buttons call the legs directly instead, so a homeowner can check
+ * rates on a day a snapshot has already been taken.
+ */
+async function sweepProfile(
+  profile: HomeownerProfile,
+  marketRate: number | null,
+  counters: SweepResult,
+): Promise<void> {
+  const position = await resolveHomeownerPosition(profile);
+  if (!position) return;
+
+  const snapshot = await recordEquitySnapshot(profile, position);
+  if (!snapshot.created) return;
+  counters.snapshotsCreated += 1;
+  if (snapshot.pmiAlert) counters.pmiAlerts += 1;
+
+  const refi = await evaluateRefiOpportunity(profile, position, marketRate);
+  if (refi.created) counters.refiAlertsCreated += 1;
+  else if (refi.reason === "clawback-window") counters.refiAlertsSuppressedByClawback += 1;
 }
 
 /** The daily sweep. Safe to run repeatedly — every write path is idempotent. */

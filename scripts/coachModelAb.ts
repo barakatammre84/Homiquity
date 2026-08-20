@@ -37,9 +37,11 @@ import { COACH_AB_SAMPLES, type CoachSample } from "../tests/fixtures/coachAbSam
  * unconditionally, so "switch the coach to Haiku" is not a one-line model swap.
  */
 
-// Mirror production request knobs (coachingService.ts).
-const MAX_MODEL_CALLS_PER_TURN = 2;
-const MAX_COMPLETION_TOKENS = 2_048;
+// Mirror production request knobs. Imported, not copied: this file hardcoded
+// MAX_MODEL_CALLS_PER_TURN = 2 and silently kept using it after production
+// moved to 4, which would have made every A/B result a measurement of a
+// configuration that no longer ships.
+import { MAX_MODEL_CALLS_PER_TURN, MAX_COMPLETION_TOKENS } from "../server/services/coachingClient";
 const PER_CALL_TIMEOUT_MS = 15_000;
 
 interface ModelSpec {

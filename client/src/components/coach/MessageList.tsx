@@ -70,7 +70,7 @@ export function MessageList({
             </div>
             <div className="flex gap-1 shrink-0">
               {turn.error.retryable && (
-                <Button variant="outline" size="sm" className="text-xs gap-1" onClick={onRetry} data-testid="button-retry-turn">
+                <Button variant="outline" size="sm" className="touch-target text-xs gap-1" onClick={onRetry} data-testid="button-retry-turn">
                   <RefreshCw className="h-3 w-3" />
                   Retry
                 </Button>

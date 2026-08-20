@@ -6,6 +6,14 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { isStaffRole } from "@shared/schema";
 import { routeParam } from "../../http/routeParams";
+import { parseBodyOr400 } from "../validate";
+import { homeownerProfileWriteSchema } from "./homeownerProfilePayload";
+import {
+  evaluateRefiOpportunity,
+  getMarketRate30YrFixed,
+  recordEquitySnapshot,
+  resolveHomeownerPosition,
+} from "../../services/lifecycleEngine";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -133,8 +141,13 @@ export function registerGuaranteeHomeownerRoutes(
 
   app.post("/api/homeowner/profile", isAuthenticated, async (req, res) => {
     try {
+      // The setup form posts every control it renders, so the ones the owner left
+      // alone arrive as "". Validating here is what keeps a blank date out of the
+      // driver — it used to reach Drizzle and 500 for every first-time owner.
+      const data = parseBodyOr400(homeownerProfileWriteSchema, req.body, res);
+      if (data === undefined) return;
       const profile = await storage.createHomeownerProfile({
-        ...req.body,
+        ...data,
         userId: req.user!.id,
       });
       res.status(201).json(profile);
@@ -150,7 +163,11 @@ export function registerGuaranteeHomeownerRoutes(
       if (!profile || profile.id !== routeParam(req, "id")) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const updated = await storage.updateHomeownerProfile(routeParam(req, "id"), req.body);
+      // Same validation as the create path: the annual-review action sends
+      // `nextReviewDate` as a date string, which Drizzle cannot map on its own.
+      const data = parseBodyOr400(homeownerProfileWriteSchema.partial(), req.body, res);
+      if (data === undefined) return;
+      const updated = await storage.updateHomeownerProfile(routeParam(req, "id"), data);
       if (!updated) {
         return res.status(404).json({ error: "Homeowner profile not found" });
       }
@@ -175,14 +192,28 @@ export function registerGuaranteeHomeownerRoutes(
     }
   });
 
+  // "Check rates" runs the same refi evaluation the daily sweep runs — including
+  // the EPO clawback suppression and the open-alert de-dup, which a client-built
+  // alert would have bypassed. The rates and the savings figures are derived
+  // server-side; the caller supplies nothing, so no borrower-facing savings claim
+  // can be composed from the wire.
   app.post("/api/homeowner/refi-alerts", isAuthenticated, async (req, res) => {
     try {
       const profile = await storage.getHomeownerProfile(req.user!.id);
-      if (!profile || profile.id !== req.body.homeownerProfileId) {
+      if (!profile) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const alert = await storage.createRefiAlert(req.body);
-      res.status(201).json(alert);
+      const position = await resolveHomeownerPosition(profile);
+      if (!position) {
+        return res.status(409).json({
+          error:
+            "We need your property value and your loan balance before we can compare your rate to the market. Add them in Quick Actions and try again.",
+          reason: "incomplete-profile",
+        });
+      }
+      const marketRate = await getMarketRate30YrFixed();
+      const outcome = await evaluateRefiOpportunity(profile, position, marketRate);
+      res.status(outcome.created ? 201 : 200).json(outcome);
     } catch (error) {
       console.error("Create refi alert error:", error);
       res.status(500).json({ error: "Failed to create refi alert" });
@@ -227,15 +258,30 @@ export function registerGuaranteeHomeownerRoutes(
     }
   });
 
+  // "Record snapshot" runs the same derivation the daily lifecycle sweep runs,
+  // scoped to the caller's own profile. It deliberately takes no body: an equity
+  // snapshot is a measurement of the file, not something an owner types in, and
+  // the previous handler inserted whatever it was given — which for the Hub's own
+  // button was nothing at all, so the NOT NULL snapshot_date blew up in the
+  // driver and every press returned 500.
   app.post("/api/homeowner/equity", isAuthenticated, async (req, res) => {
     try {
       const profile = await storage.getHomeownerProfile(req.user!.id);
       if (!profile) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      // Override any caller-supplied homeownerProfileId with the authenticated user's own profile
-      const snapshot = await storage.createEquitySnapshot({ ...req.body, homeownerProfileId: profile.id });
-      res.status(201).json(snapshot);
+      const position = await resolveHomeownerPosition(profile);
+      if (!position) {
+        return res.status(409).json({
+          error:
+            "We need your property value and your loan balance before we can measure your equity. Add them in Quick Actions and try again.",
+          reason: "incomplete-profile",
+        });
+      }
+      const outcome = await recordEquitySnapshot(profile, position);
+      // 200 rather than 201 when nothing was written — the Hub reports what
+      // actually happened instead of an unconditional "Snapshot recorded".
+      res.status(outcome.created ? 201 : 200).json(outcome);
     } catch (error) {
       console.error("Create equity snapshot error:", error);
       res.status(500).json({ error: "Failed to create equity snapshot" });

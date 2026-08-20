@@ -197,7 +197,7 @@ export default function LoanEstimate() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
+          <Button variant="outline" size="sm" className="touch-target" onClick={() => window.print()} data-testid="button-print">
             <Printer className="mr-2 h-4 w-4" />
             Print
           </Button>
@@ -214,7 +214,7 @@ export default function LoanEstimate() {
             and compare it against their Closing Disclosure.
           */}
           <Button
-            size="sm"
+            size="sm" className="touch-target"
             disabled
             title="Not available yet — use Print, and choose “Save as PDF”."
             data-testid="button-download"

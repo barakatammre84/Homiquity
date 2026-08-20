@@ -337,7 +337,7 @@ export default function Tasks() {
                                 )}
                               </div>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 onClick={() => openUploadDialog(task)}
                                 data-testid={`button-reupload-${task.id}`}
                               >
@@ -392,7 +392,7 @@ export default function Tasks() {
                                 </div>
                               </div>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 variant="outline"
                                 onClick={() => openUploadDialog(task)}
                                 data-testid={`button-upload-${task.id}`}
@@ -449,7 +449,7 @@ export default function Tasks() {
                               </div>
                               {task.taskType === "document_request" && (
                                 <Button
-                                  size="sm"
+                                  size="sm" className="touch-target"
                                   onClick={() => openUploadDialog(task)}
                                   data-testid={`button-upload-${task.id}`}
                                 >

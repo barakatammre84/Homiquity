@@ -190,7 +190,7 @@ export default function AgentDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle>My Listings</CardTitle>
-                <Button asChild size="sm" className="gap-2">
+                <Button asChild size="sm" className="touch-target gap-2">
                   <Link href="/property/new">
                     <Plus className="h-4 w-4" />
                     New Listing
@@ -241,13 +241,13 @@ export default function AgentDashboard() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button asChild variant="outline" size="sm" className="gap-1">
+                          <Button asChild variant="outline" size="sm" className="touch-target gap-1">
                             <Link href={`/property/${property.id}`}>
                               <Eye className="h-4 w-4" />
                               View
                             </Link>
                           </Button>
-                          <Button asChild variant="outline" size="sm" className="gap-1">
+                          <Button asChild variant="outline" size="sm" className="touch-target gap-1">
                             <Link href={`/property/${property.id}/edit`}>
                               <Edit className="h-4 w-4" />
                               Edit
@@ -256,7 +256,7 @@ export default function AgentDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="gap-1 text-destructive"
+                            className="touch-target gap-1 text-destructive"
                             onClick={() => deleteListingMutation.mutate(property.id)}
                             disabled={deleteListingMutation.isPending}
                           >

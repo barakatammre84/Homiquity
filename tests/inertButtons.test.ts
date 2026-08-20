@@ -47,7 +47,7 @@ const CLIENT_SRC = join(REPO_ROOT, "client", "src");
  * it: `button-generate-le` is ux-0818-01 (its own worked example, below), the
  * four ApplicationSummary CTAs are ux-26, and the policyOps console is ux-25.
  */
-const BASELINE_INERT = 37;
+const BASELINE_INERT = 35; // 37 -> 35: PR #619 wired NeedHelpCard Contact and removed the unkeepable Schedule Call
 
 /** Anything that makes a child Button actionable by wrapping it. */
 const WRAPPER = /<(Link|a|\w*Trigger)\b/;

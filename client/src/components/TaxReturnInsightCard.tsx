@@ -266,7 +266,7 @@ export function TaxReturnInsightCard() {
             </label>
             <div className="flex gap-2">
               <Button
-                size="sm"
+                size="sm" className="touch-target"
                 disabled={!consentChecked || !template || busy}
                 onClick={() => recordConsent.mutate()}
                 data-testid="button-tax-consent-agree"
@@ -275,7 +275,7 @@ export function TaxReturnInsightCard() {
                 Agree & continue
               </Button>
               <Button
-                size="sm"
+                size="sm" className="touch-target"
                 variant="ghost"
                 disabled={busy}
                 onClick={() => {
@@ -328,7 +328,7 @@ export function TaxReturnInsightCard() {
               )}
             </div>
             <Button
-              size="sm"
+              size="sm" className="touch-target"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               data-testid="button-tax-reupload"
@@ -343,7 +343,7 @@ export function TaxReturnInsightCard() {
               We couldn't read your return clearly. A sharper scan or the original PDF usually fixes
               this.
             </p>
-            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Button size="sm" className="touch-target" variant="outline" onClick={() => fileInputRef.current?.click()}>
               <FileUp className="mr-1 h-3.5 w-3.5" />
               Try a clearer copy
             </Button>
@@ -355,7 +355,7 @@ export function TaxReturnInsightCard() {
               signals, self-employment history, and rental property income, read securely in
               seconds.
             </p>
-            <Button size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-tax-upload">
+            <Button size="sm" className="touch-target" onClick={() => fileInputRef.current?.click()} data-testid="button-tax-upload">
               <FileUp className="mr-1 h-3.5 w-3.5" />
               Add last year's tax return
             </Button>
@@ -371,7 +371,7 @@ export function TaxReturnInsightCard() {
               </p>
               <div className="flex gap-2">
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant="destructive"
                   disabled={revoke.isPending}
                   onClick={() => revoke.mutate()}
@@ -381,7 +381,7 @@ export function TaxReturnInsightCard() {
                   Revoke authorization
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant="ghost"
                   disabled={revoke.isPending}
                   onClick={() => setConfirmingRevoke(false)}

@@ -61,7 +61,7 @@ export function DocumentRequestCard({
                 requestMessageId={messageId}
                 confirmToRecipientId={partnerId}
                 trigger={
-                  <Button size="sm" className="w-full mt-2" data-testid="button-upload-doc">
+                  <Button size="sm" className="touch-target w-full mt-2" data-testid="button-upload-doc">
                     <Upload className="h-4 w-4 mr-2" />
                     {data.status === "rejected" ? "Re-upload Document" : "Upload Document"}
                   </Button>

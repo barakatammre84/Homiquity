@@ -197,7 +197,7 @@ export default function AdminPartnerWaitlist({ embedded = false }: { embedded?: 
                           </span>
                         ) : (
                           <Button
-                            size="sm"
+                            size="sm" className="touch-target"
                             variant="outline"
                             disabled={invite.isPending}
                             onClick={() => invite.mutate(r.id)}

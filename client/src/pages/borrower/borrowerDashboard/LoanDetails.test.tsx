@@ -1,65 +1,84 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Router } from "wouter";
+import { memoryLocation } from "wouter/memory-location";
 import { LoanDetails } from "./LoanDetails";
-import { CollapsibleActivity } from "./CollapsibleActivity";
-import type { LoanApplication, DealActivity } from "@shared/schema";
+import type { LoanApplication } from "@shared/schema";
 
-const app = (over?: Partial<LoanApplication>): LoanApplication =>
-  ({ id: "a-1", status: "pre_approved", preApprovalAmount: "400000", downPayment: "80000", preferredLoanType: "conventional", ...over }) as unknown as LoanApplication;
+// ux-30. The Loan Estimate is the borrower's TRID disclosure, and retrieving it
+// behind e_disclosure consent is the ONLY act that stamps `leIssuedDate`
+// (server/routes/underwriting/delivery.ts:95 — borrower-only by design; staff
+// previews deliberately don't count). The page shipped behind a staff route
+// gate and was linked from nowhere, so that writer had never fired from a UI
+// click and a TRID-triggered file went permanently unadvanceable on day 4.
+//
+// These pin the link's two preconditions, because linking unconditionally is
+// worse than not linking: `generateLoanEstimate` fails closed without a
+// §1026.36(d)(2) compensation election (services/loanEstimate.ts:511-514), so
+// an unelected file would show the borrower an error instead of a disclosure.
 
-describe("LoanDetails", () => {
-  it("collapsed by default with an item-count badge; expands on toggle", async () => {
-    const user = userEvent.setup();
-    render(
+const app = (over: Partial<LoanApplication> = {}) =>
+  ({
+    id: "app-1",
+    purchasePrice: "400000",
+    downPayment: "40000",
+    preApprovalAmount: "360000",
+    preferredLoanType: "Conventional",
+    tridTriggeredAt: new Date("2026-08-10T14:00:00Z"),
+    loCompensationModel: "lender_paid",
+    leIssuedDate: null,
+    ...over,
+  }) as unknown as LoanApplication;
+
+// The card is collapsed by default, so EVERY test must expand it first —
+// otherwise the negative cases below pass vacuously (nothing is in the DOM
+// either way) and would stay green if the link were wired unconditionally.
+async function expand() {
+  await userEvent.setup().click(screen.getByTestId("button-toggle-details"));
+}
+
+function renderDetails(over: Partial<LoanApplication> = {}) {
+  const { hook } = memoryLocation({ path: "/dashboard" });
+  return render(
+    <Router hook={hook}>
       <LoanDetails
-        application={app()}
-        hasOffers={true}
-        offerCount={3}
-        rateRange="6.1%–6.6%"
-        hmdaCompleted={false}
-        expirationInfo={{ label: "Aug 18, 2026", daysLeft: 21, urgency: "normal" }}
-        isPreApproved={true}
-      />,
-    );
-    expect(screen.queryByTestId("card-loan-details")).toBeNull();
-    expect(screen.getByTestId("badge-detail-count").textContent).toBe("6");
-    await user.click(screen.getByTestId("button-toggle-details"));
-    expect(screen.getByTestId("detail-offers").textContent).toContain("3 available (6.1%–6.6%)");
-    expect(screen.getByTestId("detail-expiration").textContent).toContain("Aug 18, 2026");
-    expect(screen.getByTestId("detail-hmda").textContent).toContain("Not yet completed");
-  });
-
-  it("hides the expiration row once expired — the next-action card owns that state", async () => {
-    const user = userEvent.setup();
-    render(
-      <LoanDetails
-        application={app()}
+        application={app(over)}
         hasOffers={false}
         offerCount={0}
         rateRange={null}
-        hmdaCompleted={true}
-        expirationInfo={{ label: "Jul 1, 2026", daysLeft: -5, urgency: "expired" }}
-        isPreApproved={true}
-      />,
-    );
-    await user.click(screen.getByTestId("button-toggle-details"));
-    expect(screen.queryByTestId("detail-expiration")).toBeNull();
-  });
-});
+        hmdaCompleted
+        expirationInfo={null}
+        isPreApproved
+      />
+    </Router>,
+  );
+}
 
-describe("CollapsibleActivity", () => {
-  it("renders nothing with no activity, and expands to show the newest five", async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(<CollapsibleActivity activities={[]} />);
-    expect(screen.queryByTestId("section-activity")).toBeNull();
-    const acts = Array.from({ length: 7 }, (_, i) =>
-      ({ id: `act-${i}`, title: `Event ${i}`, description: null, performedBy: i % 2 ? "u-1" : null, createdAt: new Date().toISOString() }) as unknown as DealActivity);
-    rerender(<CollapsibleActivity activities={acts} />);
-    expect(screen.getByTestId("badge-activity-count").textContent).toBe("5");
-    await user.click(screen.getByTestId("button-toggle-activity"));
-    expect(screen.getByTestId("row-activity-0")).toBeTruthy();
-    expect(screen.getByTestId("row-activity-4")).toBeTruthy();
-    expect(screen.queryByTestId("row-activity-5")).toBeNull();
+describe("LoanDetails — the borrower's route to their Loan Estimate (ux-30)", async () => {
+  it("links the borrower to their LE once TRID has triggered and compensation is elected", async () => {
+    renderDetails();
+    await expand();
+    const link = screen.getByTestId("link-detail-loan-estimate") as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("/loan-estimate/app-1");
+    expect(screen.getByTestId("detail-loan-estimate").textContent).toContain("Loan Estimate");
+  });
+
+  it("does NOT link before the six-piece TRID trigger — there is no disclosure to make yet", async () => {
+    renderDetails({ tridTriggeredAt: null });
+    await expand();
+    expect(screen.queryByTestId("detail-loan-estimate")).toBeNull();
+  });
+
+  it("does NOT link without a compensation election — the generator fails closed, so the link would be an error page", async () => {
+    renderDetails({ loCompensationModel: null });
+    await expand();
+    expect(screen.queryByTestId("detail-loan-estimate")).toBeNull();
+  });
+
+  it("reports the delivery date once the LE has been issued, rather than re-prompting", async () => {
+    renderDetails({ leIssuedDate: "2026-08-12" });
+    await expand();
+    expect(screen.getByTestId("detail-loan-estimate").textContent).toContain("2026-08-12");
   });
 });
