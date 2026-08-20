@@ -163,26 +163,26 @@ export default function Landing() {
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — the whole page's centre of gravity. */}
         <section
-          className="bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
+          className="bg-muted px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
           data-testid="section-hero"
         >
           <div className="mx-auto max-w-4xl text-center">
             <p
-              className="text-sm font-semibold uppercase tracking-widest text-flare"
+              className="text-sm font-semibold uppercase tracking-widest text-flare-ink"
               data-testid="text-hero-eyebrow"
             >
               Renting, self-employed, refinancing, or moving up — start anywhere
             </p>
 
             <h1
-              className="mt-5 text-balance text-4xl font-extrabold leading-none tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl"
+              className="mt-5 text-balance text-4xl font-extrabold leading-none tracking-tight text-foreground sm:text-5xl lg:text-6xl"
               data-testid="text-hero-title"
             >
               See what you have the power to do.
             </h1>
 
             <p
-              className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-primary-foreground/80"
+              className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted-foreground"
               data-testid="text-hero-subtitle"
             >
               Buying a home is stressful because nobody tells you where you stand until
@@ -199,11 +199,11 @@ export default function Landing() {
                 It points at the band below rather than off to /afford — the
                 no-signup answer is on this page, so sending them to another
                 route to find it was a needless step. */}
-            <p className="mt-8 text-sm text-primary-foreground/80">
+            <p className="mt-8 text-sm text-muted-foreground">
               Rather not sign up yet?{" "}
               <a
                 href="#buying-power"
-                className="touch-target inline-flex items-center font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"
+                className="touch-target inline-flex items-center font-semibold text-foreground underline underline-offset-4 hover:no-underline"
                 data-testid="link-hero-afford"
               >
                 See your buying power
@@ -218,7 +218,7 @@ export default function Landing() {
             is the alternative to Homi, not a footnote to it. */}
         <section
           id="buying-power"
-          className="scroll-mt-20 border-b bg-muted/30 px-4 py-20 sm:px-6 lg:px-8"
+          className="scroll-mt-20 border-b bg-background px-4 py-20 sm:px-6 lg:px-8"
           data-testid="section-estimator"
         >
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -253,7 +253,7 @@ export default function Landing() {
                 return (
                   <StaggerItem key={journey.id}>
                   <Card
-                    className="h-full rounded-3xl hover-elevate"
+                    className="h-full rounded-3xl border-0 bg-muted hover-elevate"
                     data-testid={`card-journey-${journey.id}`}
                   >
                     <CardContent className="p-6">
@@ -291,7 +291,7 @@ export default function Landing() {
 
         {/* One trust row — what the customer gets, not who we are. */}
         <section
-          className="border-y bg-muted/30 px-4 py-14 sm:px-6 lg:px-8"
+          className="border-y bg-background px-4 py-14 sm:px-6 lg:px-8"
           data-testid="section-trust"
         >
           <div className="mx-auto max-w-6xl">

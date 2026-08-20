@@ -16,7 +16,7 @@ export function SearchHero({ query, onQueryChange, onSubmit, isPending, notFound
     <div className="bg-primary/5 dark:bg-primary/10 border-b">
       <div className="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
         <Link href="/">
-          <span className="text-2xl font-bold tracking-tight text-primary cursor-pointer" data-testid="text-brand-logo">
+          <span className="text-2xl font-bold tracking-tight text-flare cursor-pointer" data-testid="text-brand-logo">
             homiquity
           </span>
         </Link>

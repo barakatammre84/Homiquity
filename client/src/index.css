@@ -72,10 +72,10 @@
   --primary: 163 94% 24%;
   --primary-foreground: 0 0% 100%;
   /* Secondary surfaces: slate-100 chip */
-  --secondary: 155 30% 95%;
+  --secondary: 155 40% 94%;
   --secondary-foreground: 165 45% 8%;
   /* Data-section separation: Ultra-Light Gray #F8FAFC */
-  --muted: 155 35% 96%;
+  --muted: 155 44% 92%;
   /* Secondary/micro-copy: green-grey per the 2026-08-18 overhaul direction —
      quiet text carries the brand hue (was blue-grey Muted Slate 215 24% 37%).
      Verified ~5.8:1 on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1).
@@ -105,6 +105,24 @@
    */
   --flare: 24 88% 46%;
   --flare-foreground: 165 45% 8%;
+
+  /**
+   * flare-ink — the same orange, dark enough to be TEXT.
+   *
+   * `--flare` at 46% lightness fails AA as text on every ground this design uses:
+   * mint 3.37:1, white 3.63:1, even the dark footer 3.88:1. It is a FILL colour —
+   * logo, borders, illustration, focus rings — and treating it as a text colour is
+   * the mistake this pair exists to prevent. (Monzo's coral has exactly the same
+   * property, which is why theirs is never body text either.)
+   *
+   * This is the text-safe sibling: 5.56:1 on mint, 5.99:1 on white. Same hue, same
+   * family, legible.
+   *
+   * ⚠️ Logos are EXEMPT from WCAG 1.4.3, so the wordmark may use the bright
+   * `--flare` on white even though that pair measures 3.63:1. That is an exemption,
+   * not a loophole to reuse for anything a person has to read.
+   */
+  --flare-ink: 24 90% 34%;
   /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
      --muted #F8FAFC) that white cards sit ON so their shadow-card reads.
      Public/reading surfaces stay on the white --background. */

@@ -134,6 +134,7 @@ export default {
         flare: {
           DEFAULT: "hsl(var(--flare))",
           foreground: "hsl(var(--flare-foreground))",
+          ink: "hsl(var(--flare-ink))",
         },
         precision: {
           // Green-black, 2026-08-20. Was clay; before that royal blue.
