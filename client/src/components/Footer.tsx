@@ -3,8 +3,12 @@ import { Phone, Mail } from "lucide-react";
 import { COMPANY_IDENTITY, companyNmlsDisplay, contactPhoneTel } from "@shared/companyIdentity";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { useCoachHref } from "@/hooks/useCoachHref";
 
 export function Footer() {
+  // /ai-coach is auth-gated, and this footer renders on every public page — a
+  // bare href sent signed-out visitors to a "Welcome back" login wall.
+  const coachHref = useCoachHref();
   // Deep Ink container in both modes (bg-primary would invert badly in dark
   // mode, where primary becomes Paper) — the footer shares the sidebar's
   // "navigation container" stop on the ramp.
@@ -70,7 +74,7 @@ export function Footer() {
                   {PRELAUNCH_GATED ? "Join the Waitlist" : "Homiquity Lend"}
                 </Link>
               </li>
-              <li><Link href="/ai-coach" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homi</Link></li>
+              <li><Link href={coachHref} className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homi</Link></li>
               <li><Link href="/rent-reporting" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rent-reporting">Rent Reporting</Link></li>
               <li><Link href="/rates" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rates">Rates</Link></li>
               <li><Link href="/resources" className="touch-target flex items-center rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources-2">Resources</Link></li>

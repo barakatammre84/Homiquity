@@ -288,7 +288,7 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
                 <Button asChild variant="outline" size="sm" className="touch-target flex-1 w-full gap-1.5" data-testid="button-passport-coach">
                   <Link href="/ai-coach">
                     <Bot className="h-3.5 w-3.5" />
-                    Talk to Coach
+                    Talk to Homi
                   </Link>
                 </Button>
                 <Button asChild size="sm" className="touch-target flex-1 w-full gap-1.5" data-testid="button-passport-apply">

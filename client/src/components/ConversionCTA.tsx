@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Sparkles, Shield, Calculator } from "lucide-react";
 import { useTrackCta } from "@/hooks/useActivityTracker";
+import { useCoachHref } from "@/hooks/useCoachHref";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 
 interface ConversionCTAProps {
@@ -14,6 +15,9 @@ interface ConversionCTAProps {
 
 export function ConversionCTA({ context, purchasePrice, state, propertyType }: ConversionCTAProps) {
   const trackCta = useTrackCta();
+  // This CTA sits on six public calculators; /ai-coach is auth-gated, so a bare
+  // href dead-ended signed-out visitors on the login page.
+  const coachHref = useCoachHref();
 
   const buildApplyUrl = () => {
     const params = new URLSearchParams();
@@ -94,9 +98,9 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
                   onClick={() => trackCta("conversion-cta-coach", `/${context}`)}
                   data-testid="button-cta-coach"
                 >
-                <Link href="/ai-coach">
+                <Link href={coachHref}>
                   <Bot className="h-4 w-4" />
-                  Talk to Coach
+                  Talk to Homi
                 </Link>
               </Button>
             )}
