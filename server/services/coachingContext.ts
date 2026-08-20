@@ -551,3 +551,81 @@ export function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
 // server-side. Sections keep their original numbers because the dynamic
 // context block references them by number ("Section 7", "Section 8",
 // "Section 10").
+
+// ---------------------------------------------------------------------------
+// Server-derived readiness profile
+// ---------------------------------------------------------------------------
+
+/**
+ * The readiness panel, computed from the borrower's file instead of authored
+ * by the model.
+ *
+ * `update_readiness` used to let the model write this. Half of it was already
+ * server-owned — runCoachTurn overwrote completionPercentage before persisting,
+ * so the model's number was discarded — and the rest (tier, completed inputs,
+ * outstanding inputs) was ALREADY computed by buildBorrowerGraph and handed to
+ * the model in its own context. The model was being asked to restate numbers
+ * the server had just given it, and could restate them wrong.
+ *
+ * `estimatedTimeline` is the one field with no server equivalent, and that is
+ * exactly why it is gone. A model-authored "1-3 months" on a mortgage file is
+ * a forward-looking claim with no basis in any record, and the Reg N lexicon
+ * does not catch it because it names no rate and promises no approval. It is
+ * replaced by a neutral description of where the borrower actually is.
+ *
+ * Pure: no I/O, no clock, same context in → same profile out.
+ */
+export function deriveReadinessProfile(ctx: VerifiedUserContext): CoachingProfile {
+  const completedInputs = ctx.completedInputs?.length
+    ? ctx.completedInputs
+    : deriveCompletedSteps(ctx);
+
+  const tier = normalizeReadinessTier(ctx.readinessTier)
+    ?? tierFromCompletion(ctx.completionPercentage ?? deriveCompletionPercentage(ctx));
+
+  return {
+    readinessTier: tier,
+    completionPercentage: ctx.completionPercentage ?? deriveCompletionPercentage(ctx),
+    statusNote: READINESS_STATUS_NOTES[deriveReadinessState(ctx)],
+    completedInputs,
+    outstandingInputs: ctx.outstandingInputs ?? [],
+    // Deliberately not a duration. See the docblock above.
+    estimatedTimeline: READINESS_TIER_CAPTIONS[tier],
+  };
+}
+
+const READINESS_TIERS = ["ready_now", "almost_ready", "building", "exploring"] as const;
+type ReadinessTier = (typeof READINESS_TIERS)[number];
+
+function normalizeReadinessTier(value: string | null | undefined): ReadinessTier | null {
+  return READINESS_TIERS.includes(value as ReadinessTier) ? (value as ReadinessTier) : null;
+}
+
+function tierFromCompletion(pct: number): ReadinessTier {
+  if (pct >= 90) return "ready_now";
+  if (pct >= 65) return "almost_ready";
+  if (pct >= 25) return "building";
+  return "exploring";
+}
+
+/** Where the borrower is, stated as fact. No pace, no prediction, no promise. */
+const READINESS_STATUS_NOTES: Record<ReadinessState, string> = {
+  not_started: "You haven't started an application yet — nothing here is on file.",
+  intake_started: "We have some of your details. A few more inputs complete the picture underwriting needs.",
+  intake_complete: "Your details are in. Documents are what turn them into something a lender can verify.",
+  docs_uploaded: "Your documents are in and awaiting review.",
+  docs_validated: "Your documents have been reviewed and your file is in order.",
+  package_ready: "Your file has everything underwriting review needs from you.",
+};
+
+/**
+ * Replaces the model's `estimatedTimeline`. Says what stage means, never how
+ * long it takes — the server has no basis for a duration either, and inventing
+ * one server-side would be the same lie in a more trustworthy voice.
+ */
+const READINESS_TIER_CAPTIONS: Record<ReadinessTier, string> = {
+  ready_now: "Ready for underwriting review",
+  almost_ready: "Nearly ready — a few inputs outstanding",
+  building: "Building your file",
+  exploring: "Getting started",
+};

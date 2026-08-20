@@ -103,7 +103,7 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
           <Button asChild variant="outline" size="sm" className="gap-2" data-testid="button-passport-coach-fallback">
             <Link href="/ai-coach">
               <Bot className="h-4 w-4" />
-              Talk to AI Coach
+              Talk to Homi
             </Link>
           </Button>
         </CardContent>

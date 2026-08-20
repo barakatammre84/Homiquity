@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle2, Circle, FileText, Landmark, Sparkles, Target } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Circle, Clock, FileText, Landmark, Sparkles, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +7,51 @@ import { Progress } from "@/components/ui/progress";
 import { PlaidConnectButton } from "@/components/PlaidConnectButton";
 import { DocumentUploadButton } from "@/components/DocumentUploadButton";
 
+import type { ChecklistItemView } from "@/lib/documentChecklist";
+import type { LoanStatusView } from "./types";
+
 /** Bank/asset items verify as "assets"; income/employment docs as "income". */
-function plaidVerificationType(doc: DocumentRequirement): "assets" | "income" {
-  return /income|employ|pay.?stub|w-?2|1099|profit|salary/i.test(`${doc.docType} ${doc.category} ${doc.label}`)
+function plaidVerificationType(doc: ChecklistItemView): "assets" | "income" {
+  return /income|employ|pay.?stub|w-?2|1099|profit|salary/i.test(
+    `${doc.documentType} ${doc.category} ${doc.label}`,
+  )
     ? "income"
     : "assets";
+}
+
+/** Plaid can satisfy bank/asset and payroll items; nothing else. */
+function isPlaidEligible(doc: ChecklistItemView): boolean {
+  return /bank_statement|asset|pay.?stub|payroll|income/i.test(
+    `${doc.documentType} ${doc.category}`,
+  );
+}
+
+const STATUS_META: Record<
+  ChecklistItemView["status"],
+  { label: string; icon: typeof Circle; tone: string; badge: "secondary" | "destructive" | "outline" }
+> = {
+  needed: { label: "Needed", icon: Circle, tone: "text-muted-foreground", badge: "outline" },
+  uploaded: { label: "Received", icon: Clock, tone: "text-info", badge: "secondary" },
+  verifying: { label: "In review", icon: Clock, tone: "text-info", badge: "secondary" },
+  verified: { label: "Verified", icon: CheckCircle2, tone: "text-success-subtle-foreground", badge: "secondary" },
+  rejected: { label: "Needs a fix", icon: AlertCircle, tone: "text-status-danger", badge: "destructive" },
+};
+
+/**
+ * Says whether a panel is a FACT from the borrower's file or the assistant's
+ * SUGGESTION. Before this they rendered identically, so a suggested step and a
+ * real requirement looked the same and were acted on the same way.
+ */
+export function PanelSource({ source }: { source: "file" | "assistant" }) {
+  return (
+    <Badge
+      variant="outline"
+      className="ml-auto text-xs font-normal px-1.5 py-0"
+      data-testid={`badge-panel-source-${source}`}
+    >
+      {source === "file" ? "On your file" : "Suggested by Homi"}
+    </Badge>
+  );
 }
 import {
   CATEGORY_ICONS,
@@ -25,8 +65,12 @@ import {
 // AICoach.tsx (markup unchanged).
 
 export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
-  const tier = TIER_CONFIG[profile.readinessTier] || TIER_CONFIG.exploring;
+  const tier = TIER_CONFIG[profile.readinessTier ?? ""] || TIER_CONFIG.exploring;
   const TierIcon = tier.icon;
+  // A partially-written profile is a real wire shape (see CoachProfile) — an
+  // incomplete panel is the right degradation, a blank /ai-coach page is not.
+  const completedInputs = profile.completedInputs ?? [];
+  const outstandingInputs = profile.outstandingInputs ?? [];
 
   return (
     <Card data-testid="card-readiness-panel">
@@ -54,11 +98,11 @@ export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
         <Progress value={profile.completionPercentage} className="h-2" data-testid="progress-readiness" />
         <p className="text-sm text-muted-foreground" data-testid="text-readiness-summary">{profile.statusNote}</p>
 
-        {profile.completedInputs.length > 0 && (
+        {completedInputs.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">COMPLETED INPUTS</p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.completedInputs.map((s, i) => (
+              {completedInputs.map((s, i) => (
                 <Badge key={i} variant="secondary" className="text-xs font-normal">
                   {s}
                 </Badge>
@@ -67,11 +111,11 @@ export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
           </div>
         )}
 
-        {profile.outstandingInputs.length > 0 && (
+        {outstandingInputs.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">OUTSTANDING INPUTS</p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.outstandingInputs.map((g, i) => (
+              {outstandingInputs.map((g, i) => (
                 <Badge key={i} variant="outline" className="text-xs font-normal">
                   {g}
                 </Badge>
@@ -194,13 +238,13 @@ export function ActionPlanPanel({
   );
 }
 
-function groupByCategory(docs: DocumentRequirement[]): Record<string, DocumentRequirement[]> {
+function groupByCategory(docs: ChecklistItemView[]): Record<string, ChecklistItemView[]> {
   return docs.reduce((acc, d) => {
     const cat = d.category || "Other";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(d);
     return acc;
-  }, {} as Record<string, DocumentRequirement[]>);
+  }, {} as Record<string, ChecklistItemView[]>);
 }
 
 /**
@@ -213,56 +257,164 @@ function ChecklistItemRow({
   doc,
   applicationId,
 }: {
-  doc: DocumentRequirement;
+  doc: ChecklistItemView;
   applicationId?: string | null;
 }) {
+  const meta = STATUS_META[doc.status] ?? STATUS_META.needed;
+  const StatusIcon = meta.icon;
+  const plaid = isPlaidEligible(doc);
+  // Only an item still owed gets action buttons. Offering "Upload" on a
+  // verified document invites a borrower to redo work that is already done.
+  const actionable = doc.status === "needed" || doc.status === "rejected";
+
   return (
-    <div className="flex items-start gap-2.5 p-2 rounded-lg hover-elevate" data-testid={`doc-item-${doc.docType}`}>
-      <Circle className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+    <div
+      className="flex items-start gap-2.5 p-2 rounded-lg hover-elevate"
+      data-testid={`doc-item-${doc.documentType}`}
+    >
+      <StatusIcon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${meta.tone}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-foreground">{doc.label}</span>
-          <Badge
-            variant={doc.priority === "required" ? "destructive" : doc.priority === "recommended" ? "default" : "secondary"}
-            className="text-[10px] px-1.5 py-0"
-          >
-            {doc.priority}
+          {doc.documentYear && (
+            <span className="text-xs text-muted-foreground">({doc.documentYear})</span>
+          )}
+          <Badge variant={meta.badge} className="text-[10px] px-1.5 py-0" data-testid={`doc-status-${doc.documentType}`}>
+            {meta.label}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">{doc.reason}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {doc.plaidEligible &&
-            (applicationId ? (
-              <PlaidConnectButton
-                applicationId={applicationId}
-                verificationType={plaidVerificationType(doc)}
-                label="Connect with Plaid"
-                className="h-7 text-xs"
-                testId={`button-plaid-connect-${doc.docType}`}
-              />
-            ) : (
-              <Button asChild
-                  size="sm"
-                  variant="outline"
-                  className="h-7 gap-1.5 text-xs"
-                  data-testid={`button-plaid-connect-${doc.docType}`}
-                >
-                <Link href="/verification">
-                  <Landmark className="h-3.5 w-3.5" />
-                  Connect with Plaid
-                </Link>
-              </Button>
-            ))}
-          <DocumentUploadButton
-            docType={doc.docType}
-            label={doc.plaidEligible ? "Upload instead" : "Upload"}
-            applicationId={applicationId}
-            className="h-7 text-xs"
-            testId={`button-upload-${doc.docType}`}
-          />
-        </div>
+        {doc.description && <p className="text-xs text-muted-foreground">{doc.description}</p>}
+        {doc.instructions && (
+          <p className="text-xs text-muted-foreground mt-0.5">{doc.instructions}</p>
+        )}
+        {/*
+          A rejection is the one state where the borrower is blocked and cannot
+          work out why on their own: the file IS uploaded, so it looks done, and
+          only the reviewer's reason explains the bounce. It gets its own line.
+        */}
+        {doc.status === "rejected" && doc.rejectionReason && (
+          <p
+            className="mt-1 text-xs text-status-danger"
+            data-testid={`doc-rejection-${doc.documentType}`}
+          >
+            {doc.rejectionReason}
+          </p>
+        )}
+        {actionable && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {plaid &&
+              (applicationId ? (
+                <PlaidConnectButton
+                  applicationId={applicationId}
+                  verificationType={plaidVerificationType(doc)}
+                  label="Connect with Plaid"
+                  className="h-7 text-xs"
+                  testId={`button-plaid-connect-${doc.documentType}`}
+                />
+              ) : (
+                <Button asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 text-xs"
+                    data-testid={`button-plaid-connect-${doc.documentType}`}
+                  >
+                  <Link href="/verification">
+                    <Landmark className="h-3.5 w-3.5" />
+                    Connect with Plaid
+                  </Link>
+                </Button>
+              ))}
+            {/*
+              docType is the REAL condition's documentType, so the upload
+              matches an actual requirement and pipelineEngine's zero-touch
+              matcher flips the condition outstanding → submitted. When this
+              slug was model-authored it matched nothing, the item never
+              cleared, and the borrower had been told it was handled.
+            */}
+            <DocumentUploadButton
+              docType={doc.documentType}
+              label={doc.status === "rejected" ? "Re-upload" : plaid ? "Upload instead" : "Upload"}
+              applicationId={applicationId}
+              className="h-7 text-xs"
+              testId={`button-upload-${doc.documentType}`}
+            />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Where the borrower's file actually stands — the answer to the question they
+ * most often arrive with, rendered from server truth rather than from whatever
+ * the assistant last said.
+ *
+ * Everything here is whitelisted server-side (coachFileTruth.ts): the staff
+ * No-Stall signals — fileHealth, priority, daysIdle — never reach this
+ * component, because "urgent"/red means the FILE needs staff attention and
+ * reads to a borrower as a problem with their application.
+ */
+export function StatusPanel({ status }: { status: LoanStatusView }) {
+  if (!status.hasApplication || !status.stage) return null;
+  const { stage, pipeline, journey, nextAction } = status;
+
+  return (
+    <Card data-testid="card-status-panel">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+          <Target className="h-4 w-4 text-primary" />
+          Where Your File Stands
+          <PanelSource source="file" />
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-foreground" data-testid="text-stage-label">
+              {stage.label}
+            </span>
+            <Badge variant="secondary" className="text-xs" data-testid="badge-stage-progress">
+              {stage.progressPercent}%
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-stage-description">
+            {stage.description}
+          </p>
+        </div>
+        <Progress value={stage.progressPercent} className="h-2" data-testid="progress-stage" />
+
+        {pipeline && pipeline.conditionsTotal > 0 && (
+          <p className="text-sm text-muted-foreground" data-testid="text-conditions">
+            Conditions cleared: {pipeline.conditionsTotal - pipeline.conditionsOutstanding} of{" "}
+            {pipeline.conditionsTotal}
+          </p>
+        )}
+
+        {journey.length > 0 && (
+          <div className="space-y-1">
+            {journey.map((step) => (
+              <p key={step.stepId} className="text-xs text-muted-foreground" data-testid={`journey-${step.stepId}`}>
+                {step.lines.join(" · ")}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {nextAction && (
+          <div className="pt-2 border-t space-y-2">
+            <p className="text-sm font-medium text-foreground">{nextAction.title}</p>
+            <p className="text-xs text-muted-foreground">{nextAction.description}</p>
+            <Button asChild className="w-full gap-2" data-testid="button-next-action">
+              <Link href={nextAction.href} data-testid="link-next-action">
+                {nextAction.buttonLabel}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -270,7 +422,7 @@ export function DocumentChecklistPanel({
   docs,
   applicationId,
 }: {
-  docs: DocumentRequirement[];
+  docs: ChecklistItemView[];
   applicationId?: string | null;
 }) {
   const grouped = groupByCategory(docs);
@@ -289,8 +441,8 @@ export function DocumentChecklistPanel({
             <div key={category}>
               <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">{category}</p>
               <div className="space-y-1.5">
-                {items.map((doc, i) => (
-                  <ChecklistItemRow key={i} doc={doc} applicationId={applicationId} />
+                {items.map((doc) => (
+                  <ChecklistItemRow key={doc.id} doc={doc} applicationId={applicationId} />
                 ))}
               </div>
             </div>
@@ -311,7 +463,7 @@ export function DocumentChecklistInline({
   docs,
   applicationId,
 }: {
-  docs: DocumentRequirement[];
+  docs: ChecklistItemView[];
   applicationId?: string | null;
 }) {
   const grouped = groupByCategory(docs);
@@ -332,8 +484,8 @@ export function DocumentChecklistInline({
           <div key={category}>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</p>
             <div className="space-y-1">
-              {items.map((doc, i) => (
-                <ChecklistItemRow key={i} doc={doc} applicationId={applicationId} />
+              {items.map((doc) => (
+                <ChecklistItemRow key={doc.id} doc={doc} applicationId={applicationId} />
               ))}
             </div>
           </div>

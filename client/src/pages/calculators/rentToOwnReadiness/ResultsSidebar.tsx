@@ -106,7 +106,7 @@ export function ResultsSidebar({ inputs, primary, loading }: ResultsSidebarProps
             <div className="space-y-2 border-t pt-4">
               <Button
                 size="lg"
-                className="w-full"
+                className="w-full whitespace-normal h-auto min-h-12 py-3"
                 onClick={handleStartPreApproval}
                 data-testid="button-start-preapproval"
               >

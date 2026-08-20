@@ -41,9 +41,7 @@ describe("COACH_TOOLS definition stability (prompt-cache contract)", () => {
   it("keeps the tool names in a FIXED order — reordering invalidates the prompt cache", () => {
     expect(COACH_TOOLS.map((t) => t.name)).toEqual([
       "record_intake",
-      "update_readiness",
       "set_action_plan",
-      "set_document_checklist",
       "generate_borrower_package",
       "suggest_next_steps",
       // Appended 2026-08-04 (renter-incubation adjudication Leg C) — new tools
@@ -54,6 +52,48 @@ describe("COACH_TOOLS definition stability (prompt-cache contract)", () => {
       "get_document_checklist",
       "get_borrower_tasks",
     ]);
+  });
+
+  // THE contract this whole change exists to make unrepresentable.
+  //
+  // set_document_checklist let the model author the borrower's document list.
+  // It invented a docType matching no loan_condition, the panel rendered it
+  // authoritatively beside an Upload button, the borrower uploaded — and
+  // nothing cleared, because the real checklist is derived elsewhere. The UI
+  // said the operation happened; the file said it did not.
+  //
+  // update_readiness was the same shape one level down: the model restating
+  // tier/completed/outstanding figures the server had just handed it, with
+  // only two possible outcomes — identical, or wrong.
+  it("gives the model NO tool that can author file state", () => {
+    const names = COACH_TOOLS.map((t) => t.name);
+    expect(names).not.toContain("set_document_checklist");
+    expect(names).not.toContain("update_readiness");
+  });
+
+  it("refuses to execute the removed tools even if a stale model call arrives", async () => {
+    // A conversation mid-flight across a deploy can still emit the old name.
+    // It must fail loudly as unknown, never silently no-op into a state the
+    // borrower then sees rendered as fact.
+    for (const stale of ["set_document_checklist", "update_readiness"]) {
+      const { ctx, events } = makeCtx();
+      const result = await executeCoachTool(ctx, stale, { documents: [], readinessTier: "ready_now" });
+      expect(result.isError, stale).toBe(true);
+      expect(result.content, stale).toMatch(/unknown tool/i);
+      expect(events, stale).toHaveLength(0);
+      expect(ctx.state.documentChecklist, stale).toBeUndefined();
+      expect(ctx.state.profile, stale).toBeUndefined();
+    }
+  });
+
+  it("the action plan cannot encroach on the checklist's territory", () => {
+    const plan = COACH_TOOLS.find((t) => t.name === "set_action_plan")!;
+    const schema = JSON.stringify(plan.input_schema);
+    // "documents" is gone from the category enum, so a plan cannot structurally
+    // become a second, model-authored document list.
+    expect(schema).not.toContain('"documents"');
+    expect(plan.description).toMatch(/get_document_checklist/);
+    expect(plan.description).toMatch(/get_loan_status/);
   });
 
   // The read tools resolve the application from the authenticated session.
@@ -141,32 +181,6 @@ describe("executeCoachTool: record_intake", () => {
 
 describe("executeCoachTool: panel tools", () => {
   beforeEach(() => vi.clearAllMocks());
-
-  it("update_readiness stores the profile with a placeholder completion the server overrides", async () => {
-    const { ctx } = makeCtx();
-    const result = await executeCoachTool(ctx, "update_readiness", {
-      readinessTier: "building",
-      statusNote: "Core inputs collected.",
-      completedInputs: ["annual_income"],
-      outstandingInputs: ["credit_score"],
-      estimatedTimeline: "3-6 months",
-    });
-    expect(result.isError).toBeUndefined();
-    expect(ctx.state.profile?.readinessTier).toBe("building");
-    expect(ctx.state.profile?.completionPercentage).toBe(0); // server-derived later
-  });
-
-  it("update_readiness coerces an invalid tier to the safe default (schema .catch)", async () => {
-    const { ctx } = makeCtx();
-    await executeCoachTool(ctx, "update_readiness", {
-      readinessTier: "definitely_approved",
-      statusNote: "x",
-      completedInputs: [],
-      outstandingInputs: [],
-      estimatedTimeline: "",
-    });
-    expect(ctx.state.profile?.readinessTier).toBe("exploring");
-  });
 
   it("set_action_plan validates items strictly", async () => {
     const { ctx, events } = makeCtx();

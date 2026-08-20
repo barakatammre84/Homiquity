@@ -78,8 +78,8 @@ export const STATUS_TOOL_RESULT = [
 
 export const CHECKLIST_TOOL_RESULT = [
   "4 items — 0 verified, 1 in review, 2 needed, 1 rejected.",
-  "- Most recent pay stubs [needed] Why: Covering the last 30 days.",
   "- Two months of bank statements [rejected] MUST FIX: Page 3 is missing.",
+  "- Most recent pay stubs [needed] Why: Covering the last 30 days.",
   "- 2025 W-2 (2025) [needed] Why: Verifies prior-year wages.",
   "- Government ID [uploaded]",
   "These are the borrower's REAL requirements. Name only what is listed here; never add a",
@@ -177,12 +177,24 @@ export const TOOL_TRIGGER_SAMPLES: ToolTriggerSample[] = [
     // self-diagnose: the file is uploaded, so it looks done, and only the
     // reviewer's reason says why it bounced.
     //
-    // KNOWN FLAKY, and deliberately left red rather than loosened. Measured
-    // 2026-08-19 on claude-sonnet-5: ~50% adherence before the tool result
-    // spelled the rule out, ~70-80% after. This is the weakest of the four
-    // properties. Re-measure once set_document_checklist is deleted — the
-    // model currently re-authors the checklist through it, and prose that
-    // follows the re-authored copy is where the reason gets dropped.
+    // KNOWN FLAKY, and deliberately left red rather than loosened. It is the
+    // weakest of the four properties and the only one that is probabilistic.
+    //
+    // Measured on claude-sonnet-5, 2026-08-19, cumulative:
+    //   ~50%  baseline
+    //   ~65%  + the tool result stating the rule outright
+    //   ~75%  + rejected items ordered FIRST in the model-facing list
+    //
+    // Two levers helped, one hypothesis did not. Deleting
+    // set_document_checklist was expected to fix this — the model had been
+    // re-authoring the checklist through it, and prose following the
+    // re-authored copy looked like where the reason went. It did not: the
+    // sample still fails without that tool anywhere in the sequence. Recorded
+    // because a wrong cause left in a comment is worse than no comment.
+    //
+    // Not tuned further on purpose. Past this point the changes stop being
+    // principled and start being fitted to one fixture, and a check fitted to
+    // its own fixture measures nothing.
     mustMention: ["Page 3"],
   },
 

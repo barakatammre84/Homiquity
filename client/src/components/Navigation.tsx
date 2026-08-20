@@ -172,7 +172,7 @@ export function Navigation() {
       )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="touch-target flex items-center">
             <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
           </Link>
 
@@ -274,7 +274,7 @@ export function Navigation() {
                   <DropdownMenuItem asChild>
                     <Link href="/ai-coach" className="w-full cursor-pointer" data-testid="menu-ai-coach">
                       <Bot className="mr-2 h-4 w-4" />
-                      AI Coach
+                      Homi
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
