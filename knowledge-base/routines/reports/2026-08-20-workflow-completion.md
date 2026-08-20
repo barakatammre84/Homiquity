@@ -1,11 +1,11 @@
 # Workflow Completion Engine — 2026-08-20
 
 `STATUS: OK` — Workflow 4 driven to step 3; the seam there is that the borrower's own upload
-extracts their pay stub and throws the values away. Fixed and mutation-proven in PR #621.
+extracts their pay stub and throws the values away. Fixed and mutation-proven in PR #628.
 
 ## ⛔ Human actions
 
-1. **Review and merge [PR #621](https://github.com/barakatammre84/Homiquity/pull/621).** Merging is
+1. **Review and merge [PR #628](https://github.com/barakatammre84/Homiquity/pull/628).** Merging is
    L3 (CHARTER §1b) and a merge to `main` is a production deploy.
 2. **Note the prod-impact line in the PR body**: the borrower's upload path now *writes* the
    already-encrypted raw model response (`extraction_raw_encrypted`/`_iv`/`_key_id`) and the
@@ -155,7 +155,7 @@ read still persists no facts. Tightening only; nothing weakened.
 
 ```
 pnpm check          0 errors
-node lane           206 files · 3012 passed | 1 skipped
+node lane           207 files · 3020 passed | 1 skipped
 client lane         110 files · 714 passed
 guard:tokens        OK      guard:querykeys   OK
 guard:schema        OK      guard:migrations  OK
@@ -167,6 +167,11 @@ detectTriggers()    []
 
 `tests/extractionPersistence.test.ts` was added to `vitest.config.ts`'s `include` and its filename
 was confirmed in the run output — an unlisted `tests/**` file never runs.
+
+**The gate above was re-run after merging `origin/main`.** Main moved **10 commits** during this run
+(#587, #589, #597, #599, #611, #612, #614, #616, #618, #621), so the first green gate was against a
+base that no longer existed. `pnpm install --frozen-lockfile` was re-run after the merge — a
+worktree resolves `node_modules` upward without it and reports the primary checkout's state.
 
 **One thing I reverted deliberately:** `pnpm guard:bundle` rewrote
 `scripts/bundle-size-baseline.json` from 523,791 → 523,682. That improvement is not mine — this diff
