@@ -203,6 +203,7 @@ export default defineConfig({
       "tests/documentFacts.test.ts",
       "tests/readinessSelfAttestation.test.ts",
       "tests/extractionReadinessWiring.test.ts",
+      "tests/extractionPersistence.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
       "tests/cpaPartners.test.ts",
