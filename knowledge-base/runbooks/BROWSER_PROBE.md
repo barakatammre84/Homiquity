@@ -44,14 +44,45 @@ run — see the caveat below.
 
 ## The four built-in checks
 
-1. **Horizontal overflow at the requested width** — `scrollWidth > innerWidth`, with the offending
-   elements named (tag, `data-testid`, class, geometry). This is DESIGN_SYSTEM §12.3's real
-   question rather than its proxy.
+1. **Horizontal overflow at the requested width** — `scrollWidth > min(innerWidth, screen.width)`,
+   with the offending elements named (tag, `data-testid`, class, geometry). This is
+   DESIGN_SYSTEM §12.3's real question rather than its proxy.
+
+   ⚠️ **It compared against `window.innerWidth` alone until 2026-08-18, and that check could never
+   fail.** Under mobile emulation the *visual* viewport widens to fit overflowing content, so
+   `innerWidth` grew in lockstep with `scrollWidth`. On `/calculators/affordability` it printed
+   `✓ no horizontal overflow (scrollWidth 329 ≤ 329)` while the layout viewport was 320 and the page
+   really did overflow by 9px. **Any "no overflow" result recorded before that date is not
+   evidence.** Two sessions found this independently the same day and fixed it two ways —
+   `min(innerWidth, screen.width)` landed first and is what ships; `documentElement.clientWidth` is
+   the equivalent standard measure and was dropped rather than re-litigated. When `innerWidth`
+   exceeds the emulated width the output now says so explicitly, because that gap *is* the finding:
+   something on the page forces a min-width.
 2. **Images that failed to load** (`naturalWidth === 0`). Before calling one a new defect, compare
    `/api/health`'s `commit` against `origin/main`: a hashed-asset 404 with drift > 0 is a **stale
    deploy**, not a missing file. That mistake has been made here twice.
 3. **Interactive elements under 44×44 px** (DESIGN_SYSTEM §11).
-4. **Interactive elements with no accessible name** — no `aria-label`, `title`, or text.
+4. **Interactive elements with no accessible name** — resolved roughly the way the accname spec
+   does: `aria-labelledby` → `aria-label` → an associated `<label for>` or wrapping `<label>` →
+   `title` → `placeholder` → text content.
+
+   ⚠️ **It checked only `aria-label` / `title` / text content until 2026-08-18**, so a correctly
+   labelled `<input id=x>` + `<Label htmlFor=x>` was reported as unnamed. That produced **nine
+   false positives across five public pages and zero true ones** on its first real sweep — four on
+   the affordability calculator alone, every one properly associated. Since CHARTER §10 now lets
+   this output be cited as evidence, over-reporting sends people to fix what is not broken.
+
+   ⚠️ **It also ignored the accessibility tree until the same day.** Anything inside
+   `[aria-hidden="true"]` is now skipped by *both* this check and the touch-target one. The case
+   that found it: `/partners` has a spam honeypot — `absolute -left-[9999px]`, `aria-hidden`,
+   `tabIndex={-1}` — which has no accessible name **by design**. Reporting it invites someone to
+   "fix" it by adding a label, which would defeat the honeypot.
+
+   Once both were fixed, the check immediately earned its keep: the `/rates/*` family and
+   `/approval-strength` reported controls that **were** genuinely unnamed — `<Label>` with no
+   `htmlFor` beside `<Input>` with no `id`, plus an icon-only search button with no `aria-label`.
+   Fixed in #593 and after. That is the whole argument for narrowing a guard: the same check that
+   cried wolf nine times found eleven real WCAG failures once it stopped.
 
 ## What it still cannot do — and what §10 therefore still forbids claiming
 
@@ -81,3 +112,46 @@ Against the built bundle on a freshly-seeded database:
 - `/calculators` at 320 — no overflow; **19 interactive elements under 44 px**, including the whole
   footer link set at 36 px tall and the mobile-menu wordmark at 32 px. Measured, not inferred, and
   not visible to any guard in this repo before that day.
+
+## First ten-page sweep, 2026-08-18 — and the bug class `guard:ui` cannot see
+
+Ten public pages at 320 px. **One real page defect, and two defects in this script** (both fixed
+above; the sweep was re-run afterwards and the other nine pages hold up).
+
+`/calculators/affordability` overflowed the viewport by 9 px. The cause is the *inverse* of what
+`unprefixedMultiColGrid` hunts for, which is why no guard in this repo could have caught it:
+
+```
+<div className="grid gap-8 lg:grid-cols-5">   ← multi-column template is correctly prefixed
+  <div className="lg:col-span-3 …">           ← but measured 313px inside a 288px grid
+```
+
+With **no** template at the mobile breakpoint, the implicit column is `auto`, which sizes to the
+item's **min-content** — 313 px — and the item overflows a 288 px grid box. The metric only flags a
+multi-column template *missing* a prefix (breaks mobile by staying multi-column); a template that
+exists *only* above `lg` leaves an unshrinkable `auto` column below it, and reads as correct.
+
+The fix is `grid-cols-1`, which Tailwind compiles to `repeat(1, minmax(0, 1fr))` — the `minmax(0,…)`
+is the load-bearing half. Proven by setting `gridTemplateColumns` live through `--expr` before
+editing anything: the item went 313 → 288 and the page overflow cleared. Desktop is untouched
+(5 × 192 px, item spans 3 = 640 px).
+
+**Neither `min-width: 0` on the item nor on all of its descendants fixes this** — both were tried
+and measured. The floor is the track, not the box.
+
+### The wider sweep, same day: 34 public pages
+
+**146 sites in `client/src` use `grid` with a prefixed-only template.** That number is not a defect
+count and must not be reported as one — most shrink fine, and a guard flagging all 146 would be the
+cry-wolf failure this file already records twice. **Six pages actually overflowed at 320px**, each
+confirmed by measurement and fixed: `/calculators/affordability`, `/payoff`, `/home-equity`,
+`/rent-to-own`, `/bah`, and `/approval-strength`.
+
+One overflow had a different cause worth knowing: `/find-an-agent` reached **369px** because a
+`Button` label ("Skip Search — Match Me with an Agent" plus an icon) inherits `whitespace-nowrap`
+from the Button base, giving it a 319px min-content that cannot fit the 288px available. The fix is
+`whitespace-normal` on that instance — `cn` uses `twMerge`, so the later class wins.
+
+Final state across the 34 pages walked: **no overflow, no broken images, no uncaught page errors,
+no unnamed controls.** The sub-44px touch-target counts remain (36 on `/rates`, 26 on `/`) — those
+are the 233 `subMinTouchTarget` instances #581 began ratcheting, not new findings.

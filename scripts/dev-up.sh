@@ -31,16 +31,51 @@ DEVLOG="/tmp/homiquity-dev-$PORT.log"
 
 running() { [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; }
 
+port_held() { lsof -ti ":$PORT" >/dev/null 2>&1 || { command -v ss >/dev/null && ss -ltn 2>/dev/null | grep -q ":$PORT "; }; }
+
+# `pnpm dev` is a WRAPPER — the server is its child, in the same process group.
+# Killing only the recorded pid leaves that child holding the port, and the next
+# `up` then refuses with "in use by something this script did not start" (it is
+# in fact this script's own orphan). `up` launches under `set -m` so the job gets
+# its own process group; kill the GROUP, then fall back to the pid, then to
+# whatever still holds the port. Verified before reporting success — a `down`
+# that says "stopped" while the server is still serving is worse than a failure.
+stop_server() {
+  local pid; pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+  [ -n "$pid" ] && { kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true; }
+  rm -f "$PIDFILE"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do port_held || return 0; sleep 0.5; done
+  # Still held: an orphan from an older run of this script, before the fix above.
+  local stray; stray="$(lsof -ti ":$PORT" 2>/dev/null | tr '\n' ' ')"
+  [ -n "$stray" ] && kill $stray 2>/dev/null
+  for _ in 1 2 3 4 5 6; do port_held || return 0; sleep 0.5; done
+  return 1
+}
+
 case "$CMD" in
   down)
-    if running; then kill "$(cat "$PIDFILE")" && rm -f "$PIDFILE" && echo "dev server stopped (port $PORT)";
+    if running || port_held; then
+      if stop_server; then echo "dev server stopped (port $PORT)"
+      else echo "port $PORT is STILL held after kill — inspect: lsof -i :$PORT" >&2; exit 1; fi
     else echo "no dev server running on port $PORT"; fi
     exit 0 ;;
   logs)
     [ -f "$DEVLOG" ] || { echo "no log at $DEVLOG"; exit 1; }
     tail -f "$DEVLOG" ;;
   status)
-    if running; then
+    # ARM THE PRE-PUSH GATE. `.githooks/` is tracked, but `core.hooksPath` lives in
+# .git/config, which is per-clone and untracked — so a fresh clone starts with the gate
+# OFF and nothing says so. This script exists to make one-time setup correct, and that
+# is one-time setup. Idempotent; safe to re-run.
+#
+# It matters more than it used to: CI is down and `main` carries no required status
+# check, so the pre-push hook is currently the only gate there is.
+if [ "$(git config --get core.hooksPath 2>/dev/null)" != ".githooks" ]; then
+  git config core.hooksPath .githooks
+  echo "armed the pre-push gate (core.hooksPath -> .githooks)"
+fi
+
+if running; then
       echo "running  pid $(cat "$PIDFILE")  port $PORT"
       curl -s "http://localhost:$PORT/api/health" | head -c 400; echo
     else echo "not running on port $PORT"; fi
@@ -53,8 +88,9 @@ if running; then
   echo "already running on port $PORT (pid $(cat "$PIDFILE")) — http://localhost:$PORT"
   exit 0
 fi
-if lsof -ti ":$PORT" >/dev/null 2>&1 || (command -v ss >/dev/null && ss -ltn 2>/dev/null | grep -q ":$PORT "); then
+if port_held; then
   echo "port $PORT is already in use by something this script did not start."
+  echo "  stop it:  bash scripts/dev-up.sh down    # reclaims this script's own orphans too"
   echo "  find it:  lsof -i :$PORT"
   echo "  or pick another:  PORT=5003 bash scripts/dev-up.sh"
   exit 1
@@ -122,8 +158,13 @@ fi
 
 # ------------------------------------------------------------- 5. serve ----
 echo "starting the dev server on port $PORT…"
+# `set -m` puts this background job in its own process group (pgid == pid), which
+# is what lets `down` kill the wrapper AND the server it spawns. Without it the
+# child outlives the kill and keeps the port. Works on bash 3.2 (macOS) too.
+set -m
 PORT="$PORT" pnpm dev > "$DEVLOG" 2>&1 &
 echo $! > "$PIDFILE"
+set +m
 
 code=000
 for _ in $(seq 1 60); do

@@ -40,7 +40,7 @@ export function PersonalizedAffordabilityCard({ price, address }: { price: numbe
         <Button asChild variant="outline" className="w-full gap-2" data-testid="button-check-with-coach">
           <Link href={`/ai-coach?propertyPrice=${price}&propertyAddress=${encodeURIComponent(address)}`}>
             <Bot className="h-4 w-4" />
-            Discuss with AI Coach
+            Discuss with Homi
           </Link>
         </Button>
       </CardContent>

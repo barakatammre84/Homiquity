@@ -4,8 +4,15 @@
 code** claims its target here first. Rules live in [`CHARTER.md`](CHARTER.md) §5; this file is the
 table plus the overlap protocol.
 
-Without this, the Frontend Wiring Audit (09:10), the Primary Engineer (07:15 — absorbed Sprint Blitz 2026-08-17) and Refactor Radar (Sun 20:00)
-all write to `client/src/**` with no idea the others exist.
+Without this, the **four daily build lanes** — Primary Engineer (07:15, company-wide), Capture Path
+Engineer (09:10, capture path), Workflow Completion Engine (09:53, one seam), Feature Completion
+Engine (12:34, one domain) — plus Refactor Radar (Sun 20:00) all write to overlapping code with no
+idea the others exist.
+
+> 🚨 **The 2026-08-19 suite rewrite doubled the number of routines that need this board** (two daily
+> code-writing seats → four) and their windows are only ~40–150 minutes apart, so a long run
+> overlaps the next by construction. Claim before you write; treat an open PR as outranking the
+> board; release in the same PR as the work. See [`CHARTER.md`](CHARTER.md) §3 for the new clock.
 
 > **Absorbed `knowledge-base/SESSION_CLAIMS.md` on 2026-08-12.** Two boards briefly existed — this
 > one from PR #493 and SESSION_CLAIMS from PR #496, written hours apart by sessions that could not
@@ -53,9 +60,11 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); was stacked on #554's branch (now merged as a402bef), cut over to main — PR #556, founder merges |
+| *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
 
 ## Recently released
+
+| directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | claimed 2026-08-18T15:18Z, **cleared by evening-triage 2026-08-20T02:30Z** | **stale claim cleared under rule 3** — 35 h old, and the stronger signal says it is finished: **PR #556 merged 2026-08-18T20:04:58Z**, branch `claude/musing-engelbart-0a72db` deleted from origin. The owning session never removed its row (rule 4). Cleared rather than carried, because a claim that outlives its PR blocks every peer off `server/services/**` for nothing. |
 
 | founder session (interactive) | borrower dashboard (UC-007) + the `arbitraryColorValues` metric split | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 19:35, released 19:55 | **shipped** — §15 was already built; fixed `min-h-screen`→`min-h-full`, a skeleton at the retired `max-w-xl` that snapped ~3x wider on load, 7 bespoke type rungs, 1 sub-44px control. Raised **UC-008**: the icon registry covers 36 of the 176 glyphs the app uses, which is why it has zero adopters — extending it is founder-gated. |
 

@@ -38,7 +38,7 @@ import {
 
 // "My Profile" — the borrower-visible home of everything captured about them:
 // identity, the self-reported financial profile on their draft application
-// (single source of truth — the same record the AI Coach writes to and the
+// (single source of truth — the same record the Homi writes to and the
 // funnel edits), provenance/verification badges, the AI-coach capture trail,
 // and mortgage readiness. Inline edits reuse the existing draft-only
 // PATCH /api/loan-applications/:id (shared funnel schema).
@@ -295,7 +295,7 @@ export default function Profile() {
               {data?.coachCapture && (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="text-coach-capture-trail">
                   <Bot className="h-3.5 w-3.5 shrink-0" />
-                  {data.coachCapture.fields.length} detail{data.coachCapture.fields.length === 1 ? "" : "s"} captured by your AI Coach ·
+                  {data.coachCapture.fields.length} detail{data.coachCapture.fields.length === 1 ? "" : "s"} captured by yHomi ·
                   last saved {new Date(data.coachCapture.lastSyncedAt).toLocaleDateString()}
                 </p>
               )}
@@ -309,13 +309,13 @@ export default function Profile() {
               {!application ? (
                 <div className="space-y-3 py-6 text-center" data-testid="profile-empty-state">
                   <p className="text-sm text-muted-foreground">
-                    Nothing captured yet. Chat with your AI Coach — every detail you share is saved here automatically.
+                    Nothing captured yet. Chat with yHomi — every detail you share is saved here automatically.
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button asChild className="gap-2" data-testid="button-empty-coach">
                       <Link href="/ai-coach">
                         <Bot className="h-4 w-4" />
-                        Chat with AI Coach
+                        Chat with Homi
                       </Link>
                     </Button>
                     <Button asChild variant="outline" className="gap-2" data-testid="button-empty-apply">
@@ -342,7 +342,7 @@ export default function Profile() {
                             {field.label}
                           </span>
                           {fromCoach && display && (
-                            <Bot className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Captured by AI Coach" />
+                            <Bot className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Captured by Homi" />
                           )}
                           <span className={`shrink-0 text-sm font-medium ${display ? "text-foreground" : "text-muted-foreground/70"}`}>
                             {display ?? "—"}
@@ -442,7 +442,7 @@ export default function Profile() {
                 <Button asChild variant="outline" className="w-full gap-2" data-testid="button-continue-coach">
                   <Link href="/ai-coach">
                     <Bot className="h-4 w-4" />
-                    Continue with your AI Coach
+                    Continue with yHomi
                     <ArrowRight className="h-4 w-4 ml-auto" />
                   </Link>
                 </Button>

@@ -76,6 +76,7 @@ echo "preflight — mirroring CI's \`gate\` job on $(git rev-parse --short HEAD)
 echo
 
 # --- cheap first: a type error should not wait behind three minutes of vitest ---
+step "pre-push gate armed"            node scripts/hooks-installed-guard.cjs
 step "typecheck (tsc)"                npx tsc --noEmit
 step "schema <-> migrations"          node scripts/schema-migration-guard.cjs
 step "migration ledger"               node scripts/migration-ledger-guard.cjs
@@ -84,6 +85,11 @@ step "design tokens"                  node scripts/design-token-guard.cjs
 step "UI standard ratchet"            node scripts/ui-standard-guard.cjs
 step "knowledge-base index"           node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"          node scripts/doc-staleness-guard.cjs
+# tsc covers the app; nothing covered scripts/*.cjs. #594 shipped a syntax error
+# in browser-probe.cjs to main green, and every probe run crashed while a sweep
+# grepping its output reported the pages clean. A parse is not a test — but it is
+# the check that would have caught it.
+step "guard scripts parse"            bash -c 'for f in scripts/*.cjs; do node --check "$f" || exit 1; done'
 step "query-key convergence"          node scripts/query-key-guard.cjs
 
 # §9 needs the PR's changed-file set, which CI computes from the pull request.
@@ -97,10 +103,18 @@ security_review() {
   CHANGED_FILES_FILE="$tmp/files.txt" CHANGED_LINES_FILE="$tmp/lines.diff" \
     PR_BODY="$(git log -1 --pretty=%B)" node scripts/security-review-guard.cjs
 }
-if git rev-parse --verify origin/main >/dev/null 2>&1; then
-  step "security review (§9 triggers)" security_review
-else
+if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
   skip "security review (§9 triggers)" "origin/main not fetched — run: git fetch origin"
+elif [ -z "$(git diff --name-only origin/main...HEAD 2>/dev/null)" ]; then
+  # Nothing COMMITTED yet on this branch, so there is no PR-shaped diff to audit
+  # and the guard correctly refuses to pass on an empty file set. That is a state,
+  # not a defect — reporting it FAIL sent three consecutive clean runs red on
+  # 2026-08-18 and trains people to read past a red §9 line, which is the one
+  # line that must never be read past. Working-tree changes are deliberately NOT
+  # substituted in: §9 audits what a PR would ship, and that means commits.
+  skip "security review (§9 triggers)" "nothing committed on this branch yet — commit, then re-run"
+else
+  step "security review (§9 triggers)" security_review
 fi
 
 step "unit tests (node + client)"     pnpm test

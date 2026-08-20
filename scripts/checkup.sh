@@ -47,6 +47,7 @@ prod_healthy() {
 echo "=== Homiquity daily checkup: $(date '+%Y-%m-%d %H:%M') ==="
 check "working tree clean"            tree_clean
 check "in sync with origin/main"      main_in_sync
+check "pre-push gate armed"           node scripts/hooks-installed-guard.cjs
 check "typecheck (tsc)"               npx tsc --noEmit
 # No --silent on script runs: pnpm v10 forwards post-scriptname flags INTO the
 # script line, so it lands on the last command of the && chain — esbuild

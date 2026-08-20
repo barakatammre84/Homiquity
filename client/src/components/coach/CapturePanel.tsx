@@ -141,7 +141,7 @@ export function CapturePanel({ captured }: { captured: CapturedEvent[] }) {
             </Link>
           </Button>
           <p className="text-[10px] text-muted-foreground text-center leading-snug">
-            Everything the coach captures pre-fills your application.
+            Everything Homi captures pre-fills your application.
           </p>
         </div>
       </CardContent>
