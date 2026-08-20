@@ -35,7 +35,15 @@ simulated vs pending) · [feature-review/FINDINGS.md](knowledge-base/feature-rev
 These outrank every engineering item below. They are not features; they are the condition for
 anything else in this file being true.
 
-- [ ] **KTLO-1. Railway billing — add a payment method; the risk is the expiring trial credit, not
+- [ ] **KTLO-1. Railway — being decommissioned, not paid for.** Founder direction 2026-08-19:
+  development is local-only until the app is fully built and debugged; the production service is
+  to be taken down deliberately rather than left to lapse unattended. CI's `migrate-prod` and
+  `verify-deploy` jobs are paused accordingly (see `.github/workflows/ci.yml`, both carry restore
+  instructions). **Blocked on one thing first:** a read-only census of the production database, so
+  the decision is made against row counts rather than a guess — and that census runs through CI,
+  which is currently dead (KTLO-2). Do not take the service down until the census answers.
+  **Founder-held.** Superseded text follows for provenance:
+- [ ] ~~**KTLO-1. Railway billing — add a payment method; the risk is the expiring trial credit, not
   consumption.** Re-measured 2026-08-17 (#536): 7-day usage ≈ **$3.20/month** (CPU avg 0.0002 vCPU,
   mem 0.32 GB — the container is idle), so this is the $5 Hobby plan plus a trial credit last read
   "~30 days / ~$4.97" on **2026-08-06** and unreadable by any session since (no MCP billing
@@ -43,14 +51,44 @@ anything else in this file being true.
   stops serving.** Railway → project `Homiquity` → Settings → Billing. Coupled: image retention is
   **72 h on Hobby** — the 2026-08-18 merge round (#539/#537/#514/#536/#543) refreshed the rollback
   window, which now relapses **~2026-08-21** without another deploy
-  ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1). **Founder-held.**
-- [ ] **KTLO-2. GitHub Actions minutes — this is the platform bill, not Railway.** Measured
+  ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1).~~
+- [ ] 🚨 **KTLO-2. GitHub Actions billing has FAILED — every merge is blocked.** Escalated
+  2026-08-19. The repo was flipped **public** on 2026-08-18, which made Actions free and *masked*
+  an underlying payment failure. It was flipped back to **private** on 2026-08-19 (founder
+  direction — the security pack and the open-findings register were world-readable), and the
+  failure immediately reasserted: every run since 14:18 UTC dies in ~2 s with `steps: []` and the
+  annotation *"The job was not started because recent account payments have failed or your
+  spending limit needs to be increased."* Runs up to 14:16 succeeded.
+  **Consequence, precisely:** `gate` is a required status check on `main` with
+  `enforce_admins: true`, so no new PR can merge — the check never runs, the PR sits
+  "Expected — Waiting for status", and nobody can bypass it. PRs whose gate went green before the
+  flip keep their recorded pass and remain mergeable. The read-only prod census (KTLO-1) is
+  blocked on this too.
+  **DECISION 2026-08-19 — the required check was REMOVED rather than the bill paid.** Development
+  is local-only and not launching, so the gate moved from GitHub to the laptop: `main`'s
+  `required_status_checks.contexts` is now `[]`. Force-push and deletion protection and
+  `enforce_admins` are untouched. This is safe *only because* the local gate was hardened the same
+  day — `.githooks/pre-push` now BLOCKS instead of skipping when it cannot check anything, and
+  `scripts/hooks-installed-guard.cjs` fails when a clone has `core.hooksPath` unset, which is how a
+  fresh clone used to start ungated. Run `pnpm preflight` before opening a PR; it is the same 16
+  checks CI ran.
+  🚨 **RESTORE THIS BEFORE ANY RETURN TO LAUNCH.** One command — the separators are U+00B7 MIDDLE
+  DOTs, not periods, and the string must match verbatim or every PR deadlocks on a check that never
+  arrives:
+  ```bash
+  echo '{"strict":false,"contexts":["gate (typecheck · tests · schema guard)"]}' | gh api -X PATCH repos/barakatammre84/Homiquity/branches/main/protection/required_status_checks --input -
+  ```
+  **Fix:** GitHub → Settings → Billing & plans — resolve the failed payment and/or raise the
+  Actions spending limit. The alternative is re-publishing the repo, which re-exposes
+  `knowledge-base/feature-review/FINDINGS.md` and `governance/security/`. **Founder-held, and it
+  now outranks everything else in this file.** Prior measurement for context:
+- [ ] ~~**KTLO-2. GitHub Actions minutes — this is the platform bill, not Railway.** Measured
   2026-08-17 (#536 E9): ~13.6 CI runs/day × ~4–5 billable min ≈ **1,850 of the private repo's
   2,000 free min/month (~92%)**; overage $0.008/min. The 2026-08-06 queueing symptom is stale —
   Actions was healthy all day today (launch-gate 2026-08-17). Mitigations landed 2026-08-17: the
   local pre-push gate (#529) and superseded-run cancellation (#535). Decide: set an Actions
   spending limit **knowing a hard cap that halts `gate` also halts every merge and `migrate-prod`**,
-  or accept overage. Settings → Billing → Actions. **Founder-held.**
+  or accept overage. Settings → Billing → Actions.~~
 - [ ] **KTLO-3. Neon production compute is unpinned — cold starts measured at 5.5–7.4 s.** The first
   request after autosuspend pays that, on the borrower funnel. Decide alongside KTLO-1 (same billing
   conversation): pin the compute / disable autosuspend on the production branch, or accept it and

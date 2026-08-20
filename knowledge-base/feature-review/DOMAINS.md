@@ -5,6 +5,12 @@ files, client surfaces, intended-use source docs, and owned tests. A `feature-re
 takes ONE numbered charter as its brief; the UX lens runs `ux-reviewer` across all surfaces.
 Program rules: `CHARTER.md`.
 
+> **Not to be confused with `knowledge-base/handbook/FEATURE_MAP.md`.** That file partitions the same
+> code into **41 owner areas**, each with an implementing `hq-*-owner` agent. These 13 domains are the
+> *review* partition — a `feature-reviewer` reads one of them and reports findings, never fixes. The
+> two are refinements of each other, so a file that appears in one and not the other means one of them
+> has drifted, and it is worth finding out which.
+
 > **Census (verified this session, supersedes the old "37 subsystems / 40 surfaces / 7
 > workflows"):** ~**95 backend subsystems** · **88 routed client pages** (95 routes across 13
 > nested `client/src/pages/` dirs) · ~**14 end-to-end workflows** (8 fully wired / 4 partial / 2

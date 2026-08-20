@@ -77,17 +77,38 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
     return m?.[1] ?? "";
   };
 
-  it("migrate-prod runs only on push or manual dispatch", () => {
-    const cond = jobCondition("migrate-prod");
-    expect(cond).toMatch(/github\.event_name == 'push'/);
-    expect(cond).toMatch(/workflow_dispatch/);
-    expect(cond).not.toMatch(/pull_request/);
+  // PAUSED STATE, 2026-08-19. Development is local-only and the Railway production
+  // service is being taken down, so both deploy jobs are switched off (see their `if:`
+  // comments in ci.yml for the restore procedure). These two tests therefore accept the
+  // live wiring OR the exact paused wiring — and nothing else. They are deliberately NOT
+  // relaxed to a wildcard: any third value still fails, so the jobs cannot drift to some
+  // other trigger unnoticed while nobody is looking at them.
+  //
+  // The assertion this file exists for — that a pull_request can never reach a deploy
+  // job — stays unconditional in both states. Widening `on.pull_request` must never be
+  // able to fire a deploy, paused or not.
+  const LIVE_MIGRATE = "github.event_name == 'push' || github.event_name == 'workflow_dispatch'";
+  const PAUSED_MIGRATE = "github.event_name == 'workflow_dispatch'";
+  const LIVE_VERIFY = "github.event_name == 'push'";
+  const PAUSED_VERIFY = "false";
+
+  it("migrate-prod is wired for push+dispatch, or explicitly paused to dispatch only", () => {
+    const cond = jobCondition("migrate-prod").trim();
+    expect([LIVE_MIGRATE, PAUSED_MIGRATE]).toContain(cond);
   });
 
-  it("verify-deploy runs only on push", () => {
-    const cond = jobCondition("verify-deploy");
-    expect(cond).toMatch(/github\.event_name == 'push'/);
-    expect(cond).not.toMatch(/pull_request/);
+  it("verify-deploy is wired for push, or explicitly paused off", () => {
+    const cond = jobCondition("verify-deploy").trim();
+    expect([LIVE_VERIFY, PAUSED_VERIFY]).toContain(cond);
+  });
+
+  it("no pull_request event can reach a deploy job, paused or live", () => {
+    // The security property. Unconditional, and the reason this describe block exists.
+    for (const job of ["migrate-prod", "verify-deploy"]) {
+      expect(jobCondition(job), `${job} must never fire on a pull_request`).not.toMatch(
+        /pull_request/,
+      );
+    }
   });
 
   it("gate runs only on pull_request", () => {
