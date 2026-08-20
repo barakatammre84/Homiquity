@@ -130,3 +130,13 @@ export function hasPendingPreApprovalSubmit(): boolean {
     return false;
   }
 }
+
+/**
+ * localStorage — a question the visitor typed into the public landing hero before
+ * they had an account. Behaviour lives in `pendingCoachQuestion.ts`; only the key
+ * is here, because this module is EAGER (App.tsx -> PrivateLayout ->
+ * usePendingAttribution) and `getPostAuthRoute` needs to test the key without
+ * dragging the write/read/clear helpers into the entry bundle every visitor
+ * downloads.
+ */
+export const PENDING_COACH_QUESTION_KEY = "homiquity_pending_coach_question";

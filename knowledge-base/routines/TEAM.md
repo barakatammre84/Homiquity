@@ -6,6 +6,12 @@ applies to every seat here. This file adds the seating chart and the hand-off pr
 nothing.
 **Last verified against the code:** 2026-08-19.
 
+> ⚠️ **Partly superseded 2026-08-19 by the prove-it-first suite rewrite** ([`CHARTER.md`](CHARTER.md)
+> §1a, §3). The *role* mapping below still holds; the **clock and the seat list do not**. Three seats
+> were retired, two were reshaped, one was promoted to daily, and two new build lanes were added.
+> **Read `CHARTER.md` §3 and `list_scheduled_tasks` for who actually runs** — this file is a
+> seating chart, not a registration, and §0 there is about exactly that confusion.
+
 > **Freshness:** last verified 2026-08-19 · review every 60 days
 
 ---
@@ -25,9 +31,16 @@ good each one is alone.
 
 ## 1. The seating chart
 
-Seven seats. **Four were already staffed** — the finding that produced this file is that the
+Eight seats. **Four were already staffed** — the finding that produced this file is that the
 fleet's gaps and the hiring plan's gaps are the *same* gaps, and both are on the non-engineering
 side. We had built the builders and skipped the domain, the vendor edge, and the adversarial check.
+
+**The eighth seat was added the same evening, from the other direction.** The Complex File Engine
+(CHARTER §6d) is a *builder*, but it was missing for the same structural reason the three above
+were: the qualification layer — can a messy borrower qualify at all — sat inside the Primary
+Engineer's company-wide lane, so no run was ever judged on it. It pairs with the Domain seat by
+design: when it reaches regulated math it may not implement, it asks the **Domain Oracle** for a
+cited verdict and posts a `WAITING` row rather than guessing (its rails C2/C3).
 
 | Seat | Hiring-plan role | Routine | Cadence | Writes code? |
 |---|---|---|---|---|
@@ -36,6 +49,7 @@ side. We had built the builders and skipped the domain, the vendor edge, and the
 | **Build — product** | Senior full-stack (§2.3) | Primary Engineer | daily 07:21 | yes |
 | **Build — backend** | Senior full-stack (§2.3) | Backend Data Engineer | daily 11:00 UTC | yes |
 | **Build — capture path** | Senior full-stack (§2.3) | Frontend Wiring Audit | daily 09:20 | yes |
+| **Build — qualification layer** | Senior full-stack (§2.3) | **Complex File Engine** *(new)* | daily 09:53 | yes |
 | **QA — find** | QA engineer (§2.4) | Deliverable QA Sweep | daily 15:05 | no |
 | **QA — prove** | QA engineer (§2.4) | **QA Mutation Verifier** *(new)* | daily 16:20 | throwaway only |
 

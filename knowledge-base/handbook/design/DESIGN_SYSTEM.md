@@ -40,16 +40,16 @@ sites actually use it.
 | Capability | State | Measured |
 |---|---|---|
 | `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 282 page files import it — *pnpm guard:ui → `pageShellDrift`* |
-| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 5%** | 17 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
+| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 19 file(s) import the registry, 322 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
 | `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
-| Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 33 in 24 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
+| Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 34 in 25 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 8 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 104 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 111 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
-| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
+| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **322** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |

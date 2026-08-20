@@ -55,7 +55,7 @@ Status ledger (updated by the orchestrator after each run):
 
 | # | Journey | Walkability (gate state) | Last walked | Verdict |
 |---|---|---|---|---|
-| 1 | Aspiring owner — renter, sandbox, never applies | OPEN locally · survives PRELAUNCH (no `<Gated>` surface on the route; the sandbox's own "Get Pre-Approved" link points *into* the gate) | — | not yet run |
+| 1 | Aspiring owner — renter, sandbox, never applies | OPEN locally · survives PRELAUNCH (no `<Gated>` surface on the route; the sandbox's own "Get Pre-Approved" link points *into* the gate) | **2026-08-20** (`b799b91d`, pre-#595 Landing) | **WARN** — sandbox has a real floor; 2 data-correctness defects (`F-0820-01` rent-as-liability, `F-0820-02` PMI), 1 surface unreachable at 320px, `ux-43..49`. [report](../routines/reports/2026-08-20-journey-walk.md) |
 | 2 | Active buyer — W-2 salaried | OPEN locally · **route dies under PRELAUNCH** (`/apply` is `<Gated>`, `App.tsx:267`) | — | not yet run |
 | 3 | Active buyer — self-employed / business owner | OPEN locally · **route dies under PRELAUNCH** (`/self-employed` `App.tsx:257` + `/apply` both `<Gated>`) | — | not yet run |
 | 4 | Active buyer — affluent / move-up (jumbo) | OPEN locally · **route dies under PRELAUNCH at the first click** (the door links straight to `<Gated>` `/apply`) | — | not yet run |
@@ -65,13 +65,44 @@ Status ledger (updated by the orchestrator after each run):
 ## 1. Aspiring owner — renter, sandbox, never applies
 
 - **Persona**: a renter exploring whether homeownership is reachable. Enters through the
-  *"You're renting now"* door (`client/src/pages/public/Landing.tsx:53-61`). Signup always creates
+  *"You're renting now"* door (`client/src/pages/public/Landing.tsx:58-73`). Signup always creates
   this role (`client/src/pages/public/Signup.tsx`), so **every user in the product is this persona
   first** — which makes the sandbox the highest-traffic authenticated surface set there is.
-- **Account**: seeded `renter@test.com` at `DEV_TEST_PASSWORD` via `/test-login`
-  (`server/auth.ts:362`). Starts `aspiring_owner` and **must still be `aspiring_owner` at the end**
-  — assert both. The seat is **shared** with every other run. `/test-login` re-writes the role on
-  every login (`server/auth.ts:381`), so a polluted role self-heals; **application rows do not.**
+- **Account — take a FRESH SIGNUP, not the seeded seat.** Sign up as `jr+<MMDD>@test.local` through
+  the real `/signup` form. Starts `aspiring_owner` and **must still be `aspiring_owner` at the end**
+  — assert both, and assert `applicationCount === 0`.
+
+  Fresh signup is the primary for three reasons, in order: it is the only state that **guarantees
+  the incubator gate fires** (below); it is what a real new user actually experiences; and it
+  exercises seam 2 (`/signup` → `postAuthRoute`) for free, which the seeded seat skips entirely.
+
+  🚨 **The seeded `renter@test.com` seat cannot be trusted to show `RenterHome`, and on the founder's
+  laptop it does not.** `/test-login` (`server/auth.ts:362`) re-writes the *role* on every login
+  (`server/auth.ts:381`), so a polluted role self-heals — but **application rows do not**, and the
+  incubator gate keys on the file, not the role: `Dashboard.tsx:238-244` swaps in `RenterHome` only
+  when there is **no workable file and no funded loan**. On 2026-08-20 that seat carried a
+  `self_employed` application in `processing`, created **2026-07-02**, so `/dashboard` rendered the
+  full borrower dashboard and **journey 1's core surface was unreachable on the account this charter
+  used to name for it.**
+
+  **It is dev-database drift, not a repo fixture — which is why it will happen again.** `server/seed.ts`
+  creates content, properties, pricing and templates and **no users and no applications**; the local
+  Postgres simply accumulated one (188 applications across many users at last count). Any run that
+  submits on that seat pollutes it permanently for every later run. That is the standing hazard this
+  charter already named — it had simply already fired.
+
+  **If you want the seeded seat anyway** (for accumulated state — an existing lease, goal or coach
+  history a fresh account cannot have; login is `renter@test.com` at `DEV_TEST_PASSWORD` via
+  `/test-login`, and the seat is **shared** with every other run), **probe first and say which you
+  used**:
+
+  ```
+  GET /api/loan-applications   →   [] ⇒ RenterHome will render.   Non-empty ⇒ it will NOT.
+  ```
+
+  `TEST_ACCOUNTS.md:22` documents `renter@test.com` as the *"Incubator surface (RenterHome)"*
+  account. When the probe contradicts that, the account is wrong, not the runbook — record it and
+  fall back to a fresh signup rather than reporting `RenterHome` unwalked.
 - **Route**:
   1. `/` (Landing) → take the renting door → `/first-time-buyer`.
   2. `/learn`, `/resources`, `/calculators/*` → explore, tune numbers.
@@ -99,13 +130,19 @@ Status ledger (updated by the orchestrator after each run):
      `client/src/components/BuyingPowerEstimator.tsx:102-110` (`seedAndGo`) saves goal, income,
      debt band and down payment, then navigates. Assert the *write* and the `/afford` crossing;
      do not take the `/apply` exit.
-- **Promises**:
-  - `Landing.tsx:57-58` — *"See what you'd need to buy — and what your rent already proves about
-    you."* The second half is the load-bearing one: `/my-lease` furnishes nothing to any bureau and
-    `/rent-reporting` is an email-only waitlist. **Check the qualification appears where the promise
-    was made**, not only where it is broken.
-  - `Landing.tsx:102` — *"Homi answers your questions any hour, in plain English."* → `/ai-coach`
-    must be reachable and answering from every point on this route.
+- **Promises** (re-verified against `main` @ `8260d734`, 2026-08-20 — #595 moved every one of these):
+  - `Landing.tsx:69-70` — *"See what you'd need to buy — and what the rent you already pay could buy
+    instead."* → `/first-time-buyer`'s rent-to-price calculator is what must deliver it.
+    ⚠️ **Do not go looking for the old second half.** This card used to read *"…and what your rent
+    already proves about you"*, and this charter used to send the walker to check the qualification
+    on it. **#595 retracted that clause** as a Reg N / MAP Rule §1014.3 misrepresentation — nothing
+    downstream furnishes rent, and `MyLease.tsx:160` says so flatly. The retraction is the fix;
+    **its absence is not a finding.** What is still worth checking is the standing rule underneath:
+    `/my-lease` furnishes nothing to any bureau and `/rent-reporting` is an email-only waitlist, so
+    any *new* copy implying a credit benefit is a finding.
+  - `Landing.tsx:123` — *"Homi answers your questions any hour, in plain English"* — now a
+    `TRUST_POINTS` entry, **not** a door. `/ai-coach` must be reachable and answering from every
+    point on this route.
 - **Dead-end watch**: `RenterHome` itself (does it name a next step, or is it a lobby?);
   `/my-lease` after saving a lease; `/gap-calculator` after producing a gap; `/onboarding` for a
   persona with no application. **The question only this seat answers:** after exhausting every
@@ -126,7 +163,7 @@ Status ledger (updated by the orchestrator after each run):
 ## 2. Active buyer — W-2 salaried
 
 - **Persona**: salaried, one employer, one W-2. The product's assumed default case — and **the one
-  persona with no door of its own**: `Landing.tsx:52-92` offers renting, self-employed, owner and
+  persona with no door of its own**: `Landing.tsx:57-113` offers renting, self-employed, owner and
   moving-up, none of which is "I have a normal job." Walk both plausible entrances (the renting
   door, and a cold `/apply`); the second is the real one.
 - **Account**: fresh registration at `/signup` as `jw2+<MMDD>@test.local`, fake-PII per the `tests/`
@@ -166,14 +203,16 @@ Status ledger (updated by the orchestrator after each run):
   7. verified provenance : `/verification` → decision recalc → the number rendered on
      `/application-summary`.
 - **Promises**:
-  - `Landing.tsx:102` — *"Homi answers your questions any hour, in plain English."*
+  - `Landing.tsx:123` — *"Homi answers your questions any hour, in plain English"* (a `TRUST_POINTS`
+    entry, not a door).
   - `Landing.tsx:67` — *"We work out every way your income can count."* For a single-W-2 buyer,
     check this does not read as an offer the product then declines to make.
   - The funnel's own progress/ETA chrome — the step count it promises must be the step count it
     delivers, including any branch the answers open.
 - **Dead-end watch**: `/dashboard` immediately post-promotion (does it name the next step, or show a
   file with nothing to do?); the decision surface on any outcome that is not a clean approval;
-  `/loan-estimate/:id` — ux-30 recorded that no borrower-reachable UI rendered the LE.
+  `/loan-estimate/:id` — **ux-30 records that no borrower-reachable UI rendered the LE**, so treat
+  the disclosure leg as suspect and re-date that claim before re-reporting it.
   ⚠️ **That claim is being fixed in flight** (#596, `fix/ux-30-le-reachable-v2`, touching
   `App.tsx`, `routeGates.ts`, `borrowerDashboard/LoanDetails.tsx`). **Check whether it has landed
   before reporting anything here** — a walker who re-files ux-30 after the fix has filed a false
@@ -194,7 +233,7 @@ Status ledger (updated by the orchestrator after each run):
 ## 3. Active buyer — self-employed / business owner
 
 - **Persona**: 1099s, K-1s, write-offs, a second entity, maybe a rental. Enters through the
-  *"Your income is your own"* door (`Landing.tsx:62-70`) — the only persona whose door lands on a
+  *"Your income is your own"* door (`Landing.tsx:74-91`) — the only persona whose door lands on a
   real explainer that pre-screens income shape and deep-links the answer.
 - **Account**: fresh `/signup` as `jse+<MMDD>@test.local`; starts `aspiring_owner`, ends
   `active_buyer`. **Your answers must actually be complex**: `employmentType: "self_employed"`,
@@ -254,7 +293,7 @@ Status ledger (updated by the orchestrator after each run):
 > **promise-versus-reachability across the jumbo threshold.**
 
 - **Persona**: equity in hand, a balance above the conforming limit, more moving parts. Enters
-  through *"You're moving up"* (`Landing.tsx:80-91`) — **the only one of the four doors that skips
+  through *"You're moving up"* (`Landing.tsx:101-112`) — **the only one of the four doors that skips
   the explainer and links straight to `/apply`**, carrying the promise *"A bigger home, a bigger
   balance, more moving parts — jumbo included. We'll map the whole picture."*
 - **Account**: fresh `/signup` as `jaf+<MMDD>@test.local`; starts `aspiring_owner`, ends
@@ -275,7 +314,7 @@ Status ledger (updated by the orchestrator after each run):
   3. loan amount : funnel → `server/services/borrowerGraph.ts` eligibility (it pushes `jumbo`
      into `eligibleLoanTypes` above the limit) → the products actually offered.
 - **Promises**:
-  - `Landing.tsx:88` — *"We'll map the whole picture."* Name the surface that maps it.
+  - `Landing.tsx:108-109` — *"We'll map the whole picture."* Name the surface that maps it.
   - `AdvisoryPanel.tsx:76` — the credit/down-payment warning. If nothing downstream applies a
     different standard, the warning is either unkept or untrue; either way it is a two-surface
     finding.

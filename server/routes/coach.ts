@@ -10,6 +10,9 @@ import {
   SENSITIVE_INPUT_MESSAGES,
   SENSITIVE_INPUT_REDACTED_PLACEHOLDER,
 } from "../services/sensitiveInputGuard";
+import { scanForEscalationTriggers } from "@shared/compliance/complaintEscalation";
+import { escalateFlaggedMessage } from "../services/complaintEscalation";
+import { logAudit } from "../auditLog";
 import { pickActiveLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
@@ -333,7 +336,17 @@ export function registerCoachRoutes(app: Express) {
   // the new user message (the old flow inserted first and re-fetched, so the
   // model saw the user's message twice), then persist it and build context.
   // Writes the error response itself and returns null when the turn must not run.
-  async function prepareCoachTurn(req: Request, res: Response): Promise<PreparedCoachTurn | null> {
+  //
+  // `scanText` is the message as the borrower actually typed it, BEFORE the
+  // sensitive-input guard swaps in its placeholder. Only the CS2 complaint
+  // scan reads it, and that scan is pure — it returns categories and keeps
+  // nothing. Passing the redacted placeholder instead would silently lose a
+  // discrimination allegation that happened to share a message with an SSN.
+  async function prepareCoachTurn(
+    req: Request,
+    res: Response,
+    scanText?: string,
+  ): Promise<PreparedCoachTurn | null> {
     const user = req.user as User;
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -385,6 +398,28 @@ export function registerCoachRoutes(app: Express) {
       role: "user",
       content: message,
     });
+
+    // CS2: the same escalation scan the Messages surface runs, on the same
+    // vocabulary, with the same fire-and-forget posture — it NEVER blocks,
+    // alters, or delays the turn, and the borrower sees no tip-off. Without
+    // this, a borrower could allege discrimination or a credit-reporting
+    // error to the assistant and nobody would ever be told, while the same
+    // words typed into Messages escalate to the founder immediately.
+    const complaintScan = scanForEscalationTriggers(scanText ?? message);
+    if (complaintScan.flagged) {
+      logAudit(req, "complaint.flagged", "coach_message", userMsg.id, {
+        categories: complaintScan.categories,
+        conversationId: conversation.id,
+        senderId: user.id,
+      });
+      escalateFlaggedMessage(storage, {
+        messageId: userMsg.id,
+        surface: "coach_message",
+        userId: user.id,
+        applicationId: null,
+        categories: complaintScan.categories,
+      }).catch((e) => console.error("[complaints] founder escalation failed:", e));
+    }
 
     const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
 
@@ -453,11 +488,25 @@ export function registerCoachRoutes(app: Express) {
       }
       updateData.completionPercentage = state.profile.completionPercentage;
     } else if (verifiedContext.completionPercentage !== undefined) {
-      const existingProfile = (conversation.financialProfile as any) || {};
-      updateData.financialProfile = {
-        ...existingProfile,
-        completionPercentage: verifiedContext.completionPercentage,
-      };
+      // The model did not call set_readiness this turn, so there is no profile
+      // to write — only a server-derived percentage. That belongs in the
+      // dedicated `completionPercentage` COLUMN, which is what the branch above
+      // also writes.
+      //
+      // This used to spread the percentage into `financialProfile` instead, and
+      // on a conversation's first turn `existingProfile` is `{}` — so the column
+      // the client reads as a whole CoachProfile got `{completionPercentage: 88}`
+      // and nothing else. `ReadinessPanel` then dereferenced
+      // `profile.completedInputs.length` on an absent array and took the entire
+      // /ai-coach page down through the error boundary. Rows in that shape
+      // already exist, which is why the client defends itself too.
+      updateData.completionPercentage = verifiedContext.completionPercentage;
+      if (conversation.financialProfile && typeof conversation.financialProfile === "object") {
+        updateData.financialProfile = {
+          ...(conversation.financialProfile as Record<string, unknown>),
+          completionPercentage: verifiedContext.completionPercentage,
+        };
+      }
     }
     if (state.actionPlan) {
       updateData.actionPlan = state.actionPlan;
@@ -489,14 +538,13 @@ export function registerCoachRoutes(app: Express) {
       // never lands in a log. The stored user message becomes the redacted
       // placeholder; the reply is canned (no model call, no ai_interactions
       // row — nothing was invoked).
-      const guardHit = detectSensitiveInput(
-        typeof req.body?.message === "string" ? req.body.message : "",
-      );
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message : "";
+      const guardHit = detectSensitiveInput(rawMessage);
       if (guardHit) {
         req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
       }
 
-      const prep = await prepareCoachTurn(req, res);
+      const prep = await prepareCoachTurn(req, res, rawMessage);
       if (!prep) return;
 
       if (guardHit) {
@@ -587,14 +635,13 @@ export function registerCoachRoutes(app: Express) {
   app.post("/api/coach/message", isAuthenticated, async (req, res) => {
     try {
       // Same input-side sensitive-data guard as the streaming variant.
-      const guardHit = detectSensitiveInput(
-        typeof req.body?.message === "string" ? req.body.message : "",
-      );
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message : "";
+      const guardHit = detectSensitiveInput(rawMessage);
       if (guardHit) {
         req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
       }
 
-      const prep = await prepareCoachTurn(req, res);
+      const prep = await prepareCoachTurn(req, res, rawMessage);
       if (!prep) return;
 
       if (guardHit) {
@@ -727,7 +774,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "readiness_check",
           title: "Get Your Readiness Assessment",
-          description: "You have application data on file. Ask the coach to assess your mortgage readiness for a personalized action plan.",
+          description: "You have application data on file. Ask Homi to assess your mortgage readiness for a personalized action plan.",
           action: "Assess my mortgage readiness based on my application",
         });
       }
@@ -738,7 +785,7 @@ export function registerCoachRoutes(app: Express) {
           insights.push({
             type: "missing_docs",
             title: "Upload Your Documents",
-            description: "No documents uploaded yet. The coach can create a personalized checklist for you.",
+            description: "No documents uploaded yet. Homi can create a personalized checklist for you.",
             action: "What documents do I need to upload?",
           });
         }
@@ -748,7 +795,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "credit_improvement",
           title: "Credit Score Tips",
-          description: `Your credit score is ${verifiedContext.creditScore}. The coach can help you create a plan to improve it.`,
+          description: `Your credit score is ${verifiedContext.creditScore}. Homi can help you create a plan to improve it.`,
           action: "How can I improve my credit score for a better mortgage rate?",
         });
       }
@@ -757,7 +804,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "dti_high",
           title: "DTI Ratio Guidance",
-          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. The coach can help you strategize to lower it.`,
+          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. Homi can help you strategize to lower it.`,
           action: "My DTI is high. What can I do to bring it down?",
         });
       }
@@ -766,7 +813,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "get_started",
           title: "Start Your Homebuying Journey",
-          description: "Chat with the coach to understand what you need for a mortgage and create a personalized plan.",
+          description: "Chat with Homi to understand what you need for a mortgage and create a personalized plan.",
         });
       }
 

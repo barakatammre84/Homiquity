@@ -398,7 +398,7 @@ export const documents = pgTable("documents", {
   // UNTRUSTED INPUT — never parse as extraction output, never promote to a
   // provenance/trust tier. Split out of `notes` by migration 0046 after a
   // borrower-supplied string in `notes` was parsed as document-verified
-  // extraction by borrowerGraph and the AI coach (F-027).
+  // extraction by borrowerGraph and Homi (F-027).
   borrowerDescription: text("borrower_description"),
 
   // Human review decision (POST /api/documents/:id/verify — the only writer).

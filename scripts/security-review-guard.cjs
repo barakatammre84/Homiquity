@@ -45,15 +45,28 @@
 /** §9's file-path triggers, verbatim from TEAM_PRACTICES.md §9. */
 const PATH_TRIGGERS = [
   { label: "PII vault / field encryption", match: (f) => /^server\/services\/(ssnVault|piiVault|encryptionService)\.ts$/.test(f) },
-  // accountRecovery.ts mints and validates password-reset tokens (RESET_TTL_MINUTES,
-  // SHA-256 of the raw token). It is auth-critical but lives in services/, so the three
-  // paths §9 originally named all missed it.
+  // Two auth-critical files live in services/ rather than on one of the three paths
+  // §9 originally named, so both had to be added by hand:
+  //   accountRecovery.ts mints and validates password-reset tokens
+  //     (RESET_TTL_MINUTES, SHA-256 of the raw token). Added 2026-08-06.
+  //   loginLockout.ts is the per-account brute-force control (LOCKOUT_THRESHOLD,
+  //     the exponential backoff window). Added 2026-08-19, found by running
+  //     detectTriggers(["server/services/loginLockout.ts"]) and getting []. It is
+  //     §9 for the same reason clientIp.ts is — what depends on it: server/app.ts's
+  //     authLimiter caps ONE IP at 20 auth requests / 15 min, so a distributed
+  //     credential-stuffing attacker rotating source IPs is bounded by this file
+  //     ALONE. Raising the threshold or shortening the window is therefore a
+  //     material weakening of the only control that still applies, and it would
+  //     have merged with no review.
+  // The enumeration stays a literal alternation, never `server/services/` as a
+  // prefix: that directory holds 100+ files and a glob there would fire on most
+  // backend PRs, which is the over-firing §9's own doctrine forbids.
   {
     label: "auth & sessions",
     match: (f) =>
       /^server\/(auth|socialAuth)\.ts$/.test(f) ||
       f.startsWith("server/integrations/auth/") ||
-      f === "server/services/accountRecovery.ts",
+      /^server\/services\/(accountRecovery|loginLockout)\.ts$/.test(f),
   },
   { label: "uploads / object storage", match: (f) => f.startsWith("server/integrations/object_storage/") || f === "shared/uploads.ts" },
   { label: "outbound messaging", match: (f) => /^server\/services\/(emailService|smsCompliance)\.ts$/.test(f) },

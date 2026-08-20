@@ -172,11 +172,12 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
 - **Browser-driven runs are local only, and default to 5001** (the primary checkout) — **never**
   the deployed site, where a failed Railway build leaves the previous container serving. A local
   `/api/health` answers `commit: null` on every branch, so identify the serving checkout with
-  `lsof -a -p <pid> -d cwd` plus the process start time. Two distinct staleness traps, both
-  observed 2026-08-19: the `:5002` "worktree" port was served by a **14-day-old orphan** from the
-  deleted `launch-hygiene` worktree (its `/api/health` returns only `{status,timestamp}` while
-  current code also returns `commit` and `email` — the cheapest tell); and even the *right*
-  checkout serves stale **server** code, because `pnpm dev` is `tsx server/index-dev.ts` with **no
-  watch flag** — the server half freezes at process start while the client is Vite-transformed per
-  request and stays current. Compare process start time against `server/**` mtimes before
-  attributing any server-side finding to HEAD.
+  `lsof -a -p <pid> -d cwd` plus the process start time before trusting any measurement. Stale
+  listeners are the norm — two distinct staleness traps, both observed 2026-08-19: the `:5002`
+  "worktree" port was still served by a **14-day-old orphan** from the deleted `launch-hygiene`
+  worktree (its `/api/health` returns only `{status,timestamp}` while current code also returns
+  `commit` and `email` — the cheapest tell); and even the *right* checkout serves stale **server**
+  code, because `pnpm dev` is `tsx server/index-dev.ts` with **no watch flag** — the server half
+  freezes at process start while the client is Vite-transformed per request and stays current.
+  Compare process start time against `server/**` mtimes before attributing any server-side finding
+  to HEAD.
