@@ -1239,7 +1239,7 @@ export async function getPropertyAffordability(
   } else if (additionalSavingsNeeded) {
     message = `Based on your current information, an estimated additional $${additionalSavingsNeeded.toLocaleString()} in documented savings may be needed for the down payment and closing costs. Final requirements are determined during underwriting review.`;
   } else {
-    message = `Additional financial information is needed to estimate affordability for this property. Complete your application or provide details through the readiness assistant.`;
+    message = `Additional financial information is needed to estimate affordability for this property. Complete your application or provide details through Homi.`;
   }
 
   return {

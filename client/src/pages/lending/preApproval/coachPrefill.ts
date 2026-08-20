@@ -1,6 +1,6 @@
 // Coach-intake gap-fill for the pre-approval funnel.
 //
-// The AI Coach collects the same figures the funnel asks for, so a borrower who
+// Homi collects the same figures the funnel asks for, so a borrower who
 // talked to the coach shouldn't have to retype them. GAP-FILL is the whole
 // contract: intake may fill a field the borrower has left BLANK, and may never
 // replace an answer that already exists.

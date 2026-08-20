@@ -6,7 +6,9 @@ lifecycle: `CHARTER.md`. Only findings that survived `finding-verifier` (and, wh
 re-discovered on re-runs.
 
 **Id convention**: audit ids are canonical — `F-###` (product/code), `D-###` (documentation),
-`ux-##` (UI/UX), `N-###` (corrections), `U-#` (escalations). Domain column maps to `DOMAINS.md`.
+`ux-##` (UI/UX), `N-###` (corrections), `U-#` (escalations), `J-<MMDD>-<NN>` (client-journey
+seams — `JOURNEYS.md`, minted from the walker's run date, never a next-free integer). Domain
+column maps to `DOMAINS.md`; a `J-` row names the two surfaces the seam spans.
 
 > **Seeded 2026-07-08 from a 9-dimension read-only audit** (existence, wiring, tests,
 > gating/data-model, workflows, security, compliance-math, documentation ×2, static UI/UX). These
