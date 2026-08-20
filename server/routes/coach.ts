@@ -4,6 +4,8 @@ import { storage } from "../storage";
 import { runCoachTurn, CoachTurnError, isCoachConfigured, type CoachTurnResult, type CoachEmit, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps, coachIntakeSchema, coachActionPlanSchema, coachDocumentChecklistSchema, coachProfileSchema } from "../services/coachingService";
 import { buildBorrowerGraph } from "../services/borrowerGraph";
 import { getCoachIntakeSnapshots } from "../services/coachIntake";
+import { loadFileTruth, EMPTY_LOAN_STATUS } from "../services/coachFileTruth";
+import { deriveReadinessProfile } from "../services/coachingContext";
 import { beginSse, writeSse } from "../sse";
 import {
   detectSensitiveInput,
@@ -13,7 +15,7 @@ import {
 import { scanForEscalationTriggers } from "@shared/compliance/complaintEscalation";
 import { escalateFlaggedMessage } from "../services/complaintEscalation";
 import { logAudit } from "../auditLog";
-import { pickActiveLoanApplication } from "@shared/schema";
+import { pickActiveLoanApplication, pickWorkableLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
 
@@ -41,6 +43,18 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
     const activeApp = pickActiveLoanApplication(applications)
       ?? applications.find(a => a.status === "funded")
       ?? applications[0];
+
+    // TWO resolutions on purpose, and they are not interchangeable.
+    //
+    // `activeApp` above is deliberately wide — it falls back to the most recent
+    // file of ANY status so the narrative context is never blind to history.
+    // That is right for prose ("your last application was withdrawn") and wrong
+    // for a tool that tells a borrower which documents to upload: the `??
+    // applications[0]` tail silently resurrects denied/withdrawn/funded files,
+    // which is how uploads once landed on a closed loan (see
+    // pickWorkableLoanApplication's docblock). The server-truth tools target
+    // the workable file or nothing at all.
+    const workableApp = pickWorkableLoanApplication(applications);
 
     if (!activeApp) {
       return {
@@ -142,6 +156,7 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
 
     const context: VerifiedUserContext = {
       hasApplication: true,
+      workableApplicationId: workableApp?.id ?? null,
       applicationStatus: activeApp.status,
       annualIncome: activeApp.annualIncome,
       monthlyDebts: activeApp.monthlyDebts,
@@ -821,6 +836,57 @@ export function registerCoachRoutes(app: Express) {
     } catch (error) {
       console.error("Coach insights error:", error);
       res.status(500).json({ error: "Failed to fetch insights" });
+    }
+  });
+
+  /**
+   * The borrower's file, as the assistant sees it — status, the real document
+   * checklist, open tasks, readiness. Exactly the payloads the read tools emit,
+   * from exactly the same functions.
+   *
+   * It exists so the panels render on page load. Before this, a returning
+   * borrower saw whatever the LAST turn happened to leave in the conversation
+   * row until they sent another message — which for a file that had moved
+   * meant stale figures presented as current.
+   *
+   * No model call, so the aiCoachLimiter (mounted on /api/coach/message only)
+   * correctly does not apply; the general limiter does.
+   */
+  app.get("/api/coach/context", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const verifiedContext = await buildVerifiedContext(user.id, user);
+      const readiness = deriveReadinessProfile(verifiedContext);
+
+      if (!verifiedContext.workableApplicationId) {
+        return res.json({
+          hasApplication: false,
+          loanStatus: EMPTY_LOAN_STATUS,
+          documentChecklist: [],
+          checklistStats: null,
+          tasks: [],
+          readiness,
+        });
+      }
+
+      const truth = await loadFileTruth(verifiedContext.workableApplicationId, user);
+      if (!truth) {
+        // The access check refused. Say so rather than serving an empty file,
+        // which would read to the borrower as "you have nothing outstanding".
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json({
+        hasApplication: true,
+        loanStatus: truth.status,
+        documentChecklist: truth.checklist.documents,
+        checklistStats: truth.checklist.stats,
+        tasks: truth.tasks,
+        readiness,
+      });
+    } catch (error) {
+      console.error("Get coach context error:", error);
+      res.status(500).json({ error: "Failed to load your file" });
     }
   });
 

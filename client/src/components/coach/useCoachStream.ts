@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiRequest, coachConversationKeys } from "@/lib/queryClient";
+import { apiRequest, coachContextKeys, coachConversationKeys } from "@/lib/queryClient";
 import type {
   CapturedEvent,
   CoachPanelState,
@@ -87,6 +87,10 @@ export function useCoachStream(opts: {
       queryClient.invalidateQueries({ queryKey: ["/api/coach/usage"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/coach/intake/latest"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/profile/financial"] }),
+      // A record_intake writeback this turn can move readiness, and the file
+      // may have changed under a long conversation. Re-read it rather than
+      // trusting what the turn happened to emit.
+      queryClient.invalidateQueries({ queryKey: coachContextKeys.root() }),
     ];
     if (conversationId) {
       invalidations.push(
