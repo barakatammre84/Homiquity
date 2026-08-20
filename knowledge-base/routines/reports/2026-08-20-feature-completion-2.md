@@ -2,7 +2,7 @@
 
 **Domain:** 12 — Property, listings & homeowner · **area 22, Homebuyer accelerator**.
 **Gap:** the two the first run ([#632](https://github.com/barakatammre84/Homiquity/pull/632)) refused
-and escalated. **PR:** #640 — **DRAFT, §9 tripped.**
+and escalated. **PR:** [#641](https://github.com/barakatammre84/Homiquity/pull/641) — **DRAFT, §9 tripped.**
 
 STATUS: WARN — the work is complete and proven live, but it ships as a draft: `detectTriggers()`
 returns a role/permission-gate trigger, and the security review is human-authored, never mine.
@@ -11,7 +11,7 @@ returns a role/permission-gate trigger, and the security review is human-authore
 
 ## ⛔ Human actions
 
-1. **Write the §9 security review on PR #640, or reject it.** The diff adds two role-gated staff
+1. **Write the §9 security review on [PR #641](https://github.com/barakatammre84/Homiquity/pull/641), or reject it.** The diff adds two role-gated staff
    routes (`requireRole("admin","lo","loa")`), which is a TEAM_PRACTICES §9 trigger. Evidence for
    the reviewer — the gates, and the live 403/409 probes against them — is in the PR body under
    *Access-control evidence*. **That section is deliberately not headed "Security review":** the
