@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   DollarSign,
+  FileText,
   Home,
   Percent,
   TrendingUp,
@@ -71,6 +72,33 @@ export function LoanDetails({
       { icon: DollarSign, label: "Down Payment", value: downPayment, testId: "detail-down-payment" },
       { icon: Percent, label: "Loan Type", value: loanType, testId: "detail-loan-type" },
     );
+  }
+
+  // The Loan Estimate — the borrower's only route to their own TRID disclosure
+  // (ux-30). Retrieving it behind e_disclosure consent is what stamps
+  // `leIssuedDate` and audit-logs `trid.loan_estimate_delivered`
+  // (server/routes/underwriting/delivery.ts:93-105); that writer fires ONLY for
+  // the borrower, so with no borrower-reachable link it had never fired from a
+  // UI click and TRID-triggered files went permanently unadvanceable.
+  //
+  // Gated on BOTH conditions on purpose, so this never links to an error:
+  //  - `tridTriggeredAt` — before the six-piece trigger there is no disclosure
+  //    to make, and the LE clock has not started.
+  //  - `loCompensationModel` — `generateLoanEstimate` fails closed without a
+  //    §1026.36(d)(2) election (services/loanEstimate.ts:511-514), which staff
+  //    perform on the file. Linking an unelected file would show the borrower
+  //    an error, not a disclosure.
+  // Once issued the row stays, showing the delivery date rather than the prompt.
+  if (application.tridTriggeredAt && application.loCompensationModel) {
+    items.push({
+      icon: FileText,
+      label: "Loan Estimate",
+      value: application.leIssuedDate
+        ? `Delivered ${application.leIssuedDate}`
+        : "Ready to view",
+      href: `/loan-estimate/${application.id}`,
+      testId: "detail-loan-estimate",
+    });
   }
 
   if (!hmdaCompleted) {

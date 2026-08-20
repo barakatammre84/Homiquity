@@ -79,19 +79,41 @@ a single closed row. Green delivery suites hide it because **the fixture is the 
 
 ---
 
-## 1a. The mission and the launch sequence
+## 1a. The mission, and why launch is no longer the ranking input
 
-Homiquity is an **online end-to-end mortgage brokerage**. The launch sequence below is the suite's
-shared ranking input, set by the founder on 2026-08-17:
+Homiquity is an **online end-to-end mortgage brokerage**.
 
-1. **Illinois first** — everything required to originate for Illinois borrowers, end to end.
-2. **California second** — staged behind Illinois being live.
-3. **National scaling** — gated on business performance, state by state; never speculative.
+> ### ⛔ Founder directive, 2026-08-19 — the prove-it-first rule
+>
+> **We do not launch until the webapp is proven: every feature performing best-in-class for its
+> industry, and a UX that genuinely serves our clients.**
+>
+> This **replaces the launch sequence as the suite's shared ranking input.** From 2026-08-17 to
+> 2026-08-19 that input was "Illinois first, California second, national on performance," and at
+> equal §1 rank *work that advances the Illinois launch won the tiebreak*. **That tiebreak is
+> withdrawn.** No routine ranks work by what it unblocks for a state launch.
 
-At equal §1 rank, **work that advances the Illinois launch wins the tiebreak.** The state-licensing
-posture and filing ladder live in `knowledge-base/compliance-watch/STATE_LADDER.md`, maintained by
-Compliance Watch — every row there is cited to a source in `docs/` or marked `UNVERIFIED`, never
-asserted from memory.
+The tiebreak at equal §1 rank is now **client-facing completeness and quality**, resolved in the
+order §1 already gives: a client who cannot finish beats a client whose data is wrong, which beats
+a client whose experience is merely adequate.
+
+**Deferred launch is not permission to defer work — it is the opposite.** The time pressure that
+justified shipping something merely adequate is gone, so *"good enough to launch"* is no longer an
+acceptable standard for anything. A routine that slows down because there is no launch date has
+misread this section exactly backwards.
+
+**The launch sequence itself is not cancelled, only de-ranked.** Illinois → California → national
+on business performance remains the intended order whenever go-live is taken up again, and the
+state-licensing posture and filing ladder still live in
+`knowledge-base/compliance-watch/STATE_LADDER.md`, maintained by Compliance Watch — every row cited
+to a source in `docs/` or marked `UNVERIFIED`, never asserted from memory. **Licensing lead time
+runs in parallel with engineering and is therefore still worked**, weekly, at its existing cadence:
+paperwork that takes sixty days does not get sixty days shorter because the launch moved. What
+changed is that no *engineering* seat is ranked by it.
+
+**Nothing in this directive relaxes a rail.** §6 write territory, §9 security triggers, the
+compliance gates, the citation requirement for regulated math, and the L3/L4 rows of §1b are
+untouched. A directive that raises the quality bar cannot be read as lowering a safety one.
 
 ---
 
@@ -153,45 +175,84 @@ The scheduler adds a small **deterministic dispatch offset** per task, so a rout
 minutes after its cron minute. "Fires" below is the real observed time — the number that matters
 when reasoning about overlap. `taskId` is the scheduler key.
 
+**Rewritten 2026-08-19** to the founder's prove-it-first directive (§1a). Headcount is unchanged
+at thirteen; the *allocation* changed. Before: two daily seats wrote code, three seats were
+registered against definitions that had never merged and no-opped every run, and four seats a week
+asked whether we could launch. After: **four daily build lanes**, a **daily** client journey walk,
+and the launch/procurement seats reduced to one weekly and one monthly.
+
 | Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
 |---|---|---|---|---|---|
-| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | up to **3 launch-ranked PRs** |
-| 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
-| 08:20 | `15 8 * * *` | **Domain Oracle** (`domain-oracle`) | daily | no — docs only | cited scenario verdicts + the day's `DECISIONS` |
-| 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
-| 10:40 | `35 10 * * *` | **Integration Readiness** (`integration-readiness`) | daily | no — board only | per-adapter sim→contract readiness + `ASKS` |
-| 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
-| 13:40 | `35 13 * * *` | **App Walker** (`app-walker`) | daily | no — findings only | per-route render evidence at 320/768/1280 |
-| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
-| 16:20 | `15 16 * * *` | **QA Mutation Verifier** (`qa-mutation-verifier`) | daily | throwaway worktree only, never committed | `PROVEN`/`UNPROVEN` per fix merged that day |
-| 17:10 | `5 17 * * *` | **Workflow Prover** (`workflow-prover`) | daily | no — trace + ledger | one workflow proven seam by seam on **value equality** |
-| 18:20 | `15 18 * * *` | **Algorithm Auditor** (`algorithm-auditor`) | daily | no — ledger only | one calculation attacked four ways |
-| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
-| Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
-| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
+| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | up to **3 product-ranked PRs** |
+| 07:48 | `45 7 * * *` | **Trunk Health** (`launch-gate`) | daily | no — tickets only | `TRUNK: healthy/degraded/broken` + the build queue + security delta |
+| 09:20 | `10 9 * * *` | **Capture Path Engineer** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
+| 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | one end-to-end workflow driven in a browser, first seam **fixed** |
+| 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
+| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
+| 17:06 | `5 17 * * *` | **Client Journey Walk** (`client-journey-walk`) | daily | no — trace + tickets | one persona walked end to end in a real browser |
+| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
+| Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | organic-file delivery verdict + one field's write path cleared |
+| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state compliance ladder + signature-ready drafts |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
+| 1st 09:35 | `35 9 1 * *` | **Vendor & Platform Risk** (`vendor-procurement`) | monthly | no | platform floor + vendor lead-time watch |
 
-**Three seats were added 2026-08-18** — Domain Oracle, Integration Readiness and QA Mutation
-Verifier. The seating chart, why only three, and the hand-off protocol they share live in
-[`TEAM.md`](TEAM.md); the board itself is [`HANDOFF.md`](HANDOFF.md). All three are report-only
-or throwaway-only **by design**: the fleet's scarcest resources are write access to
-`client/src/**` and the founder's merge attention, and none of the three spends either. They are
-**defined but not registered** — a definition on disk is not a routine (§0), and registration is
-a founder action.
+**The four build lanes are deliberately distinct, and the register is still the lock.** Primary
+Engineer takes anything company-wide; the Capture Path Engineer owns the flow a client walks;
+the Workflow Completion Engine takes *one workflow* end to end and fixes where it breaks; the
+Feature Completion Engine takes *one domain* and closes the gap between what the backend can do
+and what a client can reach. **Their windows are 09:20 / 10:00 / 12:34 and a long run will overlap
+the next**, so every one of them claims in [`REGISTER.md`](REGISTER.md) before writing and treats
+an open PR as outranking the board (§5).
 
-**Three verification seats were added 2026-08-18** — App Walker, Workflow Prover and Algorithm
-Auditor. They exist because the fleet could *build* daily and could not *see*: the one tool that
-renders a page (`scripts/browser-probe.cjs`) could not find a browser on the founder's Mac, and
-its overflow check could not fail. Both were fixed the same day, and the first walk immediately
-found five calculator pages overflowing at 320px that every UI guard had passed — evidence in
-[`reports/2026-08-18-app-walker.md`](reports/2026-08-18-app-walker.md). All three are
-findings-only and drive the **local** server; none writes application code. **Defined but not
-registered** — a definition on disk is not a routine (§0), and registration is a founder action.
+**What was retired 2026-08-19, and why.** All three had been **registered in the scheduler against
+definitions that never merged to `origin/main`**, so each hit its own STOP clause and did nothing —
+the §0 failure in its purest form, this time inverted: not a definition without a registration, but
+a registration without a definition. Verified with `git cat-file -e origin/main:<path>` before
+retiring, archived under `~/.claude/scheduled-tasks/_archive/` with a dated note:
 
-**Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
-Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
-slot is free.
+- **`complex-file-engine`** (was daily 09:53) — its subject, the UAL complex-income qualification
+  layer, is now a standing priority segment of the Feature Completion Engine's domain rotation,
+  carrying its rails verbatim: it may surface, explain and route that engine; it may **not** edit
+  `server/underwritingEngine.ts`, `server/services/decisionEngine.ts` or
+  `server/services/ruleEngine.ts`, and may not change regulated math at all.
+- **`move-up-lane`** (was Wed 14:10) — the above-conforming borrower and the jumbo threshold move
+  to the same rotation, with its **never invent a service tier** rail intact: there is no affluent
+  segment in this product, and scoped as "journey 2 with bigger numbers" that seat was headcount,
+  not a control.
+- The 09:53 slot went to the Workflow Completion Engine; the daily 12:30 slot to the Feature
+  Completion Engine, which is why the Lender Package Gate moved to Monday **18:31**.
+
+Their founding PRs (#589, #607) are unaffected — if they merge, the skills stay available for
+manual `/` invocation.
+
+**Two seats changed shape rather than retiring.** The **Launch Gate became Trunk Health**: it keeps
+the gates, the security delta, the regulatory-freshness check and the platform floor, and it drops
+`RELEASABLE`, prod-commit drift and the rollback window — the deploy pipeline is deliberately
+paused for local-only development (PR #608), so a daily ship verdict measures nothing. Its question
+is now *is `main` healthy enough for four build lanes to work today*, which is why it still runs
+first. **Vendor & Procurement became Vendor & Platform Risk** and dropped to monthly: the launch
+checklist lost its deadline, but Railway and GitHub Actions billing did not — when either lapses,
+work stops — and vendor lead times still have to start early enough not to be the blocker later.
+
+**`client-journey-walk` was promoted from Saturday-weekly to daily** and made self-contained. It
+is the instrument for the second half of the founder's directive — *a UX that genuinely serves our
+clients* — and it was the single most misallocated seat in the fleet: weekly, and dead. It now
+inlines its four persona charters so it runs without `JOURNEYS.md`, and defers to that file
+automatically once #607 lands.
+
+**Retiring a seat does not retire its rails.** Every prohibition a retired routine carried is
+reproduced verbatim in whatever absorbed its subject. A rail that survives only in an archived
+definition is a rail nobody reads.
+
+**Six definitions exist in `.claude/skills/` that are NOT on this clock** — Domain Oracle,
+Integration Readiness, QA Mutation Verifier, App Walker, Workflow Prover, Algorithm Auditor, plus
+the UI Conformance Sweep, Backend Data Engineer and Doc Accuracy on the CCR side. **A definition on
+disk is not a routine** (§0). Do not read a `.claude/skills/*/SKILL.md` as evidence that something
+runs; read this table and `list_scheduled_tasks`. Registration is a founder action.
+
+**Sprint Blitz (`sprint-blitz`) was retired 2026-08-17** — absorbed into the Primary Engineer,
+which carries its queue, its ranking, and its fix-the-gate-first rule.
 
 The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
 run history and stored tool approvals. Judge it by its description, not its slug.
@@ -223,7 +284,7 @@ that does not exist at `origin/main` yet; it is written to say so and stop, whic
 shape for a routine whose dependency has not landed. **Changing one fleet means checking the
 other**; the quarterly knowledge audit reads both lists.
 
-The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rails
+The **Capture Path Engineer** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
 the register, and the acceptance questions on top. Radar's rails R1–R9 are **not** relaxed by
 anything here.
@@ -279,42 +340,61 @@ Evening Triage like everyone's (§4).
 The day is a pipeline, not a stack of independent jobs.
 
 ```
-07:15 Primary Engineer ──► up to 3 launch-ranked items → PRs (question A or B, highest rank
-        │                   first; Illinois tiebreak). Feeds on YESTERDAY's QA Sweep, Evening
-        │                   Triage, and the most recent Launch Gate report. A Launch Gate FAIL
-        │                   there — or a red main at orient time — makes the fix item one.
-        │                   No exceptions.
+07:15 Primary Engineer ──► up to 3 product-ranked items → PRs (§1 order; NO launch
+        │                   tiebreak since 2026-08-19). Feeds on YESTERDAY's journey walk,
+        │                   QA Sweep and Evening Triage, plus the most recent Trunk Health
+        │                   report. A Trunk Health FAIL there — or a red main at orient
+        │                   time — makes the fix item one. No exceptions.
         ▼
-07:45 Launch Gate ──► is main releasable? is prod current? what broke overnight?
-        │             (a FAIL here is the NEXT Primary Engineer run's first item)
+07:45 Trunk Health ──► is main healthy enough for four build lanes today? what broke
+        │              overnight? which PRs are waiting on the founder?
+        │              (a FAIL here is the NEXT Primary Engineer run's first item)
         ▼
-09:10 Wiring Audit ──► capture-path defects (question B)
+09:10 Capture Path Engineer ──► the flow a client walks: capture-path defects, FIXED
+        ▼
+09:53 Workflow Completion Engine ──► one workflow driven end to end in a browser;
+        │                             the first seam it breaks at, FIXED
         ▼
 11:00 UTC Backend Data Engineer (CCR fleet) ──► schema integrity, MISMO/ULDD mapping,
         │                                        API payload stability (question A)
         ▼
-12:30 Lender Gate ──► can an organic file reach a lender clean? (question A)
+12:30 Feature Completion Engine ──► one domain; the gap between what the backend can do
+        │                            and what a client can reach, CLOSED
         ▼
-15:00 QA Sweep ──► one domain + one workflow, adversarially verified → FINDINGS.md
+15:00 QA Sweep ──► one domain + one workflow, adversarially verified → buildable
+        │           tickets in FINDINGS.md
+        ▼
+17:05 Client Journey Walk ──► one persona walked end to end in a real browser; the
+        │                      seams between surfaces, as a client experiences them
         ▼
 21:00 Evening Triage ──► reads all of the above, dedupes into ONE backlog,
                           updates CTO_ROADMAP.md, writes the founder's list
 
-Tue 13:15 Compliance Watch ──► state-launch ladder + signature-ready drafts; its ⛔ items
-                                feed Evening Triage's founder list that evening
+Mon 18:30 Lender Package Gate ──► can an organic file reach a lender clean? (question A)
+Tue 13:15 Compliance Watch ──► state compliance ladder + signature-ready drafts; its ⛔
+                                items feed Evening Triage's founder list that evening
 ```
 
 **Two clocks, one chain.** Every other box above is local time on the founder's laptop; the Backend
 Data Engineer is UTC on the CCR fleet, so its position in the chain is a *statement about what it
 reads and who reads it*, not a promise about the gap between them. It feeds on yesterday's QA
-Sweep, Evening Triage and Lender Delivery Gate reports, and its own report is read by that day's
-Lender Gate and that evening's Triage. **Evening Triage is where the two fleets meet** — it counts
+Sweep, Evening Triage and Lender Package Gate reports, and its own report is read by the next
+Monday's Lender Package Gate and that evening's Triage. **Evening Triage is where the two fleets meet** — it counts
 CCR reports in its proof-of-life sweep exactly as it counts local ones.
 
 **Reading a peer's report is mandatory, not optional.** A missing upstream report is a `WARN` with
 the routine named — never silently ignored, and never treated as "nothing happened." The Primary
-Engineer runs before the day's Launch Gate, so its upstreams are yesterday's reports and the most
-recent gate verdict; it cites them, never re-derives them.
+Engineer runs before the day's Trunk Health, so its upstreams are yesterday's reports and the most
+recent verdict; it cites them, never re-derives them.
+
+**The chain now closes a loop it never had.** Four lanes build during the day; the QA Sweep and the
+Client Journey Walk look at what exists each afternoon and hand back *buildable tickets*; Evening
+Triage dedupes them into one queue that the next morning's lanes draw from. Before 2026-08-19 the
+fleet's discovery capacity far exceeded its build capacity — 129 open findings against two daily
+build seats — so findings accumulated and the backlog was indistinguishable from a product that
+did not work. **Evening Triage's headline number is now findings closed vs opened**; if that goes
+persistently negative, the fleet is inspecting faster than it can fix and the balance is wrong
+again.
 
 Evening Triage holds **exclusive** authority to edit `CTO_ROADMAP.md` §0–§3. Every other routine
 *proposes* tickets in its report; Triage lands them. This is what stops six routines appending six
@@ -325,8 +405,8 @@ near-duplicate items to the same queue.
 ## 5. The claim register — the lock
 
 [`REGISTER.md`](REGISTER.md) is the single table of who is writing what, right now. It is the only
-mechanism preventing the Wiring Audit, the Primary Engineer and Radar from landing on the same
-file. The Primary Engineer ships up to three PRs a run — it claims each item as a row and releases
+mechanism preventing the four daily build lanes and Radar from landing on the same file, and the
+rewrite of 2026-08-19 doubled the number of routines that need it. The Primary Engineer ships up to three PRs a run — it claims each item as a row and releases
 each row when that item ships, parks, or dies; a day's unreleased rows are the next run's first
 cleanup.
 
@@ -429,14 +509,17 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 
 | Routine | May edit | Never edits |
 |---|---|---|
-| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
-| Launch Gate | nothing | — (report + proposed tickets only) |
-| Wiring Audit | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
+| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Capture Path Engineer claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
+| Trunk Health (was Launch Gate) | nothing | — (report + proposed tickets only) |
+| Capture Path Engineer (was Wiring Audit) | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
 | Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b); **dependency-bump triage per §6c — verdicts only, never the manifest** | `client/**` — not one line; `package.json`/`pnpm-lock.yaml` (§6c is verify-only); the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
-| Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
-| QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
+| Lender Package Gate | small, safe, isolated fixes only | the underwriting/decision engines; anything larger than a single isolated fix — it hands those to the Feature Completion Engine |
+| QA Sweep | nothing | — (findings only; fixes go to a build lane or a human) |
+| Workflow Completion Engine | the **one seam** it fixes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/workflow-completion/**` and its report (L1/L2 per §1b) | more than one seam per run; any file under an active REGISTER claim or in an open PR; the `URLA_FORM_REFACTOR_TRAP.md` prohibitions; §9-tripping diffs as *ready* PRs (draft + human-written review only) |
+| Feature Completion Engine | the **one domain** it takes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/feature-completion/**` and its report (L1/L2 per §1b) | the underwriting/decision/rule engines (it may surface and route them, never edit them); regulated math without a same-commit ledger citation; the deferred lender persona UI/API (founder-gated); any file under an active REGISTER claim or in an open PR |
+| Client Journey Walk | `knowledge-base/routines/journey-walk/**`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
-| Vendor & Procurement | nothing | `.env`, Railway config, anything outbound |
+| Vendor & Platform Risk (was Vendor & Procurement) | nothing | `.env`, Railway config, anything outbound |
 | Compliance Watch | `knowledge-base/compliance-watch/**` + its own report file | every code path; `docs/**` (read-only reference); anything outbound — it drafts, only the founder files or sends |
 | Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
 | UI Conformance Sweep | `client/src/**` for **visual conformance only**, plus `knowledge-base/ui-conformance/**` and its report | `client/src/components/ui/**` (vendored primitives); any file in an open PR or carrying an open `refactor-radar/LEDGER.md` row; form state, Zod schemas and payload shapes (§14); the `URLA_FORM_REFACTOR_TRAP.md` prohibitions |
@@ -456,8 +539,8 @@ work. A standard nobody is assigned to propagate is a preference.
   surface at a time, and its run is judged on that number moving. Cross-run memory —
   converted surfaces, refusals, the count trend —
   is [`ui-conformance/LEDGER.md`](../ui-conformance/LEDGER.md).
-- **Primary Engineer** and the **Wiring Audit** may still take conformance batches within their
-  existing lanes — Wiring Audit on the capture path, Primary Engineer elsewhere — but neither is
+- **Primary Engineer** and the **Capture Path Engineer** may still take conformance batches within
+  their existing lanes — the latter on the capture path, Primary Engineer elsewhere — but neither is
   accountable for the rollout, which is why assigning it as a *"may"* left it undone for five
   weeks.
 - **One surface area per PR, sized to a single CI cycle.** A 200-file mechanical sweep is
@@ -579,22 +662,34 @@ never do.
 
 ---
 
-## 7. Release readiness — "can we ship v2 today?"
+## 7. Trunk readiness — "can the lanes build today?"
 
-The Launch Gate publishes one line every morning, and it is the suite's headline output:
+**This section was "Release readiness — can we ship v2 today?" until 2026-08-19.** The founder
+deferred launch (§1a), the deploy pipeline is deliberately paused for local-only development
+(PR #608), and a daily ship verdict against a launch nobody is taking measured nothing. Trunk
+Health publishes this line every morning instead:
 
 ```
-RELEASABLE: yes|no · main <sha> · prod <sha> · drift <n> commits · gates ✓/✗ · rollback ✓/✗
+TRUNK: healthy|degraded|broken · main <sha> · gates ✓/✗ · lanes clear: yes/no
 ```
 
-- **main releasable** — `pnpm check`, `pnpm test` (node **and** client lanes), and every
+- **main healthy** — `pnpm check`, `pnpm test` (node **and** client lanes), and every
   `pnpm guard:*` green on current `origin/main`. Reinstall before believing a failure; confirm with
-  `gh run list --branch main` before ever claiming main is broken.
-- **prod current** — `GET /api/health`'s `commit` equals `origin/main` HEAD. If it lags, prod is
-  stale *and every check is still green* — that is the silent-failure mode, and it is a FAIL.
-- **rollback real** — Railway image retention is **72 h on Hobby**. Past that window there is no
-  one-step rollback ([`runbooks/ROLLBACK.md`](../runbooks/ROLLBACK.md) §1). If retention has
-  lapsed, `rollback ✗` and it is a `CTO_ROADMAP.md` §0 escalation, not a footnote.
+  `gh run list --branch main` before ever claiming main is broken, because zero check-runs can mean
+  an Actions outage or a billing failure rather than your change.
+- **lanes clear** — the four build routines can actually work today: gates green, no unresolved
+  conflict on `main`, and `pnpm install --frozen-lockfile` succeeding from a clean worktree. A red
+  trunk costs four routines their whole day, which is why this seat still runs first.
+
+**What was retired with the old verdict, and what it costs.** Prod-commit drift, the rollback
+window and `RELEASABLE` are no longer daily checks. **That is a real, accepted exposure, not an
+oversight:** the silent-failure mode is still real — a failed Railway build leaves the *previous*
+container serving, so the site stays up and every check stays green while prod goes stale — and
+nothing in this fleet watches for it any more. **Whoever un-pauses the deploy pipeline restores
+this check in the same change.** Until then, `GET /api/health`'s `commit` field remains the only
+proof of a deploy (§2), and Railway's 72 h Hobby image retention remains the rollback window
+([`runbooks/ROLLBACK.md`](../runbooks/ROLLBACK.md) §1) — both facts are simply unwatched, not
+untrue.
 
 **Proof of life (§0's lesson).** Every routine's report ends with `STATUS: OK|WARN|FAIL` and is
 written to `reports/`. Evening Triage counts the day's expected reports against those present and
@@ -732,3 +827,28 @@ scheduler task deleted, its §3 row removed, and the two new routines (`primary-
 self-disables) before this file's clock rows were finalized from the scheduler's real jitter.
 Both directions of §11 in one commit: nothing registered-looking that isn't registered, nothing
 registered that this file doesn't carry.
+
+**Worked example (2026-08-19) — the whole-suite rewrite.** The founder deferred launch (§1a) and
+directed the fleet at feature and workflow completion instead. In one session: the scheduler was
+rewritten (two seats created, three retired, one promoted daily, two reshaped, one dropped to
+monthly, one re-timed off a collision), §1a/§3/§6 of this file were rewritten to match, and the
+directive was inserted as a binding preamble into every surviving routine's prompt so no run can
+read only its own file and miss it.
+
+Three lessons worth keeping, because each cost something:
+
+1. **§0's failure has a mirror image, and the fleet had it.** Three seats — `complex-file-engine`,
+   `move-up-lane`, `client-journey-walk` — were *registered in the scheduler against definitions
+   that had never merged to `origin/main`*. Every run hit its own STOP clause and did nothing, and
+   one of them held a **daily** slot. §0 warns about a definition without a registration; this was
+   a registration without a definition, and it is just as invisible. **Registering a routine whose
+   definition is on an unmerged branch schedules a no-op** — either land the definition first, or
+   inline it in the prompt.
+2. **Check the clock for collisions after every re-timing, not just at the end.** Moving the Lender
+   Package Gate to a weekly slot put it at Monday 12:31, three minutes from the new Feature
+   Completion Engine at 12:34, on the one shared lane both write. Caught by re-reading
+   `list_scheduled_tasks` after the changes rather than by trusting the intended times.
+3. **Prefer reshaping a seat to deleting it, and keep the `taskId`.** Launch Gate → Trunk Health and
+   Vendor & Procurement → Vendor & Platform Risk both kept their slugs, and with them their run
+   history and their stored tool approvals — the same reason the Capture Path Engineer keeps its
+   unwieldy original slug. Judge a routine by its description, never its id.

@@ -37,7 +37,8 @@ interface NotificationItem {
   href: string;
   isUnread: boolean;
   isReal?: boolean;
-  realId?: number;
+  /** The server row's uuid — used to PATCH it read. */
+  realId?: string;
 }
 
 function formatTimeAgo(timestamp: string | Date): string {
@@ -95,16 +96,38 @@ function activityToNotification(activity: DealActivity, index: number): Notifica
   };
 }
 
+/**
+ * A row from `GET /api/notifications`, which returns `notifications` rows
+ * verbatim (`server/storage/notificationsOps.ts:145`).
+ *
+ * **Read state lives in `status`, and only in `status`.** The table has no
+ * `readAt` column — `markNotificationRead` sets `status: "read"` and the bell's
+ * unread count is `count(*) where status = 'unread'`. This interface used to
+ * declare a `readAt` the API never sends, and the mapper below keyed off it, so
+ * `isUnread` was `!undefined` for every row: every notification rendered unread
+ * forever, and stayed unread after being clicked, while the bell count went
+ * down. Two surfaces, one fact, opposite answers.
+ */
 export interface RealNotification {
-  id: number;
+  /** uuid — `notifications.id` is a varchar, not a serial. */
+  id: string;
   type: string;
   title: string;
   body: string;
+  /** `"unread"` (the column default) or `"read"`. */
   status: string;
   entityType: string | null;
   entityId: string | null;
   createdAt: string;
-  readAt: string | null;
+}
+
+/**
+ * Anything not explicitly read is shown as unread. Deliberately not
+ * `status === "unread"`: if the vocabulary ever grows, the safe failure is a
+ * notification the borrower still sees, not one silently hidden.
+ */
+export function isNotificationUnread(n: Pick<RealNotification, "status">): boolean {
+  return n.status !== "read";
 }
 
 // Exported for unit tests: pure mapper from a server notification row to a
@@ -153,7 +176,7 @@ export function realNotificationToItem(n: RealNotification): NotificationItem {
     description: n.body || "",
     time: formatTimeAgo(n.createdAt),
     href,
-    isUnread: !n.readAt,
+    isUnread: isNotificationUnread(n),
     isReal: true,
     realId: n.id,
   };
