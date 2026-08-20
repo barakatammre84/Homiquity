@@ -237,8 +237,25 @@ not the capture-flow container; see §12.
 
 ## 5. Radii, elevation, motion
 
-- **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
-  (inputs/buttons), `rounded-sm` 4px (chips).
+- **Radii — six rungs, all derived from `--radius` (.75rem).** Radius encodes container
+  **size**: the bigger the box, the rounder the corner.
+
+  | Class | Value | Use |
+  |---|---|---|
+  | `rounded-sm` | 4px | chips, badges |
+  | `rounded-md` | 8px | inputs, selects, buttons |
+  | `rounded-lg` | 12px | cards, modals |
+  | `rounded-xl` | 16px | feature cards |
+  | `rounded-2xl` | 24px | large panels |
+  | `rounded-3xl` | 32px | hero and band containers |
+
+  🚨 **The three large rungs must stay declared in `tailwind.config.ts`.** They live under
+  `theme.extend`, which previously overrode only sm/md/lg — so `rounded-xl` fell through to
+  Tailwind's default `0.75rem`, which is **12px**, which is exactly what `--radius` already
+  is. `rounded-lg` and `rounded-xl` rendered **identically**, and the 40 files reaching for
+  `rounded-xl` to get a softer container got no change at all. A silent no-op rather than a
+  wrong value, which is why it survived so long. Deleting an `xl`/`2xl`/`3xl` line
+  reintroduces it, and nothing will go red.
 - **Elevation.** The neutral-tinted `--shadow-*` vars are wired into Tailwind as a named card
   scale: `shadow-card` (= `--shadow-sm`), `shadow-card-hover` (= `--shadow-md`), `shadow-card-lg`
   (= `--shadow-lg`).

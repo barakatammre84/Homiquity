@@ -227,7 +227,7 @@ export default function Landing() {
             is the alternative to Homi, not a footnote to it. */}
         <section
           id="buying-power"
-          className="scroll-mt-20 border-b bg-background px-4 py-20 sm:px-6 lg:px-8"
+          className="scroll-mt-20 bg-background px-4 py-20 sm:px-6 lg:px-8"
           data-testid="section-estimator"
         >
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -248,7 +248,7 @@ export default function Landing() {
         </section>
 
         {/* Four doors. */}
-        <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
+        <section className="bg-muted px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
           <div className="mx-auto max-w-6xl">
             <Reveal>
               <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -270,7 +270,7 @@ export default function Landing() {
                 return (
                   <StaggerItem key={journey.id}>
                   <Card
-                    className="h-full rounded-3xl border-0 bg-muted hover-elevate"
+                    className="h-full rounded-3xl border-0 bg-card hover-elevate"
                     data-testid={`card-journey-${journey.id}`}
                   >
                     <CardContent className="p-6">
@@ -324,7 +324,7 @@ export default function Landing() {
 
         {/* One trust row — what the customer gets, not who we are. */}
         <section
-          className="border-y bg-background px-4 py-14 sm:px-6 lg:px-8"
+          className="bg-background px-4 py-14 sm:px-6 lg:px-8"
           data-testid="section-trust"
         >
           <div className="mx-auto max-w-6xl">

@@ -5,10 +5,27 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      /**
+       * Radius scale — SIX rungs, all derived from `--radius` so they move together.
+       *
+       * The three large rungs are here because they were NOT here. `extend` only
+       * overrode sm/md/lg, so `rounded-xl` fell through to Tailwind's default
+       * 0.75rem — which is 12px — which is exactly what `--radius` already is.
+       * `rounded-lg` and `rounded-xl` therefore rendered IDENTICALLY, and the 40
+       * files reaching for `rounded-xl` to get a softer container got no change at
+       * all. Silent no-op, not a wrong value, which is why nobody caught it.
+       *
+       * Radius now encodes container SIZE: the bigger the box, the rounder the
+       * corner. A 4px chip and a 32px hero panel sharing one radius is most of
+       * what "everything looks the same" actually meant.
+       */
       borderRadius: {
-        lg: "var(--radius)", /* 12px — cards, modals */
+        sm: "calc(var(--radius) - 8px)", /* 4px — chips, badges */
         md: "calc(var(--radius) - 4px)", /* 8px — inputs, selects, buttons */
-        sm: "calc(var(--radius) - 8px)", /* 4px — small chips, badges */
+        lg: "var(--radius)", /* 12px — cards, modals */
+        xl: "calc(var(--radius) + 4px)", /* 16px — feature cards */
+        "2xl": "calc(var(--radius) + 12px)", /* 24px — large panels */
+        "3xl": "calc(var(--radius) + 20px)", /* 32px — hero and band containers */
       },
       /* Card elevation scale — wires the near-flat neutral --shadow-* vars
          (index.css) so surfaces use a named, tunable card shadow instead of
