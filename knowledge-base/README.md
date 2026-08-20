@@ -105,6 +105,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
+- [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 - [JOURNEYS.md](feature-review/JOURNEYS.md) — the 4 client-journey charters walked in the browser.
 
