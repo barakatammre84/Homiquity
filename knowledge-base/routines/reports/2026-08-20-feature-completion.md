@@ -166,6 +166,11 @@ defaulted. `pnpm db:push` was never run.
   is also CHARTER §9's channel. The register is additionally in flight in PRs #618 and #607.
 - **`pnpm test:integration` was not run** (never part of `pnpm test`; needs its own live server).
 - **No fix to the three refused gaps**, for the reasons in the table above.
+- **Test data left in the shared dev database.** The live walk enrolled `test-renter`
+  (`renter@test.com`) in the accelerator and finished 17 of its 18 milestones. There is no delete
+  endpoint for an enrollment, so the row stands: a peer opening `/accelerator` as the aspiring owner
+  will find a program already in phase 2 rather than the enrollment screen. Harmless, but it is not
+  a pristine fixture and saying so is cheaper than someone re-deriving it.
 
 ---
 
