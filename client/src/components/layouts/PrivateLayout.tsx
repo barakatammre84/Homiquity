@@ -112,7 +112,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
           {/* The authed app ground is the light-gray surface (Layer 0-surface), so
               white cards read with their shadow-card depth. The `app-surface` hook
               is what elevates cards inside it (see index.css). Public/bare layouts
-              stay on the white canvas. See design_guidelines.md → Layers. */}
+              stay on the white canvas. See DESIGN_SYSTEM.md → Colour system. */}
           <main
             id="main"
             tabIndex={-1}

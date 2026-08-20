@@ -92,7 +92,7 @@ const aspiringOwnerNavigation: NavSection[] = [
     section: "Explore",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
-      { title: "AI Coach", href: "/ai-coach", icon: Bot, testId: "link-ai-coach" },
+      { title: "Homi", href: "/ai-coach", icon: Bot, testId: "link-ai-coach" },
       { title: "My Profile", href: "/profile", icon: CircleUser, testId: "link-my-profile" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
@@ -103,6 +103,8 @@ const aspiringOwnerNavigation: NavSection[] = [
       { title: "Get Pre-Approved", href: "/apply", icon: Star, testId: "link-pre-approval" },
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Gap Calculator", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
+      // The rent-ledger surface — shipped 2026-08-17 with no inbound nav at all.
+      { title: "My Lease", href: "/my-lease", icon: ClipboardList, testId: "link-my-lease" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
   },
@@ -115,7 +117,7 @@ const activeBuyerNavigation: NavSection[] = [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
       { title: "To-Do", href: "/tasks", icon: CheckSquare, testId: "link-tasks", showBadge: true },
       { title: "Documents", href: "/documents", icon: Upload, testId: "link-documents" },
-      { title: "AI Coach", href: "/ai-coach", icon: Bot, testId: "link-ai-coach" },
+      { title: "Homi", href: "/ai-coach", icon: Bot, testId: "link-ai-coach" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },

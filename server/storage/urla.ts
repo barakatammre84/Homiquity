@@ -1,7 +1,7 @@
 // Storage domain: URLA sections, GSE delivery data, wholesale lender submissions, complete-URLA/MISMO export aggregation, data-quality scoring.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, inArray } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 import { encryptPiiField, decryptPiiField } from "../services/piiVault";
@@ -47,6 +47,8 @@ import {
   type BankStatementAnalysis,
 } from "@shared/schema";
 import { TasksStorage } from "./tasks";
+import { indexRowsByKey } from "./batchGroup";
+import { assembleCompleteUrlaDataBatch, type CompleteUrlaData } from "./urlaBatch";
 /** Thrown by upsertUrlaPersonalInfo when the supplied SSN is not 9 digits — routes translate it to a 400. */
 export class InvalidSsnError extends Error {
   constructor() {
@@ -54,6 +56,8 @@ export class InvalidSsnError extends Error {
     this.name = "InvalidSsnError";
   }
 }
+
+export type { CompleteUrlaData } from "./urlaBatch";
 
 export class UrlaStorage extends TasksStorage {
   // URLA Personal Info
@@ -529,7 +533,7 @@ export class UrlaStorage extends TasksStorage {
   }
 
   // Get Complete URLA Data
-  async getCompleteUrlaData(applicationId: string) {
+  async getCompleteUrlaData(applicationId: string): Promise<CompleteUrlaData> {
     const [personalInfo, allPersonalInfo, employment, income, assets, liabilities, propertyInfo, declarations, allDeclarations, reo, hmda] = await Promise.all([
       this.getUrlaPersonalInfo(applicationId),
       this.getAllUrlaPersonalInfo(applicationId),
@@ -557,6 +561,70 @@ export class UrlaStorage extends TasksStorage {
       realEstateOwned: reo,
       hmdaDemographics: hmda,
     };
+  }
+
+  /**
+   * getCompleteUrlaData for N applications in a fixed 9 queries instead of 11N.
+   *
+   * The per-application split is ./urlaBatch.ts (pure, unit-tested); this method
+   * is only the SQL half. Each query keeps the single-application loader's
+   * `orderBy` so every bucket comes out in the same order.
+   */
+  async getCompleteUrlaDataBatch(applicationIds: string[]): Promise<Map<string, CompleteUrlaData>> {
+    if (applicationIds.length === 0) return new Map();
+
+    const [
+      personalRows,
+      employmentRows,
+      incomeRows,
+      assetRows,
+      liabilityRows,
+      propertyRows,
+      declarationRows,
+      reoRows,
+      hmdaRows,
+    ] = await Promise.all([
+      db.select().from(urlaPersonalInfo)
+        .where(inArray(urlaPersonalInfo.applicationId, applicationIds))
+        .orderBy(asc(urlaPersonalInfo.borrowerSequenceNumber)),
+      db.select().from(employmentHistory)
+        .where(inArray(employmentHistory.applicationId, applicationIds))
+        .orderBy(desc(employmentHistory.createdAt)),
+      db.select().from(otherIncomeSources)
+        .where(inArray(otherIncomeSources.applicationId, applicationIds))
+        .orderBy(desc(otherIncomeSources.createdAt)),
+      db.select().from(urlaAssets)
+        .where(inArray(urlaAssets.applicationId, applicationIds))
+        .orderBy(desc(urlaAssets.createdAt)),
+      db.select().from(urlaLiabilities)
+        .where(inArray(urlaLiabilities.applicationId, applicationIds))
+        .orderBy(desc(urlaLiabilities.createdAt)),
+      db.select().from(urlaPropertyInfo)
+        .where(inArray(urlaPropertyInfo.applicationId, applicationIds)),
+      db.select().from(borrowerDeclarations)
+        .where(inArray(borrowerDeclarations.applicationId, applicationIds))
+        .orderBy(asc(borrowerDeclarations.borrowerSequenceNumber)),
+      db.select().from(realEstateOwned)
+        .where(inArray(realEstateOwned.applicationId, applicationIds))
+        .orderBy(desc(realEstateOwned.createdAt)),
+      db.select().from(hmdaDemographics)
+        .where(inArray(hmdaDemographics.applicationId, applicationIds)),
+    ]);
+
+    return assembleCompleteUrlaDataBatch(applicationIds, {
+      // Masking is applied here for the same reason getAllUrlaPersonalInfo
+      // applies it: nothing outside this layer may see SSN ciphertext or full
+      // digits, and the assembler is explicitly given already-masked rows.
+      personal: personalRows.map((row) => this.presentUrlaPersonalInfo(row)),
+      employment: employmentRows,
+      income: incomeRows,
+      assets: assetRows,
+      liabilities: liabilityRows,
+      property: propertyRows,
+      declarations: declarationRows,
+      realEstateOwned: reoRows,
+      hmda: hmdaRows,
+    });
   }
 
   async getRealEstateOwnedByApplication(applicationId: string): Promise<RealEstateOwned[]> {
@@ -613,6 +681,18 @@ export class UrlaStorage extends TasksStorage {
       .where(eq(borrowerProfiles.userId, userId))
       .limit(1);
     return profile;
+  }
+
+  // Batched variant of getBorrowerProfileByUserId for list views. Keyed by
+  // userId (a profile belongs to a user, not an application), so callers holding
+  // applications must map through application.userId themselves.
+  async getBorrowerProfilesByUserIds(userIds: string[]): Promise<Map<string, BorrowerProfile>> {
+    if (userIds.length === 0) return new Map();
+    const rows = await db
+      .select()
+      .from(borrowerProfiles)
+      .where(inArray(borrowerProfiles.userId, userIds));
+    return indexRowsByKey(rows, (row) => row.userId);
   }
 
   // MISMO Export Data - aggregates all data needed for MISMO 3.4 XML generation

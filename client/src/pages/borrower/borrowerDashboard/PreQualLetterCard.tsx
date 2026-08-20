@@ -61,7 +61,7 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
             </div>
           </div>
           {hasLetter ? (
-            <Button onClick={handleDownload} variant="outline" size="sm" className="gap-2" data-testid="button-download-prequal-dash">
+            <Button onClick={handleDownload} variant="outline" size="sm" className="touch-target gap-2" data-testid="button-download-prequal-dash">
               <Download className="h-4 w-4" />
               Download
             </Button>
@@ -71,7 +71,7 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
               disabled={generateMutation.isPending}
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="touch-target gap-2"
               data-testid="button-generate-prequal-dash"
             >
               {generateMutation.isPending ? (

@@ -322,7 +322,22 @@ export async function generateDocumentTasks(
 ): Promise<Task[]> {
   const tasks: Task[] = [];
 
+  // Idempotent like the conditions generator above: finalizeIntake is
+  // re-drivable (recovery sweep) and the pipeline now initializes for
+  // under_review files that may later be approved — a re-run must not hand
+  // the borrower a second copy of every upload task. Matching on
+  // (taskType, documentCategory) regardless of status: a completed upload
+  // task should not resurrect either.
+  const existingTasks = await storage.getTasksByApplication(applicationId);
+  const existingDocCategories = new Set(
+    existingTasks
+      .filter((t) => t.taskType === "document_request" && t.documentCategory)
+      .map((t) => t.documentCategory as string),
+  );
+
   for (const req of requirements) {
+    if (existingDocCategories.has(req.documentType)) continue;
+    existingDocCategories.add(req.documentType);
     const yearsDescription = req.yearsRequired 
       ? ` (${req.yearsRequired.join(", ")})`
       : "";
@@ -387,10 +402,13 @@ export async function initializeLoanPipeline(
   conditions: LoanCondition[];
   tasks: Task[];
 }> {
-  const milestone = await storage.createLoanMilestone({
-    applicationId: application.id,
-    submittedAt: new Date(),
-  });
+  // One milestone row per application — a re-drive reuses it.
+  const milestone =
+    (await storage.getLoanMilestones(application.id)) ??
+    (await storage.createLoanMilestone({
+      applicationId: application.id,
+      submittedAt: new Date(),
+    }));
 
   const profile = getBorrowerProfileFromApplication(application);
   const requirements = determineDocumentRequirements(profile);

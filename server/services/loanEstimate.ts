@@ -2,7 +2,8 @@ import { storage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
-import { computeClosingCosts, calculatePMI, estimateMonthlyEscrow } from "./loanCosts";
+import { computeClosingCosts, estimateMonthlyEscrow } from "./loanCosts";
+import { offerMonthlyMI, offerUpfrontMI } from "./mortgageInsurance";
 import { resolveFeeScheduleForApplication } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
@@ -131,7 +132,11 @@ export interface LoanEstimateData {
   tridCompliance: {
     disclosureProvided: boolean;
     dateProvided: Date | null;
-    withinThreeBusinessDays: boolean;
+    /**
+     * Three-valued on purpose — see `evaluateTridDeliveryWindow`. `null` means
+     * the window never opened, and is NOT a pass.
+     */
+    withinThreeBusinessDays: boolean | null;
     /** When the 6th piece of §1026.2(a)(3) information arrived; null until then. */
     applicationDate: Date | null;
     /** 3 business days after applicationDate (§1026.19(e)(1)(iii)); null until triggered. */
@@ -254,11 +259,15 @@ interface PricingDerivation {
   loanAmount: number;
   ltv: number;
   isVaLoan: boolean;
+  /** FHA-priced (preferredLoanType "fha" and not VA-routed): MIP applies. */
+  isFhaLoan: boolean;
   llpaResult: Awaited<ReturnType<typeof calculateLLPA>>;
   interestRate: number;
   termMonths: number;
   monthlyPandI: number;
   monthlyPMI: number;
+  /** FHA up-front MIP in dollars (cash-at-closing model); 0 for every other product. */
+  upfrontMIP: number;
 }
 
 /**
@@ -355,7 +364,31 @@ async function derivePricing(
 
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
-  const monthlyPMI = isVaLoan ? 0 : calculatePMI(loanAmount, purchasePrice, creditScore);
+  // Product-aware MI through the one product-aware module (services/
+  // mortgageInsurance.ts, F-087): conventional keeps the CONVENTIONAL_PMI
+  // matrix figure calculateLLPA just resolved — the versioned rate card that
+  // governs every policy number, which replaced the compile-time band table
+  // that exceeded the matrix in all 32 live cells (1.42×–2.17×, F-077) —
+  // VA carries no monthly MI (the stub above already prices 0), and FHA
+  // charges annual MIP at ALL LTVs (the matrix figure was standing in for
+  // MIP: $0 at ≤80 LTV where MIP is still owed, and the wrong rate above it
+  // — the same F-077 defect class, for FHA borrowers). isVaLoan wins over
+  // preferredLoanType — a veteran's file routes to VA underwriting — so the
+  // EFFECTIVE product is what gets priced.
+  const effectiveProduct = isVaLoan ? "va" : loanType;
+  const isFhaLoan = effectiveProduct === "fha";
+  const monthlyPMI = offerMonthlyMI({
+    productType: effectiveProduct,
+    loanAmount,
+    ltvPct: ltv,
+    conventionalMonthlyPMI: llpaResult.pricing.pmiMonthlyPayment,
+  });
+  // FHA up-front MIP (UFMIP), disclosed in the LE's prepaids and counted as a
+  // §1026.4 prepaid finance charge — the posture services/apr.ts has always
+  // taken on the advertised surface. 0 for every other product; the VA
+  // funding fee and USDA guarantee fee are named gaps (see
+  // services/mortgageInsurance.ts offerUpfrontMI).
+  const upfrontMIP = offerUpfrontMI({ productType: effectiveProduct, loanAmount });
 
   return {
     application,
@@ -364,11 +397,13 @@ async function derivePricing(
     loanAmount,
     ltv,
     isVaLoan,
+    isFhaLoan,
     llpaResult,
     interestRate,
     termMonths,
     monthlyPandI,
     monthlyPMI,
+    upfrontMIP,
   };
 }
 
@@ -401,6 +436,35 @@ export interface PaymentProjection {
   estimatedMonthlyTotal: number;
 }
 
+/**
+ * The §1026.19(e)(1)(iii) delivery-window verdict, three-valued on purpose.
+ *
+ * - `true`  — the LE was (or still can be) delivered on or before the deadline.
+ * - `false` — the deadline passed.
+ * - `null`  — **not determinable**: the TRID clock never started, so there is
+ *   no `leDueDate` and therefore no deadline to have met or missed.
+ *
+ * `null` used to be `true` (finding ux-30). That single default meant a file
+ * whose window had never opened rendered an affirmative green "TRID Compliant"
+ * badge, and wrote `withinThreeBusinessDays: true` into the `trid.
+ * loan_estimate_delivered` audit record — an unearned compliance assertion in
+ * both the UI and the permanent audit trail. The QA sweep measured it at
+ * **173 of 176 files**, with exactly one file rendering the red state honestly.
+ *
+ * An unknown is not a pass. This is the same rule `server/mismo.ts:405-408`
+ * applies when it omits an unanswered declaration rather than sending
+ * "Unknown": a NULL is an honest gap, a fabricated affirmative is a falsified
+ * record. Callers must branch on all three states — `if (!x)` collapses
+ * `false` and `null`, which are materially different findings.
+ */
+export function evaluateTridDeliveryWindow(
+  complianceCheckDate: Date,
+  endOfDueDay: Date | null,
+): boolean | null {
+  if (!endOfDueDay) return null;
+  return complianceCheckDate.getTime() <= endOfDueDay.getTime();
+}
+
 export async function computePaymentProjection(
   applicationId: string,
   /** ARC-3 what-if inputs. Omitted by the engine and the LE — see PricingOverrides. */
@@ -426,11 +490,13 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     downPayment,
     loanAmount,
     ltv,
+    isFhaLoan,
     llpaResult,
     interestRate,
     termMonths,
     monthlyPandI,
     monthlyPMI,
+    upfrontMIP,
   } = await derivePricing(applicationId);
 
   // §1026.36(d)(2): the fee schedule cannot be built without knowing who pays
@@ -464,6 +530,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     loanAmount,
     interestRate,
     monthlyPMI,
+    upfrontMortgageInsurance: upfrontMIP,
     prepaidInterestDays: prepaidInterestDaysFor(closingDate),
     compensation,
     feeSchedule,
@@ -511,7 +578,11 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     noteRatePct: interestRate,
     termMonths,
     monthlyMI: monthlyPMI,
-    propertyValue: purchasePrice,
+    // FHA MIP is life-of-loan — no 78% HPA auto-termination in the APR
+    // stream (propertyValue 0 disables the test; the same treatment the
+    // advertised model applies, services/apr.ts advertisedAPR). UFMIP rides
+    // costs.prepaidFinanceCharges. Conventional keeps the HPA termination.
+    propertyValue: isFhaLoan ? 0 : purchasePrice,
     prepaidFinanceCharges: costs.prepaidFinanceCharges,
   });
 
@@ -550,7 +621,10 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
         estimatedEscrow: Math.round(monthlyEscrow * 100) / 100,
         estimatedTotal: Math.round(monthlyTotal * 100) / 100,
       },
-      years6Through30: ltv > 78 ? undefined : {
+      // FHA MIP never steps off the payment (life-of-loan, matching the APR
+      // stream above), so an FHA file gets no MI-drops-to-zero column at any
+      // LTV. Conventional keeps the existing 78-LTV behavior.
+      years6Through30: ltv > 78 || isFhaLoan ? undefined : {
         principalAndInterest: Math.round(monthlyPandI * 100) / 100,
         mortgageInsurance: 0,
         estimatedEscrow: Math.round(monthlyEscrow * 100) / 100,
@@ -645,7 +719,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     tridCompliance: {
       disclosureProvided: !!leIssuedDate,
       dateProvided: leIssuedDate,
-      withinThreeBusinessDays: endOfDueDay ? complianceCheckDate.getTime() <= endOfDueDay.getTime() : true,
+      withinThreeBusinessDays: evaluateTridDeliveryWindow(complianceCheckDate, endOfDueDay),
       applicationDate: tridTriggeredAt,
       leDueDate,
     },

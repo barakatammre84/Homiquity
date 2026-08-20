@@ -57,7 +57,7 @@ export default function RentToOwnReadiness() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Rent-to-Own Readiness Calculator"
         description="See what home price your current rent could cover, the credit and down payment you'd need, and a clear plan to go from renting to owning. No login required."
@@ -87,7 +87,7 @@ export default function RentToOwnReadiness() {
           />
         )}
 
-        <div className="grid gap-8 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           {/* Inputs */}
           <div className="lg:col-span-3 space-y-6">
             <RentCard monthlyRent={inputs.monthlyRent} onChange={(value) => updateInput("monthlyRent", value)} />
@@ -119,6 +119,6 @@ export default function RentToOwnReadiness() {
           </div>
         )}
       </PageShell>
-    </div>
+    </>
   );
 }

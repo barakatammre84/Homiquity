@@ -17,7 +17,7 @@ claim because its territory is this file.
 
 | # | Action | Unblocks | Why now |
 |---|---|---|---|
-| 1 | **Railway → project `Homiquity` → Settings → Billing: add a payment method / leave trial.** | everything | **I could not probe this.** No billing endpoint on the Railway MCP and no `railway` CLI on this machine. The only observation on record is KTLO-1's "~30 days / ~$4.97 of credit left", made ~**2026-08-06 — 11 days ago**. When the credit runs out **production stops serving.** Nobody has re-checked it in 11 days and no routine can. |
+| 1 | **Railway → project `Homiquity` → Settings → Billing: add a payment method / leave trial.** | everything | The **invoice** is still unprobeable (no billing endpoint on the MCP; the local `RAILWAY_API_TOKEN` is dead — E8). But **usage now is**, and it reframes the item: 7-day averages are CPU **0.0002 vCPU**, memory **0.32 GB**, egress ~0.06 GB/mo — **≈$3.20/month, essentially all memory.** So this is the **$5/mo plan and an expiring trial credit, not runaway consumption**. Still the item that stops production when the credit lapses, and still founder-held; it just cannot be deferred by using less. |
 | 2 | **Set the four email-auth DNS records at Squarespace**: SPF TXT on the apex, DMARC TXT at `_dmarc`, and SendGrid's `s1`/`s2` DKIM CNAMEs **on the apex** (the existing `s1._domainkey.www` is scoped to the wrong host and SendGrid never queries it). | account recovery, verification, waitlist | See Evidence E1. Mail is being *sent* today with zero authentication. MX (Google Workspace) is intact, so inbound is fine — this is outbound only. |
 | 3 | **Set `GCS_SERVICE_ACCOUNT_KEY` + `PRIVATE_OBJECT_DIR`** in Railway → service `Homiquity` → Variables (production). | §2.2 uploads | Confirmed absent from the live variable list (E2). `request-url` 503s `UPLOADS_UNCONFIGURED`; the roadmap calls silent upload loss "the single worst borrower-facing failure available to us". |
 | 4 | **Set `SENTRY_DSN` + point a free uptime monitor at `/api/health`.** | prod observability | Confirmed absent (E2). A production crash is invisible today; the only outside signal is CI's `verify-deploy`, which runs on push and not otherwise. |
@@ -35,6 +35,12 @@ comparison on file — see Proposed tickets.
 ---
 
 ## Summary
+
+**Addendum, same day:** the founder pointed at a local `RAILWAY_API_TOKEN`; it is dead (E8), so
+billing stays unreadable — but the Railway *usage* metrics are readable and they move the
+conclusion. Railway costs **≈$3.20/month** and the container is idle; **GitHub Actions is the
+platform bill**, at ~92% of a private repo's free allowance (E9). Ask #1 and the Railway/Actions
+rows below are rewritten accordingly. The STATUS is unchanged — it was never driven by cost.
 
 Prod is healthy and current (`95770d4`, deployed 16:27Z today, verified by the `/api/health`
 `commit` field, not by a green check). Every simulated vendor seam is correctly flagged and the
@@ -178,10 +184,10 @@ Tier 1 is fine: `pnpm checkup` reports `PASS regulatory ledger fresh`.
 
 | Vendor | Probed? | State | Single point of failure / what breaks this week |
 |---|---|---|---|
-| **Railway** (deploy + runtime) | partly | Service `Homiquity`, **1 replica, `us-east4-eqdc4a`**, RAILPACK builder, deploying from `main` with **`checkSuites: false`** — Railway does **not** wait for GitHub checks, so branch protection is the only gate between a merge and prod. Latest deploy `SUCCESS` 2026-08-17T16:27Z = `95770d4` = `origin/main`. | **Billing is the whole company's SPOF and I could not read it** — no billing endpoint on the MCP, no `railway` CLI installed. Credit exhaustion stops production serving. Single replica, single region: no failover. |
+| **Railway** (deploy + runtime) | yes | Service `Homiquity`, **1 replica, `us-east4-eqdc4a`**, RAILPACK builder, deploying from `main` with **`checkSuites: false`** — Railway does **not** wait for GitHub checks, so branch protection is the only gate between a merge and prod. Latest deploy `SUCCESS` 2026-08-17T16:27Z = `95770d4` = `origin/main`. **7-day usage: CPU avg 0.000193 vCPU (max 0.087), memory avg 0.32 GB (max 1.05), NETWORK_TX ~0.06 GB/mo, disk 0** (10,081 samples). | **≈$3.20/month of usage** at Hobby rates, essentially all memory — the container is idle, and no engineering change meaningfully lowers it. The exposure is the **plan + trial credit**, which I still cannot read. Credit exhaustion stops production serving. Single replica, single region: no failover. |
 | **Railway image retention (rollback)** | yes | Only **two** deployments exist for this service: today's `95770d4`, and `1f520b1` built **2026-08-12T22:53Z** — everything older is `REMOVED`. | Between 08-12 22:55Z and 08-17 16:27Z prod ran ~**114 h on a single deployment with no in-window rollback target at all**. Today's deploy restores one candidate, but the only prior image is itself ~114 h old, past the **72 h Hobby retention** — so a one-step rollback **cannot be confirmed available**. `ROLLBACK.md` §1's path is `git revert` + rebuild. Coupled to the billing item: leaving trial is what buys retention back. |
 | **Neon** (prod Postgres) | yes | DB-backed routes 200 and fast: `/sitemap.xml` 0.52 s (2,726 B), `/api/articles` 0.63 s, `/api/rates` 0.55 s, `/api/health` 0.49–0.88 s. Also proves `DATABASE_URL` is on a populated branch — `/api/health`'s `SELECT 1` alone would not. | **KTLO-3 (unpinned compute, 5.5–7.4 s cold start) is unverified, not resolved.** I could not observe a cold start because the compute was warm — the GitHub cron sweeps hit the app every ~20–40 min and incidentally keep it awake. That masking is worth knowing: the first real borrower after a genuine idle window still pays the cold start. |
-| **GitHub Actions** | yes | Healthy today. `cron-jobs` runs 32031034105 … 32038494454 all `success` in 6–9 s. Run 32038494454 (`adverse-action-delivery`) returned `{"ok":true,"trigger":"cron","scanned":0,…}` against `SWEEP_HOST=https://homiquity-production.up.railway.app`. | Two facts confirmed as *working*, both previously broken: **`CRON_SECRET` matches** between the repo secret and the Railway variable (a mismatch 401s every sweep silently), and the sweeps use the `*.up.railway.app` host, not `www` — the 2026-08-06 `curl exit 6` class is closed. KTLO-2's queueing is not reproducing today. If the gate cannot run, nothing merges and `migrate-prod` never applies a migration. |
+| **GitHub Actions** | yes | Healthy today. `cron-jobs` runs 32031034105 … 32038494454 all `success` in 6–9 s. Run 32038494454 (`adverse-action-delivery`) returned `{"ok":true,"trigger":"cron","scanned":0,…}` against `SWEEP_HOST=https://homiquity-production.up.railway.app`. **Consumption: 66 CI runs over 4.85 days = ~13.6/day**, one billable `gate` job each at ~4–5 min. | **This is the platform bill, not Railway — see E9.** ~**1,850 min/month against a 2,000-minute free allowance** on a private repo (~92% consumed; overage $0.008/min). Two facts confirmed as *working*, both previously broken: **`CRON_SECRET` matches** between the repo secret and the Railway variable (a mismatch 401s every sweep silently), and the sweeps use the `*.up.railway.app` host, not `www` — the 2026-08-06 `curl exit 6` class is closed. If the gate cannot run, nothing merges and `migrate-prod` never applies a migration. |
 | **SendGrid** | yes | `configured: true`, provider `sendgrid`, `FROM_EMAIL`/`FROM_NAME` set. | **BROKEN IN PRACTICE — see E1.** Sends unauthenticated; password reset and email verification ride this path. `/api/health` cannot see it, which is why this is the report's FAIL. |
 | **Sentry** | yes | `SENTRY_DSN` absent from the live variable list. | No error reporting and no uptime monitor. A prod crash between CI `verify-deploy` runs is invisible. |
 | **Object storage / GCS** | yes | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` all absent. | Uploads 503 `UPLOADS_UNCONFIGURED` — fail-closed, which is the right failure, but it means document collection does not work at all in production. Also note Dependabot PR **#524** proposes `@google-cloud/storage` **7.21.0 → 8.0.0**, a major bump on the dependency this capability rests on; land it deliberately, not on autopilot. |
@@ -202,14 +208,57 @@ Tier 1 is fine: `pnpm checkup` reports `PASS regulatory ledger fresh`.
   are open against it. Not this routine's territory — flagged for Evening Triage.
 - 14 PRs are open, 11 of them from 2026-08-12. Not a procurement item, but the queue is not moving.
 
+### E8 — The local `RAILWAY_API_TOKEN` is dead
+
+Added after the founder pointed at it mid-session. `/Users/ammrebarakat/Developer/Homiquity/.env`
+carries a 36-character `RAILWAY_API_TOKEN`. It authenticates as **neither** an account token nor a
+project token:
+
+```
+Authorization: Bearer <token>      → {"errors":[{"message":"Not Authorized", … path:["me"]}]}
+Project-Access-Token: <token>      → {"errors":[{"message":"Project Token not found", …}]}
+```
+
+So billing stays unreadable. Two dead credentials are sitting in that file — this one and an
+`OPENAI_API_KEY` (all AI is Anthropic; same class as the `GEMINI_API_KEY` in roadmap §1.9). Also
+present locally and worth knowing: `TWILIO_ACCOUNT_SID` + `TWILIO_API_KEY_SID`/`_SECRET`, which are
+**not** in the Railway production variables — consistent with E3's finding that no outbound sender
+exists.
+
+### E9 — Where the platform money actually goes
+
+The roadmap frames Railway as the cost risk. Measured, it is not — GitHub Actions is.
+
+| | Measured 2026-08-17 | Cost |
+|---|---|---|
+| **GitHub Actions** | 66 CI runs / 4.85 days = **~13.6/day**, one billable `gate` job each at ~4–5 min | **~1,850 min/month** vs a **2,000-min** free allowance on a private repo — **~92% consumed**, overage $0.008/min |
+| **Railway** | CPU 0.0002 vCPU · memory 0.32 GB · egress ~0.06 GB/mo · disk 0 (7-day avgs) | **≈$3.20/month**, ~all memory |
+
+Two structural causes found in the repo, both now addressed on separate branches:
+
+- **`gate` had no `concurrency` group** (only `migrate-prod` did), so every push to a PR started a
+  fresh ~5-minute run while the superseded one ran to completion. Safe to cancel *only* because
+  `gate` carries `if: github.event_name == 'pull_request'`, so it cannot reach `migrate-prod` or
+  `verify-deploy` — pinned in `tests/ciTriggers.test.ts`.
+- **No git hooks at all** (`.git/hooks` empty, no husky), so nothing caught a red gate before it
+  consumed a CI minute. A red costs the run *and* the re-run.
+
+Not a cost problem, checked and clear: **local dev already runs on a localhost Docker Postgres**
+(`.env` `DATABASE_URL` → `localhost:5432`, `pnpm db:start`), so development burns **zero** Neon
+compute. The one Neon item is that the 7 daily cron sweeps hit prod every ~20–40 min and prevent
+autosuspend — real compute-hours, but consolidating them trades directly against KTLO-3's
+5.5–7.4 s cold start, so it is a decision rather than a fix.
+
 ---
 
 ## Proposed tickets — for Evening Triage to land
 
-1. **VP-1 · §0/KTLO-1: no routine can see Railway billing.** The one item that stops production is
-   unprobeable from any session — no MCP billing endpoint, no CLI. Either install + authenticate
-   the `railway` CLI on this machine so a routine can read it, or set a calendar reminder the
-   founder owns. Today the control is "somebody remembers".
+1. **VP-1 · §0/KTLO-1: no routine can see Railway billing, and the token that might have is dead.**
+   Usage is now measured (≈$3.20/mo — E9), so the open question is narrowly the **plan and trial
+   credit**, which no session can read: the MCP has no billing endpoint and the local
+   `RAILWAY_API_TOKEN` is rejected by both auth schemes (E8). Either mint a working account token
+   and install the `railway` CLI so a routine can read it, or make it a founder-owned calendar item.
+   Today the control is "somebody remembers". Delete the dead token and `OPENAI_API_KEY` either way.
 2. **VP-2 · Correct `ASSUMPTIONS.md` §2 and §1.** Three rows now contradict live state: "The app
    sends email — **False in prod** … no `SENDGRID_API_KEY`" (it is set; the real problem is DNS,
    which that row does not mention); the SMS row's "webhook signature check stubbed" (it is real

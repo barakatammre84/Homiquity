@@ -13,10 +13,10 @@ import { apiRequest, loanApplicationKeys, consentKeys } from "@/lib/queryClient"
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import { AlertCircle, CheckCircle2, Clock, Shield } from "lucide-react";
+import { ActionItemsSection } from "./loanOptions/ActionItemsSection";
 import { MarketPricingSection, type MarketOffersResponse } from "./loanOptions/MarketPricingSection";
 import { LoanOptionCard } from "./loanOptions/LoanOptionCard";
 import { LoanLetterButton } from "./loanOptions/LoanLetterButton";
-import { NextStepsSection } from "./loanOptions/NextStepsSection";
 import { WhatIfPanel } from "./loanOptions/WhatIfPanel";
 
 interface LoanOptionsData {
@@ -33,6 +33,20 @@ export default function LoanOptions() {
   const { data, isLoading, error } = useQuery<LoanOptionsData>({
     queryKey: loanApplicationKeys.options(id),
     enabled: !!id,
+    // Scenarios are computed right after the 201, so the first visit can land
+    // before they exist. Poll until they arrive instead of waiting for a
+    // window-focus refetch — the page used to sit on "Analyzing…" until the
+    // borrower happened to tab away and back. Terminal statuses (denied,
+    // withdrawn, …) legitimately have no options; don't poll those.
+    refetchInterval: (query) => {
+      const current = query.state.data;
+      if (!current || current.options.length > 0) return false;
+      return ["submitted", "analyzing", "under_review", "pre_approved"].includes(
+        current.application.status,
+      )
+        ? 4000
+        : false;
+    },
   });
 
   // Live wholesale pricing — repriced server-side on every request from the
@@ -98,9 +112,9 @@ export default function LoanOptions() {
           <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
           <h2 className="mt-4 text-xl font-semibold">Unable to load loan options</h2>
           <p className="mt-2 text-muted-foreground">Please try again later.</p>
-          <Link href="/apply">
-            <Button className="mt-6">Start New Application</Button>
-          </Link>
+          <Button asChild className="mt-6">
+            <Link href="/apply">Start New Application</Link>
+          </Button>
         </div>
       </div>
     );
@@ -129,12 +143,18 @@ export default function LoanOptions() {
                     Under Review
                   </span>
                 </div>
+                {/* Broker rail: Homiquity arranges financing and does not make
+                    credit decisions or fund loans — the standing disclosure in
+                    this page's own footer. This read "Your application is with
+                    our underwriting team / A licensed underwriter is reviewing
+                    your numbers", which two independent journey walks flagged
+                    against that disclosure a few hundred pixels below it. */}
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                  Your application is with our underwriting team
+                  Your file is being prepared for review
                 </h1>
                 <p className="mt-4 text-muted-foreground" data-testid="text-under-review">
-                  A licensed underwriter is reviewing your numbers — check your dashboard for what
-                  was flagged. The scenarios below are estimates, not offers.
+                  We're getting your numbers ready for a lending partner to review — check your
+                  dashboard for what was flagged. The scenarios below are estimates, not offers.
                 </p>
               </>
             ) : (
@@ -173,6 +193,9 @@ export default function LoanOptions() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        {/* The first thing after the status banner is what to DO — the
+            server-computed action items (documents, consents, conditions). */}
+        <ActionItemsSection applicationId={application.id} stillAnalyzing={options.length === 0} />
         {!steeringAcknowledged && (
           <div className="mb-8 flex justify-center" data-testid="section-anti-steering">
             <ConsentGateCard
@@ -199,10 +222,10 @@ export default function LoanOptions() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">{marketPriced ? "Payment Scenarios" : "Your Loan Options"}</h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground" data-testid="text-options-qualifier">
               {marketPriced
                 ? "Illustrative payment breakdowns by loan program"
-                : "Based on your profile, here are your best options"}
+                : "Estimates from your self-reported answers — not offers or approvals"}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -213,7 +236,7 @@ export default function LoanOptions() {
             {options.length > 1 && (
               <div className="flex rounded-lg border p-0.5" role="group" aria-label="View mode">
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant={viewMode === "cards" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("cards")}
                   data-testid="button-view-cards"
@@ -221,7 +244,7 @@ export default function LoanOptions() {
                   Cards
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant={viewMode === "compare" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("compare")}
                   data-testid="button-view-compare"
@@ -261,8 +284,6 @@ export default function LoanOptions() {
             ))}
           </div>
         )}
-
-        <NextStepsSection anyLocked={options.some(o => o.isLocked)} />
       </div>
 
       <Footer />

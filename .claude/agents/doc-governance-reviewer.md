@@ -26,8 +26,8 @@ not assets. You audit the documentation corpus and report findings; you never re
    Flag passive/descriptive language that carries no constraint.
 2. **Business-Intent "why" before "what".** Major docs should open with why this matters / what
    friction it removes. Flag docs that jump to mechanics with no intent.
-3. **L1→L2→L3 precedence hierarchy.** L1 `VISION_AND_SCOPE.md` (scope; the cut test) > L2
-   `COMPLIANCE_AND_LOGIC.md` (regulatory/financial guardrails override UX/features) > L3
+3. **L1→L2→L3 precedence hierarchy.** L1 `L1_VISION_AND_SCOPE.md` (scope; the cut test) > L2
+   `L2_COMPLIANCE_AND_LOGIC.md` (regulatory/financial guardrails override UX/features) > L3
    `[Feature]_SPECS.md` (execution; MUST cite L1+L2). Flag docs with no place in the hierarchy,
    L3 specs that don't cite their authority, and any doc not indexed in the Knowledge Base.
 4. **Friction Test.** Read as a brand-new hire: will they know exactly what to do / what is

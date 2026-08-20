@@ -110,3 +110,47 @@ describe("the rejection reason never travels over email", () => {
     expect(actionNeeded).not.toHaveBeenCalled();
   });
 });
+
+describe("submission emails: one per submit, action-oriented, reason-free", () => {
+  // The founder's inbox on 2026-08-18: "application under review" and
+  // "application received and being reviewed" — two near-identical emails
+  // racing through the provider, arriving reversed, neither naming a next
+  // step. The under_review path now sends ONE purposeful email.
+
+  it("applicationUnderReview acknowledges receipt AND names what to do", () => {
+    const email = emailTemplates.applicationUnderReview("Ava", "12345678-abcd");
+    const text = `${email.subject} ${email.html}`;
+    expect(email.subject).toContain("Received");
+    expect(text).toContain("licensed underwriter");
+    expect(text).toContain("dashboard");
+    expect(text).toContain("pay stubs");
+    // The account is where specifics live — same rule as document rejections:
+    // no review reasons over email. The template takes no reason parameter,
+    // so one appearing would have to be smuggled through the name field.
+    expect(text).not.toContain("Flagged for review");
+    // Reg N rail: an under-review notice must not read as an approval.
+    const visible = email.html.replace(/<[^>]+>/g, " ").toLowerCase();
+    expect(visible).not.toContain("congratulations");
+    expect(visible).not.toContain("you're approved");
+    expect(visible).toContain("not a credit decision");
+  });
+
+  it("application_under_review dispatches to the dedicated template", () => {
+    const spy = vi.spyOn(emailTemplates, "applicationUnderReview");
+    sendNotificationEmail({
+      type: "application_under_review",
+      recipientEmail: "ava@example.com",
+      data: { borrowerName: "Ava", applicationId: "12345678-abcd" },
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith("Ava", "12345678-abcd");
+  });
+
+  it("applicationSubmitted (the delayed-analysis fallback) no longer claims a review is underway", () => {
+    const email = emailTemplates.applicationSubmitted("Ava", "12345678-abcd");
+    // It fires only when finalizeIntake failed and the sweep will re-drive —
+    // "being reviewed now" was untrue on exactly that path.
+    expect(email.html).not.toContain("being reviewed now");
+    expect(email.html).toContain("in line for review");
+  });
+});

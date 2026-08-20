@@ -100,12 +100,12 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
         <CardContent className="flex flex-col items-center gap-2 p-5 text-center">
           <AlertCircle className="h-6 w-6 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Readiness data is temporarily unavailable</p>
-          <Link href="/ai-coach">
-            <Button variant="outline" size="sm" className="gap-2" data-testid="button-passport-coach-fallback">
+          <Button asChild variant="outline" size="sm" className="touch-target gap-2" data-testid="button-passport-coach-fallback">
+            <Link href="/ai-coach">
               <Bot className="h-4 w-4" />
-              Talk to AI Coach
-            </Button>
-          </Link>
+              Talk to Homi
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -285,18 +285,18 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
               )}
 
               <div className="pt-2 border-t flex gap-2">
-                <Link href="/ai-coach" className="flex-1">
-                  <Button variant="outline" size="sm" className="w-full gap-1.5" data-testid="button-passport-coach">
+                <Button asChild variant="outline" size="sm" className="touch-target flex-1 w-full gap-1.5" data-testid="button-passport-coach">
+                  <Link href="/ai-coach">
                     <Bot className="h-3.5 w-3.5" />
                     Talk to Coach
-                  </Button>
-                </Link>
-                <Link href="/apply" className="flex-1">
-                  <Button size="sm" className="w-full gap-1.5" data-testid="button-passport-apply">
+                  </Link>
+                </Button>
+                <Button asChild size="sm" className="touch-target flex-1 w-full gap-1.5" data-testid="button-passport-apply">
+                  <Link href="/apply">
                     Get Pre-Approved
                     <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
           )}

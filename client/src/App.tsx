@@ -94,6 +94,7 @@ const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
 const PricingMatrices = lazy(() => import("@/pages/staff/PricingMatrices"));
 const PricingIntelligence = lazy(() => import("@/pages/staff/PricingIntelligence"));
 const TaskOperations = lazy(() => import("@/pages/staff/TaskOperations"));
+const DesignPrototype = lazy(() => import("@/pages/staff/DesignPrototype"));
 
 const AgentCoBranding = lazy(() => import("@/pages/agent-broker/AgentCoBranding"));
 const AgentDashboard = lazy(() => import("@/pages/agent-broker/AgentDashboard"));
@@ -462,14 +463,25 @@ function Router() {
         <Route path="/lo-command-center">
           <InternalStaffPage><LoCommandCenter /></InternalStaffPage>
         </Route>
+        <Route path="/design-prototype">
+          <InternalStaffPage><DesignPrototype /></InternalStaffPage>
+        </Route>
         <Route path="/pipeline-queue">
           <Redirect to="/staff-dashboard" />
         </Route>
         <Route path="/borrower-file/:id">
           {(params) => <StaffPage><BorrowerFile /></StaffPage>}
         </Route>
+        {/* Inlined rather than given a page wrapper: ROUTE_GATES.disclosure has
+            exactly one route, and a fifth single-use wrapper measured 56 extra
+            bytes on the eager entry every visitor downloads. Uses the named
+            gate, never an inline role literal (tests/routeGates.test.ts:99). */}
         <Route path="/loan-estimate/:id">
-          {(params) => <StaffPage><LoanEstimate /></StaffPage>}
+          {(params) => (
+            <PrivateLayout requiredRoles={ROUTE_GATES.disclosure}>
+              <LoanEstimate />
+            </PrivateLayout>
+          )}
         </Route>
         <Route path="/compliance">
           <Redirect to="/staff-dashboard" />

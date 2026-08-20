@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { QueryErrorState } from "@/components/ui/query-boundary";
+import { ConsentField } from "@/components/patterns/ConsentField";
 
 interface ConsentTemplate {
   id: string;
@@ -36,6 +36,13 @@ interface BorrowerConsent {
   consentGiven: boolean;
   consentedAt: string;
   consentMethod: string;
+  /**
+   * Revocation is a separate flag: revoking sets `isRevoked` and leaves
+   * `consentGiven: true` as the historical record of what was once given
+   * (`revokeConsentsByTypeAndUser`). Reading `consentGiven` alone therefore
+   * reports a revoked consent as still in force — see `isConsentGiven` below.
+   */
+  isRevoked?: boolean;
 }
 
 const consentTypeLabels: Record<string, { label: string; icon: typeof Shield }> = {
@@ -124,8 +131,23 @@ export default function EConsent() {
     });
   };
 
+  // A consent counts as IN FORCE only if it was given and has not been revoked.
+  //
+  // `/api/consents/me` returns the borrower's full consent history — unlike its
+  // sibling getters, `getBorrowerConsentsByUser` applies no `isRevoked` filter,
+  // and revoking never clears `consentGiven` (it is the record of what was once
+  // given). Testing `consentGiven` alone therefore listed a revoked consent
+  // under "Completed" and dropped it from "Action Required", telling the
+  // borrower there was nothing to do — while `TaxReturnInsightCard`, reading
+  // the very same endpoint, correctly showed the consent as needed again.
+  // Two surfaces cannot disagree about one fact (DESIGN_SYSTEM §13, Agreement),
+  // so this predicate now matches that one.
   const isConsentGiven = (consentType: string): boolean => {
-    return myConsents?.some(c => c.consentType === consentType && c.consentGiven) || false;
+    return (
+      myConsents?.some(
+        (c) => c.consentType === consentType && c.consentGiven && !c.isRevoked,
+      ) || false
+    );
   };
 
   if (templatesLoading || consentsLoading) {
@@ -252,21 +274,26 @@ export default function EConsent() {
                 </CardContent>
                 <CardFooter className="flex-col gap-4">
                   <Separator />
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id={`agree-${template.id}`}
-                        checked={isAgreed}
-                        onCheckedChange={() => handleAgree(template.consentType)}
-                        data-testid={`checkbox-agree-${template.consentType}`}
-                      />
-                      <label htmlFor={`agree-${template.id}`} className="text-sm cursor-pointer">
-                        I have read and agree to the above
-                      </label>
-                    </div>
+                  <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    {/* The full text is one click away above and is not
+                        summarised here — so the agreement names the document
+                        rather than a vague "the above", and the consequence
+                        sits outside the label (DESIGN_SYSTEM §13, Honesty). */}
+                    <ConsentField
+                      id={`agree-${template.id}`}
+                      className="flex-1"
+                      checked={isAgreed}
+                      onCheckedChange={() => handleAgree(template.consentType)}
+                      checkboxTestId={`checkbox-agree-${template.consentType}`}
+                      labelTestId={`label-agree-${template.consentType}`}
+                      data-testid={`consent-agree-${template.consentType}`}
+                      label={`I have read and agree to the ${template.title}.`}
+                      consequence="Nothing is recorded until you submit, and you can read the full text above first."
+                    />
                     <Button
                       onClick={() => handleSubmitConsent(template)}
                       disabled={!isAgreed || recordConsentMutation.isPending}
+                      className="shrink-0"
                       data-testid={`button-submit-${template.consentType}`}
                     >
                       {recordConsentMutation.isPending ? "Saving..." : "Submit Consent"}

@@ -83,6 +83,12 @@ function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
       propertyValue: "500000",
       purchasePrice: "500000",
       downPayment: "100000",
+      // POPULATED on purpose — same reason the phones below are formatted.
+      // F-051's fix omits AUTOMATED_UNDERWRITINGS when there is no AUS
+      // recommendation, so a fixture without one would stop exercising that
+      // container against the schema entirely and quietly recreate the
+      // fixture-bounded blindness this file exists to prevent (F-049).
+      ausRecommendation: "refer_with_caution",
       createdAt: new Date("2026-01-01"),
       ...(overrides.application ?? {}),
     } as any,

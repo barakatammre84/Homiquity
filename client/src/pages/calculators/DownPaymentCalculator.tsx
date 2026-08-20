@@ -122,7 +122,7 @@ export default function DownPaymentCalculator() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Down Payment Calculator — How Much Cash Do You Need to Buy?"
         description="Free down payment calculator. Enter a home price to see your down payment, estimated closing costs, and the total cash you'll need at the table — plus how much you'd need at 3%, 5%, 10%, and 20% down."
@@ -302,7 +302,7 @@ export default function DownPaymentCalculator() {
               </CardContent>
             </Card>
 
-            <Button size="lg" className="w-full" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
+            <Button size="lg" className="w-full whitespace-normal h-auto min-h-12 py-3" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
               {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved Now"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -323,6 +323,6 @@ export default function DownPaymentCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

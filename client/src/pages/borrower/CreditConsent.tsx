@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ConsentField } from "@/components/patterns/ConsentField";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -117,13 +117,25 @@ export default function CreditConsent() {
     enabled: !!applicationId,
   });
 
+  // Identity fields resume from the saved draft — that is the convenience the
+  // draft exists for. The ACKNOWLEDGMENT deliberately does not.
+  //
+  // `acknowledged` is the only gate between this page and a posted
+  // `consentGiven: true`, and the checkbox beside that label is the
+  // e-signature evidence for an FCRA hard-inquiry authorization. Restoring it
+  // meant a borrower returning to a draft found the box already checked, and
+  // could authorize a hard credit pull in a session where they never
+  // affirmatively acknowledged anything — possibly against a disclosure
+  // version they never saw. So the acknowledgment is re-given, in the session
+  // that authorizes, every time (DESIGN_SYSTEM §13, Honesty: never
+  // pre-ticked). The draft still PERSISTS it — that record is untouched; it is
+  // only never restored into the live control.
   useEffect(() => {
     if (draftData?.draft && !draftLoaded) {
       const draft = draftData.draft;
       if (draft.borrowerFullName) setFullName(draft.borrowerFullName);
       if (draft.borrowerSSNLast4) setSsnLast4(draft.borrowerSSNLast4);
       if (draft.borrowerDOB) setDob(draft.borrowerDOB);
-      if (draft.acknowledged) setAcknowledged(draft.acknowledged);
       if (draft.disclosureRead) setDisclosureRead(draft.disclosureRead);
       setDraftLoaded(true);
     }
@@ -419,19 +431,48 @@ export default function CreditConsent() {
 
               <Separator />
 
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="acknowledge"
-                  checked={acknowledged}
-                  onCheckedChange={(checked) => setAcknowledged(checked as boolean)}
-                  data-testid="checkbox-acknowledge"
-                />
-                <Label htmlFor="acknowledge" className="text-sm leading-relaxed cursor-pointer">
-                  I have read and understand the Credit Authorization Disclosure above. I authorize 
-                  Homiquity to obtain my credit report from one or more consumer reporting agencies 
-                  for the purpose of evaluating my mortgage loan application.
-                </Label>
-              </div>
+              {/* ux-20: the hard-inquiry fact must be visible AT the decision
+                  point, not only as item 2 of the disclosure document inside
+                  the scroll area above — especially because the pre-approval
+                  funnel deliberately set the opposite expectation ("a soft
+                  inquiry, which will not affect my credit score"). Wording
+                  mirrors the ratified FCRA disclosure item 2
+                  (server/services/creditCatalogs.ts); nothing new is asserted. */}
+              <Alert data-testid="alert-hard-inquiry">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>This authorizes a hard credit inquiry</strong> — unlike the soft check
+                  used for pre-qualification, a hard inquiry may temporarily lower your credit
+                  score. Mortgage inquiries made within a 45-day period are typically counted as
+                  a single inquiry for scoring purposes.
+                </AlertDescription>
+              </Alert>
+
+              {/* The authorization text below is e-signature evidence: it is
+                  what the borrower affirmatively agrees to, and the
+                  hard-inquiry sentence inside it is ux-20's ratified fix.
+                  Preserved BYTE-FOR-BYTE through this migration, label and
+                  testids included (DESIGN_SYSTEM §13 — compliance copy is
+                  load-bearing). It stays IN the label rather than moving to
+                  `consequence`, because what is signed must be what is read. */}
+              <ConsentField
+                id="acknowledge"
+                checked={acknowledged}
+                onCheckedChange={setAcknowledged}
+                data-testid="consent-acknowledge"
+                checkboxTestId="checkbox-acknowledge"
+                labelTestId="label-acknowledge"
+                label="I have read and understand the Credit Authorization Disclosure above. I authorize Homiquity to obtain my credit report from one or more consumer reporting agencies for the purpose of evaluating my mortgage loan application. I understand this permits a hard credit inquiry, which may temporarily lower my credit score."
+              />
+
+              {/* Declining costs the borrower nothing here — say so plainly
+                  rather than leaving the only exit as an unexplained "Cancel"
+                  (§13, Honesty: no penalty language, and no implied penalty
+                  either). */}
+              <p className="text-sm text-muted-foreground" data-testid="text-consent-optional">
+                You can leave this for later — nothing is submitted until you
+                authorize, and your saved progress will be here when you return.
+              </p>
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
@@ -479,9 +520,10 @@ export default function CreditConsent() {
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground text-center">
-                By clicking "I Authorize", you are providing written authorization as required by the 
-                Fair Credit Reporting Act (FCRA). This authorization is valid for 120 days.
+              <p className="text-xs text-muted-foreground text-center" data-testid="text-authorize-fine-print">
+                By clicking "I Authorize", you are providing written authorization for a hard credit
+                inquiry as required by the Fair Credit Reporting Act (FCRA). This authorization is
+                valid for 120 days.
               </p>
             </CardContent>
           </Card>

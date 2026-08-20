@@ -91,7 +91,7 @@ export default function HmdaDemographics() {
           size="sm"
           onClick={() => setLocation(`/dashboard`)}
           data-testid="button-back-dashboard"
-          className="-ml-2"
+          className="touch-target -ml-2"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back

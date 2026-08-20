@@ -33,7 +33,15 @@ export interface ResolvedMeta extends RouteMetaEntry {
 
 /** Static public routes → metadata. Mirrors each page's <SEOHead> props. */
 export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
-  "/": { title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION },
+  // Mirrors Landing.tsx's <SEOHead> EXACTLY. This entry feeds the bot prerender
+  // (server/prerender.ts), so when it drifts, crawlers read different positioning
+  // than humans do — which is precisely what happened when the home page was
+  // rewritten and this was left on DEFAULT_DESCRIPTION. Change both together.
+  "/": {
+    title: "Homiquity — a mortgage broker that works for you",
+    description:
+      "See what you have the power to do. Homi, our AI assistant, walks you through buying, refinancing, or using your equity — and we take your file to our lending partners. Guidance and estimates, not a loan approval.",
+  },
   "/learn": {
     title: "Mortgage Learning Center — Guides for Every Step of Homebuying",
     description:
@@ -53,6 +61,13 @@ export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
     title: "Homebuying Resources & Guides",
     description:
       "Curated guides and tools to help you navigate buying a home — from pre-approval and choosing an agent to understanding how mortgages work.",
+  },
+  // Mirrors RentReporting.tsx's SEOHead verbatim — this file's documented failure
+  // mode is silent drift from the page copy, so change both together or neither.
+  "/rent-reporting": {
+    title: "Rent reporting — Homiquity",
+    description:
+      "Homiquity is building rent reporting for renters working toward a home purchase. Join the list — we'll tell you when it opens.",
   },
   "/down-payment-wizard": {
     title: "Down Payment Assistance Finder",
@@ -324,6 +339,7 @@ export const SITEMAP_STATIC_PATHS: string[] = [
   "/glossary",
   "/resources",
   "/down-payment-wizard",
+  "/rent-reporting",
   "/calculators",
   "/calculators/mortgage",
   "/calculators/rent-vs-buy",

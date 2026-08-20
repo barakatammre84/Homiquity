@@ -298,11 +298,11 @@ export default function BuyerProperties() {
                     <p className="font-medium text-white">Get Pre-Approved First</p>
                     <p className="text-sm text-white/70">Complete an application to see personalized affordability</p>
                   </div>
-                  <Link href="/apply">
-                    <Button variant="secondary" size="sm" className="ml-2">
+                  <Button asChild variant="secondary" size="sm" className="touch-target ml-2">
+                    <Link href="/apply">
                       Apply Now
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -310,7 +310,7 @@ export default function BuyerProperties() {
 
           {/* Quick Stats - Only show when pre-approved */}
           {hasPreApproval && (
-            <div className="mt-8 grid grid-cols-3 gap-4">
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Card className="bg-success/20 backdrop-blur-sm">
                 <CardContent className="flex items-center gap-3 p-4">
                   <CheckCircle className="h-8 w-8 text-success" />
@@ -410,12 +410,12 @@ export default function BuyerProperties() {
             {filteredProperties.length} homes {hasPreApproval && showOnlyAffordable ? "you can afford" : "found"}
           </p>
           {!hasPreApproval && (
-            <Link href="/apply">
-              <Button className="gap-2">
+            <Button asChild className="gap-2">
+              <Link href="/apply">
                 <Calculator className="h-4 w-4" />
                 Get Pre-Approved First
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </div>
 

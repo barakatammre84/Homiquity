@@ -60,10 +60,22 @@ interface ReadinessReport {
   nextActions: string[];
 }
 
+/**
+ * A row from `GET /api/wholesale-lenders` — the whole `wholesale_lenders` row
+ * minus `apiConfig` (server/routes/underwriting/submissions.ts).
+ *
+ * The table carries TWO identifiers and they are not interchangeable (F-0818-09):
+ * `id` is a `gen_random_uuid()` primary key, while `lenderId` is the business key
+ * ("uwm") that `getWholesaleLenderByLenderId` resolves a submission on —
+ * `WHERE lender_id = $1`, with no fallback. Posting the uuid throws
+ * "Unknown wholesale lender <uuid>" before the counterparty gate is reached.
+ * **Send `lenderId`; display `lenderName`.** There is no `name` column.
+ */
 interface WholesaleLender {
   id: string;
-  name: string;
-  specialty: string;
+  lenderId: string;
+  lenderName: string;
+  specialty: string | null;
   approvalStatus: string;
 }
 
@@ -210,7 +222,11 @@ export function SubmissionReadinessDialog({
     logConditionsMutation.mutate({ submissionId, lines });
   };
 
-  const lenderName = (id: string) => lenders?.find(l => l.id === id)?.name ?? id;
+  // `lender_submissions.lenderId` stores the BUSINESS key, so the catalog lookup
+  // must match on `lenderId` too. Matching the uuid `id` never hits, which
+  // degraded every submission row to the raw slug.
+  const lenderName = (id: string) =>
+    lenders?.find(l => l.lenderId === id)?.lenderName ?? id;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -218,7 +234,7 @@ export function SubmissionReadinessDialog({
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-start"
+          className="touch-target w-full justify-start"
           data-testid={`submission-readiness-${applicationId}`}
         >
           <Send className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -266,7 +282,7 @@ export function SubmissionReadinessDialog({
                     {stage.key === "aus" && (
                       <div className="mt-2 pl-6">
                         <Button
-                          size="sm"
+                          size="sm" className="touch-target"
                           variant="outline"
                           onClick={() => runAusMutation.mutate()}
                           disabled={runAusMutation.isPending}
@@ -336,7 +352,7 @@ export function SubmissionReadinessDialog({
                             />
                             <div className="flex gap-2">
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 onClick={() => submitLoggedConditions(s.id)}
                                 disabled={logConditionsMutation.isPending || conditionText.trim().length === 0}
                                 data-testid={`save-conditions-${s.id}`}
@@ -344,7 +360,7 @@ export function SubmissionReadinessDialog({
                                 {logConditionsMutation.isPending ? "Saving…" : "Save conditions"}
                               </Button>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 variant="ghost"
                                 onClick={() => {
                                   setLogConditionsFor(null);
@@ -360,7 +376,7 @@ export function SubmissionReadinessDialog({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 px-2 text-xs"
+                            className="touch-target h-7 px-2 text-xs"
                             onClick={() => {
                               setLogConditionsFor(s.id);
                               setConditionText("");
@@ -384,8 +400,12 @@ export function SubmissionReadinessDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {(lenders ?? []).map(l => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.name} — {l.specialty}
+                    <SelectItem
+                      key={l.id}
+                      value={l.lenderId}
+                      data-testid={`lender-option-${l.lenderId}`}
+                    >
+                      {l.specialty ? `${l.lenderName} — ${l.specialty}` : l.lenderName}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -70,13 +70,53 @@ Do not answer Reg Z questions from memory.
 
 ⚠️ **That directory holds no authoritative source text** — only
 [`docs/reg-z/README.md`](docs/reg-z/README.md), which is the shopping list and the procedure for
-when a document arrives. That absence is the reason five ledger entries sit unverified: every
-authoritative source (`ecfr.gov`, `consumerfinance.gov`, `govinfo.gov`, `law.cornell.edu`) is
-blocked from this environment, so the text cannot be fetched from inside a session. Until a real
-copy lands there, a Reg Z reading is **flagged in
+when a document arrives. **That absence — not network access — is the reason the ledger entries
+below sit unverified.** A reading fetched live is unrepeatable and drifts silently; only a captured,
+versioned copy under `docs/reg-z/` fixes that. So the blocker is **procurement**.
+
+🚨 **Probe before you claim a source is unreachable. Do not trust this paragraph's answer — or the
+opposite one.** This file previously stated as a permanent fact that `ecfr.gov`,
+`consumerfinance.gov`, `govinfo.gov` and `law.cornell.edu` were all blocked. **That was true when
+written** — the ledger records `CONNECT 403` on 2026-08-04/05 — **and false by 2026-08-18**, when all
+four answered `200` with genuine section text, verified by content and not by status code
+(12/12 stable across three rounds; the govinfo PDF's streams were decompressed to confirm).
+Reachability here is **environment- and tool-dependent and has already flipped once**, so it is a
+thing to *test*, never a thing to assert. Thirty seconds of probing beats either stale claim:
+
+```bash
+curl -sL -m 30 -o /tmp/regz.html -w '%{http_code} %{size_download}\n' \
+  "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-12?chapter=X&part=1026&section=1026.36"
+grep -c "lowest total dollar amount of discount points" /tmp/regz.html   # 0 = you got a wall, not the rule
+```
+
+**Four ways a reachable source looks blocked** (each one cost a real session):
+
+1. **The eCFR API 302s to canonicalise** (it appends `subpart=E`) and returns `200` when followed.
+   A bare `curl` without `-L` reads as failure. *(The genuine bot wall is the eCFR **HTML** site,
+   which 302s to `unblock.federalregister.gov` — a different thing.)*
+2. **`WebFetch` truncates long pages.** Ask it for §1026.36(e) and it answers that the text is not
+   present, because its extraction stopped inside (d). Ask for an early paragraph to prove the fetch
+   worked, then use `curl` for late ones.
+3. **`WebFetch` enforces a ~125-character-per-quote ceiling.** "Quote all of (e)(3) verbatim" returns
+   a refusal that reads like a block. Ask subparagraph-by-subparagraph.
+4. **`govinfo.gov` serves soft 404s** — its CFR *HTML granule* path returns `200` with 44 KB of
+   `<title>Page Not Found</title>`. Use the `/pdf/` path. **A 200 is never evidence; grep the body.**
+
+🚨 **The one source this file tells you to fetch is the one actually blocked:** the Fannie Loan
+Delivery job aid (`singlefamily.fanniemae.com/job-aid/loan-delivery`) returns **403**, so the
+compliance instruction above has no executable path in-session — `docs/fannie-mae/` is the only
+Fannie authority that exists. Selling Guide **A2-2-04** and **B3-2-01/B3-2-02** are absent from it and
+have blocked verdicts.
+
+**The rail is unchanged, and its scope is wider than Reg Z.** Until a captured copy lands in
+`docs/reg-z/`, a Reg Z reading is **flagged in
 [`data/regulatory/regulatory-ledger.json`](data/regulatory/regulatory-ledger.json), never
 asserted** — and it must be conservative in one direction only (it may remove a borrower charge
-or tighten a gate; it may never create the violation it guards against).
+or tighten a gate; it may never create the violation it guards against). **11 ledger entries across
+four regimes** (Reg Z, FCRA, Reg V, CROA — plus an Illinois fee schedule) currently cite the
+2026-08-04/05 blocked-network condition in their notes; re-probing is now the first step in clearing
+any of them. **Relaxing this rail is a founder decision, not an agent's** — a rail the machine can
+relax for itself is not a rail.
 
 ## Architecture ground rules
 
@@ -155,6 +195,20 @@ Full flow and the one-time secret/branch-protection setup: [DB_MIGRATIONS.md](kn
 - `pnpm check` — TypeScript
 - `pnpm test` / `pnpm test:integration` — unit / integration tests
 - Local setup details: [LOCAL_DEV.md](knowledge-base/runbooks/LOCAL_DEV.md)
+
+### Local is the default verification target
+
+`http://localhost:5001` is where every check runs — probing an endpoint, driving a page,
+reproducing a defect, confirming a fix. `pnpm dev` is already fully local: `.env` points
+`DATABASE_URL` at native Postgres on `localhost:5432`, and the client calls **relative** URLs, so
+whatever origin serves the page serves the API — there is no base-URL flag to set. A local
+`GET /api/health` answers `commit: null`; that null **is** the local-dev signature, not a defect.
+
+Reach for the deployed site in exactly one case: proving a merge actually shipped, via the `commit`
+field of `GET https://homiquity-production.up.railway.app/api/health` (machine-to-machine uses the
+Railway host, never `www`). **Never reproduce a bug or check a UI change against prod** — a failed
+build leaves the *previous* container serving, so what you see there may not be the code you think
+you are looking at.
 
 ## Source-of-truth notes
 

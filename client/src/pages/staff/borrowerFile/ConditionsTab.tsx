@@ -120,7 +120,7 @@ export function ConditionsTab({
                         {isStaff && (
                           <div className="flex items-center gap-1 shrink-0">
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="default"
                               onClick={() => setConditionAction({ condition: cond, action: "cleared", notes: "" })}
                               data-testid={`button-clear-condition-${cond.id}`}
@@ -129,7 +129,7 @@ export function ConditionsTab({
                               Clear
                             </Button>
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="outline"
                               onClick={() => setConditionAction({ condition: cond, action: "waived", notes: "" })}
                               data-testid={`button-waive-condition-${cond.id}`}
@@ -137,7 +137,7 @@ export function ConditionsTab({
                               Waive
                             </Button>
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="ghost"
                               onClick={() => setConditionAction({ condition: cond, action: "not_applicable", notes: "" })}
                               data-testid={`button-na-condition-${cond.id}`}

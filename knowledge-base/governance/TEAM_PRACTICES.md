@@ -13,15 +13,16 @@ Each rule below names the failure it prevents.
 ## 1. No transient state in living docs
 
 Open-PR numbers, branch names, session names, and merge-queue status appear **only** in
-the 🚀 Launch sprint section of [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (maintained nightly by
-evening triage) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
+[CTO_ROADMAP.md](../../CTO_ROADMAP.md) §0–§3 (maintained nightly by Evening Triage, which holds
+exclusive §0–§3 authority — [routines/CHARTER.md](../routines/CHARTER.md) §4) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
 kb doctrine, app-guide) state durable facts and link to the roadmap for "what's in
 flight." *(Prevents: "Open PR #45 — verify on merge" surviving in a fact register hours
 after the PR merged.)*
 
 ## 2. Dated reports are immutable snapshots
 
-Files under `kb/founder-routines/`, `kb/lo-audit/`, `kb/ux-audit/` are point-in-time
+Files under `knowledge-base/archive/` (founder-routines, lo-audit, ux-audit),
+`knowledge-base/logs/` and `knowledge-base/routines/reports/` are point-in-time
 records. Never rewrite their findings. Corrections and supersessions go in a dated
 **banner at the top** (`> ⚠️ SUPERSEDED …`). *(Prevents: history laundering — and readers
 acting on a mid-afternoon report that the evening overtook.)*
@@ -39,8 +40,8 @@ at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
 
 - One session = one isolated worktree = one branch. Never work on a branch in the shared
   primary checkout.
-- Claim before building: mark the sprint item CLAIMED in the launch-sprint memory ledger;
-  release the claim if you abandon. Stale claims (>24 h) are reclaimable.
+- Claim before building: add your row to [routines/REGISTER.md](../routines/REGISTER.md) (the
+  claim board); release the claim if you abandon. Stale claims (>24 h) are reclaimable.
 - Merged = deleted, same day — remote and local branch, worktree, and session archive.
 - Deliberately kept-back work (standby branches) **must exist on origin**. A laptop-only
   branch is one disk failure from gone.
@@ -70,17 +71,36 @@ Practically:
 - If a PR must be large (a mechanical rename, a dependency migration), say so in the body and
   expect to re-merge `main` more than once.
 
+### Verify locally; push on a cadence *(founder direction, 2026-08-18)*
+
+**CI is the gate, not the build.** Run the whole suite on your own machine before pushing —
+`pnpm check`, `pnpm build`, `pnpm test`, and every `guard:*` the gate runs. All of it works
+offline against the checkout; none of it needs GitHub.
+
+Then batch. A push is not free: it burns metered Actions minutes on a private repo (§ *PR size*
+measures the gate at ~3.5 min against a 2,000-minute monthly allowance), and every merge to `main`
+is a **Railway build and deploy of production**. Pushing after each commit spends both on work
+that was not finished. Roughly one push a day is the expected rhythm — more when something is
+genuinely urgent, not because a commit exists.
+
+This does not loosen anything else: the gate still decides (§6), `verify-deploy` is still the only
+proof a deploy landed (§4), and a green local run is evidence a push is *worth making*, never a
+substitute for the gate. It changes when you push, not what has to be true before you merge.
+
+The practical shape: keep working the branch locally, commit as you go, and when the batch is
+coherent push once — one CI cycle, one deploy, one review.
+
 ## 5. Definition of done (every PR, no exceptions)
 
-1. `npm run check` clean (tsc).
-2. `npm test` fully green — it runs the node suite **and** the client component suite. New
+1. `pnpm check` clean (tsc).
+2. `pnpm test` fully green — it runs the node suite **and** the client component suite. New
    server/logic test files must be added to `vitest.config.ts`'s include list; client
    component tests are colocated `client/src/**/*.test.tsx` and glob-included by
    `vitest.client.config.ts` automatically. **UI behavior gets a component test here first**
    (render/interaction against `data-testid`s, in happy-dom — no server); the §5.4 browser
    pass is for what a component test can't prove (visuals, full E2E).
 3. Integration suite green against a live worktree server
-   (`set -a; source .env; set +a; TEST_BASE_URL=http://localhost:5002 npm run test:integration`).
+   (`set -a; source .env; set +a; TEST_BASE_URL=http://localhost:5002 pnpm test:integration`).
    Boot the test server with `RATE_LIMIT_RELAXED=true` so the suite's ~30 auth calls don't
    trip the 20/15-min auth limiter; fallback if you can't set env: run in 3 groups with a
    server restart between (restarts clear the in-memory counters).
@@ -119,6 +139,16 @@ Practically:
 The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
 discovered trap gets a line here in the same PR.
 
+- **A failed `git push` piped through `tail`/`head` reports SUCCESS.** A shell pipeline exits with
+  the status of its *last* command, so `git push 2>&1 | tail -20` is `0` even when the pre-push gate
+  blocked the push and nothing reached `origin`. Observed independently by two sessions on
+  2026-08-20; one only noticed because a later `git ls-remote` disagreed with what it believed it
+  had pushed. This matters more than it used to: `main` carries no required status check while
+  Actions is down, so the pre-push hook is the only gate, and this masks the one signal that it
+  fired. The hook itself is correct — verified `exit 1` against `origin/main`'s copy. Fix the
+  caller: `set -o pipefail`, read `${PIPESTATUS[0]}`, or do not pipe. **Confirm a push by what is on
+  the remote (`git rev-parse origin/<branch>`), never by an exit code.** Same family as every other
+  entry here — an operation that did not happen while the output says it did
 - **`pnpm db:push` from a worktree** drops other branches' columns on the shared dev DB, and
   `--force` also drops `sessions` (logging out every user); it is an exit-1 stub for that reason
   — [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md).
@@ -197,15 +227,24 @@ discovered trap gets a line here in the same PR.
   knowing direct push only when it is not. Never autonomous, never silent —
   [ROLLBACK.md](../runbooks/ROLLBACK.md) §2.)*
 - Every merge to `main` deploys production — Railway builds from GitHub and rolls a new
-  container. A deploying merge — and any action against the production DB or env — is not
-  complete until its entry lands in the **production change ledger** in
-  [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions, validation
-  evidence, rollback pointer. Validation **must include the binding post-deploy health probe** —
-  `curl https://www.homiquity.com/api/health` — and must read the **`commit`** field, not just
-  the status code: a build status attests the build, not the runtime, and a *failed* Railway
-  deploy leaves the previous container serving, so a healthy 200 can be the old code answering
-  (2026-08-06: nine failed deploys, prod ~8 commits stale, every check green). *(Prevents: an
-  unledgered deploy invisible to the next incident responder — and the 2026-07-17 class of
+  container. **Ledger scope — rescoped 2026-08-18** *(founder-approved. The per-merge row rule
+  dates to the pre-`verify-deploy` era; practice diverged for a month of merges after
+  2026-07-19, and a rule nobody keeps trains readers to skip rules. Per-merge currency is now
+  proven mechanically — the CI `verify-deploy` job reads `/api/health`'s `commit` field after
+  every push to `main` — so the ledger binds where the PR record and `verify-deploy` cannot
+  see)*: a row in the **production change ledger**
+  ([CHANGE_LEDGER.md](../runbooks/CHANGE_LEDGER.md), split out of CICD.md 2026-08-06) is
+  required, same session, for **(a)** any hand action against the prod DB or env — reseeds,
+  variable flips, credential rotations, break-glass migrations; **(b)** incidents and their
+  forward fixes; **(c)** deploys that tripped a §9 security trigger; **(d)** anything with a
+  special rollback shape — contract migrations, destructive data changes, dependency majors.
+  Ordinary green PR merges are recorded by the PR itself plus `verify-deploy` and need no row.
+  Where a row IS written, validation **must include the binding post-deploy health probe** —
+  `curl https://www.homiquity.com/api/health` — read by the **`commit`** field, not the status
+  code: a build status attests the build, not the runtime, and a *failed* Railway deploy leaves
+  the previous container serving, so a healthy 200 can be the old code answering (2026-08-06:
+  nine failed deploys, prod ~8 commits stale, every check green). *(Prevents: an unledgered
+  prod-touching action invisible to the next incident responder — and the 2026-07-17 class of
   outage, where a deploy marked READY served a dead API.)*
 - Scheduled routines publish **docs-only, through the same PR lane** (docs-only branch →
   gate watched to green → merge; the routine inspects every commit's paths before opening
@@ -222,14 +261,26 @@ discovered trap gets a line here in the same PR.
 
 ## 7. Documentation link and file rules
 
-- Markdown links in `kb/` subdirectory docs use paths **relative to the linking file**
-  (`../../server/...` from `kb/founder-routines/`) — a bare `server/...` link only works
+- Markdown links in `knowledge-base/` subdirectory docs use paths **relative to the linking file**
+  (`../../server/...` from `knowledge-base/governance/`) — a bare `server/...` link only works
   from the repo root and breaks in every viewer.
 - Official reference binaries keep their **original filenames** (spaces included) for
   provenance; always quote paths in shell. Reading recipes live in each `docs/*/README.md`
   (PDF → Read tool/pypdf; XLSX → openpyxl).
 - Every new doc gets a home in the tier map (root README) and one index line — an
   unindexed doc is an unread doc.
+- **A citation that resolves to nothing is a lie the reader cannot detect.** Living docs are
+  Claude's memory and a new engineer's map, so a path written in one is an instruction to go
+  look. When the code moves and the prose does not, the doc keeps pointing — confidently — at
+  nothing. `scripts/citation-guard.cjs` (`pnpm guard:citations`, in the gate) counts backticked
+  repo paths that resolve to nothing and fails on any new one. *(Prevents: the 2026-08-18 sweep's
+  finds — a security threat model listing the borrower routes among its highest-risk areas by a
+  filename, months after they became the directory `server/routes/borrower/`, and L1/L2 citing
+  each other by pre-rename filenames. This very clause was caught by the guard on its first run,
+  for naming the dead path as an example; it now names the live one.)* If a file is deliberately absent — deleted, planned, an example, or the subject of
+  a finding — **say so in the same sentence**. That is what makes the reference readable rather
+  than merely tolerated, and it is why the guard is a **ratchet**: two thirds of the first 56 it
+  found were correct as written, and "fix them all" would have deleted the record of a deletion.
 
 ## 8. Verification before assertion
 
@@ -249,7 +300,19 @@ PR body (part of the §5.8 contract).
   `server/services/piiVault.ts`, `server/services/encryptionService.ts`, or any
   `shared/schema/` column holding PII.
 - **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`,
-  `server/services/accountRecovery.ts` (mints password-reset tokens).
+  `server/services/accountRecovery.ts` (mints password-reset tokens),
+  `server/services/loginLockout.ts` (per-account brute-force control).
+  *(loginLockout.ts added 2026-08-19. Same shape as the two gaps above — auth-critical
+  code that lives in `services/` rather than on one of the three paths §9 originally
+  named, so `detectTriggers(["server/services/loginLockout.ts"])` returned `[]`. It is
+  §9 for what depends on it, the way `clientIp.ts` is: `authLimiter` in `server/app.ts`
+  caps a **single IP** at 20 auth requests / 15 min, so against a **distributed**
+  credential-stuffing attacker rotating source IPs, `LOCKOUT_THRESHOLD` and the
+  exponential backoff window in this file are the **only** control still applying. A PR
+  raising the threshold or shortening the window touches nothing else, so it would have
+  merged with no security review. The trigger enumerates the two `services/` files by
+  name and must stay that way — `server/services/` as a prefix would fire on most
+  backend PRs, and a guard that over-fires teaches the next author to route around it.)*
 - **Role/permission gates** (`isAdmin`, `requireRole`, staff scoping) and per-resource
   ownership checks on borrower data.
 - **Uploads / object storage:** `server/integrations/object_storage/`, `shared/uploads.ts`.

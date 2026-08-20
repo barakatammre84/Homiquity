@@ -2,9 +2,10 @@ import type { Express } from "express";
 import { z } from "zod";
 import { isAuthenticated } from "../../auth";
 import type { IStorage } from "../../storage";
-import { toLeaseView } from "../../storage/leases";
+import { toLeaseView, toRentPaymentView } from "../../storage/leases";
 import { logAudit } from "../../auditLog";
 import { routeParam } from "../../http/routeParams";
+import { isForeignKeyViolation, isUniqueViolation } from "../../http/dbErrors";
 import { type User } from "@shared/schema";
 import { fromDateOnly } from "@shared/leaseView";
 
@@ -99,6 +100,39 @@ export const leasePatchSchema = z
     path: ["leaseEndDate"],
   });
 
+/**
+ * A recorded rent payment.
+ *
+ * Note what is NOT here: `provenance` and `processorReference`. Both are set by the
+ * storage layer, because both are claims about *evidence* rather than about the
+ * payment, and a request must never be able to assert first-party evidence.
+ *
+ * `status` is constrained to the settled outcomes a borrower can honestly report about
+ * a period. `scheduled` is excluded — recording a payment that has not happened yet is
+ * a different feature (a schedule), and letting it in here would put unsettled rows in
+ * the same history a furnishing run reads.
+ */
+export const rentPaymentBodySchema = z
+  .object({
+    dueDate: dateOnly,
+    amountDue: rentAmount,
+    paidDate: dateOnly.nullable().optional(),
+    amountPaid: rentAmount.nullable().optional(),
+    status: z.enum(["paid", "late", "missed"]),
+  })
+  .refine((d) => d.status === "missed" || d.paidDate != null, {
+    message: "a paid or late payment needs the date it was paid",
+    path: ["paidDate"],
+  })
+  .refine((d) => d.status === "missed" || d.amountPaid != null, {
+    message: "a paid or late payment needs the amount paid",
+    path: ["amountPaid"],
+  })
+  .refine((d) => !d.paidDate || d.paidDate >= d.dueDate || d.status !== "late", {
+    message: "a payment made on or before its due date is not late",
+    path: ["status"],
+  });
+
 export function registerLeaseRoutes(app: Express, storage: IStorage) {
   app.get("/api/leases", isAuthenticated, async (req, res, next) => {
     try {
@@ -178,6 +212,113 @@ export function registerLeaseRoutes(app: Express, storage: IStorage) {
 
       res.json({ lease: toLeaseView(updated) });
     } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * Erase a lease and its payment history.
+   *
+   * A hard delete, deliberately — see the storage method for why a status flag would be
+   * a lie here. Refuses with 409 when the lease has been furnished, naming suppression
+   * as the remedy rather than silently doing something adjacent.
+   */
+  app.delete("/api/leases/:id", isAuthenticated, async (req, res, next) => {
+    try {
+      const user = req.user as User;
+      const leaseId = routeParam(req, "id");
+      const result = await storage.deleteLeaseForUser(leaseId, user.id);
+
+      if (!result.ok && result.reason === "not_found") {
+        return res.status(404).json({ error: "Lease not found" });
+      }
+      if (!result.ok) {
+        return res.status(409).json({
+          error:
+            "This lease has been reported to a credit bureau and cannot be deleted. " +
+            "It has to be suppressed instead, so the record of what was reported survives.",
+          state: result.state,
+        });
+      }
+
+      // Counts and ids only. The whole point of the request was to remove the landlord
+      // email and the address; writing either into an audit row would defeat it.
+      await logAudit(req, "lease.deleted", "lease", leaseId, {
+        deletedPayments: result.deletedPayments,
+      });
+
+      res.json({ deleted: true, deletedPayments: result.deletedPayments });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Rent payments
+  //
+  // The borrower-entry path, and the ONLY producer of rent_payments rows today.
+  // Everything it writes is `self_reported` and therefore permanently outside
+  // FURNISHABLE_PROVENANCE — useful for the borrower's own history, never eligible to
+  // reach a bureau. `provenance` and `processorReference` are absent from the schema
+  // below on purpose: a request must not be able to assert first-party evidence.
+  // ---------------------------------------------------------------------------
+
+  app.get("/api/leases/:id/payments", isAuthenticated, async (req, res, next) => {
+    try {
+      const user = req.user as User;
+      const leaseId = routeParam(req, "id");
+      // Resolve the lease first so an unknown id and a foreign one answer identically.
+      const lease = await storage.getLeaseForUser(leaseId, user.id);
+      if (!lease) return res.status(404).json({ error: "Lease not found" });
+
+      const rows = await storage.listRentPaymentsForUser(leaseId, user.id);
+      res.json({ payments: rows.map(toRentPaymentView) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/leases/:id/payments", isAuthenticated, async (req, res, next) => {
+    try {
+      const user = req.user as User;
+      const parsed = rentPaymentBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid payment",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const payment = await storage.recordSelfReportedRentPayment(
+        routeParam(req, "id"),
+        user.id,
+        parsed.data,
+      );
+      if (!payment) return res.status(404).json({ error: "Lease not found" });
+
+      await logAudit(req, "rent_payment.recorded", "rent_payment", payment.id, {
+        leaseId: payment.leaseId,
+        status: payment.status,
+        provenance: payment.provenance,
+      });
+
+      res.status(201).json({ payment: toRentPaymentView(payment) });
+    } catch (err: unknown) {
+      // The (lease_id, due_date) unique index is the guard against double-counting a
+      // month into a history that a furnishing run would eventually read. Answer 409
+      // rather than letting a constraint violation surface as a 500.
+      //
+      // isUniqueViolation, not a bare `err.code` check: drizzle 0.45 wraps driver
+      // errors, putting the pg code on `err.cause` — the bare check shipped here
+      // and 500'd on every duplicate, proven live by the 2026-08-17 audit.
+      if (isUniqueViolation(err)) {
+        return res.status(409).json({ error: "A payment for that period already exists" });
+      }
+      // A POST racing this lease's DELETE loses the FK between the owner check and
+      // the insert. The lease is gone, so answer what a fresh GET would: 404.
+      if (isForeignKeyViolation(err)) {
+        return res.status(404).json({ error: "Lease not found" });
+      }
       next(err);
     }
   });

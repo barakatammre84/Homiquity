@@ -396,7 +396,7 @@ export default function TaskDetail() {
                             <div className="flex gap-2">
                               <Button
                                 variant="outline"
-                                size="sm"
+                                size="sm" className="touch-target"
                                 onClick={() => verifyDocumentMutation.mutate({ docId: taskDoc.id, isVerified: false })}
                                 disabled={verifyDocumentMutation.isPending}
                                 data-testid={`button-reject-document-${taskDoc.id}`}
@@ -406,7 +406,7 @@ export default function TaskDetail() {
                                 Reject
                               </Button>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 onClick={() => verifyDocumentMutation.mutate({ docId: taskDoc.id, isVerified: true })}
                                 disabled={verifyDocumentMutation.isPending}
                                 data-testid={`button-approve-document-${taskDoc.id}`}

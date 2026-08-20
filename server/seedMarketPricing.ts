@@ -1,6 +1,7 @@
 import { and, eq, lte, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { wholesaleLenders, rateSheets, rateSheetProducts, lenderPricingAdjustments } from "@shared/schema";
+import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 
 // =============================================================================
 // MARKET PRICING SAMPLE DATA (demo-grade, vendor-shaped)
@@ -24,7 +25,9 @@ function isoDate(daysFromNow: number): string {
 }
 
 const STANDARD_LOCK_GRID = { "15": -0.125, "30": 0, "45": 0.125, "60": 0.25 };
-const CONFORMING_LIMIT = 806500; // FHFA 2026 baseline, one-unit
+// FHFA 2026 baseline, one-unit. Read from shared/lendingLimits.ts — the limit has
+// exactly one home, and a second spelling of it is a future mismatch already written.
+const CONFORMING_LIMIT = CONFORMING_LOAN_LIMIT_2026;
 
 // Demo sheets carry this version so the refresher can find them without ever
 // touching a real vendor sheet (which uses any other version string).

@@ -5,13 +5,37 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    testTimeout: 15000,
-    hookTimeout: 30000,
+    // TIMEOUTS ARE A HANG DETECTOR HERE, NOT A PERFORMANCE ASSERTION.
+    //
+    // Raised 15s -> 45s (and hooks 30s -> 60s) on 2026-08-19. Several sessions build and
+    // test on this machine at once, and the measured cost is real: the same suite runs
+    // 172s idle and 305-419s under load, ~2.4x. Any test doing more than ~6s of honest
+    // work therefore crossed a 15s ceiling at random — tests/statusVocabulary.test.ts and
+    // tests/intakeNeverDenies.test.ts both did, neither for a reason in the code.
+    //
+    // That matters more than a slow suite. `main` no longer requires a CI status check
+    // (Actions billing failed; development is local-only), so .githooks/pre-push is the
+    // only gate there is. A gate that fails at random teaches --no-verify, and that habit
+    // disables it permanently — the exact failure the hook's own header warns about.
+    //
+    // Deliberately 45s and not 300s: a genuinely hung test must still be caught. If a test
+    // needs more than this, the test is the problem — profile it, do not raise this again.
+    // The root-cause fix is still preferable where it is cheap: statusVocabulary went
+    // 41s -> 1.4s by reading the tree once instead of once per test.
+    testTimeout: 45000,
+    hookTimeout: 60000,
     // Unit / logic tests. Pure in-process logic — no running HTTP server and no
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/inertButtons.test.ts",
       "tests/amortization.test.ts",
+      // The advertising gate on "we shop your file" — a compliance rail, so it
+      // runs in the gate rather than living as an untested constant.
+      "tests/lenderPanel.test.ts",
+      // One name for the assistant in user-visible copy. It drifted to four
+      // across a single visitor journey with the suite fully green.
+      "tests/assistantNaming.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       // The CI trigger surface. A `branches:` filter under pull_request means a
@@ -69,6 +93,9 @@ export default defineConfig({
       "tests/borrowerWhatIf.test.ts",
       // WF2-F4: the URLA section-4a loanDetails write path.
       "tests/urlaLoanDetailsSave.test.ts",
+      // The three wire states of an intake field (absent / present / null =
+      // clear), and the proof the AI coach can never reach the clear.
+      "tests/intakeClearSemantics.test.ts",
       "tests/pipelineEngineStageTransitions.test.ts",
       "tests/activeBuyerPromotion.test.ts",
       "tests/docRequestDraft.test.ts",
@@ -107,8 +134,10 @@ export default defineConfig({
       "tests/letterIntegrity.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
+      "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/incomeOrchestrator.test.ts",
+      "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
       "tests/nonQmProgramGate.test.ts",
       "tests/halalLaneGate.test.ts",
@@ -137,6 +166,9 @@ export default defineConfig({
       "tests/quietHours.test.ts",
       "tests/mcpAudit.test.ts",
       "tests/mcpAgentIdentity.test.ts",
+      // F-042: the soft-pull tool's FCRA gate runs BEFORE the cached-pull
+      // read, and the consent's type must cover the pull.
+      "tests/mcpSoftPullGate.test.ts",
       "tests/smsCompliance.test.ts",
       // X-Twilio-Signature verification on the inbound SMS webhook — pins the
       // algorithm against Twilio's published test vector and the route's
@@ -179,6 +211,8 @@ export default defineConfig({
       "tests/approvalStrength.test.ts",
       "tests/buyingPowerEstimate.test.ts",
       "tests/loanScenarioMatrix.test.ts",
+      "tests/pricingAdapterMI.test.ts",
+      "tests/loanEstimateMI.test.ts",
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",
@@ -194,6 +228,7 @@ export default defineConfig({
       "tests/autopilotAusFollowUps.test.ts",
       "tests/autopilotDecisionRelay.test.ts",
       "tests/autopilotConsole.test.ts",
+      "tests/autopilotStatus.test.ts",
       "tests/riskBrief.test.ts",
       "tests/sensitiveInputGuard.test.ts",
       "tests/licensedStates.test.ts",
@@ -229,9 +264,22 @@ export default defineConfig({
       // Lease capture: the encryption round-trip, the view's refusal to leak ciphertext,
       // UTC date semantics, and the validation boundary.
       "tests/leaseCapture.test.ts",
+      // The rent surfaces' inbound paths — both routes shipped as orphans (2026-08-17
+      // audit); deleting a nav link is silent, so the links are pinned.
+      "tests/rentNavigation.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
+      // CTO_ROADMAP §3.2 — the compliance dashboard's per-application MISMO
+      // validation, now batched. Pins that the batched loader and the
+      // single-application one produce IDENTICAL verdicts.
+      "tests/mismoValidationBatch.test.ts",
+      "tests/fcraConsentGateBehavior.test.ts",
+      "tests/intakeNeverDenies.test.ts",
+      "tests/vaResidualEngineParity.test.ts",
+      "tests/inviteValidateAudit.test.ts",
       "tests/mutationErrorHandling.test.ts",
+      "tests/homiFileTruth.test.ts",
+      "tests/homiReadinessDerivation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

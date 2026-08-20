@@ -189,12 +189,12 @@ export default function LearningCenter() {
                 <section className="mb-12">
                   <div className="mb-6 flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Browse by Topic</h2>
-                    <Link href="/faq">
-                      <Button variant="ghost" className="gap-1" data-testid="link-view-faq">
+                    <Button asChild variant="ghost" className="gap-1" data-testid="link-view-faq">
+                      <Link href="/faq">
                         View FAQs
                         <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                   
                   {categoriesLoading ? (
@@ -232,7 +232,7 @@ export default function LearningCenter() {
                 <div className="mb-6 flex items-center gap-2">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="sm" className="touch-target"
                     onClick={() => setSelectedCategory(null)}
                     data-testid="button-clear-category"
                   >

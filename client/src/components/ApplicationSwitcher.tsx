@@ -170,12 +170,12 @@ export function ApplicationSwitcher({
   
   if (applications.length === 0) {
     return (
-      <Link href="/apply">
-        <Button variant="outline" size="sm" className="gap-2" data-testid="button-start-new-app">
+      <Button asChild variant="outline" size="sm" className="touch-target gap-2" data-testid="button-start-new-app">
+        <Link href="/apply">
           <Plus className="h-4 w-4" />
           Start Application
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     );
   }
 
@@ -236,7 +236,7 @@ export function ApplicationSwitcher({
                       <span className="text-xs text-muted-foreground" data-testid={`text-app-ref-${app.id}`}>
                         {generateReferenceNumber(app)}
                       </span>
-                      <Badge variant={status.variant} className="text-[10px]" data-testid={`badge-app-status-${app.id}`}>
+                      <Badge variant={status.variant} className="text-xs" data-testid={`badge-app-status-${app.id}`}>
                         {status.label}
                       </Badge>
                       {isActive && <Check className="h-3 w-3 text-primary ml-auto" data-testid={`icon-active-${app.id}`} />}
@@ -253,7 +253,7 @@ export function ApplicationSwitcher({
                           variant="ghost"
                           size="sm"
                           onClick={(e) => handleWithdrawClick(app, e)}
-                          className="text-destructive"
+                          className="touch-target text-destructive"
                           data-testid={`button-withdraw-${app.id}`}
                         >
                           <Trash2 className="h-3 w-3" />

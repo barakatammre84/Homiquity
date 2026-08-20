@@ -1,94 +1,158 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Navigation } from "@/components/Navigation";
-import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { FramedPhoto } from "@/components/FramedPhoto";
-import { ImageTextSection } from "@/components/ImageTextSection";
-import { LifestyleImage } from "@/components/LifestyleImage";
+import { CoachPromptBar } from "@/components/CoachPromptBar";
+import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { lifestyleImages } from "@/lib/lifestyleImages";
-import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
-import { useQuery } from "@tanstack/react-query";
 import { usePageView } from "@/hooks/useActivityTracker";
-import { 
-  CheckCircle2,
-  ArrowRight,
-  Shield,
-  Home,
-  FileText,
-  TrendingUp,
-  Scale,
-  Bot,
-  Building2,
-  Briefcase,
-  Key,
-} from "lucide-react";
-// Users icon replaced by a lifestyle photo in the founder-note band.
+import { Icons, iconSize } from "@/lib/icons";
+import { lenderAdvocacyClause, lenderAdvocacyLine } from "@shared/lenderPanel";
 
-// Monochromatic by design: differentiation comes from the icon, not a rainbow
-// of chip colors (Charcoal Emerald sweep — precision ramp only on this page).
-const AUDIENCE_PATHS = [
+/**
+ * The public home page.
+ *
+ * WHO THIS PAGE IS ABOUT. The previous version talked about Homiquity: the hero
+ * eyebrow was the founder's CV and all four trust points were about us — years in
+ * banking, our architecture ("rules-based decisions, not a black box"), our
+ * compliance, our encryption. It promised a MECHANISM ("ask anything") rather than
+ * an outcome, and never named a customer problem. Every line here is now about
+ * what the visitor can do.
+ *
+ * THE PROMISE: "see what you have the power to do". Deliberately audience-agnostic
+ * — the same sentence works for a renter who does not know if they can start, a
+ * business owner whose returns understate them, an owner weighing a refinance, and
+ * a move-up buyer carrying equity and a jumbo balance. One promise, four doors.
+ * That is what keeps this from collapsing back into the six-persona sitemap the
+ * old page was.
+ *
+ * 🚨 WE ARE A BROKER, AND THE COPY MUST SAY SO. Homiquity arranges financing with
+ * third-party wholesale lenders; it does not make credit decisions or fund loans
+ * (the standing disclosure in Footer.tsx). Marketing that implies we approve,
+ * decide, or lend contradicts our own footer and is the Reg N / UDAAP exposure.
+ * Being a broker is not fine print — it is the reason we can act for the customer
+ * instead of selling them a house product. The advocacy line comes from
+ * `shared/lenderPanel.ts` so its tense tracks whether a counterparty is actually
+ * signed.
+ *
+ * Accessibility: the journey CTAs are default-size <Button> (h-11 = 44px). The
+ * three inline links carry `.touch-target` — a phone-only floor from index.css —
+ * because PR #602 raised this page from 26 sub-44px targets to 2, and a rewrite
+ * that silently dropped that would undo an accessibility fix rather than a style.
+ *
+ * Advertising rails: no rate, APR, payment or term figure in this page's own copy
+ * (Reg Z §1026.24 — rates live at /rates with their disclosures); nothing framed
+ * as an approval, offer, or commitment (Reg N); no wholesale-lender names or count
+ * (borrower-transparency doctrine); no asset-depletion claim until that path
+ * module ships. All pinned by Landing.test.tsx.
+ */
+
+/**
+ * Four doors on one promise. Each is a SITUATION, not a product name, so nobody
+ * has to know mortgage vocabulary to pick one. 2×2 on desktop, stacked on mobile.
+ */
+const JOURNEYS = [
   {
-    id: "first-time",
-    icon: Key,
-    title: "First-Time Buyers",
-    description: "Not sure where to start? We'll walk you through it step by step.",
-    cta: "See Where You Stand",
+    id: "renting",
+    icon: Icons.home,
+    title: "You're renting now",
+    // 🚨 This said "…and what your rent already proves about you", which reads as
+    // "your rent is building your credit file". Nothing downstream furnishes rent:
+    // /first-time-buyer never mentions a bureau, and MyLease.tsx:160 states flatly
+    // that "Saving a lease does not report anything to the credit bureaus." A promise
+    // the product disclaims one surface away is a Reg N / MAP Rule §1014.3
+    // misrepresentation, not a copy nit. What the destination DOES deliver is a
+    // rent-to-price calculator, so that is what this now promises.
+    description:
+      "See what you'd need to buy — and what the rent you already pay could buy instead.",
+    cta: "See where you stand",
     href: "/first-time-buyer",
   },
   {
-    id: "homeowners",
-    icon: Home,
-    title: "Current Homeowners",
-    description: "See if refinancing could lower your payment or unlock your equity.",
-    cta: "Check Refinance Options",
-    href: "/refinance",
-  },
-  {
-    id: "move-up",
-    icon: TrendingUp,
-    title: "Move-Up Buyers",
-    description: "Ready for your next home? Get pre-approved and start shopping.",
-    cta: "Get Pre-Approved",
-    href: "/apply",
-  },
-  {
-    id: "affluent",
-    icon: Briefcase,
-    title: "Complex Income",
-    description: "Self-employed, multiple properties, or non-traditional income? We handle it.",
-    cta: "See How We Handle It",
+    id: "self-employed",
+    icon: Icons.person,
+    title: "Your income is your own",
+    // 🚨 This said "1099s, K-1s, write-offs, rentals. We work out every way your
+    // income can count." A journey walk proved every part of that false in the
+    // running product: adding Rental Income dead-ends the funnel (the address
+    // never commits, so Continue silently refuses), the funnel's self-employment
+    // entry is never read by the income orchestrator — which books the whole
+    // amount as AGENCY WAGE and reports "Employment income" as the only source —
+    // and a second business entity cannot be entered at all. What IS built and
+    // verified: the dedicated self-employed funnel branch, the URLA K-1 worksheet
+    // (payload round-trips), and the self-employed document set. Promise those.
+    description:
+      "1099s, K-1s, business returns. Your application is built for how you actually get paid.",
+    cta: "See how it works",
     href: "/self-employed",
   },
   {
-    id: "veterans",
-    icon: Shield,
-    title: "Veterans & Military",
-    description: "VA loans with no down payment. Built by a fellow veteran.",
-    cta: "Explore VA Loans",
-    href: "/va-loans",
+    id: "owner",
+    icon: Icons.trend,
+    title: "You already own",
+    description:
+      "Worth refinancing? Worth tapping your equity? Get a straight answer before you commit.",
+    cta: "Weigh your options",
+    href: "/refinance",
   },
   {
-    id: "investors",
-    icon: Building2,
-    title: "Real Estate Investors",
-    description: "Finance your next investment property with confidence.",
-    cta: "Get Started",
-    href: "/apply?type=investment",
+    id: "moving-up",
+    // Jumbo is a real, supported product (shared/loanProducts.ts, lendingLimits.ts),
+    // so naming it is substantiated. Qualifying on ASSETS is not — that path module
+    // is unbuilt, so this card must never imply asset depletion.
+    icon: Icons.lender,
+    title: "You're moving up",
+    description:
+      "A bigger home, a bigger balance, more moving parts — jumbo included. We'll map the whole picture.",
+    cta: "Start your file",
+    href: "/apply",
   },
-];
+] as const;
+
+/**
+ * Trust, stated as what the customer gets — not as our credentials. The old row
+ * was four facts about Homiquity; a visitor cannot use any of those.
+ */
+const TRUST_POINTS = [
+  {
+    id: "guidance",
+    icon: Icons.coach,
+    label: "Homi answers your questions any hour, in plain English",
+  },
+  {
+    id: "income",
+    icon: Icons.done,
+    // Was "We work out every way your income can count — not just the obvious
+    // one". The multi-path engine exists (shared/incomePaths.ts) but the funnel
+    // does not feed self-employment into it, so the claim is false at the only
+    // place a borrower would test it. This states the part that is delivered.
+    label: "Business returns and K-1s get their own worksheet, not a wage box",
+  },
+  {
+    id: "advocacy",
+    icon: Icons.people,
+    label: `We work for you. ${lenderAdvocacyLine()}`,
+  },
+  {
+    id: "licensing",
+    icon: Icons.security,
+    label: "Licensed, regulated, and straight with you",
+    href: "/disclosures#licensing",
+    linkLabel: "See where we're licensed",
+  },
+] as const;
 
 export default function Landing() {
   usePageView("/");
+
   return (
     <div className="min-h-screen bg-background">
       <SEOHead
-        title="Homiquity - Clarity for Every Stage of Homeownership"
-        description="Homiquity gives you clarity, organization, and confidence in every stage of homeownership. Pre-approval, property search, AI coaching, and smart tools — all in one place."
+        title="Homiquity — a mortgage broker that works for you"
+        description="See what you have the power to do. Homi, our AI assistant, walks you through buying, refinancing, or using your equity — and we take your file to our lending partners. Guidance and estimates, not a loan approval."
         ogType="website"
         ogImage={lifestyleImages.landingHero.src}
       />
@@ -96,402 +160,193 @@ export default function Landing() {
       <Navigation />
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
-      <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
-                <Shield className="h-4 w-4 text-primary" />
-                Built by a military veteran with 15+ years in banking
-              </div>
+        {/* Hero — the whole page's centre of gravity. */}
+        <section
+          className="bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
+          data-testid="section-hero"
+        >
+          <div className="mx-auto max-w-4xl text-center">
+            <p
+              className="text-sm font-medium text-primary-foreground/75"
+              data-testid="text-hero-eyebrow"
+            >
+              Renting, self-employed, refinancing, or moving up — start anywhere
+            </p>
 
-              <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-hero-title">
-                Clarity for every stage{" "}
-                <span className="text-primary">of homeownership.</span>
-              </h1>
+            <h1
+              className="mt-5 text-balance text-4xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl"
+              data-testid="text-hero-title"
+            >
+              See what you have the power to do.
+            </h1>
 
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground" data-testid="text-hero-subtitle">
-                Whether you're buying your first home, refinancing, or investing,
-                Homiquity helps you understand your options and move forward with confidence.
+            <p
+              className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-primary-foreground/80"
+              data-testid="text-hero-subtitle"
+            >
+              Buying a home is stressful because nobody tells you where you stand until
+              it's too late. Homi walks you through it, connects what you tell us with
+              what we verify, and shows you what's actually within reach —{" "}
+              {lenderAdvocacyClause()}.
+            </p>
+
+            <div className="mx-auto mt-10 max-w-3xl text-left">
+              <CoachPromptBar />
+            </div>
+
+            {/* The escape hatch for visitors who will not hand over an email yet.
+                It points at the band below rather than off to /afford — the
+                no-signup answer is on this page, so sending them to another
+                route to find it was a needless step. */}
+            <p className="mt-8 text-sm text-primary-foreground/80">
+              Rather not sign up yet?{" "}
+              <a
+                href="#buying-power"
+                className="touch-target inline-flex items-center font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"
+                data-testid="link-hero-afford"
+              >
+                See your buying power
+              </a>{" "}
+              — no account, no credit check.
+            </p>
+          </div>
+        </section>
+
+        {/* Buying power — the one thing on this page that answers a visitor
+            without an account. Its own band directly under the hero, because it
+            is the alternative to Homi, not a footnote to it. */}
+        <section
+          id="buying-power"
+          className="scroll-mt-20 border-b bg-muted/30 px-4 py-20 sm:px-6 lg:px-8"
+          data-testid="section-estimator"
+        >
+          <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+                No account needed
               </p>
-
-              <div className="mt-8 flex w-full max-w-md flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
-                <Link href="/apply" className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    className="w-full gap-2 font-semibold shadow-lg shadow-primary/25 sm:w-auto"
-                    data-testid="button-hero-preapprove"
-                  >
-                    Start Your Pre-Approval
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/afford" className="w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full gap-2 sm:w-auto"
-                    data-testid="button-hero-afford"
-                  >
-                    Can I Afford This Home?
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  No hard credit check
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  Takes about 3 minutes
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  100% free
-                </span>
-              </div>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                Find out what you could afford — in about a minute
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
+                Pick a few ranges and get a realistic estimate. No sign-up, no credit
+                check, and nothing leaves your device until you decide to continue.
+              </p>
             </div>
-
-            <FramedPhoto
-              src={lifestyleImages.landingHero.src}
-              alt={lifestyleImages.landingHero.alt}
-              testId="img-hero-landing"
-              position="center 25%"
-              loading="eager"
-              className="mx-auto w-full max-w-lg lg:max-w-none"
-            />
+            <BuyingPowerEstimator />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Buying-power estimator — its own light band right under the hero */}
-      <section className="border-b bg-muted/30 px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="section-estimator">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary">See your buying power</p>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Find out what you could afford — in about a minute
+        {/* Four doors. */}
+        <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
+              Wherever you're starting from
             </h2>
-            <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-              Answer a few quick questions and get a realistic estimate. No sign-up, no hard credit
-              check, and nothing leaves your device until you decide to continue.
-            </p>
-            <div className="mt-8 grid gap-6 sm:grid-cols-3">
-              <div data-testid="card-value-clarity">
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                </div>
-                <p className="font-semibold">Clarity</p>
-                <p className="mt-1 text-sm text-muted-foreground">Know exactly where you stand at every step</p>
-              </div>
-              <div data-testid="card-value-organization">
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                <p className="font-semibold">Organization</p>
-                <p className="mt-1 text-sm text-muted-foreground">Documents, decisions, and progress — all in one place</p>
-              </div>
-              <div data-testid="card-value-confidence">
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Shield className="h-5 w-5 text-primary" />
-                </div>
-                <p className="font-semibold">Confidence</p>
-                <p className="mt-1 text-sm text-muted-foreground">Make better decisions with real data, not guesswork</p>
-              </div>
-            </div>
-          </div>
-          <BuyingPowerEstimator />
-        </div>
-      </section>
 
-      <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-audience-paths">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Where are you on your journey?
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Pick your situation and we'll show you the right next step
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {AUDIENCE_PATHS.map((path) => {
-              const Icon = path.icon;
-              return (
-                <Card key={path.id} className="hover-elevate" data-testid={`card-audience-${path.id}`}>
-                  <CardContent className="p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold" data-testid={`text-audience-title-${path.id}`}>{path.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                      {path.description}
-                    </p>
-                    <Link href={path.href}>
-                      <Button variant="ghost" size="sm" className="mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
-                        {path.cta}
-                        <ArrowRight className="h-3.5 w-3.5" />
+            <div className="mt-12 grid gap-6 sm:grid-cols-2">
+              {JOURNEYS.map((journey) => {
+                const Icon = journey.icon;
+                return (
+                  <Card
+                    key={journey.id}
+                    className="hover-elevate"
+                    data-testid={`card-journey-${journey.id}`}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Icon className={iconSize.feature} aria-hidden="true" />
+                      </div>
+                      <h3
+                        className="mt-5 text-xl font-semibold"
+                        data-testid={`text-journey-title-${journey.id}`}
+                      >
+                        {journey.title}
+                      </h3>
+                      <p className="mt-2 leading-relaxed text-muted-foreground">
+                        {journey.description}
+                      </p>
+                      <Button
+                        asChild
+                        variant="ghost"
+                        className="-ml-2 mt-4 gap-1.5"
+                        data-testid={`button-journey-${journey.id}`}
+                      >
+                        <Link href={journey.href}>
+                          {journey.cta}
+                          <Icons.next className={iconSize.dense} aria-hidden="true" />
+                        </Link>
                       </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              How it works
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Four steps from start to offer
-            </p>
-          </div>
-          
-          <div className="mt-16 grid gap-8 sm:grid-cols-4">
-            {[
-              { step: 1, title: "Answer a few questions", desc: "Tell us about your income, debts, and what you're looking for. Takes about 3 minutes." },
-              { step: 2, title: "Get your answer", desc: "We evaluate your profile against real lending guidelines and give you a clear decision." },
-              { step: 3, title: "Upload your documents", desc: "We tell you exactly what's needed and keep everything organized in one place." },
-              { step: 4, title: "Shop with confidence", desc: "Use your pre-approval letter to make competitive offers on homes you love." },
-            ].map((item) => (
-              <div key={item.step} className="relative text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/25">
-                  {item.step}
-                </div>
-                <h3 className="mt-5 text-base font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <ImageTextSection
-        testId="section-know-afford"
-        eyebrow="Before you shop"
-        title="Know what you can afford — before you fall for a house"
-        image={lifestyleImages.learning.src}
-        imageAlt={lifestyleImages.learning.alt}
-        imagePosition="center 30%"
-        reverse
-        className="border-b"
-      >
-        <p>
-          Shopping without a number is how people fall for a home they can't get approved
-          for. Homiquity checks your income, debts, and goals against real lending
-          guidelines and shows you a clear range — before you tour a single house.
-        </p>
-        <p>
-          No hard credit check, no sales pressure. Just a straight answer you can plan around.
-        </p>
-      </ImageTextSection>
-
-      <RatesTeaser />
-
-      <section className="border-y bg-muted/30 px-4 py-16 sm:px-6 lg:px-8" data-testid="section-why-trust">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Built on experience you can trust
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              15+ years of banking and lending, now available to you online.
-            </p>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <Card data-testid="card-trust-experience">
-              <CardContent className="p-6 text-center">
-                <p className="text-3xl font-bold text-primary" data-testid="text-trust-years">15+</p>
-                <p className="mt-2 text-sm text-muted-foreground">Years of banking and lending experience</p>
-                <div className="mt-4 flex justify-center border-t pt-4">
-                  <VeteranFoundedBadge variant="compact" data-testid="badge-landing-veteran" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card data-testid="card-trust-rules">
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                </div>
-                <p className="text-sm font-semibold">Rules-Based Decisions</p>
-                <p className="mt-1 text-xs text-muted-foreground">No black-box AI approvals. Clear, deterministic rules.</p>
-              </CardContent>
-            </Card>
-            <Card data-testid="card-trust-compliance">
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <Scale className="h-4 w-4 text-primary" />
-                </div>
-                <p className="text-sm font-semibold">Fair Lending First</p>
-                <p className="mt-1 text-xs text-muted-foreground">Every decision follows Fannie Mae & Freddie Mac guidelines.</p>
-              </CardContent>
-            </Card>
-            <Card data-testid="card-trust-security">
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <Shield className="h-4 w-4 text-primary" />
-                </div>
-                <p className="text-sm font-semibold">Bank-Grade Security</p>
-                <p className="mt-1 text-xs text-muted-foreground">256-bit encryption. Your data is never sold, and it's shared only as needed to process your loan.</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="mt-12 rounded-2xl border bg-card p-8 sm:p-10" data-testid="card-founder-note">
-            <div className="flex flex-col items-center text-center lg:flex-row lg:text-left lg:gap-8">
-              <div className="mb-6 h-44 w-full shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:mb-0 lg:h-40 lg:w-64">
-                <LifestyleImage
-                  src={lifestyleImages.founderNote.src}
-                  alt={lifestyleImages.founderNote.alt}
-                  testId="img-founder-note"
-                  position="center 30%"
-                />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">A note from our team</h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-3xl">
-                  We built Homiquity because we believe the mortgage process should feel clear, not confusing. 
-                  As a military veteran with over 15 years in commercial banking and lending, I've seen firsthand 
-                  how overwhelming the homebuying process can be — and how much harder it is without the right guidance. 
-                  Homiquity exists to change that — to give every person the clarity and 
-                  confidence they deserve when making the biggest financial decision of their life. We're just getting started, 
-                  and we'd love for you to be part of the journey.
-                </p>
-              </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            Find out what you qualify for
-          </h2>
-          <p className="mt-6 text-lg text-muted-foreground">
-            Answer a few questions and get a clear decision in minutes. No commitment required.
-          </p>
-          
-          <div className="mt-10 flex w-full max-w-md mx-auto flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
-            <Link href="/apply" className="w-full sm:w-auto">
-              <Button
-                size="lg"
-                className="w-full gap-2 font-semibold shadow-lg shadow-primary/25 sm:w-auto"
-                data-testid="button-cta-preapprove"
+        {/* One trust row — what the customer gets, not who we are. */}
+        <section
+          className="border-y bg-muted/30 px-4 py-14 sm:px-6 lg:px-8"
+          data-testid="section-trust"
+        >
+          <div className="mx-auto max-w-6xl">
+            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {TRUST_POINTS.map((point) => {
+                const Icon = point.icon;
+                return (
+                  <li
+                    key={point.id}
+                    className="flex items-start gap-3"
+                    data-testid={`item-trust-${point.id}`}
+                  >
+                    <Icon
+                      className={`${iconSize.emphasis} mt-0.5 shrink-0 text-primary`}
+                      aria-hidden="true"
+                    />
+                    <span className="text-sm leading-relaxed text-muted-foreground">
+                      {point.label}
+                      {"href" in point && point.href ? (
+                        <>
+                          {" — "}
+                          <Link
+                            href={point.href}
+                            className="touch-target inline-flex items-center font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                            data-testid="link-trust-licensing"
+                          >
+                            {point.linkLabel}
+                          </Link>
+                        </>
+                      ) : null}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Audience-led means national traffic. An out-of-state visitor used
+                to discover the footprint only at StateStep, deep in the funnel —
+                after signing up. Say it here instead, and link to the live list
+                rather than naming states in copy that would go stale. */}
+            <p
+              className="mt-10 border-t pt-8 text-center text-sm text-muted-foreground"
+              data-testid="text-footprint"
+            >
+              We'll tell you up front if we can't arrange financing where you're buying.{" "}
+              <Link
+                href="/disclosures#licensing"
+                className="touch-target inline-flex items-center font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                data-testid="link-footprint-licensing"
               >
-                Start Your Pre-Approval
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/ai-coach" className="w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full gap-2 sm:w-auto"
-                data-testid="button-cta-coach"
-              >
-                <Bot className="h-4 w-4" />
-                Not sure yet? Talk to our AI Coach
-              </Button>
-            </Link>
+                See the states we're licensed in
+              </Link>
+              .
+            </p>
           </div>
-          
-          <p className="mt-6 text-sm text-muted-foreground">
-            No hard credit check. Free to use. No strings attached.
-          </p>
-        </div>
-      </section>
+        </section>
       </main>
 
       <Footer />
     </div>
-  );
-}
-
-interface RatePreview {
-  id: number;
-  programName: string;
-  interestRate: string;
-  apr: string;
-  loanType: string;
-}
-
-function RatesTeaser() {
-  const { data: rates, isLoading } = useQuery<RatePreview[]>({
-    queryKey: ["/api/rates"],
-  });
-
-  const topRates = (rates || []).slice(0, 3);
-  const hasRates = topRates.length > 0;
-
-  if (!isLoading && !hasRates) return null;
-
-  return (
-    <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-rates-teaser">
-      <div className="mx-auto max-w-6xl">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Today's mortgage rates
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Transparent rates updated daily
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-6 sm:grid-cols-3">
-          {isLoading
-            ? [1, 2, 3].map((i) => (
-                <Card key={i} className="text-center">
-                  <CardContent className="flex flex-col items-center p-6">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="mt-3 h-10 w-24" />
-                    <Skeleton className="mt-2 h-4 w-20" />
-                    <Skeleton className="mt-3 h-3 w-16" />
-                  </CardContent>
-                </Card>
-              ))
-            : topRates.map((rate) => (
-                <Card key={rate.id} className="text-center" data-testid={`card-rate-teaser-${rate.id}`}>
-                  <CardContent className="p-6">
-                    <p className="text-sm font-medium text-muted-foreground" data-testid={`text-rate-name-${rate.id}`}>{rate.programName}</p>
-                    {/* Reg Z §1026.24(c): note rate never more conspicuous than APR. */}
-                    <div className="mt-2 flex items-baseline justify-center gap-4">
-                      <div>
-                        <p className="text-2xl font-bold text-primary" data-testid={`text-rate-value-${rate.id}`}>{rate.interestRate}%</p>
-                        <p className="text-xs text-muted-foreground">Rate</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-primary" data-testid={`text-rate-apr-${rate.id}`}>{rate.apr}%</p>
-                        <p className="text-xs text-muted-foreground">APR</p>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-xs text-muted-foreground">{rate.loanType}</p>
-                  </CardContent>
-                </Card>
-              ))}
-        </div>
-
-        <div className="mt-8 text-center">
-          <Link href="/rates">
-            <Button variant="outline" className="gap-2" data-testid="button-view-all-rates">
-              View All Rates
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Rates are for illustrative purposes. Your rate may vary based on credit, property, and loan terms.
-          </p>
-        </div>
-      </div>
-    </section>
   );
 }

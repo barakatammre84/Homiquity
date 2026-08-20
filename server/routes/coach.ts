@@ -4,13 +4,18 @@ import { storage } from "../storage";
 import { runCoachTurn, CoachTurnError, isCoachConfigured, type CoachTurnResult, type CoachEmit, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps, coachIntakeSchema, coachActionPlanSchema, coachDocumentChecklistSchema, coachProfileSchema } from "../services/coachingService";
 import { buildBorrowerGraph } from "../services/borrowerGraph";
 import { getCoachIntakeSnapshots } from "../services/coachIntake";
+import { loadFileTruth, EMPTY_LOAN_STATUS } from "../services/coachFileTruth";
+import { deriveReadinessProfile } from "../services/coachingContext";
 import { beginSse, writeSse } from "../sse";
 import {
   detectSensitiveInput,
   SENSITIVE_INPUT_MESSAGES,
   SENSITIVE_INPUT_REDACTED_PLACEHOLDER,
 } from "../services/sensitiveInputGuard";
-import { pickActiveLoanApplication } from "@shared/schema";
+import { scanForEscalationTriggers } from "@shared/compliance/complaintEscalation";
+import { escalateFlaggedMessage } from "../services/complaintEscalation";
+import { logAudit } from "../auditLog";
+import { pickActiveLoanApplication, pickWorkableLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
 
@@ -38,6 +43,18 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
     const activeApp = pickActiveLoanApplication(applications)
       ?? applications.find(a => a.status === "funded")
       ?? applications[0];
+
+    // TWO resolutions on purpose, and they are not interchangeable.
+    //
+    // `activeApp` above is deliberately wide — it falls back to the most recent
+    // file of ANY status so the narrative context is never blind to history.
+    // That is right for prose ("your last application was withdrawn") and wrong
+    // for a tool that tells a borrower which documents to upload: the `??
+    // applications[0]` tail silently resurrects denied/withdrawn/funded files,
+    // which is how uploads once landed on a closed loan (see
+    // pickWorkableLoanApplication's docblock). The server-truth tools target
+    // the workable file or nothing at all.
+    const workableApp = pickWorkableLoanApplication(applications);
 
     if (!activeApp) {
       return {
@@ -139,6 +156,7 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
 
     const context: VerifiedUserContext = {
       hasApplication: true,
+      workableApplicationId: workableApp?.id ?? null,
       applicationStatus: activeApp.status,
       annualIncome: activeApp.annualIncome,
       monthlyDebts: activeApp.monthlyDebts,
@@ -333,7 +351,17 @@ export function registerCoachRoutes(app: Express) {
   // the new user message (the old flow inserted first and re-fetched, so the
   // model saw the user's message twice), then persist it and build context.
   // Writes the error response itself and returns null when the turn must not run.
-  async function prepareCoachTurn(req: Request, res: Response): Promise<PreparedCoachTurn | null> {
+  //
+  // `scanText` is the message as the borrower actually typed it, BEFORE the
+  // sensitive-input guard swaps in its placeholder. Only the CS2 complaint
+  // scan reads it, and that scan is pure — it returns categories and keeps
+  // nothing. Passing the redacted placeholder instead would silently lose a
+  // discrimination allegation that happened to share a message with an SSN.
+  async function prepareCoachTurn(
+    req: Request,
+    res: Response,
+    scanText?: string,
+  ): Promise<PreparedCoachTurn | null> {
     const user = req.user as User;
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -385,6 +413,28 @@ export function registerCoachRoutes(app: Express) {
       role: "user",
       content: message,
     });
+
+    // CS2: the same escalation scan the Messages surface runs, on the same
+    // vocabulary, with the same fire-and-forget posture — it NEVER blocks,
+    // alters, or delays the turn, and the borrower sees no tip-off. Without
+    // this, a borrower could allege discrimination or a credit-reporting
+    // error to the assistant and nobody would ever be told, while the same
+    // words typed into Messages escalate to the founder immediately.
+    const complaintScan = scanForEscalationTriggers(scanText ?? message);
+    if (complaintScan.flagged) {
+      logAudit(req, "complaint.flagged", "coach_message", userMsg.id, {
+        categories: complaintScan.categories,
+        conversationId: conversation.id,
+        senderId: user.id,
+      });
+      escalateFlaggedMessage(storage, {
+        messageId: userMsg.id,
+        surface: "coach_message",
+        userId: user.id,
+        applicationId: null,
+        categories: complaintScan.categories,
+      }).catch((e) => console.error("[complaints] founder escalation failed:", e));
+    }
 
     const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
 
@@ -453,11 +503,25 @@ export function registerCoachRoutes(app: Express) {
       }
       updateData.completionPercentage = state.profile.completionPercentage;
     } else if (verifiedContext.completionPercentage !== undefined) {
-      const existingProfile = (conversation.financialProfile as any) || {};
-      updateData.financialProfile = {
-        ...existingProfile,
-        completionPercentage: verifiedContext.completionPercentage,
-      };
+      // The model did not call set_readiness this turn, so there is no profile
+      // to write — only a server-derived percentage. That belongs in the
+      // dedicated `completionPercentage` COLUMN, which is what the branch above
+      // also writes.
+      //
+      // This used to spread the percentage into `financialProfile` instead, and
+      // on a conversation's first turn `existingProfile` is `{}` — so the column
+      // the client reads as a whole CoachProfile got `{completionPercentage: 88}`
+      // and nothing else. `ReadinessPanel` then dereferenced
+      // `profile.completedInputs.length` on an absent array and took the entire
+      // /ai-coach page down through the error boundary. Rows in that shape
+      // already exist, which is why the client defends itself too.
+      updateData.completionPercentage = verifiedContext.completionPercentage;
+      if (conversation.financialProfile && typeof conversation.financialProfile === "object") {
+        updateData.financialProfile = {
+          ...(conversation.financialProfile as Record<string, unknown>),
+          completionPercentage: verifiedContext.completionPercentage,
+        };
+      }
     }
     if (state.actionPlan) {
       updateData.actionPlan = state.actionPlan;
@@ -489,14 +553,13 @@ export function registerCoachRoutes(app: Express) {
       // never lands in a log. The stored user message becomes the redacted
       // placeholder; the reply is canned (no model call, no ai_interactions
       // row — nothing was invoked).
-      const guardHit = detectSensitiveInput(
-        typeof req.body?.message === "string" ? req.body.message : "",
-      );
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message : "";
+      const guardHit = detectSensitiveInput(rawMessage);
       if (guardHit) {
         req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
       }
 
-      const prep = await prepareCoachTurn(req, res);
+      const prep = await prepareCoachTurn(req, res, rawMessage);
       if (!prep) return;
 
       if (guardHit) {
@@ -587,14 +650,13 @@ export function registerCoachRoutes(app: Express) {
   app.post("/api/coach/message", isAuthenticated, async (req, res) => {
     try {
       // Same input-side sensitive-data guard as the streaming variant.
-      const guardHit = detectSensitiveInput(
-        typeof req.body?.message === "string" ? req.body.message : "",
-      );
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message : "";
+      const guardHit = detectSensitiveInput(rawMessage);
       if (guardHit) {
         req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
       }
 
-      const prep = await prepareCoachTurn(req, res);
+      const prep = await prepareCoachTurn(req, res, rawMessage);
       if (!prep) return;
 
       if (guardHit) {
@@ -727,7 +789,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "readiness_check",
           title: "Get Your Readiness Assessment",
-          description: "You have application data on file. Ask the coach to assess your mortgage readiness for a personalized action plan.",
+          description: "You have application data on file. Ask Homi to assess your mortgage readiness for a personalized action plan.",
           action: "Assess my mortgage readiness based on my application",
         });
       }
@@ -738,7 +800,7 @@ export function registerCoachRoutes(app: Express) {
           insights.push({
             type: "missing_docs",
             title: "Upload Your Documents",
-            description: "No documents uploaded yet. The coach can create a personalized checklist for you.",
+            description: "No documents uploaded yet. Homi can create a personalized checklist for you.",
             action: "What documents do I need to upload?",
           });
         }
@@ -748,7 +810,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "credit_improvement",
           title: "Credit Score Tips",
-          description: `Your credit score is ${verifiedContext.creditScore}. The coach can help you create a plan to improve it.`,
+          description: `Your credit score is ${verifiedContext.creditScore}. Homi can help you create a plan to improve it.`,
           action: "How can I improve my credit score for a better mortgage rate?",
         });
       }
@@ -757,7 +819,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "dti_high",
           title: "DTI Ratio Guidance",
-          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. The coach can help you strategize to lower it.`,
+          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. Homi can help you strategize to lower it.`,
           action: "My DTI is high. What can I do to bring it down?",
         });
       }
@@ -766,7 +828,7 @@ export function registerCoachRoutes(app: Express) {
         insights.push({
           type: "get_started",
           title: "Start Your Homebuying Journey",
-          description: "Chat with the coach to understand what you need for a mortgage and create a personalized plan.",
+          description: "Chat with Homi to understand what you need for a mortgage and create a personalized plan.",
         });
       }
 
@@ -774,6 +836,57 @@ export function registerCoachRoutes(app: Express) {
     } catch (error) {
       console.error("Coach insights error:", error);
       res.status(500).json({ error: "Failed to fetch insights" });
+    }
+  });
+
+  /**
+   * The borrower's file, as the assistant sees it — status, the real document
+   * checklist, open tasks, readiness. Exactly the payloads the read tools emit,
+   * from exactly the same functions.
+   *
+   * It exists so the panels render on page load. Before this, a returning
+   * borrower saw whatever the LAST turn happened to leave in the conversation
+   * row until they sent another message — which for a file that had moved
+   * meant stale figures presented as current.
+   *
+   * No model call, so the aiCoachLimiter (mounted on /api/coach/message only)
+   * correctly does not apply; the general limiter does.
+   */
+  app.get("/api/coach/context", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const verifiedContext = await buildVerifiedContext(user.id, user);
+      const readiness = deriveReadinessProfile(verifiedContext);
+
+      if (!verifiedContext.workableApplicationId) {
+        return res.json({
+          hasApplication: false,
+          loanStatus: EMPTY_LOAN_STATUS,
+          documentChecklist: [],
+          checklistStats: null,
+          tasks: [],
+          readiness,
+        });
+      }
+
+      const truth = await loadFileTruth(verifiedContext.workableApplicationId, user);
+      if (!truth) {
+        // The access check refused. Say so rather than serving an empty file,
+        // which would read to the borrower as "you have nothing outstanding".
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json({
+        hasApplication: true,
+        loanStatus: truth.status,
+        documentChecklist: truth.checklist.documents,
+        checklistStats: truth.checklist.stats,
+        tasks: truth.tasks,
+        readiness,
+      });
+    } catch (error) {
+      console.error("Get coach context error:", error);
+      res.status(500).json({ error: "Failed to load your file" });
     }
   });
 

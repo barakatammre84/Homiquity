@@ -81,11 +81,11 @@ export default function ResetPassword() {
                 <p className="text-sm text-muted-foreground">
                   This reset link is missing or malformed. Please request a new one.
                 </p>
-                <Link href="/forgot-password">
-                  <Button variant="outline" className="w-full" data-testid="button-request-new">
+                <Button asChild variant="outline" className="w-full" data-testid="button-request-new">
+                  <Link href="/forgot-password">
                     Request a new link
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">

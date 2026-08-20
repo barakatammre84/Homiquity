@@ -43,6 +43,7 @@ export function EmploymentSection({
             <Button
               variant="outline"
               size="sm"
+              className="touch-target"
               onClick={() => onChange([...employmentRecords, { employmentType: "additional" }])}
               data-testid="button-add-employment"
             >
@@ -314,6 +315,7 @@ export function EmploymentSection({
             <Button
               variant="outline"
               size="sm"
+              className="touch-target"
               onClick={() => onOtherIncomesChange([...otherIncomes, {}])}
               data-testid="button-add-other-income"
             >

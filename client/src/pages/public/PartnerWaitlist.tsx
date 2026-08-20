@@ -96,9 +96,9 @@ export default function PartnerWaitlist() {
         <Link href="/">
           <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
         </Link>
-        <Link href="/login">
-          <Button variant="ghost" size="sm" data-testid="button-login">Sign in</Button>
-        </Link>
+        <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
+          <Link href="/login">Sign in</Link>
+        </Button>
       </header>
 
       <main id="main" tabIndex={-1} className="flex flex-1 items-start justify-center px-4 py-10 focus:outline-none sm:px-6">

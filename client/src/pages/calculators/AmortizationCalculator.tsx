@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ConversionCTA } from "@/components/ConversionCTA";
-import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
+import { calculate, defaultInputs, type AmortizationInputs } from "@/lib/amortizationEstimate";
 import {
   DollarSign,
   Calculator,
@@ -28,147 +28,6 @@ import {
   TrendingDown,
   Zap,
 } from "lucide-react";
-
-interface AmortizationInputs {
-  loanAmount: number;
-  interestRate: number;
-  loanTermYears: number;
-  extraMonthly: number;
-}
-
-interface YearRow {
-  year: number;
-  principal: number;
-  interest: number;
-  balance: number;
-  endingBalance: number;
-}
-
-interface MonthRow {
-  month: number;
-  payment: number;
-  principal: number;
-  interest: number;
-  balance: number;
-}
-
-interface AmortizationResults {
-  monthlyPayment: number;
-  totalInterest: number;
-  totalPaid: number;
-  payoffMonths: number;
-  baselineTotalInterest: number;
-  baselineMonths: number;
-  interestSaved: number;
-  monthsSaved: number;
-  yearly: YearRow[];
-  monthly: MonthRow[];
-}
-
-const defaultInputs: AmortizationInputs = {
-  loanAmount: 320000,
-  interestRate: 6.5,
-  loanTermYears: 30,
-  extraMonthly: 0,
-};
-
-/** Standard fully-amortizing monthly principal-and-interest payment. */
-const monthlyPI = monthlyPrincipalAndInterest;
-
-/** Simulate a loan to payoff, returning total interest and the number of months taken. */
-function simulate(
-  loan: number,
-  annualRatePct: number,
-  basePayment: number,
-  extraMonthly: number,
-): { totalInterest: number; months: number } {
-  const r = annualRatePct / 100 / 12;
-  let balance = loan;
-  let totalInterest = 0;
-  let months = 0;
-  // Cap iterations so a payment that never covers interest can't loop forever.
-  while (balance > 0.01 && months < 1200) {
-    const interest = balance * r;
-    let principal = basePayment + extraMonthly - interest;
-    if (principal <= 0) {
-      // Payment doesn't cover interest — loan never amortizes.
-      return { totalInterest: Infinity, months: Infinity };
-    }
-    principal = Math.min(principal, balance);
-    balance -= principal;
-    totalInterest += interest;
-    months += 1;
-  }
-  return { totalInterest, months };
-}
-
-function calculate(inputs: AmortizationInputs): AmortizationResults {
-  const { loanAmount, interestRate, loanTermYears, extraMonthly } = inputs;
-  const numPayments = loanTermYears * 12;
-  const monthlyRate = interestRate / 100 / 12;
-  const monthlyPayment = monthlyPI(loanAmount, interestRate, numPayments);
-
-  const baseline = simulate(loanAmount, interestRate, monthlyPayment, 0);
-  const accelerated = simulate(loanAmount, interestRate, monthlyPayment, extraMonthly);
-
-  // Build the detailed schedule using the accelerated (actual) payment stream.
-  const yearly: YearRow[] = [];
-  const monthly: MonthRow[] = [];
-  let balance = loanAmount;
-  let month = 0;
-  let yearPrincipal = 0;
-  let yearInterest = 0;
-  const startBalanceForYear = { value: loanAmount };
-
-  while (balance > 0.01 && month < 1200) {
-    const interest = balance * monthlyRate;
-    let principal = monthlyPayment + extraMonthly - interest;
-    if (principal <= 0) break;
-    principal = Math.min(principal, balance);
-    const totalPaymentThisMonth = interest + principal;
-    balance -= principal;
-    month += 1;
-    yearPrincipal += principal;
-    yearInterest += interest;
-
-    monthly.push({
-      month,
-      payment: totalPaymentThisMonth,
-      principal,
-      interest,
-      balance: Math.max(0, balance),
-    });
-
-    if (month % 12 === 0 || balance <= 0.01) {
-      yearly.push({
-        year: Math.ceil(month / 12),
-        principal: yearPrincipal,
-        interest: yearInterest,
-        balance: startBalanceForYear.value,
-        endingBalance: Math.max(0, balance),
-      });
-      startBalanceForYear.value = Math.max(0, balance);
-      yearPrincipal = 0;
-      yearInterest = 0;
-    }
-  }
-
-  const payoffMonths = accelerated.months === Infinity ? numPayments : accelerated.months;
-  const totalInterest = accelerated.totalInterest === Infinity ? baseline.totalInterest : accelerated.totalInterest;
-
-  return {
-    monthlyPayment,
-    totalInterest,
-    totalPaid: loanAmount + totalInterest,
-    payoffMonths,
-    baselineTotalInterest: baseline.totalInterest,
-    baselineMonths: baseline.months === Infinity ? numPayments : baseline.months,
-    interestSaved: Math.max(0, baseline.totalInterest - totalInterest),
-    monthsSaved: Math.max(0, (baseline.months === Infinity ? numPayments : baseline.months) - payoffMonths),
-    yearly,
-    monthly,
-  };
-}
 
 export default function AmortizationCalculator() {
   const { user } = useAuth();
@@ -232,7 +91,7 @@ export default function AmortizationCalculator() {
   const maxYearInterest = Math.max(...results.yearly.map((y) => y.principal + y.interest), 1);
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Amortization Calculator — See Your Full Mortgage Payoff Schedule"
         description="Free amortization calculator. See how much of every mortgage payment goes to principal vs. interest, your full year-by-year payoff schedule, and how extra payments save you interest and time."
@@ -493,7 +352,7 @@ export default function AmortizationCalculator() {
               </CardContent>
             </Card>
 
-            <Button size="lg" className="w-full" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
+            <Button size="lg" className="w-full whitespace-normal h-auto min-h-12 py-3" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
               {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved Now"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -514,6 +373,6 @@ export default function AmortizationCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

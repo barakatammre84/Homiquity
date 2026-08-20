@@ -173,6 +173,34 @@ function mapLoanPurpose(purpose: string | null | undefined): LoanPurposeType {
   return "Purchase";
 }
 
+/**
+ * Maps the stored AUS recommendation to the free-text description ULDD carries.
+ *
+ * `AutomatedUnderwritingRecommendationDescription` is `MISMOString` with
+ * `minOccurs="0"` (MISMO_3_0.xsd:1294) — free text, not an enumeration, and
+ * legally omissible. Fannie's per-data-point expected vocabulary lives in ULDD
+ * Appendix D, which is NOT in `docs/fannie-mae/` and is not fetchable
+ * (escalation U-22), so we do NOT invent GSE tokens here. The strings below
+ * mirror this repo's own vocabulary (`server/services/ausSubmission.ts:145,185`)
+ * and are honest about a system that `AutomatedUnderwritingSystemType` already
+ * declares as "Other".
+ *
+ * Returns null when there is no recommendation to report, or when the stored
+ * value is unrecognised. **Null must omit the AUTOMATED_UNDERWRITINGS container
+ * entirely** rather than substitute a value — asserting an AUS outcome the file
+ * does not have is finding F-051 (P0), and it is the same rule `:405-408`
+ * applies to citizenship and `:846-850` applies to SystemType.
+ */
+function mapAusRecommendation(recommendation: string | null | undefined): string | null {
+  const mapping: Record<string, string> = {
+    approve_eligible: "Approve/Eligible",
+    approve_ineligible: "Approve/Ineligible",
+    refer: "Refer",
+    refer_with_caution: "Refer with Caution",
+  };
+  return mapping[recommendation?.toLowerCase() ?? ""] ?? null;
+}
+
 function mapPropertyUsage(usage: string | null | undefined): PropertyUsageType {
   const mapping: Record<string, PropertyUsageType> = {
     primary_residence: "PrimaryResidence",
@@ -848,31 +876,48 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
     // deterministic simulations, and a delivery file must never claim
     // DesktopUnderwriter until the real DU integration (F6) produces the
     // casefile id (aus_casefile_id) it would assert.
-    loanChildren.push({
-      tag: "UNDERWRITING",
-      children: [
-        {
-          tag: "AUTOMATED_UNDERWRITINGS",
-          children: [
-            {
-              tag: "AUTOMATED_UNDERWRITING",
-              children: [
-                { tag: "AutomatedUnderwritingRecommendationDescription", text: "Approve" },
-                { tag: "AutomatedUnderwritingSystemType", text: "Other" },
-                {
-                  tag: "AutomatedUnderwritingSystemTypeOtherDescription",
-                  text: "Proprietary deterministic underwriting cascade",
-                },
-              ],
-            },
-          ],
-        },
-        {
-          tag: "UNDERWRITING_DETAIL",
-          children: [{ tag: "LoanManualUnderwritingIndicator", text: "false" }],
-        },
-      ],
+    //
+    // F-051 (P0): the recommendation was previously the compile-time literal
+    // "Approve", so a `refer` / `refer_with_caution` / `approve_ineligible`
+    // casefile was delivered to the wholesale lender as an approval. It now
+    // reads the recommendation the AUS leg actually recorded, and when there is
+    // none the whole AUTOMATED_UNDERWRITINGS container is omitted — both
+    // AUTOMATED_UNDERWRITINGS and UNDERWRITING_DETAIL are independently
+    // minOccurs="0" (MISMO_3_0.xsd:20884-20889), so the manual-underwriting
+    // statement stands on its own.
+    //
+    // AutomatedUnderwritingCaseIdentifier is deliberately NOT emitted: the only
+    // casefile id available is the simulator's `sim-du-<sha1>` (F-068), and
+    // asserting it as a real AUS case identifier would reintroduce this bug in
+    // a different element.
+    const underwritingChildren: XMLNode[] = [];
+    const ausRecommendation = mapAusRecommendation(application.ausRecommendation);
+    if (ausRecommendation) {
+      underwritingChildren.push({
+        tag: "AUTOMATED_UNDERWRITINGS",
+        children: [
+          {
+            tag: "AUTOMATED_UNDERWRITING",
+            children: [
+              {
+                tag: "AutomatedUnderwritingRecommendationDescription",
+                text: ausRecommendation,
+              },
+              { tag: "AutomatedUnderwritingSystemType", text: "Other" },
+              {
+                tag: "AutomatedUnderwritingSystemTypeOtherDescription",
+                text: "Proprietary deterministic underwriting cascade",
+              },
+            ],
+          },
+        ],
+      });
+    }
+    underwritingChildren.push({
+      tag: "UNDERWRITING_DETAIL",
+      children: [{ tag: "LoanManualUnderwritingIndicator", text: "false" }],
     });
+    loanChildren.push({ tag: "UNDERWRITING", children: underwritingChildren });
   }
 
   if (application.dtiRatio || application.ltvRatio) {

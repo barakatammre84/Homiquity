@@ -39,6 +39,15 @@ const REQUIRED = [
   "governance/CHANNEL_DECISION.md",
   "governance/CONTINGENT_LIABILITY_REGISTER.md",
   "governance/UNCONSUMED_CAPABILITIES.md",
+  // Added 2026-08-18. Its two predecessors were adopted 2026-07-14 and never re-read: by
+  // 2026-08-18 the PageShell adoption figure had drifted 57% -> 82%, three primitives were
+  // described as future work five weeks after they shipped, and the elevation rule was still
+  // justified by Tailwind v3 semantics on a v4 project. The merged standard is opted in so that
+  // cannot happen silently again.
+  "handbook/design/DESIGN_SYSTEM.md",
+  // Added 2026-08-18 with the doc. It makes present-tense claims that money gets spent on —
+  // comp ranges, hire order, which roles are deferred, which founder decisions are still open.
+  "governance/HIRING_PLAN.md",
 ];
 
 const LINE = /\*\*Freshness:\*\*\s*last verified\s*(\d{4}-\d{2}-\d{2})\s*·\s*review every\s*(\d+)\s*days/;

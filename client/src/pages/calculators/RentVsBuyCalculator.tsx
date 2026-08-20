@@ -90,7 +90,7 @@ export default function RentVsBuyCalculator() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Rent vs. Buy Calculator — Compare the True Cost of Renting and Owning"
         description="Free rent vs. buy calculator. Compare monthly costs, equity built, and long-term net worth between renting and owning to see which makes sense for you."
@@ -406,7 +406,7 @@ export default function RentVsBuyCalculator() {
 
             <Button
               size="lg"
-              className="w-full"
+              className="w-full whitespace-normal h-auto min-h-12 py-3"
               onClick={handleStartPreApproval}
               data-testid="button-start-preapproval"
             >
@@ -442,6 +442,6 @@ export default function RentVsBuyCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

@@ -20,7 +20,7 @@ cut-line.⟩
 ## 2. Serves L1 loop
 
 - **Core-loop link:** ⟨which link of borrower → pre-approval → MISMO package → wholesale delivery
-  this advances — cite `VISION_AND_SCOPE.md` §2⟩.
+  this advances — cite `L1_VISION_AND_SCOPE.md` §2⟩.
 - **Cut-line check:** ⟨does it serve the loop or unblock launch? If it's *peripheral*
   (listings/agent/homeowner), justify why it's in scope now instead of post-launch.⟩
 
@@ -57,7 +57,7 @@ cut-line.⟩
 ⟨Given/When/Then, or "a failing test that then passes." Each criterion must be observable.⟩
 - [ ] ⟨e.g. Given a complete file, When staff exports MISMO, Then the XML validates against the
   ULDD XSD in `docs/fannie-mae/` and SSN appears nowhere outside the delivery seam.⟩
-- [ ] **Definition of Done** (TEAM_PRACTICES §5): `npm run check` clean · `npm test` green (new
+- [ ] **Definition of Done** (TEAM_PRACTICES §5): `pnpm check` clean · `pnpm test` green (new
   tests added to `vitest.config.ts`) · integration green on :5002 · live evidence in the PR ·
   env vars in `.env.example` + CICD.md · doc-sync line · security-review outcome recorded if §3
   triggered it.

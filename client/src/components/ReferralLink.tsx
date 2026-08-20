@@ -70,7 +70,9 @@ export default function ReferralLink() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Skeleton className="h-10 w-full" />
-          <div className="grid grid-cols-4 gap-4">
+          {/* Mirrors the loaded layout below (grid-cols-2 md:grid-cols-4). A skeleton
+              at a different column count snaps the page on load. */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-20" />
             ))}

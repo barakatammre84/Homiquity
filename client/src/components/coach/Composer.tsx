@@ -21,7 +21,7 @@ function SuggestedPrompts({
           key={i}
           variant="outline"
           size="sm"
-          className="text-xs gap-1.5 h-auto py-1.5"
+          className="touch-target text-xs gap-1.5 h-auto py-1.5"
           onClick={() => onSelect(s)}
           disabled={disabled}
           data-testid={`button-suggestion-${i}`}

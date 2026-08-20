@@ -143,9 +143,9 @@ export default function LoanPipeline() {
             <CardDescription>We couldn't find this loan application.</CardDescription>
           </CardHeader>
           <CardFooter>
-            <Link href="/dashboard">
-              <Button data-testid="button-back-dashboard">Back to Dashboard</Button>
-            </Link>
+            <Button asChild data-testid="button-back-dashboard">
+              <Link href="/dashboard">Back to Dashboard</Link>
+            </Button>
           </CardFooter>
         </Card>
       </div>

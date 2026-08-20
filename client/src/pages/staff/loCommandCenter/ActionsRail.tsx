@@ -70,7 +70,7 @@ export function ActionsRail({
       <Button
         variant="outline"
         size="sm"
-        className="w-full justify-start"
+        className="touch-target w-full justify-start"
         onClick={handleGenerateLetter}
         disabled={generatingLetter}
         data-testid="action-preapproval-letter"
@@ -86,7 +86,7 @@ export function ActionsRail({
       <Button
         variant="outline"
         size="sm"
-        className="w-full justify-start"
+        className="touch-target w-full justify-start"
         onClick={onExportMismo}
         disabled={exporting}
         data-testid="action-export-mismo"

@@ -449,8 +449,17 @@ export interface ClosingCostInputs {
   loanAmount: number;
   /** Note rate, %. */
   interestRate: number;
-  /** Monthly private MI premium ($/month; 0 when none applies). */
+  /** Monthly MI premium ($/month; 0 when none applies) — private PMI or FHA MIP. */
   monthlyPMI: number;
+  /**
+   * Up-front (single-premium) mortgage insurance collected in cash at closing
+   * — FHA UFMIP today (services/mortgageInsurance.ts offerUpfrontMI). Defaults
+   * to 0. Rides the prepaids "Mortgage Insurance Premium" line alongside the
+   * periodic months, counts as a §1026.4 prepaid finance charge (the posture
+   * services/apr.ts has always taken for it), and is NOT escrowed — the escrow
+   * cushion is periodic-only.
+   */
+  upfrontMortgageInsurance?: number;
   /** Days of prepaid interest collected at closing. */
   prepaidInterestDays: number;
   /**
@@ -592,29 +601,14 @@ export function estimateMonthlyEscrow(input: EscrowEstimateInputs): MonthlyEscro
   };
 }
 
-/**
- * Banded conventional monthly BPMI estimate by FICO/LTV (0 at or below 80
- * LTV). This is the Loan Estimate's disclosure-grade estimate; the
- * underwriting engine's binding figure resolves from the CONVENTIONAL_PMI
- * matrix at decision time.
- */
-export function calculatePMI(loanAmount: number, propertyValue: number, creditScore: number): number {
-  const ltv = (loanAmount / propertyValue) * 100;
-  if (ltv <= 80) return 0;
-
-  let rate = 0;
-  if (creditScore >= 760) {
-    rate = ltv > 95 ? 1.05 : ltv > 90 ? 0.80 : ltv > 85 ? 0.52 : 0.35;
-  } else if (creditScore >= 720) {
-    rate = ltv > 95 ? 1.35 : ltv > 90 ? 1.05 : ltv > 85 ? 0.68 : 0.45;
-  } else if (creditScore >= 680) {
-    rate = ltv > 95 ? 1.85 : ltv > 90 ? 1.40 : ltv > 85 ? 0.95 : 0.65;
-  } else {
-    rate = ltv > 95 ? 2.45 : ltv > 90 ? 1.90 : ltv > 85 ? 1.35 : 0.95;
-  }
-
-  return (loanAmount * rate / 100) / 12;
-}
+// calculatePMI — the compile-time FICO×LTV BPMI card — lived here until the
+// F-077 migration completed. It exceeded the versioned CONVENTIONAL_PMI matrix
+// in every live cell (1.42×–2.17×); the LE/decision path (services/
+// loanEstimate.ts) and the what-if simulator (services/scenarioSimulator.ts)
+// both price the matrix via calculateLLPA now, so the card is deleted per its
+// own docstring. Never reintroduce a compile-time MI rate table — MI resolves
+// from the CONVENTIONAL_PMI matrix (loud failure on a missing band) or the
+// product-aware helper (services/mortgageInsurance.ts).
 
 export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStructure {
   const { purchasePrice, downPayment, loanAmount, interestRate, monthlyPMI, compensation } = input;
@@ -680,7 +674,10 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const dailyInterest = (loanAmount * (interestRate / 100)) / 365;
   const prepaidInterest = dailyInterest * input.prepaidInterestDays;
   const prepaidHomeownersInsurance = annualHomeownersInsurance;
-  const prepaidMortgageInsurance = monthlyPMI * 2;
+  // Two months of the periodic premium, plus any up-front single premium
+  // (FHA UFMIP) — one prepaids line, per the input's doc comment.
+  const upfrontMortgageInsurance = input.upfrontMortgageInsurance ?? 0;
+  const prepaidMortgageInsurance = monthlyPMI * 2 + upfrontMortgageInsurance;
   const prepaidPropertyTaxes = monthlyPropertyTax * 2;
 
   const escrowHomeownersInsurance = monthlyHomeownersInsurance * 3;
@@ -701,7 +698,9 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const totalClosingCosts = loanCostsTotal + otherCostsTotal;
 
   // Prepaid finance charges per §1026.4: origination, points, application/
-  // underwriting fees, tax service, prepaid interest, and prepaid MI.
+  // underwriting fees, tax service, prepaid interest, and prepaid MI (which
+  // includes any up-front FHA MIP — services/apr.ts has always classified
+  // UFMIP as a prepaid finance charge on the advertised surface).
   // Appraisal, credit report, title, survey, pest, and recording/transfer
   // charges are excluded (§1026.4(c)(7), (e)).
   //

@@ -169,7 +169,11 @@ export default function Dashboard() {
 
   if (authLoading || isLoading || isStaff) {
     return (
-      <div className="p-8 max-w-xl mx-auto space-y-6">
+      // Geometry matches the real page (max-w-6xl + the canonical gutter) so the
+      // layout does not jump when data lands. It used to be `p-8 max-w-xl`, a
+      // width DESIGN_SYSTEM.md §4 retires, ~3x narrower than the page it stood in
+      // for — the content visibly snapped wider on every load.
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-4 w-64" />
         <Skeleton className="h-3 w-40 mt-4" />
@@ -271,7 +275,11 @@ export default function Dashboard() {
     : null;
 
   return (
-    <div className="min-h-screen bg-surface">
+    /* min-h-FULL, not min-h-screen (DESIGN_SYSTEM.md §15). PrivateLayout's
+       <main> is `flex-1 overflow-y-auto` — its own scroll container — so a
+       100vh child guarantees a viewport of dead scroll below short content,
+       and on a phone the layout's `pb-16` bottom-nav gutter sits under that. */
+    <div className="min-h-full bg-surface">
       {/* HERO — full-bleed royal-blue band. Uses bg-accent / text-accent-foreground
           (brandable tokens) so it re-skins to a tenant's brand via BrandingProvider;
           never a bare white literal. */}
@@ -285,7 +293,7 @@ export default function Dashboard() {
                 </h1>
                 {fileHealth === "healthy" && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-success-subtle px-2 py-0.5 text-[11px] font-medium text-success-subtle-foreground"
+                    className="inline-flex items-center gap-1 rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success-subtle-foreground"
                     title="Automated pre-underwriting review found no issues"
                     data-testid="chip-file-healthy"
                   >
@@ -295,7 +303,7 @@ export default function Dashboard() {
                 )}
                 {fileHealth === "action" && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-medium text-warning-subtle-foreground"
+                    className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-medium text-warning-subtle-foreground"
                     // Never the raw flag reasons: they carry staff-side signal prose
                     // (creditor names, balances, what-if DTI figures) computed over
                     // unverified data — the C2 class barred from borrower surfaces.
@@ -353,9 +361,9 @@ export default function Dashboard() {
               <CardContent className="p-5 sm:p-6">
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold tracking-wide text-accent uppercase">Your next step</span>
+                    <span className="text-xs font-semibold tracking-wide text-accent uppercase">Your next step</span>
                     {dominant.timeEstimate && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" data-testid="text-dominant-time">
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-testid="text-dominant-time">
                         <Clock className="h-3 w-3" />
                         {dominant.timeEstimate}
                       </span>
@@ -374,7 +382,7 @@ export default function Dashboard() {
                     {dominant.whyNeeded && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
+                          <button type="button" className="touch-target inline-flex items-center text-xs text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
                             Why is this needed?
                           </button>
                         </TooltipTrigger>
@@ -384,12 +392,12 @@ export default function Dashboard() {
                       </Tooltip>
                     )}
                   </div>
-                  <Link href={dominant.href} data-testid="link-dominant-action">
-                    <Button size="lg" data-testid="button-dominant-action">
+                  <Button asChild size="lg" data-testid="button-dominant-action">
+                    <Link href={dominant.href} data-testid="link-dominant-action">
                       {dominant.buttonLabel}
                       <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -413,8 +421,21 @@ export default function Dashboard() {
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Progress</p>
                       <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-20 rounded-full bg-muted overflow-hidden">
+                    {/* Every progress display says what it measures
+                        (DESIGN_SYSTEM §13). This bar is a weighted estimate of
+                        how far the FILE has moved — loan stage plus the
+                        verification steps done — not a count of anything, so
+                        it is labeled as an estimate and never presented as a
+                        tally the borrower could reconcile against a list. */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-xs text-muted-foreground" data-testid="label-readiness">
+                        How far your file has moved (estimated)
+                      </span>
+                      <div
+                        className="h-1.5 w-20 rounded-full bg-muted overflow-hidden"
+                        role="img"
+                        aria-label={`How far your file has moved, estimated: ${readiness}%`}
+                      >
                         <div
                           className="h-full rounded-full bg-primary transition-all duration-700"
                           style={{ width: `${readiness}%` }}
@@ -427,7 +448,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <JourneyTracker status={activeApplication.status} variant="vertical" showEstimates details={journeyDetails} />
-                  <div className="mt-4 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
+                  <div className="mt-4 pt-3 border-t flex items-center gap-2 text-xs text-muted-foreground/70" data-testid="text-automation-status">
                     <Zap className="h-3 w-3 text-primary" />
                     <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>
                   </div>
@@ -489,12 +510,12 @@ export default function Dashboard() {
 
           {activeApplication && (
             <div className="flex justify-center pt-2">
-              <Link href="/onboarding" data-testid="link-view-journey">
-                <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+              <Button asChild variant="ghost" size="sm" className="touch-target text-muted-foreground gap-1.5">
+                <Link href="/onboarding" data-testid="link-view-journey">
                   <Rocket className="h-3.5 w-3.5" />
                   View full journey checklist
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           )}
         </div>

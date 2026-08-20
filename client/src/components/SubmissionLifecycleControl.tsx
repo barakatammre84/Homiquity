@@ -163,7 +163,7 @@ export function SubmissionLifecycleControl({
         </Select>
         <Button
           size="sm"
-          className="h-8"
+          className="touch-target h-8"
           onClick={() => advanceMutation.mutate()}
           disabled={!toStatus || advanceMutation.isPending || (isFunding && !fundingReady)}
           data-testid={`advance-submission-${submissionId}`}

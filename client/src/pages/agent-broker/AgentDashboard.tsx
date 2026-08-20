@@ -63,8 +63,11 @@ export default function AgentDashboard() {
 
   return (
     /* Full-bleed hero + overlap — a documented PageShell exception (same pattern
-       as the borrower dashboard). No bg here: it sits on PrivateLayout's surface. */
-    <div className="min-h-screen">
+       as the borrower dashboard). No bg here: it sits on PrivateLayout's surface.
+       min-h-FULL, not min-h-screen (DESIGN_SYSTEM.md §15): PrivateLayout's <main>
+       is `flex-1 overflow-y-auto`, so a 100vh child is taller than the scroll
+       container it lives in and adds a second scrollbar on short content. */
+    <div className="min-h-full">
       {/* Premium Agent Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
@@ -84,12 +87,12 @@ export default function AgentDashboard() {
                 Manage your listings and track performance
               </p>
             </div>
-            <Link href="/agent/edit">
-              <Button className="bg-white text-primary shadow-lg gap-2">
+            <Button asChild className="bg-white text-primary shadow-lg gap-2">
+              <Link href="/agent/edit">
                 <Edit className="h-4 w-4" />
                 Edit Profile
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -187,22 +190,22 @@ export default function AgentDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle>My Listings</CardTitle>
-                <Link href="/property/new">
-                  <Button size="sm" className="gap-2">
+                <Button asChild size="sm" className="touch-target gap-2">
+                  <Link href="/property/new">
                     <Plus className="h-4 w-4" />
                     New Listing
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </CardHeader>
               <CardContent>
                 {!listings || listings.length === 0 ? (
                   <div className="py-12 text-center">
                     <p className="text-muted-foreground">No listings yet</p>
-                    <Link href="/property/new">
-                      <Button variant="outline" className="mt-4">
+                    <Button asChild variant="outline" className="mt-4">
+                      <Link href="/property/new">
                         Create Your First Listing
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -238,22 +241,22 @@ export default function AgentDashboard() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Link href={`/property/${property.id}`}>
-                            <Button variant="outline" size="sm" className="gap-1">
+                          <Button asChild variant="outline" size="sm" className="touch-target gap-1">
+                            <Link href={`/property/${property.id}`}>
                               <Eye className="h-4 w-4" />
                               View
-                            </Button>
-                          </Link>
-                          <Link href={`/property/${property.id}/edit`}>
-                            <Button variant="outline" size="sm" className="gap-1">
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" size="sm" className="touch-target gap-1">
+                            <Link href={`/property/${property.id}/edit`}>
                               <Edit className="h-4 w-4" />
                               Edit
-                            </Button>
-                          </Link>
+                            </Link>
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="gap-1 text-destructive"
+                            className="touch-target gap-1 text-destructive"
                             onClick={() => deleteListingMutation.mutate(property.id)}
                             disabled={deleteListingMutation.isPending}
                           >

@@ -12,8 +12,9 @@ import { cn } from "@/lib/utils";
 // a right-aligned action) so pages can converge on this shell WITHOUT flattening
 // their bespoke headers. Omit every header field for a container-only shell.
 //
-// Clean page:
-//   <PageShell fullHeight width="wide" title="Documents" subtitle="Upload and track">
+// Clean page (under PublicLayout or PrivateLayout — the layout owns page height
+// and background, so NO fullHeight; see the prop's doc before reaching for it):
+//   <PageShell width="wide" title="Documents" subtitle="Upload and track">
 //     ...content
 //   </PageShell>
 //
@@ -45,10 +46,22 @@ interface PageShellProps {
   /** Semantic max-width. Default "content". */
   width?: PageWidth;
   /**
-   * Wrap in a full-height WHITE page background — only for pages rendered
-   * OUTSIDE `PrivateLayout` (auth/bare/public routes). Inside `PrivateLayout`
-   * do NOT set this: that layout supplies the gray app surface (`bg-surface`),
-   * and a white `min-h-screen` here would paint over it.
+   * Wrap in a full-height WHITE page background — for `BareLayout` routes ONLY
+   * (login, signup, legal, invite landings), because BareLayout supplies no
+   * height and no background of its own.
+   *
+   * Do NOT set it under either real layout, and do not hand-roll the equivalent:
+   *   • `PublicLayout` is already `flex min-h-screen flex-col bg-background`
+   *     around a `flex-1` <main>. A second 100vh inside it makes the content
+   *     region ≥100vh on top of the nav, so the Footer — which carries the NMLS
+   *     identifier, the Equal Housing notice and the broker-not-lender
+   *     disclosure — is pushed below the fold even on a two-line page.
+   *   • `PrivateLayout`'s <main> is `flex-1 overflow-y-auto bg-surface`. A 100vh
+   *     child is taller than its own scroll container (second scrollbar), and a
+   *     white background here paints over the gray app surface. Use `min-h-full`
+   *     if a page genuinely needs to fill it (DESIGN_SYSTEM.md §15).
+   *
+   * `pageShellDrift` in scripts/ui-standard-guard.cjs holds this at zero.
    */
   fullHeight?: boolean;
   /** Render a standard PageHeader above the content. */

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, Clock, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { AllCaughtUpArt } from "@/components/illustrations";
+import { selectOutstanding } from "@/lib/outstandingWork";
 
 interface BorrowerTask {
   id: string;
@@ -17,6 +18,12 @@ interface BorrowerTask {
   ownerRole?: string;
   slaClass?: string;
   status: string;
+  /**
+   * "rejected" means a verification came back and the borrower must redo
+   * something. It rides the borrower whitelist (shared/borrowerTaskView.ts)
+   * and is part of what makes a task outstanding — see outstandingWork.ts.
+   */
+  verificationStatus?: string | null;
   createdAt?: string;
   slaStatus: "green" | "amber" | "red";
   timeRemaining: number | null;
@@ -68,7 +75,12 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
     enabled: !!applicationId,
   });
 
-  const pendingTasks = tasks?.filter(t => t.status === "OPEN" && t.ownerRole === "BORROWER") || [];
+  // One definition of outstanding, shared with /tasks (outstandingWork.ts).
+  // This used to select `status === "OPEN"` alone, so a BLOCKED task — and,
+  // worse, a task whose document came back REJECTED — was invisible here while
+  // /tasks listed it under "Needs Your Attention". The borrower was told
+  // "You're all caught up" at the exact moment something was wrong.
+  const pendingTasks = selectOutstanding(tasks);
   // Visible staff tasks (task type flagged visibleToBorrower — the server's
   // borrowerTaskView already reduced them to their borrowerDisplayText).
   // Shown read-only for transparency; never an action affordance.
@@ -94,14 +106,19 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
 
   if (pendingTasks.length === 0 && inProgressTasks.length === 0) {
     if (hideWhenEmpty) return null;
-    // A blank grid cell reads as broken — show a positive "all caught up" state.
+    // A blank grid cell reads as broken, so an empty state still renders — but
+    // it may only speak for what this card knows: the tasks on THIS loan.
+    // "You're all caught up" was an unqualified, account-wide claim made by a
+    // component scoped to one application (DESIGN_SYSTEM §13).
     return (
       <Card className="shadow-card" data-testid={testId || "card-what-we-need"}>
         <CardContent className="flex flex-col items-center px-6 py-8 text-center">
           <AllCaughtUpArt className="mb-3 h-20 w-20" />
-          <p className="font-medium text-foreground" data-testid="text-tasks-caught-up">You're all caught up</p>
+          <p className="font-medium text-foreground" data-testid="text-tasks-caught-up">
+            Nothing to do on this loan
+          </p>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            Nothing needed from you right now. We'll let you know the moment something comes up.
+            We'll let you know the moment something comes up.
           </p>
         </CardContent>
       </Card>
@@ -117,16 +134,16 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
           <div>
             <div className="flex items-center gap-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tasks</p>
-              <Badge variant="secondary" className="text-[10px]">{pendingTasks.length}</Badge>
+              <Badge variant="secondary" className="text-xs">{pendingTasks.length}</Badge>
             </div>
             <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
           </div>
-          <Link href="/tasks">
-            <Button variant="outline" size="sm" data-testid="button-complete-items">
+          <Button asChild variant="outline" size="sm" className="touch-target" data-testid="button-complete-items">
+            <Link href="/tasks">
               Complete items
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-1 space-y-3">
@@ -138,7 +155,7 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
           return (
             <div 
               key={task.id}
-              className="flex items-center justify-between gap-3 p-3 rounded-md border"
+              className="flex flex-col items-stretch gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
               data-testid={`row-request-${task.id}`}
             >
               <div className="flex items-center gap-3 min-w-0 flex-wrap">
@@ -152,7 +169,10 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" data-testid={`text-request-title-${task.id}`}>
+                  {/* Wraps on a phone (the row stacks, so the title owns the line);
+                      keeps truncating from sm: up, where the CTA sits beside it. A
+                      truncated request title tells the borrower nothing. */}
+                  <p className="text-sm font-medium sm:truncate" data-testid={`text-request-title-${task.id}`}>
                     {friendlyName}
                   </p>
                   {dueText && (
@@ -164,23 +184,23 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
                   )}
                 </div>
               </div>
-              <Link href="/documents">
-                <Button size="sm" variant="outline" className="shrink-0" data-testid={`button-upload-${task.id}`}>
+              <Button asChild size="sm" variant="outline" className="touch-target w-full shrink-0 sm:w-auto" data-testid={`button-upload-${task.id}`}>
+                <Link href="/documents">
                   Upload
                   <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           );
         })}
         
         {pendingTasks.length > 3 && (
-          <Link href="/documents" className="block">
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-view-all-requests">
+          <Button asChild variant="ghost" size="sm" className="touch-target w-full text-muted-foreground" data-testid="button-view-all-requests">
+            <Link href="/documents">
               View all {pendingTasks.length} requests
               <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
 
         {pendingTasks.length === 0 && (

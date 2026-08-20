@@ -208,7 +208,7 @@ function PartnerAccountsTab() {
                           {r.licenseVerificationStatus === "pending_review" && (
                             <>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 variant="outline"
                                 disabled={act.isPending}
                                 onClick={() =>
@@ -220,7 +220,7 @@ function PartnerAccountsTab() {
                                 Verify
                               </Button>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 variant="outline"
                                 disabled={act.isPending}
                                 onClick={() =>
@@ -235,7 +235,7 @@ function PartnerAccountsTab() {
                           )}
                           {r.status === "active" ? (
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="outline"
                               disabled={act.isPending}
                               onClick={() => act.mutate({ id: r.id, action: "status", body: { status: "suspended" } })}
@@ -246,7 +246,7 @@ function PartnerAccountsTab() {
                             </Button>
                           ) : (
                             <Button
-                              size="sm"
+                              size="sm" className="touch-target"
                               variant="outline"
                               disabled={act.isPending}
                               onClick={() => act.mutate({ id: r.id, action: "status", body: { status: "active" } })}

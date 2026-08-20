@@ -84,8 +84,32 @@ interface StepContext {
   app: LoanApplication;
 }
 
+/**
+ * The seven step ids, as a union rather than `string`.
+ *
+ * These ids are matched against the `<TabsContent value="…">` literals ~580
+ * lines below, in the same file. While `id` was `string` that was a
+ * compiler-unchecked contract: renaming a step here silently rendered an empty
+ * tab panel, with nothing red in `tsc`, the test suite, or any guard.
+ *
+ * Narrowing it closes that in both directions — each panel literal is pinned
+ * with `satisfies UrlaStepId`, so a typo or a half-finished rename is a build
+ * error. knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md names exactly this
+ * narrowing as the prerequisite for ever moving the STEPS table out of this
+ * file. It is the prerequisite only — the move itself is still refuted there,
+ * and this change does not license it.
+ */
+type UrlaStepId =
+  | "borrower"
+  | "employment"
+  | "assets"
+  | "liabilities"
+  | "property"
+  | "declarations"
+  | "demographics";
+
 interface UrlaStep {
-  id: string;
+  id: UrlaStepId;
   label: string;
   estimate: string;
   intro: string;
@@ -160,6 +184,14 @@ const STEPS: UrlaStep[] = [
     },
   },
 ];
+
+/**
+ * Sections that belong to the FILE rather than to a person: the property and
+ * loan answers are the same whichever borrower tab is open, so the application
+ * total counts them once no matter how many borrowers are on it. Every other
+ * step reads `slice`, and therefore exists once PER borrower.
+ */
+const SHARED_STEP_IDS: ReadonlySet<UrlaStepId> = new Set<UrlaStepId>(["property"]);
 
 export default function URLAForm() {
   const queryClient = useQueryClient();
@@ -303,13 +335,34 @@ export default function URLAForm() {
   // these builders a parameter is what lets the wrong borrower slice be passed.
   const describeUnsavedRows = (): string[] => {
     const notes: string[] = [];
-    const sections: [UrlaRowSection, Record<string, unknown>[], string][] = [
-      ["employment", borrowerData[1]?.employmentRecords ?? [], "job"],
-      ["asset", borrowerData[1]?.assets ?? [], "asset"],
-      ["liability", borrowerData[1]?.liabilities ?? [], "liability"],
-      ["otherIncome", otherIncomes as Record<string, unknown>[], "other-income"],
+    // Whose rows are being described. The #451 fix covered slot 1 only, while
+    // `buildPayload` filters BOTH slices through the same `isUrlaRowSaveable`
+    // — so a co-borrower's half-filled asset was dropped from the payload,
+    // reported "Everything is safely stored", and then erased from the screen
+    // by the post-save refetch. Same defect, the other borrower.
+    //
+    // The owner prefix is empty when there is no co-borrower, so the
+    // single-borrower wording is unchanged; once a second borrower exists,
+    // "an asset row" is ambiguous and both sides get named.
+    const mine = hasCoBorrower ? "your " : "";
+    const sections: { section: UrlaRowSection; rows: Record<string, unknown>[]; noun: string; whose: string }[] = [
+      { section: "employment", rows: borrowerData[1]?.employmentRecords ?? [], noun: "job", whose: mine },
+      { section: "asset", rows: borrowerData[1]?.assets ?? [], noun: "asset", whose: mine },
+      { section: "liability", rows: borrowerData[1]?.liabilities ?? [], noun: "liability", whose: mine },
+      // Other income is shared, primary-only state — `buildPayload` sends it
+      // once, outside either slice, so it carries no owner.
+      { section: "otherIncome", rows: otherIncomes as Record<string, unknown>[], noun: "other-income", whose: "" },
     ];
-    for (const [section, rows, noun] of sections) {
+    // Gated on the same flag `buildPayload` gates `coApplicants` on, so the
+    // two can never disagree about which rows were actually filtered.
+    if (hasCoBorrower) {
+      sections.push(
+        { section: "employment", rows: borrowerData[2]?.employmentRecords ?? [], noun: "job", whose: "co-borrower " },
+        { section: "asset", rows: borrowerData[2]?.assets ?? [], noun: "asset", whose: "co-borrower " },
+        { section: "liability", rows: borrowerData[2]?.liabilities ?? [], noun: "liability", whose: "co-borrower " },
+      );
+    }
+    for (const { section, rows, noun, whose } of sections) {
       const blocked = rows
         .map(r => urlaRowSaveState(section, r))
         .filter((s): s is { state: "incomplete"; missing: string[] } => s.state === "incomplete");
@@ -317,8 +370,8 @@ export default function URLAForm() {
       const missing = Array.from(new Set(blocked.flatMap(b => b.missing)));
       notes.push(
         blocked.length === 1
-          ? `one ${noun} row still needs ${missing.join(" and ")}`
-          : `${blocked.length} ${noun} rows still need ${missing.join(" and ")}`,
+          ? `one ${whose}${noun} row still needs ${missing.join(" and ")}`
+          : `${blocked.length} ${whose}${noun} rows still need ${missing.join(" and ")}`,
       );
     }
     return notes;
@@ -513,7 +566,42 @@ export default function URLAForm() {
 
   const app = urlaData?.application || activeApplication;
   const stepContext: StepContext = { slice, otherIncomes, propertyInfo, app };
-  const completedCount = STEPS.filter((s) => s.isComplete(stepContext)).length;
+
+  // The rail's check marks are per-borrower — the "Editing for:" control above
+  // says whose, so that scope is right. The progress bar is not: it is labelled
+  // "Application progress", and counting only the ACTIVE slice made it describe
+  // a person while claiming to describe the file. With a co-borrower on the
+  // application it read "7 of 7 sections complete" while their six sections
+  // were empty, then fell to "1 of 7" the instant you switched tabs — the same
+  // file, two answers, neither of them the file's, and the higher one the lie
+  // that stops a borrower filling the rest in.
+  //
+  // So the bar counts the whole application: every per-borrower section once
+  // per borrower, the shared property section once. The numerator can then only
+  // ever rise as sections are finished; adding a co-borrower raises the
+  // denominator, which is the truth about how much work the file now needs.
+  const borrowerSeqs = hasCoBorrower ? [1, 2] : [1];
+  const applicationProgress = STEPS.reduce(
+    (acc, step) => {
+      if (SHARED_STEP_IDS.has(step.id)) {
+        acc.total += 1;
+        if (step.isComplete(stepContext)) acc.done += 1;
+        return acc;
+      }
+      for (const seq of borrowerSeqs) {
+        acc.total += 1;
+        const ctx: StepContext = {
+          slice: borrowerData[seq] ?? emptySlice(),
+          otherIncomes,
+          propertyInfo,
+          app,
+        };
+        if (step.isComplete(ctx)) acc.done += 1;
+      }
+      return acc;
+    },
+    { done: 0, total: 0 },
+  );
   const currentStep = STEPS[stepIndex];
 
   return (
@@ -544,12 +632,13 @@ export default function URLAForm() {
     >
       <div className="mb-8 space-y-2">
         <Progress
-          value={(completedCount / STEPS.length) * 100}
+          value={(applicationProgress.done / applicationProgress.total) * 100}
           className="h-1.5"
-          aria-label={`Application progress: ${completedCount} of ${STEPS.length} sections complete`}
+          aria-label={`Application progress: ${applicationProgress.done} of ${applicationProgress.total} sections complete`}
         />
         <p className="text-xs text-muted-foreground" data-testid="text-urla-progress">
-          {completedCount} of {STEPS.length} sections complete
+          {applicationProgress.done} of {applicationProgress.total} sections complete
+          {hasCoBorrower ? " — you and your co-borrower" : ""}
         </p>
       </div>
 
@@ -558,9 +647,14 @@ export default function URLAForm() {
             <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Editing for:</span>
+              {/* touch-target: `sm` is h-9 (36px), under the 44px floor. A mis-tap on
+                  this pair selects the WRONG BORROWER and every keystroke after it lands
+                  in that slice — the same cross-contamination class the refactor trap
+                  guards. The utility raises the hit area below 767px only. */}
               <Button
                 variant={activeSeq === 1 ? "default" : "outline"}
                 size="sm"
+                className="touch-target"
                 onClick={() => setActiveSeq(1)}
                 data-testid="button-borrower-primary"
               >
@@ -570,6 +664,7 @@ export default function URLAForm() {
                 <Button
                   variant={activeSeq === 2 ? "default" : "outline"}
                   size="sm"
+                  className="touch-target"
                   onClick={() => setActiveSeq(2)}
                   data-testid="button-borrower-co"
                 >
@@ -582,7 +677,7 @@ export default function URLAForm() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2"
+                  className="touch-target gap-2"
                   onClick={() => {
                     setHasCoBorrower(true);
                     setActiveSeq(2);
@@ -596,7 +691,7 @@ export default function URLAForm() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-2"
+                  className="touch-target gap-2"
                   disabled={removeCoBorrowerMutation.isPending}
                   onClick={() => {
                     // Confirm because this is now durable and irreversible. It
@@ -624,7 +719,14 @@ export default function URLAForm() {
         <Tabs value={activeStep} onValueChange={setActiveStep}>
           <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-8">
             <div className="mb-6 lg:sticky lg:top-6 lg:mb-0">
-              <TabsList className="flex h-auto w-full items-stretch justify-start gap-1 overflow-x-auto bg-transparent p-0 lg:flex-col lg:overflow-visible">
+              {/* Wraps on a phone; it used to be `overflow-x-auto`, a horizontally
+                  scrolling step rail that put steps 4–7 off-screen with no affordance
+                  that they existed (DESIGN_SYSTEM.md §12.3 — no horizontal scrolling on
+                  a capture screen). Below lg the triggers are badge-only so all seven
+                  fit; their labels stay in the DOM as `sr-only` so each tab keeps its
+                  accessible name, and the active step's label is rendered beside the
+                  step counter below. lg is unchanged: the vertical rail with labels. */}
+              <TabsList className="flex h-auto w-full flex-wrap items-stretch justify-start gap-1 bg-transparent p-0 lg:flex-col lg:flex-nowrap">
                 {STEPS.map((step, index) => {
                   const complete = step.isComplete(stepContext);
                   return (
@@ -632,7 +734,7 @@ export default function URLAForm() {
                       key={step.id}
                       value={step.id}
                       data-testid={`tab-${step.id}`}
-                      className="h-auto shrink-0 justify-start gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                      className="h-auto shrink-0 justify-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-none lg:justify-start"
                     >
                       {complete ? (
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success-subtle-foreground">
@@ -647,7 +749,7 @@ export default function URLAForm() {
                           {index + 1}
                         </span>
                       )}
-                      <span className="flex min-w-0 flex-col">
+                      <span className="sr-only lg:not-sr-only lg:flex lg:min-w-0 lg:flex-col">
                         <span className="truncate text-sm font-medium">{step.label}</span>
                         <span className="hidden text-[11px] font-normal text-muted-foreground lg:block">
                           {step.estimate}
@@ -664,14 +766,19 @@ export default function URLAForm() {
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Step {stepIndex + 1} of {STEPS.length} · {currentStep.estimate}
                 </p>
+                {/* The step's name is in the rail on desktop, but the rail is
+                    badge-only on a phone — so render it here below lg. */}
+                <p className="text-base font-semibold text-foreground lg:hidden" data-testid="text-urla-step-label">
+                  {currentStep.label}
+                </p>
                 <p className="text-sm text-muted-foreground">{currentStep.intro}</p>
               </div>
 
-              <TabsContent value="borrower" className="mt-0 space-y-6">
+              <TabsContent value={"borrower" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <PersonalInfoSection personalInfo={slice.personalInfo} onChange={setPersonalInfo} />
               </TabsContent>
 
-              <TabsContent value="employment" className="mt-0 space-y-6">
+              <TabsContent value={"employment" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <EmploymentSection
                   employmentRecords={slice.employmentRecords}
                   onChange={setEmploymentRecords}
@@ -682,15 +789,15 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="assets" className="mt-0 space-y-6">
+              <TabsContent value={"assets" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <AssetsSection assets={slice.assets} onChange={setAssets} />
               </TabsContent>
 
-              <TabsContent value="liabilities" className="mt-0 space-y-6">
+              <TabsContent value={"liabilities" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <LiabilitiesSection liabilities={slice.liabilities} onChange={setLiabilities} />
               </TabsContent>
 
-              <TabsContent value="property" className="mt-0 space-y-6">
+              <TabsContent value={"property" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <PropertySection
                   propertyInfo={propertyInfo}
                   onChange={setPropertyInfo}
@@ -700,7 +807,7 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="declarations" className="mt-0 space-y-6">
+              <TabsContent value={"declarations" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <DeclarationsSection
                   declarations={slice.declarations}
                   onChange={setDeclarations}
@@ -708,7 +815,7 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="demographics" className="mt-0 space-y-6">
+              <TabsContent value={"demographics" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <DemographicsSection
                   demographics={slice.demographics}
                   onChange={setDemographics}

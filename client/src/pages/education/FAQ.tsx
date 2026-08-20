@@ -122,11 +122,11 @@ export default function FAQ() {
         <div className="mx-auto max-w-4xl">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Link href="/learn">
-                <Button variant="ghost" size="sm" data-testid="link-learning-center">
+              <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="link-learning-center">
+                <Link href="/learn">
                   Learning Center
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">FAQs</span>
             </div>
@@ -157,7 +157,7 @@ export default function FAQ() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="gap-1"
+                                  className="touch-target gap-1"
                                   onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: true })}
                                   data-testid={`button-helpful-${faq.id}`}
                                 >
@@ -167,7 +167,7 @@ export default function FAQ() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="gap-1"
+                                  className="touch-target gap-1"
                                   onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: false })}
                                   data-testid={`button-not-helpful-${faq.id}`}
                                 >
@@ -193,7 +193,7 @@ export default function FAQ() {
                 <div className="mb-6 flex flex-wrap gap-2">
                   <Button
                     variant={selectedCategory === null ? "default" : "outline"}
-                    size="sm"
+                    size="sm" className="touch-target"
                     onClick={() => setSelectedCategory(null)}
                     data-testid="button-category-all"
                   >
@@ -203,7 +203,7 @@ export default function FAQ() {
                     <Button
                       key={category.id}
                       variant={selectedCategory === category.id ? "default" : "outline"}
-                      size="sm"
+                      size="sm" className="touch-target"
                       onClick={() => setSelectedCategory(category.id)}
                       data-testid={`button-category-${category.slug}`}
                     >
@@ -261,7 +261,7 @@ export default function FAQ() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="gap-1"
+                                    className="touch-target gap-1"
                                     onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: true })}
                                     data-testid={`button-helpful-${faq.id}`}
                                   >
@@ -271,7 +271,7 @@ export default function FAQ() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="gap-1"
+                                    className="touch-target gap-1"
                                     onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: false })}
                                     data-testid={`button-not-helpful-${faq.id}`}
                                   >
@@ -318,7 +318,7 @@ export default function FAQ() {
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="gap-1"
+                                            className="touch-target gap-1"
                                             onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: true })}
                                             data-testid={`button-helpful-${faq.id}`}
                                           >
@@ -328,7 +328,7 @@ export default function FAQ() {
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="gap-1"
+                                            className="touch-target gap-1"
                                             onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: false })}
                                             data-testid={`button-not-helpful-${faq.id}`}
                                           >
@@ -373,7 +373,7 @@ export default function FAQ() {
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          className="gap-1"
+                                          className="touch-target gap-1"
                                           onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: true })}
                                           data-testid={`button-helpful-${faq.id}`}
                                         >
@@ -383,7 +383,7 @@ export default function FAQ() {
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          className="gap-1"
+                                          className="touch-target gap-1"
                                           onClick={() => feedbackMutation.mutate({ faqId: faq.id, helpful: false })}
                                           data-testid={`button-not-helpful-${faq.id}`}
                                         >
@@ -415,12 +415,12 @@ export default function FAQ() {
             <p className="mt-2 text-muted-foreground">
               Check out our Learning Center for in-depth guides and articles
             </p>
-            <Link href="/learn">
-              <Button className="mt-4" data-testid="button-explore-learning-center">
+            <Button asChild className="mt-4" data-testid="button-explore-learning-center">
+              <Link href="/learn">
                 Explore Learning Center
                 <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

@@ -74,11 +74,11 @@ Recorded so no prompt reinvents a rail. **Code wins over this table on any stale
 | Partner/COI waitlist (B2B, pre-license-safe) | `partner_waitlist` (`shared/schema/admin.ts`) + `/partners` + `AdminPartnerWaitlist.tsx` | Live (PRs #96–#98); the PH-1 recruitment funnel |
 | CPA channel — inviter-only, §7216-clean, no-comp-by-design | `shared/schema/cpaPartners.ts` + `server/routes/cpaPartners.ts` + `CpaPortal.tsx` | Live (PR #66); the **model** for every partner lane |
 | Self-registering partner role pattern (exact-role gated, never staff) | `PARTNER_ROLES` in `shared/roles.ts` | Live; extend with `realtor` (PH-1) |
-| Universal referral codes + attribution | `users.referralCode` + `/api/my-referral-code`, `/api/referral/:code`, `/api/apply-referral` (`server/routes/agent-broker.ts`) | Built |
+| Universal referral codes + attribution | `users.referralCode` + `/api/my-referral-code`, `/api/referral/:code`, `/api/apply-referral` (`server/routes/agent-broker/`) | Built |
 | Co-branding profiles + public co-brand pages | `co_brand_profiles` (`shared/schema/admin.ts:394`) + `/api/co-brand/*` | Built |
-| Application invites (token, resend, revoke, applied-tracking) | `/api/application-invites*` (`agent-broker.ts`) | Built |
+| Application invites (token, resend, revoke, applied-tracking) | `/api/application-invites*` (`server/routes/agent-broker/`) | Built |
 | Pre-approval letters w/ conditions, expiry, NMLS ids, watermark + **co-brand preview** | `server/services/pdfLetterGenerator.ts`, `PreApproval.tsx`, `/api/pre-approval-letters/:id/co-brand*` (co-brand PUT is staff-gated) | Built — already the compliant shape PH-4 needs |
-| Agent directory/profiles/pipeline/deal-desk/milestones | `agentProfiles` (`shared/schema/property.ts`) + `agent-broker.ts` + `agent-broker/*` pages | Built; agents ride ordinary user accounts — no partner role yet (PH-1 formalizes) |
+| Agent directory/profiles/pipeline/deal-desk/milestones | `agentProfiles` (`shared/schema/property.ts`) + `server/routes/agent-broker/` + `agent-broker/*` pages | Built; agents ride ordinary user accounts — no partner role yet (PH-1 formalizes) |
 | Borrower-facing masked journey | `client/src/components/JourneyTracker.tsx` | Live; PH-2 reuses its masked stage taxonomy |
 | Pre-license gate (server-enforced, fail-safe on NMLS-pending) | `server/services/prelaunchGate.ts` + `client/src/lib/prelaunch.ts` | Live; every consumer-reaching PH surface mounts behind it |
 | Deterministic engines: calculators suite, UAL income orchestrator, underwriting, pricing, APR, LE costs | `server/routes/calculators.ts`, PR #108 orchestrator, `underwritingEngine.ts`, `pricingAdapter.ts`, `apr.ts`, `loanEstimate.ts` | Built (pricing simulated — I10) |

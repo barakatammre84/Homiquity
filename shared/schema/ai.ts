@@ -25,7 +25,7 @@ import { loanApplications } from "./lending";
 //   borrower_facing_guardrailed      → real-time borrower chat where pre-send human review is
 //                                      impossible; shown only after passing the deterministic
 //                                      compliance rails (loCommsLint hard-block post-filter +
-//                                      prompt-level prohibitions). Added for the AI Coach
+//                                      prompt-level prohibitions). Added for Homi
 //                                      (MODEL_RISK_GOVERNANCE.md M-5).
 export const AI_OUTPUT_CLASSIFICATIONS = [
   "internal_only",

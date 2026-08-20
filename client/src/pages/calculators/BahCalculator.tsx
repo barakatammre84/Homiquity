@@ -156,7 +156,7 @@ export default function BahCalculator() {
   ].filter((item) => item.value > 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="BAH Calculator — Turn Your Housing Allowance Into a Home | VA Loan"
         description="Free Basic Allowance for Housing (BAH) calculator for active-duty service members. See how much home your BAH can buy off base with a VA loan — $0 down, no PMI."
@@ -177,7 +177,7 @@ export default function BahCalculator() {
 
         <PresalesDisclaimer className="mb-6" />
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -368,7 +368,7 @@ export default function BahCalculator() {
               </CardContent>
             </Card>
 
-            <Button size="lg" className="w-full" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
+            <Button size="lg" className="w-full whitespace-normal h-auto min-h-12 py-3" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
               {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved for a VA Loan"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -389,6 +389,6 @@ export default function BahCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

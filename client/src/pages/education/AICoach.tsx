@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, coachConversationKeys } from "@/lib/queryClient";
+import { apiRequest, coachContextKeys, coachConversationKeys } from "@/lib/queryClient";
+import { clearPendingCoachQuestion, readPendingCoachQuestion } from "@/lib/pendingCoachQuestion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, WifiOff } from "lucide-react";
@@ -15,7 +16,7 @@ import { Composer } from "@/components/coach/Composer";
 import { CapturePanel } from "@/components/coach/CapturePanel";
 import { ConversationSidebar } from "@/components/coach/ConversationSidebar";
 import { InsightsBanner, WelcomeState } from "@/components/coach/WelcomeState";
-import { ActionPlanPanel, DocumentChecklistInline, DocumentChecklistPanel, ReadinessPanel } from "@/components/coach/panels";
+import { ActionPlanPanel, DocumentChecklistInline, DocumentChecklistPanel, ReadinessPanel, StatusPanel } from "@/components/coach/panels";
 import type {
   ActionPlanItem,
   CoachConversation,
@@ -23,10 +24,11 @@ import type {
   CoachMessage,
   CoachProfile,
   CoachUsage,
-  DocumentRequirement,
+  LoanStatusView,
 } from "@/components/coach/types";
+import type { ChecklistItemView } from "@/lib/documentChecklist";
 
-// The AI Homebuyer Coach — streaming chat (SSE via useCoachStream) with a live
+// The Homi — streaming chat (SSE via useCoachStream) with a live
 // "Pre-App Profile" capture panel. Everything the model captures through the
 // record_intake tool is auto-saved to the borrower's draft application
 // server-side and surfaced here as a visible trail.
@@ -112,22 +114,64 @@ export default function AICoach() {
     queryKey: ["/api/coach/insights"],
   });
 
+  /**
+   * The borrower's file, from the same functions the assistant's tools read.
+   *
+   * Fetched on load rather than only mid-turn: before this, a returning
+   * borrower saw whatever the LAST turn left in the conversation row until
+   * they typed again — stale figures presented as current, on a file that may
+   * have moved days ago.
+   */
+  const { data: fileContext } = useQuery<{
+    hasApplication: boolean;
+    loanStatus: LoanStatusView;
+    documentChecklist: ChecklistItemView[];
+    checklistStats: { total: number; verified: number; uploaded: number; needed: number; rejected: number } | null;
+    tasks: unknown[];
+    readiness: CoachProfile;
+  }>({
+    queryKey: coachContextKeys.root(),
+  });
+
   const { turn, send, retry, dismissError, isBusy } = useCoachStream({
     conversationId: activeConversationId,
     onConversationId: setActiveConversationId,
   });
 
-  const handleSend = (msg: string) => {
-    if (isBusy || usage?.isLimited) return;
+  // Returns whether the message was actually handed to the stream. Callers that
+  // consume a one-shot input (the landing-hero handoff below) must not discard
+  // it on a refusal — a rate-limited or mid-stream send is a no-op, and clearing
+  // regardless would drop the question with nothing to show for it.
+  const handleSend = (msg: string): boolean => {
+    if (isBusy || usage?.isLimited) return false;
     if (!activeConversationId) {
       trackCoachSession("coach_session_start");
     }
     void send(msg);
     trackActivity("coach_chat", "/ai-coach");
+    return true;
   };
+
+  // The question the visitor typed into the public landing hero, carried across
+  // the signup boundary in localStorage (see lib/pendingAttribution.ts). It runs
+  // ahead of getSourceContext and WITHOUT that effect's `conversations.length === 0`
+  // guard: a returning borrower who asks something on the home page meant to ask
+  // it, and having prior conversations is no reason to swallow it.
+  const heroQuestionSent = useRef(false);
+  useEffect(() => {
+    if (heroQuestionSent.current || activeConversationId || loadingConvs) return;
+    const pending = readPendingCoachQuestion();
+    if (!pending) return;
+    if (handleSend(pending)) {
+      heroQuestionSent.current = true;
+      clearPendingCoachQuestion();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversationId, loadingConvs, isBusy, usage?.isLimited]);
 
   const sourceContext = getSourceContext();
   useEffect(() => {
+    if (heroQuestionSent.current) return;
     if (sourceContext && !sourceHandled && !activeConversationId && conversations.length === 0 && !loadingConvs) {
       setSourceHandled(true);
       handleSend(sourceContext.autoMessage);
@@ -168,9 +212,21 @@ export default function AICoach() {
   const activeConv = activeData?.conversation;
 
   // Live turn data overrides the persisted conversation while streaming.
-  const profile = (turn.panel.profile ?? activeConv?.financialProfile ?? null) as CoachProfile | null;
+  // The file panels read SERVER TRUTH first and fall back to nothing.
+  //
+  // They used to fall back to activeConv.documentChecklist — the legacy column
+  // the deleted set_document_checklist tool wrote. Those rows are precisely the
+  // invented ones: a docType matching no loan_condition, rendered next to an
+  // Upload button that could never clear it. Reading them again would
+  // reintroduce the bug for every borrower with history.
+  const profile = (turn.panel.profile ?? fileContext?.readiness ?? null) as CoachProfile | null;
+  const loanStatus = (turn.panel.loanStatus ?? fileContext?.loanStatus ?? null) as LoanStatusView | null;
+  const documentChecklist = (turn.panel.documentChecklist
+    ?? fileContext?.documentChecklist
+    ?? null) as ChecklistItemView[] | null;
+  // The action plan is the one panel the assistant still authors, so it keeps
+  // its conversation-scoped fallback — it belongs to the chat, not the file.
   const actionPlan = (turn.panel.actionPlan ?? activeConv?.actionPlan ?? null) as ActionPlanItem[] | null;
-  const documentChecklist = (turn.panel.documentChecklist ?? activeConv?.documentChecklist ?? null) as DocumentRequirement[] | null;
   // Application to attach a Plaid connection to — surfaced by record_intake's
   // captured events; null until the coach has saved intake this session.
   const capturedAppId = useMemo(() => {
@@ -194,6 +250,7 @@ export default function AICoach() {
 
   const sidePanelContent = (
     <div className="space-y-3" data-testid="coach-side-panel">
+      {loanStatus?.hasApplication && <StatusPanel status={loanStatus} />}
       <CapturePanel captured={turn.captured} />
       {profile && <ReadinessPanel profile={profile} />}
       {actionPlan && actionPlan.length > 0 && (
@@ -209,7 +266,7 @@ export default function AICoach() {
     <>
       <div className="flex items-center gap-2 mb-4 px-1">
         <Sparkles className="h-5 w-5 text-success-subtle-foreground" />
-        <h2 className="font-semibold text-foreground text-sm">AI Coach</h2>
+        <h2 className="font-semibold text-foreground text-sm">Homi</h2>
       </div>
       {loadingConvs ? (
         <div className="flex justify-center py-8">
@@ -280,7 +337,7 @@ export default function AICoach() {
           <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-2 text-xs text-muted-foreground" data-testid="banner-degraded">
             <WifiOff className="h-3.5 w-3.5 shrink-0" />
             <span>
-              Offline guidance mode — the AI coach isn't configured in this environment. Answers are standard
+              Offline guidance mode — Homi isn't configured in this environment. Answers are standard
               guidance and nothing is saved to your profile.
             </span>
           </div>

@@ -194,7 +194,7 @@ export default function VALoans() {
         >
           <p>
             The VA home loan is one of the strongest benefits of your service — no down payment
-            required and no monthly mortgage insurance. We underwrite it against the VA's own
+            required and no monthly mortgage insurance. Your file is prepared and reviewed against the VA's own
             residual-income standard, the way it's meant to be read.
           </p>
           <p>
@@ -337,12 +337,12 @@ export default function VALoans() {
               See what your VA benefit unlocks — before any hard credit pull, and before
               you talk to anyone.
             </p>
-            <Link href="/apply?type=va" className="mt-8 w-full max-w-md sm:w-auto sm:max-w-none">
-              <Button size="lg" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-va-apply-footer">
+            <Button asChild size="lg" className="mt-8 max-w-md sm:max-w-none w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-va-apply-footer">
+              <Link href="/apply?type=va">
                 Check My VA Loan Options
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <p className="mt-4 flex items-center gap-2 text-sm text-white/70">
               <ShieldCheck aria-hidden="true" className="h-4 w-4 text-precision-300" />
               Soft credit check only — your score is safe.

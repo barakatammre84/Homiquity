@@ -17,12 +17,12 @@ export function PreApprovalCtaCard() {
             <p className="text-sm text-muted-foreground">Get pre-approved in as little as 3 minutes</p>
           </div>
         </div>
-        <Link href="/apply">
-          <Button className="gap-2" data-testid="button-cta-preapproval">
+        <Button asChild className="gap-2" data-testid="button-cta-preapproval">
+          <Link href="/apply">
             Get Pre-Approved
             <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
@@ -44,12 +44,12 @@ export function StickyPreApprovalBanner() {
           <p className="text-sm font-medium sm:hidden">
             Get pre-approved in 3 min
           </p>
-          <Link href="/apply">
-            <Button size="sm" className="gap-1.5 shrink-0" data-testid="button-sticky-preapproval">
+          <Button asChild size="sm" className="touch-target gap-1.5 shrink-0" data-testid="button-sticky-preapproval">
+            <Link href="/apply">
               <Sparkles className="h-3.5 w-3.5" />
               Get Pre-Approved
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     </>

@@ -9,7 +9,6 @@ import { preApprovalFormSchema } from "@shared/preApprovalForm";
 import type { PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -37,11 +36,12 @@ import {
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
 import { PRE_APPROVAL_DEFAULTS, routingSignature } from "@/funnel/preApprovalMachine";
+import { loanPurposeForEntryType } from "./preApproval/entryType";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
-import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
+import { AdvisoryPanel, resolveStepCopy, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDeferredSubmit } from "./preApproval/useDeferredSubmit";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
@@ -49,7 +49,7 @@ import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
 import { useCalculatorPrefill } from "./preApproval/calculatorPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
-import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
+import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter, FunnelProgressHeader } from "./preApproval/FunnelChrome";
 import { calculateAffordabilityEstimate, type AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
 import { buildTeaserInputs, parseTargetPrice } from "./preApproval/affordabilityTeaser";
 import { FUNNEL_SOFT_PULL_CONSENT_TEXT } from "@shared/creditConsentCopy";
@@ -85,7 +85,11 @@ function PreApprovalFunnel() {
   usePageView("/apply");
   const track = useTrackActivity();
   const trackFormStart = useTrackFormStart();
-  useTrackFormAbandon("preapproval", progress.index > 0 && stepId !== "final");
+  useTrackFormAbandon("preapproval", progress.index > 0 && stepId !== "final", {
+    step: progress.index,
+    step_id: stepId,
+    total: progress.total,
+  });
   const prevStepRef = useRef(0);
 
   // Through the router, not `window.location.search`. Reading the global at
@@ -99,7 +103,10 @@ function PreApprovalFunnel() {
   const urlPropertyType = urlParams.get("propertyType");
   const urlPropertyId = urlParams.get("propertyId");
   const urlSource = urlParams.get("source");
-  const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
+  // The `?type=` → purpose translation lives in one named place; the inline
+  // ternary this replaced matched `heloc` but not `cashout`, which is what
+  // /rates/cash-out actually sends. See preApproval/entryType.ts.
+  const defaultLoanPurpose = loanPurposeForEntryType(urlType);
 
   // Read once per mount, through the shared module so the legacy per-tab key is
   // still honoured for an invite stashed by an older client. Captured in a ref
@@ -129,7 +136,9 @@ function PreApprovalFunnel() {
       isFirstTimeBuyer: urlType === "first-time",
       avoidsInterestFinancing: false,
       propertyState: urlState || "",
-      hasAdditionalIncome: false,
+      // Unanswered on arrival — see PRE_APPROVAL_DEFAULTS. Defaulting to false
+      // pre-highlighted "No, this is my only income" before the borrower chose.
+      hasAdditionalIncome: undefined,
       incomeSources: [],
     },
   });
@@ -263,7 +272,10 @@ function PreApprovalFunnel() {
   }, []);
 
   const watchedValues = form.watch();
-  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
+  // Title, subtext and "why we ask" resolve together against the answers so
+  // far — see resolveStepCopy. A refinancer is not asked for a "purchase
+  // price", and a self-employed borrower is not asked about "other" income.
+  const stepCopy = useMemo(() => resolveStepCopy(currentQ, watchedValues), [currentQ, watchedValues]);
 
   // Mirror form values into the machine so routing always sees the latest
   // answers — but ONLY when a routing-relevant answer moved.
@@ -445,6 +457,11 @@ function PreApprovalFunnel() {
     const IconComponent = currentQ.icon;
 
     switch (currentQ.type) {
+      // The display-size step inputs carry a mobile rung: text-4xl in a
+      // max-w-md box truncates "$1,250,000" on a 360px screen, and the w-8
+      // glyph at left-4 needs pl-16 to clear it. text-3xl / pl-12 / w-6 fits,
+      // and stays far above the 16px floor below which iOS Safari auto-zooms
+      // (DESIGN_SYSTEM.md §12.3).
       case "currency": {
         const fieldName = currentQ.field as keyof PreApprovalFormData;
         const watchedValue = form.watch(fieldName);
@@ -453,7 +470,7 @@ function PreApprovalFunnel() {
         return (
           <div className="w-full max-w-md mx-auto">
             <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
+              <DollarSign className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 text-primary" />
               <Input
                 key={`currency-${fieldName}`}
                 ref={focusStepInput}
@@ -463,7 +480,7 @@ function PreApprovalFunnel() {
                   const formatted = maskCurrencyDigits(e.target.value);
                   form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
                 }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
+                className={`pl-12 sm:pl-16 h-16 sm:h-20 text-3xl sm:text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
                 placeholder={currentQ.placeholder}
                 onKeyDown={handleKeyDown}
               />
@@ -486,7 +503,7 @@ function PreApprovalFunnel() {
         return (
           <div className="w-full max-w-md mx-auto">
             <div className="relative">
-              {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
+              {IconComponent && <IconComponent className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 text-primary" />}
               <Input
                 key={`number-${fieldName}`}
                 ref={focusStepInput}
@@ -498,7 +515,7 @@ function PreApprovalFunnel() {
                   const value = e.target.value.replace(/\D/g, "");
                   form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
                 }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
+                className={`pl-12 sm:pl-16 h-16 sm:h-20 text-3xl sm:text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
                 placeholder={currentQ.placeholder}
                 onKeyDown={handleKeyDown}
               />
@@ -726,11 +743,11 @@ function PreApprovalFunnel() {
             </a>
           </p>
           {urlPropertyId && urlSource === "property-detail" && (
-            <Link href={`/properties/${urlPropertyId}`}>
-              <Button variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
+            <Button asChild variant="ghost" size="sm" className="touch-target mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
+              <Link href={`/properties/${urlPropertyId}`}>
                 <ChevronLeft className="h-3.5 w-3.5" /> Back to property listing
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </motion.div>
       </div>
@@ -745,55 +762,29 @@ function PreApprovalFunnel() {
       
       <VerificationPulse active={submitMutation.isPending} />
 
-      {/* Progress Bar */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
-        <motion.div
-          className="h-full bg-primary"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress.percent}%` }}
-          transition={{ duration: 0.4 }}
-        />
-      </div>
+      {/* Orientation chrome — chapter rail, step counter, percentage, and a
+          time-to-finish derived from the steps actually left on this
+          borrower's route. Shares the max-w-5xl container with the content
+          grid below so the two line up. */}
+      <FunnelProgressHeader
+        progress={progress}
+        onBack={handleBack}
+        canGoBack={progress.index > 0}
+        showSaved={progress.index > 0}
+      />
 
-      {/* Navigation Header */}
-      <div className="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-background/80 backdrop-blur-sm">
-        <button
-          onClick={handleBack}
-          disabled={progress.index === 0}
-          className={`p-2 rounded-full hover:bg-muted transition-all ${progress.index === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-6 h-6 text-muted-foreground" />
-        </button>
-        <div className="flex flex-col items-center" data-testid="text-step-counter">
-          <span className="text-sm font-medium text-muted-foreground">
-            Step {progress.index} of {progress.total}
-          </span>
-          <span className="text-[11px] text-muted-foreground/60">
-            {progress.index <= 4 ? "~2 min left" : progress.index <= 8 ? "~1 min left" : "Almost done"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 w-10 justify-end">
-          {progress.index > 0 && (
-            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1" data-testid="text-autosave-indicator">
-              <Check className="h-3 w-3" /> Saved
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Advisory Panel (Desktop only) */}
-      <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
-
-      {/* Main Content Area */}
-      <div
-        className={cn(
-          "flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative",
-          // Only reserve the right-hand column while the advisory panel is shown;
-          // on the opening steps it isn't, so the question stays centered.
-          !ADVISORY_HIDDEN_STEPS.includes(currentQ.id) && "lg:pr-96",
-        )}
-      >
+      {/* Main Content Area — on lg+ a two-column grid: the question column and
+          the advisory panel share one centered container and one coordinate
+          system (the panel used to be viewport-fixed while the content
+          reserved a padding gutter for it, which left the question sitting
+          left of every other centered element with dead space in between).
+          The column is reserved on every step, so the question never jumps
+          when the panel's numbers start arriving. */}
+      {/* pt clears the fixed FunnelProgressHeader, which is ~115px tall (counter
+          row + chapter rail + labels + the chapter/time line) rather than the
+          ~70px of the single-line header it replaced. */}
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-32 sm:pt-36 pb-0 relative flex flex-col items-center lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:items-center">
+       <div className="w-full min-w-0 flex flex-1 lg:flex-none flex-col items-center justify-center">
         {/*
           mode="wait" mounts the next step only after the previous step's exit
           animation completes, and framer-motion drives that animation off
@@ -826,9 +817,9 @@ function PreApprovalFunnel() {
               className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight"
               data-testid="text-question"
             >
-              {dynamicTitle}
+              {stepCopy.title}
             </h2>
-            
+
             {currentQ.subtitle && (
               <p className="text-lg text-muted-foreground mb-8">{currentQ.subtitle}</p>
             )}
@@ -837,20 +828,20 @@ function PreApprovalFunnel() {
                <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto" data-testid="text-va-zero-down">
                  As a veteran, you may qualify for a VA loan with <span className="font-medium text-foreground">$0 down and no PMI</span>. Enter 0 to explore that path.
                </p>
-            ) : currentQ.subtext && (
-               <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto">{currentQ.subtext}</p>
+            ) : stepCopy.subtext && (
+               <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto">{stepCopy.subtext}</p>
             )}
 
             {/* Input Area */}
             <div className="mb-10">
               {renderInput()}
-              {currentQ.why && (
+              {stepCopy.why && (
                 <p
                   className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground/70"
                   data-testid={`text-why-${currentQ.id}`}
                 >
                   <Info className="h-3 w-3 shrink-0" />
-                  {currentQ.why}
+                  {stepCopy.why}
                 </p>
               )}
             </div>
@@ -861,7 +852,7 @@ function PreApprovalFunnel() {
                 onClick={handleNext} 
                 size="lg" 
                 disabled={submitMutation.isPending}
-                className="text-lg px-10 py-6 h-auto rounded-full shadow-lg hover:shadow-xl transition-all"
+                className="w-full sm:w-auto text-lg px-10 py-6 h-auto rounded-full shadow-card-lg hover:shadow-card-hover transition-all"
                 data-testid={currentQ.type === "final" ? "button-submit" : "button-continue"}
               >
                 {submitMutation.isPending ? (
@@ -882,6 +873,13 @@ function PreApprovalFunnel() {
 
           </motion.div>
         </AnimatePresence>
+       </div>
+
+       {/* Advisory Panel — the grid's right column at lg, and below the question
+           and its CTA on a phone. It is NOT desktop-only any more: leaving mobile
+           without the DTI, the payment estimate and the why-we-ask advice starved
+           the borrower most likely to abandon (DESIGN_SYSTEM.md §12.3). */}
+       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
       </div>
 
       {teaser && (

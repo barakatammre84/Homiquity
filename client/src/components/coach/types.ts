@@ -1,3 +1,4 @@
+import type { ChecklistItemView } from "@/lib/documentChecklist";
 import {
   CheckCircle2,
   Clock,
@@ -15,7 +16,7 @@ import {
   Briefcase,
 } from "lucide-react";
 
-// Shared client-side types + catalogs for the AI Coach surface
+// Shared client-side types + catalogs for the Homi surface
 // (client/src/components/coach/*). Server contracts: server/routes/coach.ts
 // (REST + SSE) and server/services/coachTools.ts (event payloads).
 
@@ -44,13 +45,24 @@ export interface CoachConversation {
   updatedAt: string;
 }
 
+/**
+ * The readiness profile as it ACTUALLY arrives, which is not always complete.
+ *
+ * Everything except `completionPercentage` is optional on purpose. The column is
+ * written from two places: a full `set_readiness` tool result, and (historically)
+ * a bare server-derived percentage — which left rows holding literally
+ * `{"completionPercentage": 88}`. This interface used to declare all six fields
+ * required, so `ReadinessPanel` read `completedInputs.length` off `undefined` and
+ * crashed the whole coach page. The server no longer writes that shape, but rows
+ * in it already exist, so the type tells the truth and consumers default.
+ */
 export interface CoachProfile {
-  readinessTier: string;
   completionPercentage: number;
-  statusNote: string;
-  completedInputs: string[];
-  outstandingInputs: string[];
-  estimatedTimeline: string;
+  readinessTier?: string;
+  statusNote?: string;
+  completedInputs?: string[];
+  outstandingInputs?: string[];
+  estimatedTimeline?: string;
 }
 
 export interface ActionPlanItem {
@@ -125,9 +137,59 @@ export interface CapturedEvent {
 export interface CoachPanelState {
   profile?: CoachProfile;
   actionPlan?: ActionPlanItem[];
-  documentChecklist?: DocumentRequirement[];
+  /**
+   * The borrower's REAL checklist, as served by /document-checklist — no longer
+   * a model-authored DocumentRequirement[]. The old shape carried an invented
+   * `docType` that matched no loan_condition, so uploading against it cleared
+   * nothing while the panel said otherwise.
+   */
+  documentChecklist?: ChecklistItemView[];
+  checklistStats?: { total: number; verified: number; uploaded: number; needed: number; rejected: number };
+  loanStatus?: LoanStatusView;
+  tasks?: BorrowerTaskLike[];
   borrowerPackage?: Record<string, unknown>;
   suggestions?: string[];
+  /** Whether the last panel payload was file-derived or assistant-authored. */
+  source?: "file" | "assistant";
+}
+
+/** Borrower-safe stage snapshot (server whitelist — see coachFileTruth.ts). */
+export interface LoanStatusView {
+  hasApplication: boolean;
+  stage: {
+    status: string;
+    label: string;
+    description: string;
+    progressPercent: number;
+    phase: string;
+  } | null;
+  pipeline: {
+    daysInPipeline: number;
+    conditionsOutstanding: number;
+    conditionsTotal: number;
+    percentComplete: number;
+    targetCloseDate: string | null;
+  } | null;
+  journey: Array<{ stepId: string; lines: string[] }>;
+  nextAction: {
+    kind: string;
+    title: string;
+    description: string;
+    href: string;
+    buttonLabel: string;
+    whyNeeded?: string;
+    timeEstimate?: string;
+    count?: number;
+  } | null;
+  lastActivityAt: string | null;
+}
+
+/** The masked borrower task view; only the fields this surface renders. */
+export interface BorrowerTaskLike {
+  id: string;
+  title?: string | null;
+  borrowerDisplayText?: string | null;
+  status: string;
 }
 
 export interface CoachStreamError {

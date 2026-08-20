@@ -4,22 +4,24 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { type PreApprovalFormData } from "@shared/schema";
+import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 import type { MortgageRateWithProgram } from "@/types/rates";
 import { TrendingUp, Info } from "lucide-react";
 
 import { type Question } from "./questions";
-import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
+import { computePreApprovalAnalysis } from "@/lib/preApprovalAnalysis";
 
 export interface AdvisoryPanelProps {
   formValues: PreApprovalFormData;
   currentStepId: string;
 }
 
-// Steps shown before any numbers are entered — the advisory panel has nothing
-// useful to show yet, so it (and the right-hand column the main content reserves
-// for it) is suppressed. Shared so the panel's visibility and the layout's
-// reserved space can never drift apart.
-export const ADVISORY_HIDDEN_STEPS: string[] = ["intro", "loanPurpose", "propertyType"];
+// The intro renders its own full-screen layout with no analysis column. Every
+// question step shows the panel — it now occupies a constant grid column, so
+// showing it from the first question keeps the content from jumping when
+// numbers start arriving (it used to appear at step 3, shifting the whole
+// question column left mid-flow).
+export const ADVISORY_HIDDEN_STEPS: string[] = ["intro"];
 
 export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
   // Payment estimates use the live advertised 30-year fixed rate — a payment
@@ -36,62 +38,32 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
     return !isNaN(parsed) && parsed > 0 ? parsed : null;
   }, [advertisedRates]);
 
-  const stats = useMemo(() => {
-    let income = parseFloat(String(formValues.annualIncome || "").replace(/[^0-9.]/g, "")) || 0;
-    if (formValues.incomeSources && formValues.incomeSources.length > 0) {
-      for (const src of formValues.incomeSources) {
-        income += parseFloat(String(src.annualAmount || "").replace(/[^0-9.]/g, "")) || 0;
-      }
-    }
-    const debts = parseFloat(String(formValues.monthlyDebts || "").replace(/[^0-9.]/g, "")) || 0;
-    const price = parseFloat(String(formValues.purchasePrice || "").replace(/[^0-9.]/g, "")) || 0;
-    const down = parseFloat(String(formValues.downPayment || "").replace(/[^0-9.]/g, "")) || 0;
-    
-    const loanAmount = price - down;
-    const estRatePct = advertised30YrRate ?? 6.5;
-    const estRate = estRatePct / 100;
-    const monthlyRate = estRate / 12;
-    const numPayments = 360;
-
-    const ltv = price > 0 ? ((price - down) / price) * 100 : 0;
-    // VA purchase loans carry no PMI at any LTV — the same branch the advisory
-    // copy below keys on. Everyone else gets PMI in the estimate when LTV > 80,
-    // so "20% down avoids PMI" is true in the number, not just the copy.
-    const vaNoPmi = !!formValues.isVeteran && formValues.loanPurpose === "purchase";
-
-    let estMortgage = 0;
-    let pmiMonthly = 0;
-    if (loanAmount > 0 && monthlyRate > 0) {
-      estMortgage = monthlyPrincipalAndInterest(loanAmount, estRatePct, numPayments);
-      // 1.25%/yr of price is the platform-standard taxes+insurance estimate
-      // (preUnderwriting.TAX_INSURANCE_ANNUAL_PCT) — it never included PMI.
-      estMortgage += (price * 0.0125) / 12;
-      if (!vaNoPmi && ltv > 80) {
-        // Illustrative conventional PMI, same 0.5%/yr-of-loan figure as
-        // ScenarioDesk's conventional branch.
-        pmiMonthly = (loanAmount * 0.005) / 12;
-        estMortgage += pmiMonthly;
-      }
-    }
-
-    const monthlyIncome = income / 12;
-    const totalMonthlyObligation = debts + estMortgage;
-
-    const dti = monthlyIncome > 0 ? (totalMonthlyObligation / monthlyIncome) * 100 : 0;
-    const downPaymentPercent = price > 0 ? (down / price) * 100 : 0;
-
-    return { dti, estMortgage, pmiMonthly, vaNoPmi, loanAmount, ltv, downPaymentPercent, estRatePct };
-  }, [formValues, advertised30YrRate]);
+  const stats = useMemo(
+    () => computePreApprovalAnalysis(formValues, advertised30YrRate),
+    [formValues, advertised30YrRate],
+  );
 
   if (ADVISORY_HIDDEN_STEPS.includes(currentStepId)) {
     return null;
   }
 
+  const isRefinance = formValues.loanPurpose === "refinance" || formValues.loanPurpose === "cash_out";
+
   const getContextualAdvice = () => {
     switch (currentStepId) {
+      case "loanPurpose":
+        return "Your goal determines which loan programs and rates apply — everything after this adapts to it.";
+      case "propertyType":
+        return "Property type affects your rate and reserve requirements.";
       case "purchasePrice":
+        if (isRefinance) {
+          return "Your home's value sets the loan-to-value we price against. We'll estimate your new payment from it.";
+        }
         return "We use this to estimate your monthly payment and closing costs.";
       case "downPayment":
+        if (isRefinance) {
+          return "Equity works the same way here that a down payment does on a purchase: more of it generally means a better rate, and 20%+ avoids mortgage insurance.";
+        }
         if (formValues.isVeteran && formValues.loanPurpose === "purchase") {
           return (
             <span className="text-success-subtle-foreground font-medium">
@@ -99,7 +71,11 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
             </span>
           );
         }
-        if (stats.loanAmount > 766550) {
+        // The conforming limit has exactly one home (shared/lendingLimits.ts).
+        // This line held a hardcoded 766550 — the 2024 limit — so every borrower
+        // between $766,500 and $806,500 was told a CONFORMING loan was jumbo, and
+        // warned about credit and down payment on a product they were not taking.
+        if (stats.loanAmount > CONFORMING_LOAN_LIMIT_2026) {
           return (
             <span className="text-warning-subtle-foreground font-medium">
               Note: This loan amount enters 'Jumbo' territory, which may require a higher credit score and larger down payment.
@@ -136,6 +112,9 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
       case "hasAdditionalIncome":
         return "Including all income sources gives a more complete picture for underwriting.";
       case "incomeSources":
+        if (formValues.employmentType === "self_employed") {
+          return "Add a Self-Employment / 1099 entry with your annual figure — that one is required. Anything else you receive is optional, and every source you add can raise your buying power.";
+        }
         return "Each income source may require different documentation. We'll let you know what's needed.";
       case "monthlyDebts":
         return "Include car payments, student loans, credit cards, and other monthly obligations.";
@@ -162,9 +141,18 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 w-80 bg-card rounded-2xl shadow-xl border p-6 transition-all duration-500 z-30"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      // Renders at EVERY width. It used to be `hidden lg:block`, which meant the
+      // borrower most likely to abandon — the one on a phone — got no DTI, no
+      // payment estimate and none of the why-we-ask advice, while the desktop
+      // user got all three (DESIGN_SYSTEM.md §12.3: reassurance is not a desktop
+      // luxury). The parent is `flex flex-col` below lg and a two-column grid at
+      // lg, so this same element falls below the question and its CTA on a phone
+      // and becomes the right-hand column on a desktop — no second instance, no
+      // duplicated test ids. Its blocks are individually conditional, so early
+      // steps stay short and it grows as the borrower answers.
+      className="w-full lg:w-80 mt-8 lg:mt-0 bg-card rounded-2xl shadow-card-lg border p-5 sm:p-6 transition-all duration-500"
       data-testid="advisory-panel"
     >
       <div className="flex items-center gap-2 mb-4 border-b pb-3">
@@ -175,16 +163,25 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
       </div>
 
       <div className="space-y-5">
+        {stats.qualifyingAnnualIncome > 0 && (
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Qualifying income</span>
+            <span className="font-medium text-foreground" data-testid="text-qualifying-income">
+              ${stats.qualifyingAnnualIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr
+            </span>
+          </div>
+        )}
+
         {(stats.dti > 0 || stats.estMortgage > 0) && (
           <div>
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-muted-foreground">Debt-to-Income Ratio</span>
-              <span className={`font-bold ${stats.dti > 43 ? "text-destructive" : stats.dti > 36 ? "text-warning-subtle-foreground" : "text-success-subtle-foreground"}`}>
+              <span className={`font-bold ${stats.dti > 43 ? "text-destructive" : stats.dti > 36 ? "text-warning-subtle-foreground" : "text-success-subtle-foreground"}`} data-testid="text-dti-value">
                 {stats.dti > 0 ? `${stats.dti.toFixed(0)}%` : "—"}
               </span>
             </div>
             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-              <motion.div 
+              <motion.div
                 className={`h-full transition-colors duration-500 ${dtiStatus.color}`}
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(Math.max(stats.dti, 0), 100)}%` }}
@@ -194,6 +191,11 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
             <p className="text-[11px] text-muted-foreground mt-1.5">
               {dtiStatus.text}
             </p>
+            {!stats.includesMonthlyDebts && stats.dti > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1" data-testid="text-dti-scope-note">
+                Doesn't include your monthly debts yet — we ask about those in a later step.
+              </p>
+            )}
           </div>
         )}
 
@@ -235,34 +237,118 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
   );
 }
 
-export function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): string {
+/**
+ * Per-step copy resolved against the borrower's own answers.
+ *
+ * Three fields move together, so they resolve together: a step whose TITLE
+ * adapts to a refinance but whose subtext and "why we ask" still describe a
+ * purchase is worse than one that never adapted at all. `questions.ts` holds
+ * the default for each; anything returned here overrides it.
+ *
+ * The refinance branches matter most. `purchasePrice` and `downPayment` are
+ * purchase words for fields the machine uses as (value, value − loan) — so a
+ * refinancer was being asked "What is the estimated purchase price?" and "How
+ * much are you planning to put down?" about a home they already own. The FIELD
+ * SEMANTICS are unchanged here (loan amount is still price − down); only the
+ * words are, which is why equity — not the loan balance — is what the reworded
+ * down-payment step asks for. Asking for the balance and storing it in
+ * `downPayment` would invert the math.
+ */
+export interface StepCopy {
+  title: string;
+  subtext?: string;
+  why?: string;
+}
+
+export function resolveStepCopy(currentQ: Question, formValues: PreApprovalFormData): StepCopy {
   const { purchasePrice, loanPurpose, employmentType } = formValues;
+  const isRefi = loanPurpose === "refinance" || loanPurpose === "cash_out";
+  const fallback: StepCopy = {
+    title: currentQ.question || "",
+    subtext: currentQ.subtext,
+    why: currentQ.why,
+  };
 
   switch (currentQ.id) {
-    case "downPayment":
-      if (purchasePrice) {
-        return `On a $${purchasePrice} home, how much can you put down?`;
+    case "purchasePrice":
+      if (isRefi) {
+        return {
+          title: "What's your home worth today?",
+          subtext: "Your best estimate of its current market value — an appraisal will confirm it later.",
+          why: "Value and what you owe set your loan-to-value, which drives the rates you'll see.",
+        };
       }
       break;
+
+    case "downPayment":
+      if (loanPurpose === "cash_out") {
+        return {
+          title: "After taking cash out, how much equity would you keep?",
+          subtext: "Your home's value minus the new loan amount. An estimate is fine.",
+          why: "Cash-out pricing is set by how much equity stays in the home after closing.",
+        };
+      }
+      if (loanPurpose === "refinance") {
+        return {
+          title: "How much equity do you have in it?",
+          subtext: "Your home's value minus what you still owe.",
+          why: "Equity does the same job on a refinance that a down payment does on a purchase — it sets your loan-to-value.",
+        };
+      }
+      if (purchasePrice) {
+        return { ...fallback, title: `On a $${purchasePrice} home, how much can you put down?` };
+      }
+      break;
+
+    case "propertyState":
+      if (isRefi) {
+        return { ...fallback, title: "Which state is the property in?" };
+      }
+      break;
+
     case "creditScore":
       if (loanPurpose === "cash_out") {
-        return "Since you're pulling cash out, credit score is key. What's yours?";
+        return { ...fallback, title: "Since you're pulling cash out, credit score is key. What's yours?" };
       }
       break;
+
     case "annualIncome":
-      return "What's your total household income?";
+      return { ...fallback, title: "What's your total household income?" };
+
     case "employmentYears":
       if (employmentType === "self_employed") {
-        return "How many years have you been self-employed?";
+        return { ...fallback, title: "How many years have you been self-employed?" };
       }
       if (employmentType === "retired") {
-        return "How many years have you been retired?";
+        return { ...fallback, title: "How many years have you been retired?" };
       }
       break;
+
+    case "incomeSources":
+      // The step is MANDATORY for a self-employed borrower — the machine skips
+      // the "any additional income?" question for them precisely because the
+      // answer could not change the route. Which means the default heading,
+      // "What other income do you receive?", would be the first thing they see
+      // after saying nothing of the sort. Ask for what is actually needed.
+      if (employmentType === "self_employed") {
+        return {
+          title: "Let's detail your self-employment income",
+          subtext:
+            "Underwriting reviews 1099 and business income line by line, so it needs its own entry. Add any other sources you receive while you're here.",
+          why: "Self-employed income is averaged from your returns — detailing it up front is what keeps your approval from stalling later.",
+        };
+      }
+      break;
+
     case "monthlyDebts":
-      return "What are your current monthly debt payments?";
+      return { ...fallback, title: "What are your current monthly debt payments?" };
   }
 
-  return currentQ.question || "";
+  return fallback;
+}
+
+/** Title-only convenience over {@link resolveStepCopy}. */
+export function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): string {
+  return resolveStepCopy(currentQ, formValues).title;
 }
 

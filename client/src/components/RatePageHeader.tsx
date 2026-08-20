@@ -265,9 +265,10 @@ export default function RatePageHeader({
 
         <div className="flex flex-wrap items-end gap-4 mb-4">
           <div className="flex-shrink-0">
-            <Label className="text-xs text-muted-foreground mb-1 block">Zip code</Label>
+            <Label htmlFor="rate-zipcode" className="text-xs text-muted-foreground mb-1 block">Zip code</Label>
             <div className="relative">
               <Input
+                id="rate-zipcode"
                 type="text"
                 placeholder="Enter ZIP"
                 value={zipcode}
@@ -284,8 +285,9 @@ export default function RatePageHeader({
 
           {showCashOutAmount && (
             <div className="flex-shrink-0">
-              <Label className="text-xs text-muted-foreground mb-1 block">Cash-out amount</Label>
+              <Label htmlFor="rate-cashout-amount" className="text-xs text-muted-foreground mb-1 block">Cash-out amount</Label>
               <Input
+                id="rate-cashout-amount"
                 type="text"
                 value={formatCurrency(cashOutAmount)}
                 onChange={(e) => setCashOutAmount(parseCurrency(e.target.value))}
@@ -297,8 +299,9 @@ export default function RatePageHeader({
 
           {showPropertyValue && (
             <div className="flex-shrink-0">
-              <Label className="text-xs text-muted-foreground mb-1 block">Property Value</Label>
+              <Label htmlFor="rate-property-value" className="text-xs text-muted-foreground mb-1 block">Property Value</Label>
               <Input
+                id="rate-property-value"
                 type="text"
                 value={formatCurrency(propertyValue)}
                 onChange={(e) => setPropertyValue(parseCurrency(e.target.value))}
@@ -310,8 +313,9 @@ export default function RatePageHeader({
 
           {showMortgageBalance && (
             <div className="flex-shrink-0">
-              <Label className="text-xs text-muted-foreground mb-1 block">Current Mortgage balance</Label>
+              <Label htmlFor="rate-mortgage-balance" className="text-xs text-muted-foreground mb-1 block">Current Mortgage balance</Label>
               <Input
+                id="rate-mortgage-balance"
                 type="text"
                 value={formatCurrency(mortgageBalance)}
                 onChange={(e) => setMortgageBalance(parseCurrency(e.target.value))}
@@ -322,8 +326,9 @@ export default function RatePageHeader({
           )}
 
           <div className="flex items-center gap-2 ml-auto">
-            <Label className="text-sm text-muted-foreground">Advanced inputs</Label>
+            <Label htmlFor="rate-advanced-inputs" className="text-sm text-muted-foreground">Advanced inputs</Label>
             <Switch
+              id="rate-advanced-inputs"
               checked={showAdvanced}
               onCheckedChange={setShowAdvanced}
               data-testid="switch-advanced-inputs"
@@ -334,8 +339,9 @@ export default function RatePageHeader({
         {showAdvanced && (
           <div className="flex flex-wrap gap-4 mt-4 p-4 bg-background rounded-lg border">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Credit Score</Label>
+              <Label htmlFor="rate-credit-score" className="text-xs text-muted-foreground mb-1 block">Credit Score</Label>
               <Input
+                id="rate-credit-score"
                 type="text"
                 defaultValue="760"
                 className="w-24 h-10 bg-background border rounded-md px-3"
@@ -343,8 +349,9 @@ export default function RatePageHeader({
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Down Payment %</Label>
+              <Label htmlFor="rate-down-payment" className="text-xs text-muted-foreground mb-1 block">Down Payment %</Label>
               <Input
+                id="rate-down-payment"
                 type="text"
                 defaultValue="20%"
                 className="w-24 h-10 bg-background border rounded-md px-3"
@@ -352,8 +359,9 @@ export default function RatePageHeader({
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Loan Amount</Label>
+              <Label htmlFor="rate-loan-amount" className="text-xs text-muted-foreground mb-1 block">Loan Amount</Label>
               <Input
+                id="rate-loan-amount"
                 type="text"
                 value={formatCurrency(Math.round(parseInt(propertyValue) * 0.8).toString())}
                 className="w-32 h-10 bg-background border rounded-md px-3"

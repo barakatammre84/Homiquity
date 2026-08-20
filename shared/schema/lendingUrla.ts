@@ -513,6 +513,8 @@ export {
   CREDIT_SCORE_BAND_VALUES,
   CREDIT_SCORE_UNKNOWN_DEFAULT,
 } from "../preApprovalForm";
+export { CLEARABLE_INTAKE_FIELDS, isClearableIntakeField } from "../intakeClearable";
+export type { ClearableIntakeField } from "../intakeClearable";
 export type {
   USStateCode,
   RentalPropertyEntry,
@@ -560,23 +562,32 @@ function stringifyIntakeScalars(input: unknown): unknown {
   return out;
 }
 
-/** Post-validation normalization: DB-ready values, no silent invention. */
-function normalizeIntakeValues<T extends Partial<PreApprovalFormData>>(d: T) {
+/**
+ * Post-validation normalization: DB-ready values, no silent invention.
+ *
+ * Guards are `!= null`, not `!== undefined`: an explicit `null` is the wire
+ * representation of "clear this field" (CLEARABLE_INTAKE_FIELDS,
+ * ../preApprovalForm.ts) and
+ * must reach the column untouched. Skipping the spread leaves the `null` that
+ * `...d` already carried — running `stripCurrency(null)` or `parseInt(null)`
+ * over it would throw or produce `NaN`.
+ */
+function normalizeIntakeValues<T extends Record<string, any>>(d: T) {
   return {
     ...d,
-    ...(d.annualIncome !== undefined && { annualIncome: stripCurrency(d.annualIncome) }),
-    ...(d.monthlyDebts !== undefined && { monthlyDebts: stripCurrency(d.monthlyDebts) }),
-    ...(d.purchasePrice !== undefined && { purchasePrice: stripCurrency(d.purchasePrice) }),
-    ...(d.downPayment !== undefined && { downPayment: stripCurrency(d.downPayment) }),
-    ...(d.employmentYears !== undefined && { employmentYears: parseInt(d.employmentYears) }),
-    ...(d.creditScore !== undefined && {
+    ...(d.annualIncome != null && { annualIncome: stripCurrency(d.annualIncome) }),
+    ...(d.monthlyDebts != null && { monthlyDebts: stripCurrency(d.monthlyDebts) }),
+    ...(d.purchasePrice != null && { purchasePrice: stripCurrency(d.purchasePrice) }),
+    ...(d.downPayment != null && { downPayment: stripCurrency(d.downPayment) }),
+    ...(d.employmentYears != null && { employmentYears: parseInt(d.employmentYears) }),
+    ...(d.creditScore != null && {
       creditScore: d.creditScore === "not_sure" ? CREDIT_SCORE_UNKNOWN_DEFAULT : parseInt(d.creditScore),
     }),
-    ...(d.incomeSources !== undefined && {
-      incomeSources: d.incomeSources?.map((s) => ({
+    ...(d.incomeSources != null && {
+      incomeSources: d.incomeSources?.map((s: any) => ({
         ...s,
         annualAmount: stripCurrency(s.annualAmount),
-        rentalProperties: s.rentalProperties?.map((p) => ({
+        rentalProperties: s.rentalProperties?.map((p: any) => ({
           ...p,
           monthlyRentalIncome: stripCurrency(p.monthlyRentalIncome),
           ...(p.monthlyDebtPayment !== undefined && { monthlyDebtPayment: stripCurrency(p.monthlyDebtPayment) }),
@@ -607,20 +618,47 @@ export const loanApplicationIntakeSchema = z.preprocess(
 );
 export type LoanApplicationIntake = z.infer<typeof loanApplicationIntakeSchema>;
 
+// CLEARABLE_INTAKE_FIELDS / isClearableIntakeField live in ../intakeClearable
+// (re-exported above), in a module of their own: /profile is the only client
+// that reads the predicate and it is lazily routed, so keeping the catalog out
+// of preApprovalForm keeps its bytes out of the eager entry chunk. See that
+// file's header for the measurement.
+
+// The four fields this PATCH accepts that the funnel form does not carry.
+// Named so the clearable variants below reuse the SAME validator rather than
+// restate it — a second spelling is how a rule and its clear drift apart.
+const employerNameField = z.string().max(200, "Employer name is too long");
+const propertyAddressField = z.string().max(500, "Address is too long");
+const propertyCityField = z.string().max(100, "City name is too long");
+const propertyZipField = z.string().refine(
+  (v) => !v || /^\d{5}(-\d{4})?$/.test(v),
+  { message: "ZIP code must be 5 digits (e.g., 90210) or ZIP+4 (e.g., 90210-1234)" },
+);
+
+const partialIntakeShape = preApprovalFormBaseSchema.partial().shape;
+
 /** Partial variant for draft field updates (borrower PATCH while in "draft"). */
 export const loanApplicationIntakeUpdateSchema = z.preprocess(
   stringifyIntakeScalars,
   preApprovalFormBaseSchema
     .partial()
     .extend({
-      employerName: z.string().max(200, "Employer name is too long").optional(),
-      propertyAddress: z.string().max(500, "Address is too long").optional(),
-      propertyCity: z.string().max(100, "City name is too long").optional(),
-      propertyZip: z.string()
-        .refine((v) => !v || /^\d{5}(-\d{4})?$/.test(v), { message: "ZIP code must be 5 digits (e.g., 90210) or ZIP+4 (e.g., 90210-1234)" })
-        .optional(),
+      // Every clearable field keeps its own validator and only ADDS null, by
+      // wrapping the existing schema rather than restating it. A bad value is
+      // still a 400 — `annualIncome: "abc"` does not become acceptable just
+      // because `annualIncome: null` now is.
+      annualIncome: partialIntakeShape.annualIncome.nullable(),
+      monthlyDebts: partialIntakeShape.monthlyDebts.nullable(),
+      employmentYears: partialIntakeShape.employmentYears.nullable(),
+      purchasePrice: partialIntakeShape.purchasePrice.nullable(),
+      downPayment: partialIntakeShape.downPayment.nullable(),
+      propertyState: partialIntakeShape.propertyState.nullable(),
+      employerName: employerNameField.nullable().optional(),
+      propertyAddress: propertyAddressField.nullable().optional(),
+      propertyCity: propertyCityField.nullable().optional(),
+      propertyZip: propertyZipField.nullable().optional(),
     })
-    .superRefine(downPaymentWithinPurchasePrice)
+    .superRefine((data, ctx) => downPaymentWithinPurchasePrice(data, ctx))
     .transform(normalizeIntakeValues),
 );
 export type LoanApplicationIntakeUpdate = z.infer<typeof loanApplicationIntakeUpdateSchema>;

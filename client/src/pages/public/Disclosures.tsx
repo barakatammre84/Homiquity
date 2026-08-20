@@ -102,7 +102,11 @@ export default function Disclosures() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-licensing">
+        {/* Anchor target: the home page's trust row and footprint line both link
+            to /disclosures#licensing rather than duplicating the state list. This
+            card already renders from LICENSED_STATE_DETAILS, so adding a state
+            updates every surface with no copy edit. scroll-mt clears the nav. */}
+        <Card id="licensing" className="scroll-mt-24" data-testid="card-licensing">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 flex-wrap">
               <MapPin className="h-5 w-5 text-primary" />

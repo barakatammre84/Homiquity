@@ -1,13 +1,67 @@
-import { Download, FileCheck, FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { DocumentList, type DocumentGroup } from "@/components/patterns/DocumentList";
 import { formatDate } from "@/lib/formatters";
 import type { Document } from "@shared/schema";
+import { DOCUMENT_CATEGORIES, docTypeName } from "../documentCategories";
+
+// The borrower's uploaded-documents vault, on the DocumentList pattern
+// (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13). Titles resolve through the catalog's own
+// docTypeName map — the data layer's naming, never a view-side
+// `replace(/_/g, " ")` — rows group by the catalog's categories, dates read as
+// plain English ("You uploaded on …"), a rejection's reason rides the row, and
+// the filename is secondary metadata rather than a column.
+
+const CATEGORY_OF: Record<string, string> = Object.fromEntries(
+  DOCUMENT_CATEGORIES.flatMap((cat) => cat.documents.map((d) => [d.type, cat.name])),
+);
 
 export function UploadedDocumentsTable({ documents }: { documents: Document[] }) {
+  const titles = Object.fromEntries(
+    documents.map((d) => [d.documentType, docTypeName(d.documentType)]),
+  );
+
+  const groupOrder: string[] = [];
+  const byCategory = new Map<string, Document[]>();
+  for (const doc of documents) {
+    const label = CATEGORY_OF[doc.documentType] ?? "Other documents";
+    if (!byCategory.has(label)) {
+      byCategory.set(label, []);
+      groupOrder.push(label);
+    }
+    byCategory.get(label)!.push(doc);
+  }
+
+  const groups: DocumentGroup[] = groupOrder.map((label) => ({
+    label,
+    documents: byCategory.get(label)!.map((doc) => ({
+      id: doc.id,
+      slug: doc.documentType,
+      status: doc.status,
+      fileName: doc.fileName ?? undefined,
+      date: { verb: "You uploaded", on: formatDate(doc.createdAt) },
+      note:
+        doc.status === "rejected" && doc.rejectionReason
+          ? { text: doc.rejectionReason, tone: "destructive" as const }
+          : undefined,
+      action: (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="touch-target gap-2"
+          data-testid={`button-download-doc-${doc.id}`}
+          onClick={() => window.open(`/api/documents/${doc.id}/download`, "_blank")}
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Download</span>
+        </Button>
+      ),
+    })),
+  }));
+
   return (
-    <Card className="shadow-lg border-0 mt-8" data-testid="card-all-documents">
+    <Card className="mt-8" data-testid="card-all-documents">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
@@ -18,75 +72,7 @@ export function UploadedDocumentsTable({ documents }: { documents: Document[] })
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground">
-                  Document Type
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground">
-                  File Name
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground">
-                  Uploaded
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr
-                  key={doc.id}
-                  className="border-b transition-colors hover:bg-muted/50"
-                  data-testid={`row-document-${doc.id}`}
-                >
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <FileCheck className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium capitalize">
-                        {doc.documentType.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm">{doc.fileName}</span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm text-muted-foreground">
-                      {formatDate(doc.createdAt)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <DocumentStatusBadge status={doc.status} />
-                    {doc.status === "rejected" && doc.rejectionReason && (
-                      <p className="mt-1 max-w-[240px] text-xs text-destructive">
-                        {doc.rejectionReason}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-2"
-                      data-testid={`button-download-doc-${doc.id}`}
-                      onClick={() => window.open(`/api/documents/${doc.id}/download`, "_blank")}
-                    >
-                      <Download className="h-4 w-4" />
-                      <span className="hidden sm:inline">Download</span>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DocumentList groups={groups} titles={titles} data-testid="uploaded-documents" />
       </CardContent>
     </Card>
   );

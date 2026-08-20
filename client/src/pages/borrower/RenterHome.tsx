@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Bot,
   Calculator,
+  ClipboardList,
   Home,
   PiggyBank,
   Scale,
@@ -64,9 +65,18 @@ const TOOLKIT = [
     testId: "renter-tool-rent-to-own",
   },
   {
+    // The rent ledger's front door for the renter persona. Shipped 2026-08-17 as an
+    // orphan route — the audit found /my-lease had zero inbound links anywhere.
+    href: "/my-lease",
+    icon: ClipboardList,
+    title: "My Lease & Rent Record",
+    description: "Keep a record of your lease and rent payments.",
+    testId: "renter-tool-my-lease",
+  },
+  {
     href: "/ai-coach",
     icon: Bot,
-    title: "AI Coach",
+    title: "Homi",
     description: "Ask anything — credit, savings, timelines, programs.",
     testId: "renter-tool-coach",
   },
@@ -223,21 +233,21 @@ export function RenterHome({
               you're serious.
             </p>
             <div className="flex gap-2">
-              <Link href="/apply">
-                <Button data-testid="button-renter-preapproval">
+              <Button asChild data-testid="button-renter-preapproval">
+                <Link href="/apply">
                   Start pre-approval
-                </Button>
-              </Link>
-              <Link href="/properties">
-                <Button
+                </Link>
+              </Button>
+              <Button asChild
                   variant="ghost"
                   className="text-sidebar-foreground"
                   data-testid="button-renter-browse"
                 >
+                <Link href="/properties">
                   <Search className="h-4 w-4" />
                   Browse homes
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -1,5 +1,13 @@
 # Production change ledger (append-only)
 
+> **Scope rescoped 2026-08-18** (founder-approved — [TEAM_PRACTICES §6](../governance/TEAM_PRACTICES.md)):
+> rows are required for hand actions against prod DB/env, incidents + forward fixes, §9-trigger
+> deploys, and special-rollback changes (contract migrations, destructive data, dependency
+> majors). Ordinary green PR merges are recorded by the PR itself plus CI's `verify-deploy`
+> commit-field check and no longer get per-merge rows — which is why this ledger is quiet
+> between 2026-07-19 and this note: doctrine has been brought to match the practice that the
+> `verify-deploy` era made safe. Rows below remain immutable history.
+
 > Split out of [CICD.md](./CICD.md) on 2026-08-06. The ledger had grown to ~60% of that file and
 > buried the operational runbook underneath it — you read the runbook to *do* a deploy and the
 > ledger to *audit* one, and they were never needed together. **Nothing was rewritten:** every row

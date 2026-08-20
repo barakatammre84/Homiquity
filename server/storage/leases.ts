@@ -1,8 +1,16 @@
 import { db } from "../db";
-import { and, desc, eq } from "drizzle-orm";
-import { leases, type Lease } from "@shared/schema";
-import { type LeaseView, toDateOnly } from "@shared/leaseView";
+import { and, asc, desc, eq } from "drizzle-orm";
+import {
+  leases,
+  rentPayments,
+  rentFurnishingQueue,
+  type FurnishingState,
+  type Lease,
+  type RentPayment,
+} from "@shared/schema";
+import { type LeaseView, type RentPaymentView, toDateOnly } from "@shared/leaseView";
 import { decryptSensitiveData, encryptSensitiveData } from "../services/encryptionService";
+import { FURNISHABLE_PROVENANCE, isErasable } from "../services/rentFurnishing";
 import { LeadsStorage } from "./leads";
 
 /**
@@ -177,4 +185,158 @@ export class LeasesStorage extends LeadsStorage {
       .returning();
     return row;
   }
+
+  /**
+   * Erase a lease and everything hanging off it.
+   *
+   * WHY A HARD DELETE. The repo's usual instinct is a soft delete — `cancelTask` is an
+   * audited status flip, not a DROP. That is right for a work item, whose history is
+   * the product. It is wrong here. What this row holds is a landlord's email and a
+   * street address the borrower typed in, encrypted precisely because they are not ours
+   * to keep; answering "delete my data" with a status flag would leave that ciphertext
+   * in the table while telling the user it was gone. That is the deceptive-success
+   * pattern this codebase keeps finding, aimed at a privacy promise.
+   *
+   * WHAT IT REFUSES. A lease whose furnishing queue has moved past `pending_authority`
+   * cannot be erased — see ERASABLE_FURNISHING_STATES. Deleting the local row would
+   * destroy the evidence of what was furnished while leaving the furnished data at the
+   * bureau. Suppression is the remedy there, and the caller is told so by name.
+   *
+   * One transaction: payments and the queue row both hold an FK to `leases`, so a
+   * partial delete would either fail on the constraint or orphan a history.
+   */
+  async deleteLeaseForUser(id: string, userId: string): Promise<LeaseDeletionResult> {
+    return db.transaction(async (tx) => {
+      const [lease] = await tx
+        .select({ id: leases.id })
+        .from(leases)
+        .where(and(eq(leases.id, id), eq(leases.userId, userId)))
+        .limit(1);
+      if (!lease) return { ok: false, reason: "not_found" } as const;
+
+      const [queued] = await tx
+        .select({ state: rentFurnishingQueue.state })
+        .from(rentFurnishingQueue)
+        .where(eq(rentFurnishingQueue.leaseId, id))
+        .limit(1);
+      if (queued && !isErasable(queued.state as FurnishingState)) {
+        return { ok: false, reason: "requires_suppression", state: queued.state } as const;
+      }
+
+      const removedPayments = await tx
+        .delete(rentPayments)
+        .where(eq(rentPayments.leaseId, id))
+        .returning({ id: rentPayments.id });
+
+      if (queued) {
+        await tx.delete(rentFurnishingQueue).where(eq(rentFurnishingQueue.leaseId, id));
+      }
+
+      // Ownership stays in the WHERE even here, where it is already proven — the
+      // predicate is what makes this statement safe to read in isolation.
+      await tx.delete(leases).where(and(eq(leases.id, id), eq(leases.userId, userId)));
+
+      return { ok: true, deletedPayments: removedPayments.length } as const;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rent payments
+  // ---------------------------------------------------------------------------
+
+  /**
+   * List a lease's payments, owner-scoped in one query.
+   *
+   * `rent_payments` has no `userId` of its own — ownership runs through the lease. The
+   * join puts that in the SQL rather than in a caller's memory, so there is no version
+   * of this that "forgot" to check whose lease it is.
+   *
+   * Ordered by `dueDate` ascending: a payment history reads forwards, and the furnishing
+   * queue will eventually consume it in period order.
+   */
+  async listRentPaymentsForUser(leaseId: string, userId: string): Promise<RentPayment[]> {
+    const rows = await db
+      .select({ payment: rentPayments })
+      .from(rentPayments)
+      .innerJoin(leases, eq(rentPayments.leaseId, leases.id))
+      .where(and(eq(rentPayments.leaseId, leaseId), eq(leases.userId, userId)))
+      .orderBy(asc(rentPayments.dueDate));
+    return rows.map((r) => r.payment);
+  }
+
+  /**
+   * Record one rent payment.
+   *
+   * `provenance` is NOT a parameter. It is pinned to `self_reported` at the only place
+   * that inserts, because this is the borrower-entry path and a borrower's own say-so is
+   * exactly what `self_reported` means. Accepting it from a caller — even an internal
+   * one — would put the field that decides furnishability one careless argument away
+   * from claiming first-party evidence we do not have.
+   *
+   * `processorReference` is likewise absent: it is the audit thread back to a payment
+   * partner, and there is no partner. A synthesised value there is precisely the
+   * falsified provenance CLAUDE.md forbids.
+   *
+   * Returns undefined when the lease is not the caller's — the insert is guarded by a
+   * prior owner-scoped read rather than trusting the caller.
+   */
+  async recordSelfReportedRentPayment(
+    leaseId: string,
+    userId: string,
+    input: {
+      dueDate: Date;
+      amountDue: string;
+      paidDate?: Date | null;
+      amountPaid?: string | null;
+      status: string;
+    },
+  ): Promise<RentPayment | undefined> {
+    const lease = await this.getLeaseForUser(leaseId, userId);
+    if (!lease) return undefined;
+
+    const [row] = await db
+      .insert(rentPayments)
+      .values({
+        leaseId,
+        dueDate: input.dueDate,
+        paidDate: input.paidDate ?? null,
+        amountDue: input.amountDue,
+        amountPaid: input.amountPaid ?? null,
+        status: input.status,
+        provenance: "self_reported",
+        processorReference: null,
+      })
+      .returning();
+    return row;
+  }
+}
+
+/**
+ * Why a lease could not be erased. `furnished` is the interesting one: it means the
+ * line has left the building and the honest remedy is suppression, not deletion.
+ */
+export type LeaseDeletionResult =
+  | { ok: true; deletedPayments: number }
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "requires_suppression"; state: string };
+
+/**
+ * Map a payment row to its borrower-facing view.
+ *
+ * `furnishable` is derived from the SAME constant the furnishing gate reads, not
+ * re-stated here — so a surface can never claim a row is reportable when the gate
+ * would refuse it, and widening the gate updates both at once.
+ */
+export function toRentPaymentView(row: RentPayment): RentPaymentView {
+  return {
+    id: row.id,
+    leaseId: row.leaseId,
+    dueDate: toDateOnly(row.dueDate) as string,
+    paidDate: toDateOnly(row.paidDate),
+    amountDue: row.amountDue,
+    amountPaid: row.amountPaid,
+    status: row.status,
+    provenance: row.provenance,
+    furnishable: FURNISHABLE_PROVENANCE.includes(row.provenance as never),
+  };
 }

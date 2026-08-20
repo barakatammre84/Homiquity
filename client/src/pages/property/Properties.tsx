@@ -137,7 +137,7 @@ export default function Properties() {
             <Button
               variant="ghost"
               size="sm"
-              className="shrink-0 text-xs"
+              className="touch-target shrink-0 text-xs"
               onClick={handleClearSearch}
               data-testid="button-clear-saved-search"
             >
@@ -163,7 +163,7 @@ export default function Properties() {
           {isLiveMode && (
             <Button
               variant="outline"
-              size="sm"
+              size="sm" className="touch-target"
               onClick={handleClearSearch}
               data-testid="button-clear-search"
             >

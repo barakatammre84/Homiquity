@@ -203,6 +203,9 @@ export const loanApplicationKeys = {
   pipeline: (id: string) => ["/api/loan-applications", id, "pipeline"] as const,
   options: (id: string) => ["/api/loan-applications", id, "options"] as const,
   offers: (id: string) => ["/api/loan-applications", id, "offers"] as const,
+  // Note the different path prefix: the action-items route grew up on the
+  // dashboard registrar under /api/applications.
+  actionItems: (id: string) => ["/api/applications", id, "action-items"] as const,
   properties: (id: string) => ["/api/loan-applications", id, "properties"] as const,
   prequalStatus: (id: string) => ["/api/loan-applications", id, "prequal-status"] as const,
   letterStatus: (id: string) => ["/api/loan-applications", id, "letter-status"] as const,
@@ -280,6 +283,16 @@ export const coachConversationKeys = {
   detail: (id: string) => ["/api/coach/conversations", id] as const,
 };
 
+/**
+ * The borrower's file as the assistant reads it — stage, the real document
+ * checklist, tasks, readiness. Separate from the conversation keys because it
+ * is keyed on the FILE, not on a chat: it must stay correct when the borrower
+ * switches conversations, and it must invalidate when a document is uploaded.
+ */
+export const coachContextKeys = {
+  root: () => ["/api/coach/context"] as const,
+};
+
 export const onboardingStatusKeys = {
   root: () => ["/api/onboarding/status"] as const,
 };
@@ -313,6 +326,8 @@ export const leaseKeys = {
   /** Every lease read — the prefix a write should invalidate. */
   all: () => ["/api/leases"] as const,
   detail: (id: string) => ["/api/leases", id] as const,
+  /** A lease's rent payments. Segmented, so `all()` covers it as a prefix. */
+  payments: (id: string) => ["/api/leases", id, "payments"] as const,
 };
 
 /**

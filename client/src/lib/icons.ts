@@ -6,7 +6,7 @@
  * Import icons by SEMANTIC NAME from here, not directly from `lucide-react`, so
  * a concept always renders with the same glyph. The concept→glyph decisions and
  * their rationale live in
- * knowledge-base/handbook/design/visual-consistency-standard.md §3.
+ * knowledge-base/handbook/design/DESIGN_SYSTEM.md §7 (Iconography).
  *
  * This file is the ONE place allowed to import from `lucide-react` directly.
  *
@@ -53,6 +53,8 @@ import {
   ZoomIn,
   ZoomOut,
   RefreshCw,
+  Sparkles,
+  Send,
 } from "lucide-react";
 
 /**
@@ -96,6 +98,8 @@ export const Icons = {
   trend: TrendingUp, // upward trend
   settings: Settings, // settings
   rate: Percent, // rate / pricing
+  coach: Sparkles, // the Homi (dominant glyph on /ai-coach)
+  send: Send, // submit a chat message (dominant: coach Composer)
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof Icons;

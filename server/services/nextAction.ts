@@ -236,9 +236,9 @@ export function computeNextAction(input: NextActionInput): NextAction {
     return {
       kind: "talk_to_coach",
       title: "Let's explore your options",
-      description: "Chat with our AI Coach to learn what you can do next.",
+      description: "Chat with Homi to learn what you can do next.",
       href: "/ai-coach",
-      buttonLabel: "Talk to Coach",
+      buttonLabel: "Talk to Homi",
     };
   }
 

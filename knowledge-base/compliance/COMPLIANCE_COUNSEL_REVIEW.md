@@ -28,7 +28,7 @@ specific question for counsel.
 
 The TRID trigger adds one nullable column, `loan_applications.trid_triggered_at`.
 The project uses **versioned, hand-authored SQL migrations** (`migrations/`, applied with
-`pnpm db:migrate` locally — **never `db:push`**; see [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)).
+`pnpm db:migrate` locally — **never `db:push`**; see [app-guide/03-database.md](../handbook/app-guide/03-database.md)).
 ✅ **Resolved 2026-07-19:** the column ships in `migrations/0027_reconcile_dbpush_drift.sql`
 and is applied to production — prod's migration HEAD has since advanced well past it (0037 as
 of 2026-07-17). Prod migrations now **auto-apply on merge** via the `migrate-prod` CI job

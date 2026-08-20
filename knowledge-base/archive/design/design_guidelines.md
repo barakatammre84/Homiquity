@@ -1,3 +1,15 @@
+> ⚠️ **SUPERSEDED 2026-08-18 — do not act on this document.** Its content was merged into
+> [`handbook/design/DESIGN_SYSTEM.md`](../../handbook/design/DESIGN_SYSTEM.md), which is the
+> single binding design standard. This file is retained for history only: the why-vs-what split
+> between the two design docs was retired because a rule and its rationale drifted apart and both
+> halves went stale in the same five weeks. **Several claims below were measurably wrong at
+> `56cf00a`** — the PageShell opt-out rate (stated 57%, actually 82%), the primitive count
+> (stated 30, actually 33), the promised PageShell gutter upgrade (already shipped), the
+> Tailwind-v3 cascade-layer reasoning (the project is on v4), and every ⏳ marker on a primitive
+> that had in fact already shipped. The corrected versions are in DESIGN_SYSTEM.md §0.
+
+---
+
 # Design Guidelines — Homiquity
 
 > **Precedence, when this file and [`visual-consistency-standard.md`](./visual-consistency-standard.md)
@@ -12,7 +24,7 @@
 > [`client/src/components/ui/`](../../../client/src/components/ui). This doc explains the
 > *rules*; when they disagree with the code, the code wins — fix the doc.
 > The `design-token guard` (`scripts/design-token-guard.cjs`, run by
-> `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules
+> `pnpm checkup`) **fails CI on any raw Tailwind palette class**, so the rules
 > below are enforced, not aspirational.
 >
 > **Companion:** the detailed, operational catalogs — the icon registry (one glyph per

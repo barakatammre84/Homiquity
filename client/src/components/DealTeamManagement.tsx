@@ -274,7 +274,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
         </CardTitle>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1" data-testid="button-add-team-member">
+            <Button size="sm" className="touch-target gap-1" data-testid="button-add-team-member">
               <UserPlus className="h-4 w-4" />
               Add
             </Button>
@@ -292,7 +292,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
                   variant={memberType === "internal" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setMemberType("internal")}
-                  className="flex-1"
+                  className="touch-target flex-1"
                   data-testid="button-type-internal"
                 >
                   <User className="h-4 w-4 mr-1" />
@@ -302,7 +302,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
                   variant={memberType === "external" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setMemberType("external")}
-                  className="flex-1"
+                  className="touch-target flex-1"
                   data-testid="button-type-external"
                 >
                   <Building className="h-4 w-4 mr-1" />
