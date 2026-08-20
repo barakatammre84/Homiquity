@@ -139,6 +139,16 @@ coherent push once — one CI cycle, one deploy, one review.
 The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
 discovered trap gets a line here in the same PR.
 
+- **A failed `git push` piped through `tail`/`head` reports SUCCESS.** A shell pipeline exits with
+  the status of its *last* command, so `git push 2>&1 | tail -20` is `0` even when the pre-push gate
+  blocked the push and nothing reached `origin`. Observed independently by two sessions on
+  2026-08-20; one only noticed because a later `git ls-remote` disagreed with what it believed it
+  had pushed. This matters more than it used to: `main` carries no required status check while
+  Actions is down, so the pre-push hook is the only gate, and this masks the one signal that it
+  fired. The hook itself is correct — verified `exit 1` against `origin/main`'s copy. Fix the
+  caller: `set -o pipefail`, read `${PIPESTATUS[0]}`, or do not pipe. **Confirm a push by what is on
+  the remote (`git rev-parse origin/<branch>`), never by an exit code.** Same family as every other
+  entry here — an operation that did not happen while the output says it did
 - **`pnpm db:push` from a worktree** drops other branches' columns on the shared dev DB, and
   `--force` also drops `sessions` (logging out every user); it is an exit-1 stub for that reason
   — [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md).
