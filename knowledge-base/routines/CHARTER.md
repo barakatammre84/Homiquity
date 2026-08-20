@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
+**Last verified against the code:** **§2 and §3/§3a re-verified 2026-08-20** by `/doc-accuracy` (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe) — every other section still carries its 2026-08-18 verification. 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -155,9 +155,9 @@ Each of these killed the previous suite. Probe them; do not trust this table's a
 | Repo | `/Users/ammrebarakat/Developer/Homiquity` | — |
 | Package manager | **pnpm** (`pnpm check`, `pnpm test`, `pnpm test:unit`, `pnpm test:client`, `pnpm test:integration`, `pnpm checkup`, `pnpm guard:*`) | `package.json` scripts |
 | Platform | **Railway** — one Node process serving API + static client. **Vercel is deleted (404).** | `railway.json`, [`runbooks/CICD.md`](../runbooks/CICD.md) |
-| Public host | `https://www.homiquity.com` — the **apex is not on Railway** (Squarespace has no ALIAS/flattening) | `curl -s https://www.homiquity.com/api/health` |
+| Public host | `https://www.homiquity.com` — the **apex is not on Railway** (Squarespace has no ALIAS/flattening) | in a browser only; for a machine probe use the Railway host (row below) |
 | Machine-to-machine host | **`*.up.railway.app`, never `www`** — three cron sweeps died `curl` exit 6 on DNS | `CTO_ROADMAP.md` §2.1 |
-| Deploy proof | **only** the `commit` field of `GET /api/health`. A green check is not a shipped deploy; a failed Railway build leaves the *previous* container serving | `curl -s https://www.homiquity.com/api/health` |
+| Deploy proof | **only** the `commit` field of `GET /api/health`. A green check is not a shipped deploy; a failed Railway build leaves the *previous* container serving. ⚠️ **CI stopped checking this on 2026-08-20** — #608 set `verify-deploy` to `if: false` and `migrate-prod` to `workflow_dispatch`-only, while Railway kept deploying: prod served `d8316ec1` (the `origin/main` tip) at 2026-08-20T22:45Z. Poll it by hand until the jobs are restored | `curl -s https://homiquity-production.up.railway.app/api/health` — **never `www`**, per the row above |
 | NMLS / F1 | **#427468, issued 2026-07-13 — CLEARED.** Lender outreach is live work, not gated work | `shared/companyIdentity.ts` |
 | Docs root | `knowledge-base/` (**not `kb/`**) | — |
 | Regulatory ledger | `data/regulatory/regulatory-ledger.json` (**not `kb/`**) | `pnpm checkup` |
@@ -190,6 +190,7 @@ and the launch/procurement seats reduced to one weekly and one monthly.
 | 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
 | 17:06 | `5 17 * * *` | **Client Journey Walk** (`client-journey-walk`) | daily | no — trace + tickets | one persona walked end to end in a real browser |
+| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
 | Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | organic-file delivery verdict + one field's write path cleared |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state compliance ladder + signature-ready drafts |
@@ -223,8 +224,10 @@ retiring, archived under `~/.claude/scheduled-tasks/_archive/` with a dated note
 - The 09:53 slot went to the Workflow Completion Engine; the daily 12:30 slot to the Feature
   Completion Engine, which is why the Lender Package Gate moved to Monday **18:31**.
 
-Their founding PRs (#589, #607) are unaffected — if they merge, the skills stay available for
-manual `/` invocation.
+Their founding PRs **both merged** — #589 on 2026-08-20T16:25Z, #607 on 2026-08-20T18:11Z — so
+`.claude/skills/complex-file-engine/` and `.claude/skills/move-up-lane/` are on `origin/main` and
+available for manual `/` invocation. Neither is registered in the scheduler, and per §0 a
+definition on disk is still not a routine.
 
 **Two seats changed shape rather than retiring.** The **Launch Gate became Trunk Health**: it keeps
 the gates, the security delta, the regulatory-freshness check and the platform floor, and it drops
@@ -239,7 +242,8 @@ work stops — and vendor lead times still have to start early enough not to be 
 is the instrument for the second half of the founder's directive — *a UX that genuinely serves our
 clients* — and it was the single most misallocated seat in the fleet: weekly, and dead. It now
 inlines its four persona charters so it runs without `JOURNEYS.md`, and defers to that file
-automatically once #607 lands.
+automatically. **`JOURNEYS.md` landed 2026-08-20** — at `feature-review/JOURNEYS.md`, via #595
+(`8260d734`) rather than via #607, which merged the same day.
 
 **Retiring a seat does not retire its rails.** Every prohibition a retired routine carried is
 reproduced verbatim in whatever absorbed its subject. A rail that survives only in an archived
@@ -279,10 +283,11 @@ at [`research/better-teardown/`](../research/better-teardown/)), and `docs/DESIG
 a directory §6 puts off limits to every routine. All three now cite
 [`handbook/design/DESIGN_SYSTEM.md`](../handbook/design/DESIGN_SYSTEM.md) and
 [`feature-review/FINDINGS.md`](../feature-review/FINDINGS.md) — the same sources this fleet uses —
-and probe the Railway host rather than `www`. A fourth, the doc-accuracy steward, cites a skill
-that does not exist at `origin/main` yet; it is written to say so and stop, which is the correct
-shape for a routine whose dependency has not landed. **Changing one fleet means checking the
-other**; the quarterly knowledge audit reads both lists.
+and probe the Railway host rather than `www`. A fourth, the doc-accuracy steward, cited a skill
+that did not exist at `origin/main` when this paragraph was written; **that skill landed
+2026-08-18T20:04Z via #569** (`f7501e07`), and the seat has since moved to the local fleet (§3's
+19:33 row). **Changing one fleet means checking the other**; the quarterly knowledge audit reads
+both lists.
 
 The **Capture Path Engineer** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
@@ -311,14 +316,16 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 | 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
 | 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
 | hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
-| 03:40 / 09:40 / 15:40 / 21:40 | `40 3,9,15,21 * * *` | **Doc Accuracy** (`doc-accuracy`) | every 6 h | yes — living `.md` only (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
+| — *(moved 2026-08-20)* | — | **Doc Accuracy** — **now on the local fleet**, daily 19:33 (`doc-accuracy-daily`, §3). Founder decision 2026-08-20 re-seated it from this fleet's every-6 h cadence so its report lands between the 17:05 Journey Walk and the 21:00 Evening Triage that consumes it. ⛔ **Unverified from this session:** whether the old CCR trigger (`40 3,9,15,21 * * *`) was deleted — no `list_triggers` tool was reachable. Two doc-hygiene routines over one `.md` corpus is the two-truths hazard the retired row below records. | — | — | — |
 
-**Three of these cite a skill that is not on `origin/main` yet** — Doc Accuracy, the UI
-conformance sweep and the Backend Data Engineer each name a founding PR that has not merged. All
-three are written to say exactly that and stop, which is the correct shape for a routine whose
-dependency has not landed; it is still a standing debt, because a routine that cannot act is not a
-control (§0). **Two of them write code** (the other seven are report-, issue- or PR-lane only), so
-§6's territory rows and §5's claim register do real work here rather than being formalities.
+**All three founding skills have since landed** — this paragraph read *"three of these cite a
+skill that is not on `origin/main` yet"* when written on 2026-08-18, and was false by that evening:
+the UI conformance sweep via **#566** (`46006862`, 19:24Z), Doc Accuracy via **#569** (`f7501e07`,
+20:04Z) and the Backend Data Engineer via **#574** (`70598e33`, 21:33Z). Each is verifiable with
+`git cat-file -e origin/main:.claude/skills/<id>/SKILL.md`. The standing debt it named — a routine
+that cannot act is not a control (§0) — is therefore cleared for all three. **Two of them write
+code** (the others are report-, issue- or PR-lane only), so §6's territory rows and §5's claim
+register do real work here rather than being formalities.
 
 A retired row, kept as a deliberate record: a **weekly doc & memory hygiene sweep** (Mon 14:00,
 created 18:11Z) was disabled the same evening on discovering it duplicated Doc Accuracy, which had

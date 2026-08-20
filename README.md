@@ -59,7 +59,7 @@ Two axes of authority:
 | [CTO_ROADMAP.md](CTO_ROADMAP.md) | **The work queue.** The ordered §0–§5 queue. Updated in the same commit that completes an item. |
 | [CLAUDE.md](CLAUDE.md) | Non-negotiable session rules: compliance-first doctrine, architecture ground rules, DB rules. |
 | [handbook/DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md) | The deep engineering map — layers, engines, conventions. |
-| [handbook/app-guide/](knowledge-base/handbook/app-guide/) | The 11-chapter subsystem handbook. Start at [01-start-here](knowledge-base/handbook/app-guide/01-start-here.md). |
+| [handbook/app-guide/](knowledge-base/handbook/app-guide/) | The 12-chapter subsystem handbook. Start at [01-start-here](knowledge-base/handbook/app-guide/01-start-here.md). |
 | [governance/ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) | The fact/assumption register: what is simulated, pending, or verified-when. |
 
 ### Tier 2 — Doctrine (decisions; change deliberately, never casually)
@@ -73,7 +73,7 @@ Two axes of authority:
 | [compliance/REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md) | How statutory constants stay verifiably aligned with official sources. |
 | [compliance/SCENARIO_ARCHITECT.md](knowledge-base/compliance/SCENARIO_ARCHITECT.md) | Operating instructions for scenario/guardian work. |
 | [compliance/SAFE_MLO_COMPLIANCE_MAP.md](knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [compliance/COMPLIANCE_COUNSEL_REVIEW.md](knowledge-base/compliance/COMPLIANCE_COUNSEL_REVIEW.md) | SAFE Act / MLO advertising crosswalk + the standing compliance-counsel review. |
-| [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 5-routine launch suite). |
+| [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's 2026-07-04 pre-launch operating doctrine. **Its 5-routine launch suite is not the live suite** — that suite stopped running on 2026-07-04 and stayed dormant five weeks ([routines/CHARTER.md](knowledge-base/routines/CHARTER.md) §0). The live cadence is CHARTER §3/§3a; read this file for the doctrine behind the routines, never for what runs today. |
 | [docs/fannie-mae/](docs/fannie-mae/) · [docs/nmls/](docs/nmls/) · [docs/nmls-safe/](docs/nmls-safe/) | Official GSE + NMLS reference documents — never work from memory on ULDD/UCD/URLA/MISMO or NMLS licensing. |
 | [handbook/design/DESIGN_SYSTEM.md](knowledge-base/handbook/design/DESIGN_SYSTEM.md) | The design system — tokens, type scale, layout, capture-flow standard, four-question gate. |
 | [compliance/security/threat_model.md](knowledge-base/compliance/security/threat_model.md) | Security threat model. |
@@ -105,11 +105,21 @@ history. Never act on these.
 
 ## Repository ground rules (summary — full rules in CLAUDE.md)
 
-- `main` is production and protected: every merge builds and deploys on Railway (`railway.json`).
-  Land work via short-lived PR branches through the required `gate` check — direct pushes are
-  rejected. A green check is not proof the merge shipped: a failed Railway build leaves the previous
-  container serving, so only the `commit` field of `/api/health` (polled by CI's `verify-deploy`
-  job) proves prod is on your code. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
+- `main` is production, and Railway still builds and deploys every merge (`railway.json`) —
+  observed 2026-08-20: prod `/api/health` served `d8316ec1`, the `origin/main` tip.
+  ⚠️ **But CI no longer proves that.** PR #608 (2026-08-20) paused both prod jobs for local-only
+  development: `verify-deploy` is `if: false` and `migrate-prod` is `workflow_dispatch`-only, so a
+  merged migration is applied **nowhere** and nothing checks that prod advanced. The rule that
+  survives the pause unchanged: a green check is not proof the merge shipped — a failed Railway
+  build leaves the previous container serving, so only the `commit` field of `/api/health` proves
+  prod is on your code. Poll it yourself until CI does again.
+  ⚠️ **Re-measure branch protection before trusting the `gate` check.** `main` carries a
+  protection rule, but `required_status_checks.contexts` read **empty** on 2026-08-20
+  (`gh api repos/barakatammre84/Homiquity/branches/main/protection`) — `enforce_admins: true`
+  over zero required checks binds admins to nothing. Same caveat, same measurement, at
+  [`ci.yml`](.github/workflows/ci.yml) lines 39–45. Land work via short-lived PR branches through
+  the `gate` check regardless; that is doctrine, not something the branch rule is currently
+  enforcing. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
 - `client/` and `server/` never import from each other; both import from `shared/`.
 - Vendor integrations are deterministic simulations behind adapters until real contracts exist.
 - Borrower PII goes through `server/services/encryptionService.ts` / `ssnVault.ts` + audit log.
