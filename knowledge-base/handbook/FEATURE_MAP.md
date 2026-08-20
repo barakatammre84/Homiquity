@@ -695,3 +695,54 @@ What it does:
 - `knowledge-base/feature-review/DOMAINS.md` partitions the same code into 13 **review** domains. These 41
   areas are a refinement of that partition, not a rival taxonomy — when the two disagree, one of them is
   wrong and it is worth finding out which.
+
+---
+
+## For routines: dispatching a fix to the area that owns it
+
+The daily build lanes — **Workflow Completion Engine** (09:53) and **Feature Completion Engine**
+(12:30) — each pick a target, find one gap, and fix it. Before this map existed they had to
+rediscover, every run, which files an area spans, which document is authoritative for it, which
+tests own it, and which traps have already cost somebody a day. All of that is written down here
+and in the owner agent for that area.
+
+> **Both ends of this are wired.** The dispatch block was added to
+> `feature-completion-engine/SKILL.md` and `workflow-completion-engine/SKILL.md` on 2026-08-20.
+> Those definitions live in `~/.claude/scheduled-tasks/`, not in this repo, so this paragraph is
+> the only in-repo record that the wiring exists — and per CHARTER §11 the in-repo contract wins
+> if the two ever disagree. Both engines gate the behaviour on the existence check below, so until
+> this file reaches `origin/main` they run exactly as they did before.
+
+**The rule: walk it yourself, then hand the fix to the owner.**
+
+1. Identify the area the gap actually sits in — the roster table above maps every server file,
+   client page and shared module to exactly one owner.
+2. Invoke that `hq-*-owner` agent with the gap, the evidence, and the file you believe is wrong.
+3. It returns the hand-back block in its §7. Land that as your PR.
+
+The owner arrives already knowing its authority chain, its owned tests, the guards it trips, and
+its dated traps. You keep the walking, the evidence and the PR; it removes the orientation.
+
+**Three things this must not become.**
+
+- **Not an excuse to skip your own rails.** The owner inherits `.claude/agents/_OWNER_RAILS.md`;
+  your routine's rails still bind you. Where they differ, the stricter one wins.
+- **Not a way around a hand-back.** Some areas own files on the always-off-limits list — the PII
+  vault, auth, the three underwriting engines, object storage, outbound messaging,
+  `shared/lib/amortization.ts`, the furnishing gate. When an owner says hand-back, that is the
+  answer. Ship the failing test and the proposal; do not fix it yourself because the owner
+  declined. **An owner refusing to edit is the control working, not an obstacle.**
+- **Not a claim you skipped.** `knowledge-base/routines/REGISTER.md` still decides who may write a
+  file today. A file in another session's open PR is claimed no matter who owns it.
+
+**If this file is not on `origin/main` yet, none of the above applies** — check with
+`git cat-file -e origin/main:knowledge-base/handbook/FEATURE_MAP.md` and fall back to your existing
+`DOMAINS.md` or `WORKFLOWS.md` rotation. A routine that reads a file which does not exist has not
+degraded gracefully; it has failed silently, which is the defect this codebase produces most.
+
+### Coverage, so the rotation can be honest
+
+The roster's **Last reviewed** column is the rotation's oldest-first input. As of 2026-08-19,
+**23 of 41 areas had never been reviewed at all** — review domains 9 through 13 have never run, and
+market data and rent reporting map to no review domain. Those are not low-priority rows; they are
+unmeasured ones. Prefer them when nothing else is urgent, and update the column when you touch one.
