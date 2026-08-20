@@ -300,7 +300,19 @@ PR body (part of the §5.8 contract).
   `server/services/piiVault.ts`, `server/services/encryptionService.ts`, or any
   `shared/schema/` column holding PII.
 - **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`,
-  `server/services/accountRecovery.ts` (mints password-reset tokens).
+  `server/services/accountRecovery.ts` (mints password-reset tokens),
+  `server/services/loginLockout.ts` (per-account brute-force control).
+  *(loginLockout.ts added 2026-08-19. Same shape as the two gaps above — auth-critical
+  code that lives in `services/` rather than on one of the three paths §9 originally
+  named, so `detectTriggers(["server/services/loginLockout.ts"])` returned `[]`. It is
+  §9 for what depends on it, the way `clientIp.ts` is: `authLimiter` in `server/app.ts`
+  caps a **single IP** at 20 auth requests / 15 min, so against a **distributed**
+  credential-stuffing attacker rotating source IPs, `LOCKOUT_THRESHOLD` and the
+  exponential backoff window in this file are the **only** control still applying. A PR
+  raising the threshold or shortening the window touches nothing else, so it would have
+  merged with no security review. The trigger enumerates the two `services/` files by
+  name and must stay that way — `server/services/` as a prefix would fire on most
+  backend PRs, and a guard that over-fires teaches the next author to route around it.)*
 - **Role/permission gates** (`isAdmin`, `requireRole`, staff scoping) and per-resource
   ownership checks on borrower data.
 - **Uploads / object storage:** `server/integrations/object_storage/`, `shared/uploads.ts`.
