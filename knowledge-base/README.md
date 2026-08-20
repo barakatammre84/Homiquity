@@ -137,6 +137,19 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
   verified against `docs/fannie-mae/` or the Loan Delivery job aid — so no later run re-derives one from
   memory. The routine owns CHARTER §1's question A on the data side (§6b).
 
+### Complex File Engine — autonomous complex-file qualification routine · [`complex-file-engine/`](complex-file-engine/)
+The daily local-fleet `/complex-file-engine` run (skill in `.claude/skills/complex-file-engine/`):
+owns the [Universal Adaptation Layer](specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md) — the multi-path
+income orchestrator, situation identification, and tax/document intelligence that let a *messy*
+borrower qualify at all. Judged on one recomputed number, never one quoted from a doc: how many real
+borrower situations the platform can qualify, correctly and citably. It **never** edits the three
+underwriting engine files and **never** changes regulated math — both are written up as proposals
+(CHARTER §6d).
+- [LEDGER.md](complex-file-engine/LEDGER.md) — the `CF-<MMDD>-<NN>` findings queue, plus two
+  append-only sections: **verified-not-a-defect** (things a run went looking for and found already
+  built — the guard against rebuilding an engine a doc calls missing) and **refusals** with the gate
+  that reopens each.
+
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
 The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
 - [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).
