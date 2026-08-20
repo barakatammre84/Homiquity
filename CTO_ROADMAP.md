@@ -57,10 +57,32 @@ anything else in this file being true.
   record the number in [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md). Still unverified
   2026-08-17: the GitHub cron sweeps (every ~20–40 min) keep the compute warm and mask the cold
   start; the first borrower after a real idle window still pays it (#526 E6). **Founder-held.**
+- [ ] 🚨 **KTLO-4. `main` has no gate and still auto-deploys to production. Both halves verified
+  tonight, 2026-08-20T02:19Z.** (a) Branch protection on `main` now reads
+  `required_status_checks.contexts: []` — the `gate` check was deliberately removed today so work
+  could continue through the Actions billing failure (rationale and the restore command are in
+  KTLO-2 as rewritten by [#608](https://github.com/barakatammre84/Homiquity/pull/608), unmerged).
+  (b) The Railway service is **still connected**: `get-service-config` returns
+  `source: {repo: barakatammre84/Homiquity, branch: main, checkSuites: false}`, custom domain
+  `www.homiquity.com` attached, and prod is currently serving `b799b91d` — equal to `origin/main`.
+  `checkSuites: false` means Railway does not wait for CI at all. **Composed, those two facts mean
+  any merge tonight ships straight to a live public site with zero automated verification** — a
+  state neither change created alone and neither PR describes. Close it by doing **one** of:
+  disconnect the Railway GitHub source (the action #608 itself names as the one that actually stops
+  deploys, and the one that matches the local-only direction); or restore the required check once
+  billing is resolved. Until one of them is done, **treat every merge as a production deploy of
+  unverified code** and run `pnpm preflight` locally first. **Founder-held.**
 
 ---
 
 ## §1 Founder-held — blocks go-live
+
+> **Framing note, 2026-08-19 (evening-triage).** Founder direction that day: **development is
+> local-only until the app is fully built and debugged; there is no live launch.** So "blocks
+> go-live" in this section's title now describes a *deferred* event, not this week's deadline —
+> the items are still real, their urgency is not. Ranking below therefore follows CHARTER §1
+> (lender package / borrower experience) rather than proximity to a flip date. §0 still outranks
+> everything: the site is still up and still auto-deploying (KTLO-4).
 
 - [ ] **1.1 Confirm the go-live flip that live probes say already happened.** Prod has served
   ungated public pages since 2026-08-06; re-probed 2026-08-17: `/` and `/api/rates` 200 with no
@@ -103,7 +125,13 @@ anything else in this file being true.
   the UAL §5 halal-lane review · **an ad-imagery / Fair Housing marketing policy — none exists**
   (flagged by `attached_assets/lifestyle/CREDITS.md`) · ratification of
   [MODEL_RISK_GOVERNANCE.md](knowledge-base/governance/MODEL_RISK_GOVERNANCE.md), which both READMEs
-  cite as an authority while it is still marked DRAFT.
+  cite as an authority while it is still marked DRAFT. **Added 2026-08-19 (qa-sweep F-0819-04,
+  counsel Ask 2 — the half a session cannot close):** in a *brokered* transaction, is Homiquity the
+  **creditor** whose federal administering agency belongs on an adverse-action notice
+  (§1002.9(g))? The mechanical half is settled and is a §3 ticket — every notice we generate today
+  names the **CFPB**, while Reg B Appendix A item 9 assigns the **FTC** to a non-depository
+  originator — but which entity is named turns on the creditor question, so the fix is written
+  against your answer, not ahead of it.
 - [ ] **1.8 Regulatory subscriptions + Fannie Developer Portal** (~30 min): Fannie Selling Guide
   notifications (**email is the only Fannie channel** — their page is bot-protected), Freddie Guide
   bulletins, FHA INFO, VA lender news; register for the Developer Portal (public APIs free,
@@ -308,25 +336,98 @@ anything else in this file being true.
   is a schema-valid falsehood (`refer → Approve`, `approve_ineligible → Approve`,
   `amortizationType=adjustable → "Fixed"` all pass `xmllint`). Add an **"emitted == stored"** leg
   to the script *before* re-running it, or the next sweep re-certifies the same package.
-- [ ] **3.23 Kill the orphan dev server on port 5002 and make health honest** (qa-sweep ⛔6,
-  independently re-probed by evening triage). PID **20814** answers `/api/health` `200` from code
-  dated **2026-08-05**, out of worktree `.claude/worktrees/launch-hygiene` which no longer exists,
-  and **its payload carries no `commit` field** — so it cannot be dated from the outside and any
-  routine probing 5002 verifies 12-day-old code and reports a live pass. Kill the process; then
-  consider whether a `/api/health` without `commit` should be a startup error, since the deploy
-  rail's entire proof is that field.
+- [ ] **3.23 ~~Kill the orphan dev server on port 5002~~ — DONE 2026-08-19 — and make health
+  honest** (qa-sweep ⛔6, named in three consecutive reports and closed by none of them).
+  PID **20814** answered `/api/health` `200` from code dated **2026-08-05**, out of worktree
+  `.claude/worktrees/launch-hygiene` which no longer exists, and **its payload carried no `commit`
+  field** — so it could not be dated from the outside and any routine probing 5002 verified
+  15-day-old code and reported a live pass. Evening triage re-probed it
+  (`ps` START `Wed Aug 5 16:08:46 2026`, `--import …/launch-hygiene/node_modules/…`), **killed it,
+  and confirmed the port refuses connections** (`curl` exit 7). Nothing else on 5001/5002 was
+  touched. *Deviation noted: this is ops, not a file edit, so it is outside CHARTER §6's "never
+  edits code paths" rather than against it — recorded here because acting is more honest than
+  re-flagging a defect a fourth time.* **What remains is the durable half:** decide whether a
+  `/api/health` without `commit` should be a startup error, since the deploy rail's entire proof is
+  that field — an orphan that cannot be dated from the outside is what made this cost three runs.
 - [ ] **3.24 A routine can fire and leave no artifact, and the suite reads that as "did not run"**
-  (evening-triage 2026-08-18). Scheduler state was read directly this run: **all ten routines are
-  registered, `enabled`, and carry recurring `cronExpression`s** — no `fireAt` one-shots, and every
-  `nextRunAt` matches its cron in local time. That **closes the 2026-08-17 suspicion** that
-  frontend-wiring-audit and lender-delivery-gate had become unregistered fossils (B-0817-12) and
-  replaces it with a sharper defect: `lender-delivery-gate` has `lastRunAt`
-  **2026-08-17T16:07:13Z** — it *was* dispatched and produced **no report, no branch, no commit**.
-  A routine that dies mid-run is invisible to CHARTER §7's proof-of-life count, which infers
-  "ran" from "wrote a report". Fix: have each routine write a `STATUS: STARTED` stub to
-  `reports/` at orient time so a crash leaves evidence, and have triage compare `lastRunAt`
-  against the report set rather than reading the report set alone. Cheap, and it is the §0 lesson
-  ("a routine that cannot be shown to have run is not a control") applied one level deeper.
+  (evening-triage 2026-08-18, **recurred twice on 2026-08-19 — this is now a pattern, not an
+  incident**). Scheduler state is read directly each run; every registered routine carries a
+  recurring `cronExpression`, no `fireAt` one-shots, and every `nextRunAt` matches its cron. So the
+  defect is not registration, it is evidence: on 2026-08-19 **`primary-engineer` (`lastRunAt`
+  10:21:58Z) and `launch-gate`/Trunk Health (`lastRunAt` 10:48:50Z) were both dispatched and left
+  no report on any branch** — `git ls-tree` over all 60 remote refs finds only the wiring-audit and
+  qa-sweep reports for that date, and no worktree holds an uncommitted one. Same shape as
+  `lender-delivery-gate` on 2026-08-17. Three dispatches, three silent losses, and the day's two
+  build lanes are the ones that vanished. Fix (unchanged, now with a third data point behind it):
+  have each routine write a `STATUS: STARTED` stub to `reports/` at orient time so a crash leaves
+  evidence, and have triage compare `lastRunAt` against the report set rather than reading the
+  report set alone — **triage already does the second half; only the stub is missing.** It is the
+  §0 lesson ("a routine that cannot be shown to have run is not a control") one level deeper.
+- [ ] **3.25 The denial chokepoint fails open, and a green test pins it that way** (qa-sweep
+  F-0819-01, P1 — **the control ECOA compliance on the denial path rests on**).
+  `ensureAdverseActionForDenial` (`server/routes/underwriting/creditAdverseActions.ts:556-561`)
+  de-dupes through `getAdverseActionsByApplication` (`:360-366`), whose entire predicate is
+  `eq(adverseActions.applicationId, applicationId)` — **no `actionType`**. Any pre-existing notice
+  of any type satisfies it, and staff can create a `counteroffer` one (`compliance.ts:861,878`
+  accepts that enum behind `isInternalStaffRole` + deal-team). A file then reaches `denied` with
+  **zero denial notices and no audit entry** — the audit write sits inside `if (aa.created)`, so
+  the bypass is traceless. Fix: scope the de-dup by `actionType`, and **re-fixture
+  `tests/adverseActionFcraChokepoint.test.ts:225-233`**, which today fixtures
+  `[{ id: "aa-preexisting" }]` with no `actionType` and asserts `{ok:true, created:false}` — 12/12
+  green over the bug. Owner: Backend Data Engineer (§6b).
+- [ ] **3.26 A co-applicant's protected-class record can be overwritten with the primary's answers,
+  and the co-borrower is never asked at all** (qa-sweep F-0819-02, P1 — question A *and* the
+  fair-lending join). `server/routes/underwriting/compliance.ts:1310-1312` and `:1348-1350` both
+  `LIMIT 1` with **no `ORDER BY`** and no `borrowerSequenceNumber` key; nondeterminism was
+  reproduced empirically on a same-shape temp table (`after insert → seq=1`; after re-saving seq 1
+  → `seq=2`). Separately `server/routes/dashboard.ts:118-121` measures HMDA completeness by row
+  *presence*, so a two-borrower file reads complete after one answer and the co-borrower is never
+  prompted. Fix: key GET+POST by `borrowerSequenceNumber`, make the completeness check
+  per-borrower, add the missing unique constraint (expand-only, same-PR migration). This is the
+  same single-row-per-application trap that `mismo-coapplicant-model` already documents — **never
+  match by array position.** Owner: Backend Data Engineer (§6b).
+- [ ] **3.27 The §1002.9(a)(1)(i) 30-day clock is not computable — there is no completed-application
+  timestamp** (qa-sweep F-0819-05, P1). Two sites anchor the deadline on the wrong event
+  (`server/services/adverseActionDelivery.ts:148-166`, `server/services/taskEventEmitter.ts:143-151`);
+  the (a)(1)(**ii**) incomplete-application branch is correctly anchored and is *not* the bug. The
+  platform records no "application became complete" moment at all, so the fix needs a column, not a
+  formula. 🚨 **Do not backfill a guessed value onto a compliance/provenance column** — a NULL is an
+  honest gap, a wrong value is a falsified record; if existing rows cannot be anchored truthfully,
+  leave them NULL and report the coverage. Owner: Backend Data Engineer (§6b).
+- [ ] **3.28 Every write on the Homeowner Hub returns 500** (qa-sweep F-0819-03, P1 — the Hub's
+  entire write half). `server/routes/guaranteesHomeowner.ts:134-145` / `:230-243` / `:178-190`;
+  nine live probes: dates-filled → 500, dates-blank → 500, keys-omitted → 201; equity snapshot 500s
+  with `snapshotDate` as both a string and an epoch; refi-alerts with both rates → 201.
+  `DashboardView.tsx:50-51` mounts the two broken sections for **every** profile. Fix: validate
+  `POST /api/homeowner/profile` through `insertHomeownerProfileSchema` and supply `snapshotDate`
+  plus the two rates server-side.
+- [ ] **3.29 The funnel's autosave silently drops three captured answers, and the restore path reads
+  one of them back off a column nothing writes** (wiring-audit 2026-08-19, Break 2). The client
+  sends them, `loanApplicationIntakeUpdateSchema` **validates** them, then the
+  `UPDATABLE_COLUMNS` whitelist in `server/routes/lending/statusDecisions.ts:78-84` discards them —
+  no 400, no log. Two are the VA residual-income inputs; the third,
+  `avoidsInterestFinancing`, is read back by `draftToFormValues`, so the two sides of that wire
+  provably disagree. Fix (patch already written out in the wiring-audit report, with its `parseInt`
+  note): add the three columns, plus a route test that PATCHes all three and reads them back. Then
+  restore the two VA fields in `draftToFormValues` — **or, if the whitelist addition is rejected,
+  delete the `avoidsInterestFinancing` read**, because a line that reads a column nothing writes is
+  worse than an absent one: it makes the round-trip look closed. Owner: Backend Data Engineer
+  (§6b); the client half is the wiring audit's.
+- [ ] **3.30 Adverse-action notices name the wrong federal agency** (qa-sweep F-0819-04, P2 —
+  mechanical half of §1.7's new counsel question). Every notice we generate names the **CFPB**;
+  Reg B Appendix A item 9 assigns the **FTC** to a non-depository originator, and the Appendix
+  forecloses the supervisory-authority defence in its own words. Derive the agency from
+  `shared/companyIdentity.ts` rather than hardcoding it, so the answer moves with the entity —
+  **but the entity to name is counsel's call (§1.7), so build the derivation and leave the value
+  configurable.** Downgraded from P1 in verification: the reasons, the creditor identity and the
+  FCRA attribution are all still correct, and the misdirection is toward an agency that does take
+  mortgage complaints.
+- [ ] **3.31 `feature-review/FINDINGS.md` overstates its own backlog, and every coverage read is
+  distorted by it** (qa-sweep D-0819-04). Ten rows whose status cells say `**FIXED**` sit under
+  `## Open findings`; the visible consequence is that **open P0 read 3 when it is 0**, and three
+  P1 rows still read `open` while their fixes merged 2026-08-18. Move them to `## Closed` in one
+  pass. Pure hygiene — but CHARTER §1 names exactly this hazard, and it cost this run a
+  re-verification to catch. Owner: QA Sweep (it owns that register).
 
 ---
 
