@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| hq-aus-autopilot-owner (implement mode) | `shared/autopilotStatus.ts`, `server/services/autopilot/events.ts`, `client/src/components/AutopilotBanner.tsx`, `tests/autopilotStatus.test.ts`, `client/src/components/AutopilotBanner.test.tsx`, `vitest.config.ts` | aus-autopilot-0820 | feat/aus-autopilot-gap-0820 | 2026-08-20T11:20Z | The borrower banner asserts "Looks good! No issues found." on a file with zero conditions AND when the conditions read throws — an all-clear with no basis. Adding the two states the snapshot can actually support. No overlap with the F-077 claim. |
 | directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); was stacked on #554's branch (now merged as a402bef), cut over to main — PR #556, founder merges |
 
 ## Recently released
