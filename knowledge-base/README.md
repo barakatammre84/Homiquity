@@ -22,6 +22,10 @@ doc-drift bug to fix):
 ## Sections
 
 ### Handbook — how the system is built · [`handbook/`](handbook/)
+- [FEATURE_MAP.md](handbook/FEATURE_MAP.md) — **what has actually been built**: all 41 shipped
+  feature areas, what each does, its key files, and the `hq-*-owner` agent that owns it. Also
+  records which areas have never had a feature review. Start here when the question is "does this
+  exist, and who works on it".
 - [DEVELOPER_PLAYBOOK.md](handbook/DEVELOPER_PLAYBOOK.md) — the map: where code lives, the core
   workflows, the golden rules.
 - [URLA_FORM_REFACTOR_TRAP.md](handbook/URLA_FORM_REFACTOR_TRAP.md) — why the "obviously pure"
@@ -73,6 +77,8 @@ doc-drift bug to fix):
 > The living docs above carry a **Freshness** line (`pnpm guard:docs`). Dated logs under
 > [`logs/`](logs/) deliberately do not — a log is history, not a claim about the present.
 - [SESSION_CLAIMS.md](SESSION_CLAIMS.md) — **stub.** Absorbed into [routines/REGISTER.md](routines/REGISTER.md) on 2026-08-12; retained only so existing links resolve.
+- [routines/feature-coverage/LEDGER.md](routines/feature-coverage/LEDGER.md) — per-area coverage:
+  which of the 41 built feature areas has ever been walked. Seeded with 23 of 41 at `never`.
 - [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
   clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
   · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)
@@ -100,6 +106,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
+- [JOURNEYS.md](feature-review/JOURNEYS.md) — the 4 client-journey charters walked in the browser.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
 The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**

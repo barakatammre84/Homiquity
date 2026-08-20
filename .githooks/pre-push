@@ -51,13 +51,33 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 #
 # So an uninstalled checkout gets a loud, specific warning and the push proceeds;
 # CI still gates the PR. Only real check failures block.
+# It used to SKIP here, on the reasoning above: an uninstalled checkout is a statement
+# about the tooling, not about the code, and CI would gate the PR regardless.
+#
+# The second half of that stopped being true on 2026-08-19. GitHub Actions billing
+# failed — every run now dies in ~2s before a single step — and development moved
+# local-only, so there is no second gate behind this one. A skip is no longer a
+# deferral; it is a push with nothing checked at all. It cost something immediately:
+# PR #608 went up from a fresh worktree with zero checks of any kind, carrying a test
+# this hook would have caught.
+#
+# So this BLOCKS now. The original objection — that a hook must not block for a reason
+# the author cannot act on — does not apply here: the fix is one command, about six
+# seconds in this repo. The thing that must never happen is a silent pass.
 if [ ! -d node_modules ] || ! [ -x node_modules/.bin/vitest ]; then
-  echo "pre-push gate SKIPPED — dependencies are not installed in this checkout"
+  echo
+  echo "push BLOCKED — dependencies are not installed, so nothing can be checked"
   echo "  $(pwd)"
-  echo "  install with: pnpm install --frozen-lockfile"
-  echo "  (a fresh git worktree has no node_modules of its own — expected, not an error)"
-  echo "  CI's gate still runs on the PR; this only skips the local pre-check."
-  exit 0
+  echo
+  echo "  fix (about 6s):  pnpm install --frozen-lockfile"
+  echo
+  echo "  A fresh git worktree has no node_modules of its own. That is expected, but it"
+  echo "  means this gate would run zero checks — and while CI is down there is nothing"
+  echo "  behind it to catch what it missed."
+  echo
+  echo "  If this push genuinely cannot be checked (docs-only branch, rescue push), say"
+  echo "  so deliberately:  git push --no-verify"
+  exit 1
 fi
 
 failed=()
@@ -106,7 +126,8 @@ fi
 
 echo "all green — pushing"
 echo
-echo "  This hook is the CHEAP half. It does not build, does not boot the bundle,"
+echo "  This hook is the CHEAP half — and while CI is down, the ONLY gate."
+echo "  It does not build, does not boot the bundle,"
 echo "  and does not run the integration lane — the three checks that catch a"
 echo "  broken DEPLOY rather than a broken diff. Before opening a PR:"
 echo "      pnpm preflight    # all 16 gate checks, ~3 min"
