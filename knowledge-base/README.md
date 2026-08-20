@@ -77,6 +77,8 @@ doc-drift bug to fix):
 > The living docs above carry a **Freshness** line (`pnpm guard:docs`). Dated logs under
 > [`logs/`](logs/) deliberately do not — a log is history, not a claim about the present.
 - [SESSION_CLAIMS.md](SESSION_CLAIMS.md) — **stub.** Absorbed into [routines/REGISTER.md](routines/REGISTER.md) on 2026-08-12; retained only so existing links resolve.
+- [routines/feature-coverage/LEDGER.md](routines/feature-coverage/LEDGER.md) — per-area coverage:
+  which of the 41 built feature areas has ever been walked. Seeded with 23 of 41 at `never`.
 - [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
   clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
   · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)

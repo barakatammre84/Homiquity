@@ -742,6 +742,11 @@ degraded gracefully; it has failed silently, which is the defect this codebase p
 
 ### Coverage, so the rotation can be honest
 
+The live record is `knowledge-base/routines/feature-coverage/LEDGER.md` — one row per area,
+seeded with **23 of 41 at `never`**. The **Last reviewed** column below is a *domain* date inherited
+from `DOMAINS.md` and is deliberately not treated as an area walk; the ledger explains why.
+
+
 The roster's **Last reviewed** column is the rotation's oldest-first input. As of 2026-08-19,
 **23 of 41 areas had never been reviewed at all** — review domains 9 through 13 have never run, and
 market data and rent reporting map to no review domain. Those are not low-priority rows; they are
