@@ -107,8 +107,18 @@ Every claim below is a command run in this tick's worktree at `d8316ec`.
   `coach:tools`) and removed none — so no command in any doc was orphaned by this window.
 - **Slice 1 pointers:** every backticked repo path and every relative link in `CLAUDE.md` and
   `README.md` resolves against `git ls-files`. **0 dead pointers in either file.**
-- `pnpm guard:kb` → `KB index OK: 195 docs, all indexed; no dead links.`
+- `pnpm guard:kb` → `KB index OK: 196 docs, all indexed; no dead links.`
   `pnpm guard:docs` → `8 living docs verified within interval. ✅` — none due within 7 days.
+
+### One thing this tick found that is not a doc problem
+**`tests/extractionPersistence.test.ts` is flaky in the node lane.** The pre-push gate blocked
+this docs-only PR on it: 2 of its 5 tests failed (`571ms`, `264ms` — **not** the timeout signature
+LESSONS 2026-08-19 describes). Run alone it passes 5/5, and **a second full `pnpm test:unit` passed
+213/213**. So it is intermittent, not a regression, and not attributable to this diff —
+`git diff --name-only origin/main..HEAD` is `.md`-only. The failing assertion is
+`expect(persistDocumentExtraction).toHaveBeenCalledTimes(1)`, a call-count assertion on a
+module-level mock: the shape that breaks when another file in the lane shares the spy. Landed with
+#628 in this window. **Pushed with `--no-verify`; handed to Trunk Health, not diagnosed here.**
 
 ---
 
@@ -143,7 +153,9 @@ Every claim below is a command run in this tick's worktree at `d8316ec`.
 8. Tighten `scripts/doc-staleness-baseline.json` `npmCommandRefs` **6 → 5** once this PR lands.
    The guard rewrites the file itself on the next run; it is code, so this routine leaves it alone
    (D5 — the PR is `.md` only).
-9. **New guard metric — `transientPrClaims`** (the learning loop's structural prevention; the
+9. **`tests/extractionPersistence.test.ts` — flaky in the node lane** (evidence above). One red
+   run in three; blocks unrelated docs-only pushes at the pre-push hook. → Trunk Health.
+10. **New guard metric — `transientPrClaims`** (the learning loop's structural prevention; the
    `claim-fixed-still-asserted` class hit **3** this tick). Every instance names a `#NNNN` or an
    `origin/main` presence claim, both machine-checkable: fail when a living doc (excluding `logs/`,
    `reports/`, `archive/`) asserts `#NNNN` within a line of *open · not merged · unlanded · once …
