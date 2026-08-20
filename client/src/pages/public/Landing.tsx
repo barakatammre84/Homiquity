@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,9 +7,9 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { CoachPromptBar } from "@/components/CoachPromptBar";
-import { Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { Reveal, Stagger, StaggerItem, ScenePauseButton } from "@/components/motion";
 import { Scene } from "@/components/motion/Scene";
-import { getScene, type SceneId } from "@/lib/sceneAssets";
+import { getScene, sceneAssets, type SceneId } from "@/lib/sceneAssets";
 import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -151,6 +152,12 @@ const TRUST_POINTS = [
 export default function Landing() {
   usePageView("/");
 
+  // WCAG 2.2.2: any page whose motion starts on its own and runs past five
+  // seconds owes the visitor a way to stop it, and a loop never ends. One control
+  // governs every scene; it only exists once artwork does.
+  const [scenesPaused, setScenesPaused] = useState(false);
+  const hasScenes = Object.keys(sceneAssets).length > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <SEOHead
@@ -248,6 +255,14 @@ export default function Landing() {
                 Wherever you're starting from
               </h2>
             </Reveal>
+            {hasScenes ? (
+              <div className="mt-6 flex justify-center">
+                <ScenePauseButton
+                  paused={scenesPaused}
+                  onToggle={() => setScenesPaused((p) => !p)}
+                />
+              </div>
+            ) : null}
 
             <Stagger className="mt-12 grid gap-6 sm:grid-cols-2">
               {JOURNEYS.map((journey) => {
@@ -269,6 +284,7 @@ export default function Landing() {
                             poster={scene.poster}
                             video={scene.video}
                             alt={scene.alt}
+                            paused={scenesPaused}
                             className="mb-5 w-full"
                           />
                         ) : (

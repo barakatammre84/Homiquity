@@ -107,3 +107,40 @@ export function StaggerItem({ children, className }: Omit<MotionProps, "delay">)
     </motion.div>
   );
 }
+
+/**
+ * ScenePauseButton — the WCAG 2.2.2 control for a page carrying looping scenes.
+ *
+ * Level A requires a mechanism to pause motion that starts automatically and lasts
+ * over five seconds. A loop lasts forever, so any page with a playing `Scene` owes
+ * the visitor this button. Render it once, near the scenes, not per scene.
+ *
+ * Deliberately a real button with visible text rather than an icon-only control:
+ * the people most likely to need it are the least well served by a glyph they have
+ * to decode.
+ */
+export function ScenePauseButton({
+  paused,
+  onToggle,
+  className,
+}: {
+  paused: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={paused}
+      className={cn(
+        "min-h-11 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground",
+        "transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className,
+      )}
+      data-testid="button-scene-pause"
+    >
+      {paused ? "Play animations" : "Pause animations"}
+    </button>
+  );
+}

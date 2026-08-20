@@ -53,10 +53,21 @@ export interface SceneProps {
    * copying its technique; only the technique was worth taking.
    */
   aspect?: "auto" | "square" | "video";
+  /**
+   * Externally-controlled pause. WCAG 2.2.2 (Pause, Stop, Hide, Level A) requires
+   * a mechanism to stop motion that starts automatically and runs over five
+   * seconds — and a loop runs forever by definition.
+   *
+   * `prefers-reduced-motion` is NOT that mechanism: it only serves people who have
+   * already set an OS preference, and 2.2.2 asks for an in-page control for
+   * everyone else. The page owning the scenes owns the state, so one control can
+   * stop all of them at once rather than each carrying its own button.
+   */
+  paused?: boolean;
   className?: string;
 }
 
-export function Scene({ poster, video, alt, priority = false, aspect = "auto", className }: SceneProps) {
+export function Scene({ poster, video, alt, priority = false, aspect = "auto", paused = false, className }: SceneProps) {
   const reduced = useReducedMotion();
   const ref = React.useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = React.useState(false);
@@ -66,6 +77,12 @@ export function Scene({ poster, video, alt, priority = false, aspect = "auto", c
   React.useEffect(() => {
     const el = ref.current;
     if (!el || reduced) return;
+
+    if (paused) {
+      el.pause();
+      setPlaying(false);
+      return;
+    }
 
     const io = new IntersectionObserver(
       ([entry]) => {
@@ -82,7 +99,7 @@ export function Scene({ poster, video, alt, priority = false, aspect = "auto", c
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [reduced]);
+  }, [reduced, paused]);
 
   return (
     <div
