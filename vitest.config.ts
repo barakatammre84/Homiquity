@@ -225,6 +225,7 @@ export default defineConfig({
       "tests/autopilotAusFollowUps.test.ts",
       "tests/autopilotDecisionRelay.test.ts",
       "tests/autopilotConsole.test.ts",
+      "tests/autopilotStatus.test.ts",
       "tests/riskBrief.test.ts",
       "tests/sensitiveInputGuard.test.ts",
       "tests/licensedStates.test.ts",
