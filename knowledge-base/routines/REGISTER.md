@@ -60,6 +60,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| feature-completion (founder-directed follow-up) | `client/src/pages/education/acceleratorProgram/**` · `client/src/components/app-sidebar.tsx` (aspiring-owner nav only) · `client/src/pages/borrower/RenterHome.tsx` (toolkit only) · `server/routes/borrower/realtorPrograms.ts` (accelerator block) · `shared/acceleratorProgram.ts` | `/Users/ammrebarakat/Developer/wt-accel` | `routine/accelerator-lo-sessions` | 2026-08-20T20:20Z | Founder answered the two ⛔ items from [#632](https://github.com/barakatammre84/Homiquity/pull/632): **yes** to staffing 1:1 sessions — **with a loan officer, and mind the word "coaching"** — and **yes** to opening a door to `/accelerator`. So: the session becomes a *request* a named human confirms rather than a booking the borrower asserts, the borrower-facing copy stops calling it coaching, and the program gets nav entries. The `coaching_sessions` table and the `/api/accelerator/coaching` path keep their names — renaming a table is a contract migration and the wire is not what a borrower reads. |
 | *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
 
 
