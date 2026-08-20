@@ -107,14 +107,14 @@ Each mutation was reverted and the lane returned green.
 
 ```
 pnpm check (tsc --noEmit)   0 errors
-node lane                   206 files · 3021 passed | 1 skipped   (incl. tests/acceleratorProgress.test.ts, 14)
-client lane                 111 files ·  721 passed               (incl. ProgramHeader.test.tsx, 7)
+node lane                   213 files · 3097 passed | 1 skipped   (incl. tests/acceleratorProgress.test.ts, 14)
+client lane                 113 files ·  750 passed               (incl. ProgramHeader.test.tsx, 7)
 guard:tokens                at baseline ✅        guard:querykeys  OK (key + reachability + transport)
-guard:ui                    9 metrics at baseline; §0 table regenerated (110 -> 111 client tests)
+guard:ui                    9 metrics at baseline; §0 table regenerated (112 -> 113 client tests)
 guard:schema                OK                   guard:migrations OK (57, contiguous)
-guard:kb                    172 docs, all indexed guard:docs       ✅
-guard:citations             at baseline ✅        pnpm build       ✓ built in 15.55s
-guard:bundle                eager entry 523,682 raw — 109 bytes UNDER the committed baseline
+guard:kb                    191 docs, all indexed guard:docs       ✅
+guard:citations             at baseline ✅        pnpm build       ✓
+guard:bundle                eager entry 523,895 raw (at baseline, no regression)
 §9 detectTriggers()         []  (over the real diff, via parseChangedLines — CHARTER §10)
 ```
 
@@ -138,6 +138,28 @@ compliance-invariant failure an incident rather than a flake, and the distinctio
 message. All three files pass in isolation (`44 passed`), and none imports anything this PR touches.
 The `security-review-guard: FAIL — CHANGED_FILES is empty` text in that log is the guard's *own test
 fixture* printing its failure copy (its sample path is `server/routes/thing.ts`), not a real trip.
+
+### Rebased onto ten merges, and the conflict that proves the point
+
+`main` moved by **ten PRs** while this run was in flight (#628, #605, #623, #631, #630, #617, #607,
+#619, #598, #624), so the branch went `CONFLICTING`/`DIRTY` — and **GitHub schedules no check-run at
+all for a conflicted PR**, which is why `gh pr checks` reported nothing rather than reporting a
+failure. Resolved by merging `origin/main` into the pushed branch (never a force-push; it is blocked
+here), then reinstalling, because a worktree with stale `node_modules` fakes a red `tsc`.
+
+Both conflicts were the shared-file hazards `REGISTER.md` names, and both resolved additively:
+
+- **`REGISTER.md`** — my released row against three peers' rows landing in the same table position.
+  Kept all four.
+- **`DESIGN_SYSTEM.md` §0** — mine said `111 client test file(s)`, main said `112` (PR #605 added
+  tests too). **Neither side is correct and neither should be chosen**: the number is a measurement,
+  so the resolution is to re-run `pnpm guard:ui --write-table`, which produced `113` = main's 112 +
+  this PR's one. This is the concrete case for the rule *resolve a generated number by regenerating*.
+
+Post-merge, the whole gate was re-run rather than assumed: `tsc` 0, node 213/3097, client 113/750,
+every `guard:*` green, `guard:bundle` 523,895 at baseline, `detectTriggers()` still `[]` over the
+12-file diff against `main`. The 109-byte bundle "improvement" this run declined to claim is gone —
+main's own merges absorbed it, which is the evidence that declining it was right.
 
 **On the bundle baseline:** the guard offered to tighten it by 109 bytes and I reverted that write.
 The delta is not attributable to this change — the accelerator is a lazy route and nothing eager
