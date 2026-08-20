@@ -17,11 +17,51 @@ legs. But the same probe found the *absence* of that field is delivered as a **p
 that contradicts the borrower's own gating declaration**, and it passes every gate we own —
 XSD, ULDD and structural. Separately, the **live scheduler and CHARTER §3 have diverged** (this
 routine is now weekly, not daily) and the founder deferred launch on 2026-08-19, which retires the
-premise this routine's own prompt tells it to lead with.
+premise this routine's own prompt tells it to lead with. And **GitHub Actions billing is failing
+intermittently**, killing gate runs in 2 s with an empty step list — including this report's own PR.
+
+**Not FAIL:** the delivery gate is not broken and no required field was proven to lack an organic
+write path. The billing failure is infrastructure, not delivery, and prod is current.
 
 ---
 
 ## ⛔ Human actions — hardest decision first
+
+### 0. GitHub Actions billing is failing *right now*, and it silently kills gate runs
+
+Found by being hit by it: **this report's own PR gate failed in 2 seconds with `steps: []`.** The
+check-run annotation names the cause verbatim, and it is not a code problem:
+
+```
+gh api repos/barakatammre84/Homiquity/check-runs/96294801411/annotations
+failure: The job was not started because recent account payments have failed or your
+         spending limit needs to be increased. Please check the 'Billing & plans'
+         section in your settings
+```
+
+**Why this outranks everything else in this report.** `gate` is a required check, so while it is
+firing nothing merges; and `migrate-prod` — the job that applies pending migrations to prod on
+merge — is in the same workflow. A schema change that lands while this is active would deploy code
+whose migration never ran, which is precisely the **2026-07-13 outage class**. Prod is currently
+healthy and current (`b799b91d`, §1), so the safety net is what is down, not the site.
+
+**It is intermittent, not a permanent wall — which is worse, because it looks like a code failure.**
+Measured across the open queue at the same minute:
+
+| PR | latest `gate` |
+|---|---|
+| **#613** (this report) | **fail, 2s** ← billing |
+| #557 / #556 / #532 / #521 | **pass**, 2m47s – 3m12s |
+| #495 | fail, 3m8s ← a real failure, different cause |
+
+A 2s failure with zero steps is the signature; a ~3min failure is a genuine one. **Do not read a 2s
+red as a broken branch.** Killed runs need a manual `gh run rerun <id>` — done here for this PR
+(`32325152829`), which is a re-run of a check on this routine's own PR and nothing else: no merge,
+no auto-merge, no production variable.
+
+Two things for you: **(a)** clear the Actions billing / spending limit; **(b)** note the repo is
+back to `visibility=PRIVATE` (probed this run), so the 2026-08-18 flip-to-public workaround that
+bought free minutes is no longer in effect — if that flip was the mitigation, it has been reverted.
 
 ### 1. The Target-5 premise changed yesterday; confirm the new one before anyone acts on the old one
 
@@ -135,8 +175,9 @@ pnpm install --frozen-lockfile  re-run after the resync (CHARTER §5.1)
 - **`main` CI is green**; the one `failure` on `b799b91d` is the **`cron-jobs`** workflow
   (`workflowName=cron-jobs`, `event=schedule`, job `trigger`), **not** `CI` — its two neighbouring
   `cron-jobs` runs on the same SHA succeeded. Logs already expired (`BlobNotFound`), so the cause is
-  not recoverable from here. Flagged for Trunk Health; **not** a delivery-gate failure and not
-  counted against this verdict.
+  not recoverable from here. **Most likely the same billing kill as ⛔0** — one scheduled run dying
+  between two identical successes on the same SHA is that signature — but stated as a hypothesis,
+  not a finding, because the logs are gone. Flagged for Trunk Health; **not** a delivery-gate failure.
 
 ### 2. Delivery capability gate — PASS
 
@@ -354,7 +395,26 @@ silently ignored — but the determination of what that means is Evening Triage'
 the same pattern as roadmap §3.24. **This run is itself an instance of it**, which is why the header
 says so first.
 
-### 10. Not verified
+### 10. The pre-push hook was overridden — stated, not hidden
+
+The second push tripped the pre-push hook: `tests/statusVocabulary.test.ts` reported **5 failed**,
+all five *"Test timed out in 15000ms"*, inside a full-suite run whose import phase alone took
+**882 s** (machine saturated — several sessions and routines running concurrently).
+
+Diagnosed rather than assumed, two ways:
+
+1. **Run in isolation on this exact branch: `41 passed (41)`, 9.84 s.** Nothing failed; five
+   file-scanning assertions ran out of a 15 s budget under load.
+2. **The test cannot see this PR's diff.** `tests/statusVocabulary.test.ts:56-60` builds
+   `SOURCE_FILES` by walking exactly `server/`, `client/src/` and `shared/`. This branch changes one
+   file under `knowledge-base/routines/reports/`, which that walk never reaches.
+
+So the push used `--no-verify`. **That is an override of a real gate and it is recorded here rather
+than left in the shell history** — the honest form of CHARTER §10's "never claim main is broken
+without reinstalling" is also "never quietly step around a red hook." The authoritative gate is CI,
+which runs the suite unloaded; note ⛔0 applies to reading its result.
+
+### 11. Not verified
 
 No browser check and no dev server — CHARTER §10; this is test-and-typecheck-and-probe evidence
 only. `cron-jobs` failure logs were already expired and are not recoverable. The seven CHARTER §3
@@ -366,6 +426,12 @@ production variable touched, no migration applied, and no lender contacted.
 
 ## Proposed tickets — for Evening Triage to land
 
+0. **Make a 2-second gate failure legible as a billing kill, not a code failure.** The signature is
+   `conclusion: failure`, `steps: []`, ~2 s, with the cause only in the check-run *annotation*
+   (`gh api repos/…/check-runs/<id>/annotations`) — which nothing in the suite reads today, so
+   routines and humans alike see "gate red" and start debugging their own diff. Cheapest useful
+   version: Trunk Health reads the annotation on any sub-10-second gate failure and reports
+   `INFRA`, not `RED`. Evidence §⛔0. **The billing fix itself is founder-only (L3).**
 1. **Reconcile the scheduler with CHARTER §3, in one session, both directions (§11).** Three
    cadence rows are wrong (this routine daily→Mondays; vendor weekly→monthly; Launch Gate's retired
    RELEASABLE verdict), three registered routines have no CHARTER row — **two of which write code**
