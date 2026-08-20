@@ -309,6 +309,44 @@
   }
 }
 
+@layer base {
+  /**
+   * Reduced motion — the quality floor, added 2026-08-20.
+   *
+   * Before this the app respected `prefers-reduced-motion` NOWHERE: framer-motion
+   * ran in 8 files, `transition-all duration-150` sat on every interactive atom,
+   * and a visitor who had asked their OS to stop animation got animated anyway.
+   * That is an accessibility defect (WCAG 2.3.3) and it had to be fixed before the
+   * design work adds motion, not after — otherwise every new animation ships
+   * broken for the people most affected by it.
+   *
+   * 🚨 `0.01ms`, NOT `0s`, and not `animation: none`. A zero-length animation may
+   * never fire `animationend` / `transitionend`, and code that waits on those
+   * callbacks then hangs forever — Radix unmount cycles and framer-motion's
+   * `AnimatePresence` both complete on those events. 0.01ms is imperceptible AND
+   * still dispatches, so motion stops without stalling any state machine that
+   * depends on it finishing.
+   *
+   * Deliberately global (`*`) rather than opt-in per component: an opt-in rule is
+   * one every future component author must remember, which is the same failure as
+   * the icon registry (38 concepts, 323 files bypassing it). The floor holds by
+   * default; a component that genuinely needs motion must ask for it explicitly.
+   *
+   * JS-driven animation cannot be reached by CSS. framer-motion's own
+   * `useReducedMotion()` covers that half and is what the motion primitives use.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
 @layer components {
   /**
    * Default card elevation on the authed app surface.
