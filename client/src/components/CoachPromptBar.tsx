@@ -97,7 +97,7 @@ export function CoachPromptBar() {
         <Button
           type="submit"
           size="icon"
-          className="h-11 w-11 shrink-0 rounded-xl"
+          className="h-11 w-11 shrink-0"
           disabled={!question.trim()}
           aria-label="Ask Homi"
           data-testid="button-coach-ask"
