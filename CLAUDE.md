@@ -124,10 +124,13 @@ it. Two things did **not** change:
 - **Conservative in one direction only.** A reading may remove a borrower charge or tighten a gate;
   it may never create the violation it guards against. A verdict that *loosens* a consent,
   disclosure, adverse-action or FCRA gate is a founder decision even when the text supports it.
-  (Worked example: §1026.19(e)(3)(iii)(E) puts property taxes in the no-numeric-tolerance bucket
-  while `shared/compliance/feeTolerance.ts` treats them as zero-tolerance. The code is *stricter*
-  than the rule. It was left alone and recorded in the ledger, because relaxing it is not a
-  verification outcome.)
+  (Worked example: `shared/compliance/feeTolerance.ts` puts every Section C shoppable service in
+  the **zero** bucket rather than the ten-percent one. §1026.19(e)(3)(ii)(C) conditions the
+  ten-percent tier on the creditor permitting the consumer to shop per (e)(1)(vi) — and with no
+  written provider list, that condition cannot be met, so the strict bucket is both correct *and*
+  conservative. Were the written-list feature ever built, moving those lines to ten-percent would
+  **loosen** a disclosure gate, and that is a founder decision even though the text would support
+  it.)
 - **Outside Part 1026, nothing is captured.** Of the 11 ledger entries that cited the 2026-08-04/05
   blocked-network condition, **3 are now verified** (`regz-1026-36d2-dual-compensation`,
   `regz-1026-32b1-points-and-fees-floor`, `trid-1026-19e3-fee-tolerance`, all reset to a 180-day
