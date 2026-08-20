@@ -215,7 +215,7 @@ What it does:
 - **Server** — `server/routes/aus.ts`, `server/services/ausSubmission.ts`, `server/routes/autopilot.ts`, `server/routes/autopilotAdmin.ts`, `server/services/autopilot/`
 - **Client** — `client/src/pages/admin/AutopilotConsole.tsx`, `client/src/components/AutopilotBanner.tsx`, `client/src/hooks/useAutopilotStatus.ts`
 - **Shared / schema** — `shared/schema/autopilot.ts`, `shared/autopilotStatus.ts`
-- **Owned tests** — 4 files, listed in the agent
+- **Owned tests** — 6 files, listed in the agent
 
 ### 10. TRID, disclosures and the Loan Estimate
 
