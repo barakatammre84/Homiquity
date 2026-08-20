@@ -21,6 +21,7 @@
     "checkup": "bash scripts/checkup.sh",
     "reg:watch": "node scripts/regulatory-watch.cjs",
     "reg:watch:save": "node scripts/regulatory-watch.cjs --update-state",
+    "reg:triage": "node scripts/regulatory-triage.cjs",
     "db:generate": "echo 'BLOCKED: drizzle-kit generate has snapshot drift in this repo and emits wrong SQL. Hand-author migrations/NNNN_*.sql + a migrations/meta/_journal.json entry instead \u2014 see CLAUDE.md, Database.' && exit 1",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:adopt": "tsx server/scripts/markMigrationsApplied.ts",
