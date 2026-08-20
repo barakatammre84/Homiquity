@@ -502,7 +502,7 @@ export default function VerificationPage() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 Knowledge-based authentication (KBA) and KYC checks are handled on a separate page.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-2 gap-1" data-testid="button-goto-identity">
+              <Button asChild variant="outline" size="sm" className="touch-target mt-2 gap-1" data-testid="button-goto-identity">
                 <Link href="/identity-verification">
                   Go to Identity Verification
                   <ArrowRight className="h-3 w-3" />

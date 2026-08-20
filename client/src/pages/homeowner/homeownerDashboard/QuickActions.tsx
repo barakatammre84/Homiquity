@@ -38,7 +38,7 @@ export function QuickActions({ profile }: { profile: HomeownerProfile }) {
         <div className="flex gap-2 flex-wrap">
           <Dialog open={balanceDialog} onOpenChange={setBalanceDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" data-testid="button-update-balance">
+              <Button variant="outline" size="sm" className="touch-target" data-testid="button-update-balance">
                 <Wallet className="h-4 w-4 mr-1" /> Update Balance
               </Button>
             </DialogTrigger>
@@ -73,7 +73,7 @@ export function QuickActions({ profile }: { profile: HomeownerProfile }) {
 
           <Dialog open={valueDialog} onOpenChange={setValueDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" data-testid="button-update-value">
+              <Button variant="outline" size="sm" className="touch-target" data-testid="button-update-value">
                 <Building2 className="h-4 w-4 mr-1" /> Update Property Value
               </Button>
             </DialogTrigger>

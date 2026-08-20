@@ -502,7 +502,7 @@ export default function DealRescue() {
 
                   {esc.status !== "resolved" && (
                     <Button
-                      size="sm"
+                      size="sm" className="touch-target"
                       variant="outline"
                       onClick={() => setResolveTarget(esc)}
                       data-testid={`button-resolve-${esc.id}`}

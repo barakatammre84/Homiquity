@@ -64,7 +64,7 @@ export function RentCard({ monthlyRent, onChange }: RentCardProps) {
           </CardTitle>
           <Button
             variant="outline"
-            size="sm"
+            size="sm" className="touch-target"
             onClick={() => fileInputRef.current?.click()}
             disabled={isExtracting}
             data-testid="button-upload-lease"

@@ -236,7 +236,7 @@ export default function LoanOptions() {
             {options.length > 1 && (
               <div className="flex rounded-lg border p-0.5" role="group" aria-label="View mode">
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant={viewMode === "cards" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("cards")}
                   data-testid="button-view-cards"
@@ -244,7 +244,7 @@ export default function LoanOptions() {
                   Cards
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant={viewMode === "compare" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("compare")}
                   data-testid="button-view-compare"

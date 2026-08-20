@@ -89,7 +89,7 @@ export function DebtsCard({ debts, onDebtsChange }: DebtsCardProps) {
           </CardTitle>
           <Dialog open={isDebtDialogOpen} onOpenChange={setIsDebtDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" data-testid="button-add-debts">
+              <Button variant="outline" size="sm" className="touch-target" data-testid="button-add-debts">
                 <Plus className="h-4 w-4 mr-1" />
                 Add Debts
               </Button>
@@ -148,7 +148,7 @@ export function DebtsCard({ debts, onDebtsChange }: DebtsCardProps) {
                   {editingDebtId && (
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-primary">Editing debt</p>
-                      <Button variant="ghost" size="sm" onClick={cancelEditDebt} data-testid="button-cancel-edit-debt">
+                      <Button variant="ghost" size="sm" className="touch-target" onClick={cancelEditDebt} data-testid="button-cancel-edit-debt">
                         Cancel
                       </Button>
                     </div>

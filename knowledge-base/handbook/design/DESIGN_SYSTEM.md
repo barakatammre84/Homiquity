@@ -55,7 +55,7 @@ sites actually use it.
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
 | `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **151** occurrence(s) |
 | `blindSpotPaletteClasses` — palette class in a shape the token guard cannot see | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
-| `subMinTouchTarget` — Button size="sm" (h-9 = 36px) with no .touch-target | ratcheting down | **232** occurrence(s) |
+| `subMinTouchTarget` — Button size="sm" (h-9 = 36px) with no .touch-target | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **62** occurrence(s) |
 
 <!-- END GENERATED -->

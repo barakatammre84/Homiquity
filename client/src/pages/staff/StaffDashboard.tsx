@@ -229,7 +229,7 @@ export default function StaffDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white/10 border-white/20 text-white"
+                className="touch-target bg-white/10 border-white/20 text-white"
                 onClick={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/pipeline/queue"] });
                   queryClient.invalidateQueries({ queryKey: taskKeys.all() });
@@ -527,7 +527,7 @@ export default function StaffDashboard() {
 
                               <div className="flex flex-col gap-1.5 shrink-0">
                                 <Button
-                                  size="sm"
+                                  size="sm" className="touch-target"
                                   variant="outline"
                                   onClick={() => navigate(`/borrower-file/${item.applicationId}`)}
                                   data-testid={`button-view-file-${item.applicationId}`}
@@ -536,7 +536,7 @@ export default function StaffDashboard() {
                                   View
                                 </Button>
                                 <Button
-                                  size="sm"
+                                  size="sm" className="touch-target"
                                   variant="outline"
                                   onClick={() => setComplianceDetailApp(
                                     complianceDetailApp === item.applicationId ? null : item.applicationId

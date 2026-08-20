@@ -234,7 +234,7 @@ export function SubmissionReadinessDialog({
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-start"
+          className="touch-target w-full justify-start"
           data-testid={`submission-readiness-${applicationId}`}
         >
           <Send className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -282,7 +282,7 @@ export function SubmissionReadinessDialog({
                     {stage.key === "aus" && (
                       <div className="mt-2 pl-6">
                         <Button
-                          size="sm"
+                          size="sm" className="touch-target"
                           variant="outline"
                           onClick={() => runAusMutation.mutate()}
                           disabled={runAusMutation.isPending}
@@ -352,7 +352,7 @@ export function SubmissionReadinessDialog({
                             />
                             <div className="flex gap-2">
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 onClick={() => submitLoggedConditions(s.id)}
                                 disabled={logConditionsMutation.isPending || conditionText.trim().length === 0}
                                 data-testid={`save-conditions-${s.id}`}
@@ -360,7 +360,7 @@ export function SubmissionReadinessDialog({
                                 {logConditionsMutation.isPending ? "Saving…" : "Save conditions"}
                               </Button>
                               <Button
-                                size="sm"
+                                size="sm" className="touch-target"
                                 variant="ghost"
                                 onClick={() => {
                                   setLogConditionsFor(null);
@@ -376,7 +376,7 @@ export function SubmissionReadinessDialog({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 px-2 text-xs"
+                            className="touch-target h-7 px-2 text-xs"
                             onClick={() => {
                               setLogConditionsFor(s.id);
                               setConditionText("");

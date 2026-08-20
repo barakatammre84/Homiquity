@@ -89,7 +89,7 @@ export function ActionItemsSection({ applicationId, stillAnalyzing }: ActionItem
             </Badge>
           )}
         </div>
-        <Button asChild variant="ghost" size="sm" data-testid="button-action-items-dashboard">
+        <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-action-items-dashboard">
           <Link href="/dashboard">
             Go to Dashboard
             <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -130,7 +130,7 @@ export function ActionItemsSection({ applicationId, stillAnalyzing }: ActionItem
                   )}
                 </div>
                 <Button asChild
-                    size="sm"
+                    size="sm" className="touch-target"
                     variant={index === 0 ? "default" : "outline"}
                     data-testid={`button-action-item-${item.id}`}
                   >

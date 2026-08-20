@@ -61,7 +61,7 @@ export function StatusUpdateDialog({
   return (
     <Dialog open={statusUpdate.open} onOpenChange={(o) => setStatusUpdate(prev => ({ ...prev, open: o }))}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" data-testid="button-update-status">
+        <Button size="sm" className="touch-target" variant="outline" data-testid="button-update-status">
           <RefreshCw className="mr-1 h-3 w-3" /> Update Status
         </Button>
       </DialogTrigger>
