@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import { format } from "date-fns";
-import type { RefiAlert } from "./types";
+import type { RefiAlert, RefiOpportunityOutcome } from "./types";
 
 export function RefiAlertsSection({ profileId }: { profileId: string }) {
   const queryClient = useQueryClient();
@@ -18,13 +18,53 @@ export function RefiAlertsSection({ profileId }: { profileId: string }) {
     queryKey: ["/api/homeowner/refi-alerts", profileId],
   });
 
-  const generateMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/homeowner/refi-alerts", { homeownerProfileId: profileId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/refi-alerts", profileId] });
-      toast({ title: "Alert Generated", description: "A new refi alert has been created." });
+  // Every reason the server can decline to raise an alert, said plainly. The old
+  // handler took a client-built alert and always reported success; the rates,
+  // the savings figures and the decision are all the server's now, so this
+  // surface reports the outcome instead of assuming one.
+  const NOT_RAISED: Record<
+    Extract<RefiOpportunityOutcome, { created: false }>["reason"],
+    { title: string; description: string }
+  > = {
+    "rate-not-lower": {
+      title: "No savings right now",
+      description: "Market rates aren't far enough below your rate to be worth a refinance today.",
     },
-    onError: () => toast({ title: "Error", description: "Failed to generate alert.", variant: "destructive" }),
+    "open-alert-exists": {
+      title: "You already have this alert",
+      description: "Your open alert already reflects the current market rate.",
+    },
+    "clawback-window": {
+      title: "Too soon to compare",
+      description: "Your loan closed too recently for us to look at refinancing it. We'll keep checking.",
+    },
+    "no-market-rate": {
+      title: "Rates unavailable",
+      description: "We couldn't read current market rates just now. Please try again later.",
+    },
+    "no-note-rate": {
+      title: "We need your rate",
+      description: "Add your current interest rate in Quick Actions so we can compare it to the market.",
+    },
+  };
+
+  const generateMutation = useMutation({
+    mutationFn: async (): Promise<RefiOpportunityOutcome> => {
+      const res = await apiRequest("POST", "/api/homeowner/refi-alerts", {});
+      return (await res.json()) as RefiOpportunityOutcome;
+    },
+    onSuccess: (outcome) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/refi-alerts", profileId] });
+      toast(
+        outcome.created
+          ? {
+              title: "We found a lower rate",
+              description: `Market rates are at ${outcome.marketRate.toFixed(3)}% against your ${outcome.currentRate.toFixed(3)}% — an estimated $${Math.round(outcome.monthlySavings).toLocaleString()}/month before closing costs, subject to credit approval.`,
+            }
+          : NOT_RAISED[outcome.reason],
+      );
+    },
+    onError: () => toast({ title: "Error", description: "Failed to check rates.", variant: "destructive" }),
   });
 
   const dismissMutation = useMutation({
@@ -54,7 +94,7 @@ export function RefiAlertsSection({ profileId }: { profileId: string }) {
           disabled={generateMutation.isPending}
           data-testid="button-generate-alert"
         >
-          <Plus className="h-4 w-4 mr-1" /> Generate Alert
+          <Plus className="h-4 w-4 mr-1" /> Check rates
         </Button>
       </CardHeader>
       <CardContent>
@@ -73,7 +113,7 @@ export function RefiAlertsSection({ profileId }: { profileId: string }) {
         ) : visibleAlerts.length === 0 ? (
           <div className="py-6 text-center">
             <Bell className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No active refi alerts. Generate one to check current rates.</p>
+            <p className="text-sm text-muted-foreground">No refi opportunities right now. Check rates to compare your rate against today's market.</p>
           </div>
         ) : (
           <div className="space-y-3">

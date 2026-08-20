@@ -110,6 +110,7 @@ export default defineConfig({
       "tests/letterIntegrity.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
+      "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeCutoverParity.test.ts",
