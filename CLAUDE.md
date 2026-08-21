@@ -23,18 +23,27 @@ The rules below still bind every session regardless of which skill is active.
 Before building or modifying **anything** that touches Fannie Mae loan delivery, ULDD, UCD,
 URLA, MISMO export, AUS/DU submission, edit codes, or Special Feature Codes:
 
-1. **Consult the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
+1. **Start at the Selling Guide — it is local and greppable.** Edition 08-05-2026 lives at
+   [`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/) as a PDF plus a full text
+   extraction where every page is prefixed `[[PAGE n | <section>]]`. `grep` the text, or look
+   the section up in `section-index.tsv`. **No tooling is required to read it** — do not answer
+   a Fannie policy question from memory when one `grep` settles it.
+2. **Then the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
    spec, UCD job aids, URLA documents, Special Feature Codes). See the README there for the
    expected inventory. If a document you need is missing, say so — do not proceed from memory.
-2. **Verify current terminology against the official Loan Delivery job aid**:
-   <https://singlefamily.fanniemae.com/job-aid/loan-delivery>. Fetch and search it whenever you
-   need current MISMO data point names, valid enumerations, conditionality, edit codes, or SFCs.
-3. **Never invent MISMO field names, enumerations, XML container paths, edit codes, or Special
-   Feature Codes.** If a name or value cannot be verified in the local references or the job
-   aid, stop and flag it rather than guessing.
-4. **Document hierarchy:** the Fannie Mae *Selling Guide* and *Servicing Guide* are the official
+3. **The online Loan Delivery job aid** (<https://singlefamily.fanniemae.com/job-aid/loan-delivery>)
+   is where current MISMO data point names, enumerations, conditionality, edit codes and SFCs
+   are published — but it **returns 403 from this environment**, so treat it as unavailable
+   rather than as a step you can execute. Probe if you like; report the block, don't guess past it.
+4. **Never invent MISMO field names, enumerations, XML container paths, edit codes, or Special
+   Feature Codes.** If a name or value cannot be verified in the local references, stop and flag
+   it rather than guessing.
+5. **Document hierarchy:** the Fannie Mae *Selling Guide* and *Servicing Guide* are the official
    policy statements and control over job aids in any discrepancy. When sources disagree or a
-   requirement is ambiguous, escalate to the user instead of picking an interpretation.
+   requirement is ambiguous, escalate to the user instead of picking an interpretation. The
+   *Selling* Guide half is now checkable in-repo; the *Servicing* Guide is still absent.
+   Findings from scrubbing the code against it:
+   [SELLING_GUIDE_CONFORMANCE.md](knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md).
 
 Where this code lives:
 
@@ -102,11 +111,16 @@ grep -c "lowest total dollar amount of discount points" /tmp/regz.html   # 0 = y
 4. **`govinfo.gov` serves soft 404s** — its CFR *HTML granule* path returns `200` with 44 KB of
    `<title>Page Not Found</title>`. Use the `/pdf/` path. **A 200 is never evidence; grep the body.**
 
-🚨 **The one source this file tells you to fetch is the one actually blocked:** the Fannie Loan
-Delivery job aid (`singlefamily.fanniemae.com/job-aid/loan-delivery`) returns **403**, so the
-compliance instruction above has no executable path in-session — `docs/fannie-mae/` is the only
-Fannie authority that exists. Selling Guide **A2-2-04** and **B3-2-01/B3-2-02** are absent from it and
-have blocked verdicts.
+🚨 **The Fannie job aid is blocked; the Selling Guide no longer is.** The Loan Delivery job aid
+(`singlefamily.fanniemae.com/job-aid/loan-delivery`) returns **403**, so that instruction has no
+executable path in-session. But the claim that once followed it here — that Selling Guide
+**A2-2-04** and **B3-2-01/B3-2-02** were absent and carried blocked verdicts — **stopped being
+true on 2026-08-20**, when the full 08-05-2026 Guide was committed to
+[`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/). All three sections are
+present (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292), verified by body text and not by a page
+count. **This is the same lesson as the Reg Z paragraph above: an availability claim is a thing
+to test, not a thing to assert** — and unlike Reg Z, the fix here was procurement, and it has
+landed. Reg Z's `docs/reg-z/` still holds only a README, so its rail is unchanged.
 
 **The rail is unchanged, and its scope is wider than Reg Z.** Until a captured copy lands in
 `docs/reg-z/`, a Reg Z reading is **flagged in

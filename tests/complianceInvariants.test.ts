@@ -110,7 +110,14 @@ describe("ESIGN / Reg Z: disclosure gates stay wired", () => {
 describe("Guideline traceability: underwriting rules cite their sources", () => {
   it("underwritingNuance cites every governing guideline", () => {
     const source = read("server/services/underwritingNuance.ts");
-    expect(source).toContain("B3-3.2"); // income seasoning
+    // 2026-08-20: was "B3-3.2". The rule assessIncomeSeasoning implements is
+    // Length of Self-Employment — a two-year earnings history, or under two
+    // years where the returns show a full 12 months in the current business.
+    // That lives in B3-3.5-01. B3-3.2-01 is a different topic (verbal VOE and
+    // verifying business existence within 120 days) and never stated this rule,
+    // so the old cite pointed auditors at text that does not contain it.
+    // Verified against docs/fannie-mae/selling-guide/ (08-05-2026 edition).
+    expect(source).toContain("B3-3.5-01"); // income seasoning / length of self-employment
     expect(source).toContain("B3-6-05"); // deferred student loans
     expect(source).toContain("B3-4.2-02"); // large-deposit sourcing (depository accounts)
     expect(source).toContain("B3-4.3-04"); // gift funds resolution path
