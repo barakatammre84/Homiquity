@@ -159,6 +159,29 @@ treatment and the enum is shared across `PRODUCT_TYPES`, so it is deliberately *
 place**; `product_rules` is not seeded or read today. Flagged so no future session wires 0.5%
 into a conventional path.
 
+### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
+
+B2-1.5-01: the conforming limits "vary, depending upon the number of units in the property and
+the property's location." `shared/lendingLimits.ts` carries a single figure — the 2026 one-unit
+baseline, $806,500 — and `underwritingEngine.ts` compares **every** loan against it, while the
+engine's own `CONVENTIONAL_MAX_LTV` matrix supports 2, 3 and 4 units. A conforming 3-unit
+purchase is therefore routed to jumbo MANUAL_REVIEW well below Fannie's 3-unit limit.
+
+Conservative — it is a review, not a decline — but it misroutes legitimately conforming
+multi-unit files. **Not fixable from this document:** the Guide states only that the limits are
+posted on Fannie Mae's website and set by the regulator; it publishes no dollar figures. The
+2–4 unit and high-cost tables must come from FHFA and be entered like any other external
+number, not inferred.
+
+### G-8 — No high-cost / high-balance handling (B2-1.5-01, Chapter B5-1)
+
+The same topic distinguishes baseline limits from **high-cost area** limits, and routes
+high-balance loans to Chapter B5-1 with its own eligibility and delivery requirements. Neither
+the high-cost limits nor the B5-1 overlay is modeled. With launch scoped to Illinois — where
+the relevant counties sit at the baseline — this is latent rather than active, and it becomes
+live the moment a high-cost state (CA is the named next market) is opened. Same procurement
+dependency as G-7.
+
 ### G-6 — Sections revised in the 08-05-2026 release, not yet scrubbed
 
 The PDF's highlights mark this release's revised sections. Those touching engines we have
