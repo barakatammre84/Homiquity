@@ -30,6 +30,8 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
   **revised in that release**.
 - `selling-guide-text.txt` — full text, every page prefixed `[[PAGE n | <section>]]` so a
   plain `grep -n` identifies the governing section. No tooling needed to read it.
+  ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an anchor and reports
+  zero matches on text that is verbatim present. Lines wrap mid-sentence; grep a fragment.
 - `section-index.tsv` — all 554 TOC entries mapped to PDF page.
 - `highlights.json` — the annotations, extracted.
 
