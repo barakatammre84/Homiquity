@@ -49,6 +49,46 @@ import {
 
 export const RESERVES_MONTHS_THRESHOLD = 2;
 
+/**
+ * Fannie Mae Selling Guide B3-4.1-01, Minimum Reserve Requirements (08/07/2024)
+ * — Determining Required Minimum Reserves. For DU loan casefiles DU requires:
+ *
+ *   · two months' reserves for a second home transaction;
+ *   · six months' reserves for a two- to four-unit principal residence, an
+ *     investment property, and a cash-out refinance with a DTI over 45%.
+ *
+ * A one-unit principal residence purchase has no stated DU minimum — the two
+ * months we warn at there is a PLATFORM advisory, not an agency figure, and the
+ * copy says so. The flat two-month threshold that used to apply to every
+ * transaction was the problem in the other direction: it stayed silent for a
+ * two-to-four-unit or investment borrower who was four months short of what
+ * Fannie actually requires.
+ *
+ * The cash-out-refinance leg is not implemented: this function runs on the
+ * purchase intake, which carries a purchase price and down payment and has no
+ * refinance shape. Recorded in SELLING_GUIDE_CONFORMANCE.md (gap G-9).
+ */
+export const RESERVES_MONTHS_MULTI_UNIT_OR_INVESTMENT = 6;
+
+export function requiredReserveMonths(
+  subjectProperty: { numberOfUnits: number | null; occupancyType: string | null } | null | undefined,
+): { months: number; agencyRequired: boolean } {
+  const occupancy = (subjectProperty?.occupancyType ?? "").toLowerCase();
+  const units = subjectProperty?.numberOfUnits ?? 1;
+
+  if (occupancy === "investment" || occupancy === "investment_property") {
+    return { months: RESERVES_MONTHS_MULTI_UNIT_OR_INVESTMENT, agencyRequired: true };
+  }
+  if ((occupancy === "primary_residence" || occupancy === "primary") && units >= 2 && units <= 4) {
+    return { months: RESERVES_MONTHS_MULTI_UNIT_OR_INVESTMENT, agencyRequired: true };
+  }
+  if (occupancy === "second_home") {
+    return { months: RESERVES_MONTHS_THRESHOLD, agencyRequired: true };
+  }
+  // One-unit principal residence, or occupancy not yet declared.
+  return { months: RESERVES_MONTHS_THRESHOLD, agencyRequired: false };
+}
+
 // Assumption used for the reserves estimate before a rate is locked. Matches
 // the funnel's advisory math: 30-year amortization + 1.25%/yr tax & insurance.
 const ASSUMED_ANNUAL_RATE = 0.07;
@@ -84,7 +124,7 @@ export interface PreUwInput {
   employmentType: string | null;
   /** Total balance from the latest completed VOA report; null = not yet verified. */
   verifiedAssetsTotal: number | null;
-  /** Supplementary income sources from intake (seasoning check, B3-3.2). */
+  /** Supplementary income sources from intake (seasoning check, B3-3.5-01). */
   incomeSources?: IncomeSourceEntry[] | null;
   /** Verified liability ledger from the latest soft pull (B3-6-05 math). */
   tradelines?: Tradeline[] | null;
@@ -161,12 +201,17 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
       purchasePrice: price,
       downPayment: down,
     });
-    if (months !== null && months < RESERVES_MONTHS_THRESHOLD) {
+    const reserveRule = requiredReserveMonths(input.subjectProperty);
+    if (months !== null && months < reserveRule.months) {
       const piti = estimateMonthlyPITI(price, down);
       flags.push({
         code: "LOW_RESERVES_WARNING",
         severity: "warning",
-        reason: `Verified assets cover ${months < 0 ? 0 : months.toFixed(1)} months of the estimated housing payment after the down payment — below the ${RESERVES_MONTHS_THRESHOLD}-month reserve guideline.`,
+        reason:
+          `Verified assets cover ${months < 0 ? 0 : months.toFixed(1)} months of the estimated housing payment after the down payment — below the ${reserveRule.months}-month reserve ` +
+          (reserveRule.agencyRequired
+            ? "requirement for this transaction type (Fannie Mae Selling Guide B3-4.1-01)."
+            : "level we look for. Fannie Mae sets no fixed minimum for a one-unit principal residence; this is our own readiness guideline."),
         requiredDocs: [
           {
             documentType: "bank_statement",
@@ -217,7 +262,8 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     });
   }
 
-  // --- Sleeper debt (Fannie B3-6-05): deferred student loans at 1% of balance
+  // --- Sleeper debt (Fannie B3-6-05): deferred student loans at 1% of balance,
+  // revolving lines reporting no minimum payment at the greater of $10 or 5%,
   // plus newly opened tradelines, recomputed against the 43% DTI ceiling. ----
   const income = toNumber(input.annualIncome);
   if (input.tradelines && input.tradelines.length > 0 && !isNaN(income) && income > 0) {
@@ -225,8 +271,23 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     const grossMonthly = income / 12;
     const piti = !isNaN(price) && !isNaN(down) ? estimateMonthlyPITI(price, down) : 0;
     const dti = computeDti(adjustment.adjustedMonthlyDebt, piti, grossMonthly);
-    const hasHiddenDebt =
-      adjustment.deferredStudentLoanImputed > 0 || adjustment.newTradelines.length > 0;
+    // Every contributor that makes the qualifying debt exceed what the borrower
+    // sees on their own statements. Revolving imputation belongs here: it is
+    // already inside adjustedMonthlyDebt (and so inside `dti`), so omitting it
+    // would push a file over the ceiling and then decline to explain why.
+    const hiddenDebtCauses: string[] = [];
+    if (adjustment.deferredStudentLoans.length > 0) {
+      hiddenDebtCauses.push("deferred student loans (qualified at 1% of balance)");
+    }
+    if (adjustment.imputedRevolvingLines.length > 0) {
+      hiddenDebtCauses.push(
+        "revolving lines that report no minimum payment (qualified at 5% of balance)",
+      );
+    }
+    if (adjustment.newTradelines.length > 0) {
+      hiddenDebtCauses.push("recently opened credit lines");
+    }
+    const hasHiddenDebt = hiddenDebtCauses.length > 0;
     if (hasHiddenDebt && dti > STANDARD_DTI_CEILING) {
       const whatIf = computeWhatIfPayoff(
         input.tradelines,
@@ -238,9 +299,7 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
         code: "VERIFIED_DEBT_DTI",
         severity: "warning",
         reason:
-          `Your verified credit file includes ${adjustment.deferredStudentLoans.length > 0 ? "deferred student loans (qualified at 1% of balance)" : ""}` +
-          `${adjustment.deferredStudentLoans.length > 0 && adjustment.newTradelines.length > 0 ? " and " : ""}` +
-          `${adjustment.newTradelines.length > 0 ? "recently opened credit lines" : ""}` +
+          `Your verified credit file includes ${formatList(hiddenDebtCauses)}` +
           ` that raise your qualifying debt-to-income to ${(dti * 100).toFixed(1)}% — above the ${(STANDARD_DTI_CEILING * 100).toFixed(0)}% standard ceiling.` +
           (whatIf
             ? ` Paying off your ${whatIf.creditor} balance of $${Math.round(whatIf.balance).toLocaleString()} before closing would bring it back to ${(whatIf.dtiAfterPayoff * 100).toFixed(1)}%.`
@@ -252,6 +311,8 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
           adjustedDti: Number((dti * 100).toFixed(2)),
           adjustedMonthlyDebt: Number(adjustment.adjustedMonthlyDebt.toFixed(2)),
           deferredImputed: Number(adjustment.deferredStudentLoanImputed.toFixed(2)),
+          revolvingImputed: Number(adjustment.revolvingImputed.toFixed(2)),
+          imputedRevolvingLines: adjustment.imputedRevolvingLines.length,
           newTradelines: adjustment.newTradelines.length,
           ...(whatIf ? { whatIfPayoffBalance: whatIf.balance, whatIfDti: Number((whatIf.dtiAfterPayoff * 100).toFixed(2)) } : {}),
         },
@@ -464,6 +525,12 @@ function flagsHash(flags: PreUwFlag[]): string {
     .slice(0, 16);
 }
 
+/** "a", "a and b", "a, b and c" — used in borrower-facing flag copy. */
+function formatList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 /**
  * Evaluate an application, persist the flags, materialize conditions that
  * need teeth, and notify the borrower once per distinct flag set.
@@ -559,7 +626,7 @@ export async function runPreUnderwriting(
         applicationId,
         category: "assets",
         title: "Reserve Funds Verification",
-        description: `Verified assets fall below the ${RESERVES_MONTHS_THRESHOLD}-month reserve guideline. Provide additional asset statements or gift documentation.`,
+        description: `Verified assets fall below the reserve level required for this transaction. Provide additional asset statements or gift documentation.`,
         priority: "prior_to_docs",
         status: "outstanding",
         requiredDocumentTypes: ["reserves_proof"],
