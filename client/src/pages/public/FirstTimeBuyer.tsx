@@ -141,7 +141,7 @@ export default function FirstTimeBuyer() {
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
-        <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
+        <section className="bg-muted px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-ftb-home">
@@ -337,7 +337,7 @@ export default function FirstTimeBuyer() {
           imageAlt={lifestyleImages.founderNote.alt}
           imagePosition="center 30%"
           reverse
-          className="border-t bg-muted/30"
+          className="bg-muted"
         >
           <p>
             First-time buying comes with unfamiliar words and big decisions. Homiquity walks
@@ -369,7 +369,7 @@ export default function FirstTimeBuyer() {
         </section>
 
         {/* How it works — three steps, all code-true */}
-        <section aria-labelledby="ftb-how-heading" className="px-4 pb-16 sm:px-6 lg:px-8">
+        <section aria-labelledby="ftb-how-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 id="ftb-how-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               How it works
@@ -391,7 +391,7 @@ export default function FirstTimeBuyer() {
         </section>
 
         {/* FAQ — objection handling via progressive disclosure */}
-        <section aria-labelledby="ftb-faq-heading" className="px-4 pb-16 sm:px-6 lg:px-8">
+        <section aria-labelledby="ftb-faq-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <h2 id="ftb-faq-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               Common questions

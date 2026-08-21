@@ -110,7 +110,7 @@ export default function Refinance() {
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
-        <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
+        <section className="bg-muted px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-refi-home">
@@ -382,7 +382,7 @@ export default function Refinance() {
           image={lifestyleImages.founderNote.src}
           imageAlt={lifestyleImages.founderNote.alt}
           imagePosition="center 30%"
-          className="border-t bg-muted/30"
+          className="bg-muted"
         >
           <p>
             Lowering your payment is one reason to refinance. Shortening your term,
@@ -444,7 +444,7 @@ export default function Refinance() {
         </section>
 
         {/* FAQ — objection handling via progressive disclosure */}
-        <section aria-labelledby="refi-faq-heading" className="px-4 pb-16 sm:px-6 lg:px-8">
+        <section aria-labelledby="refi-faq-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <h2 id="refi-faq-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               Common questions
