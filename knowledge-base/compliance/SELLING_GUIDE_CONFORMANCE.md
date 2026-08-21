@@ -25,6 +25,13 @@ Every page in `selling-guide-text.txt` is prefixed `[[PAGE n | <section>]]`, so 
 `grep -n` for any phrase tells you which section states it. Regenerate the text and index
 after dropping in a newer edition with `python3 scripts/extract-selling-guide.py`.
 
+⚠️ **Use `grep -F` for any phrase containing `$`.** BSD grep (the macOS default) treats the
+`$` in `greater of $10 or 5%` as an anchor and returns **zero matches on text that is
+verbatim present** — a false "the Guide doesn't say that", which is the worst possible failure
+mode for a source-of-truth document. `grep -cF` on the same phrase returns 1. Extraction
+artifacts also wrap lines mid-sentence, so a long quotation may legitimately span two lines:
+grep a distinctive fragment, not a whole sentence.
+
 `highlights.json` carries the 175 highlight annotations from the source PDF. In this
 edition they mark the sections **revised in the 08-05-2026 release** — treat it as the
 change list, not as commentary.
