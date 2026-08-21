@@ -136,12 +136,59 @@ const storageStub = {
   getLoanApplication: async () => undefined,
 } as any;
 
-/** The fire-and-forget extraction is not awaited by the handler. */
-async function settleBackgroundExtraction() {
-  for (let i = 0; i < 20 && h.updates.length === 0; i++) {
-    await new Promise((r) => setTimeout(r, 10));
+// ---------------------------------------------------------------------------
+// SYNCHRONISING ON A FIRE-AND-FORGET SIDE EFFECT
+//
+// The route answers 201 as soon as the document ROW exists; extraction runs
+// unawaited after that ("the record is created either way; extraction enriches
+// it in the background"). So `await fetch(...)` is a barrier for the response
+// and for nothing else.
+//
+// Nor do the extraction's side effects land together. `applyExtractionToDocument`
+// writes the document FIRST, and calls `persistDocumentFacts` and
+// `wireExtractionToReadiness` after it, each behind a dynamic import. Waiting on
+// `h.updates` therefore released the test at step 1 of 3 — and under parallel
+// load the later steps had not run yet (0 calls), then landed inside the NEXT
+// test, which counted them as its own (2 calls). One race, seen from both ends.
+//
+// So: wait for the side effect the assertion is actually about, and let every
+// test wait for the WHOLE extraction to settle before it ends — a straggler
+// that outlives its test is exactly what leaks into the next one. Never a fixed
+// sleep, and never a raised call count: both only move the flake.
+// ---------------------------------------------------------------------------
+
+/**
+ * Polls until nothing is outstanding. On timeout it throws naming what never
+ * arrived, so a real regression reads as the missing side effect rather than as
+ * a bare "expected 1 call, got 0" a page away from its cause.
+ */
+async function waitFor(pending: () => string[], timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const outstanding = pending();
+    if (outstanding.length === 0) return;
+    if (Date.now() > deadline) {
+      throw new Error(`extraction never settled within ${timeoutMs}ms — still missing: ${outstanding.join(", ")}`);
+    }
+    await new Promise((r) => setTimeout(r, 5));
   }
 }
+
+/** Every side effect of a high-confidence read has landed. */
+const settleExtraction = () =>
+  waitFor(() => [
+    ...(h.updates.length > 0 ? [] : ["the document update"]),
+    ...(persistDocumentFacts.mock.calls.length > 0 ? [] : ["persistDocumentFacts (F-028)"]),
+    ...(wireExtractionToReadiness.mock.calls.length > 0 ? [] : ["wireExtractionToReadiness (F-030)"]),
+  ]);
+
+/**
+ * A low-confidence read returns immediately after recording itself on the
+ * document, so that update IS its last side effect — there is no later call to
+ * wait for, which is the very thing the test then asserts.
+ */
+const settleLowConfidenceExtraction = () =>
+  waitFor(() => (h.updates.length > 0 ? [] : ["the low-confidence read being recorded on the document"]));
 
 describe("POST /api/documents/upload — the borrower's upload keeps what the model read", () => {
   let server: import("node:http").Server;
@@ -191,7 +238,7 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
   it("persists the extracted VALUES, not just the field names", async () => {
     const res = await upload();
     expect(res.status).toBe(201);
-    await settleBackgroundExtraction();
+    await settleExtraction();
 
     expect(
       persistDocumentFacts,
@@ -209,7 +256,7 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
 
   it("credits the readiness fields the values support", async () => {
     await upload();
-    await settleBackgroundExtraction();
+    await settleExtraction();
 
     expect(
       wireExtractionToReadiness,
@@ -222,7 +269,7 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
 
   it("records model and prompt lineage on the document, as the staff path does", async () => {
     await upload();
-    await settleBackgroundExtraction();
+    await settleExtraction();
 
     expect(h.updates).toHaveLength(1);
     const { patch } = h.updates[0];
@@ -242,7 +289,7 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
 
   it("still refuses to self-verify: extraction stages, a human disposes (MR-2)", async () => {
     await upload();
-    await settleBackgroundExtraction();
+    await settleExtraction();
 
     // humanReviewRequired=false is the *clear* case, and even then the highest
     // status extraction may reach is "verifying".
@@ -258,7 +305,7 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
     });
 
     await upload();
-    await settleBackgroundExtraction();
+    await settleLowConfidenceExtraction();
 
     expect(persistDocumentFacts).not.toHaveBeenCalled();
     expect(wireExtractionToReadiness).not.toHaveBeenCalled();
