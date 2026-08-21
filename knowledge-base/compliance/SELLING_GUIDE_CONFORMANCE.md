@@ -57,6 +57,10 @@ Checked against the 08-05-2026 text; code agrees. Re-verify on the next edition.
 | Allowable age of credit documents | B1-1-03 | reference only | four months on the note date |
 | Lease payments always count | B3-6-05 | `assessLiabilities` | regardless of months remaining |
 | Deferred student loan | B3-6-05 | `DEFERRED_STUDENT_LOAN_FACTOR` | 1% of balance |
+| Rental income from lease / Form 1007 / 1025 | B3-3.8-01 | `income/paths/rental.ts` | 75% of gross rent, net of each property's own PITIA |
+| Rental section renumbering | B3-3.8-01 (was B3-3.1-08) | cited in `rental.ts` | current cite, renumbering tracked |
+| Reserves, second home | B3-4.1-01 | `requiredReserveMonths()` | 2 months |
+| Reserves, 2–4 unit primary / investment | B3-4.1-01 | `requiredReserveMonths()` | 6 months |
 
 Deliberate conservative overlays, already carried in
 [`data/regulatory/regulatory-ledger.json`](../../data/regulatory/regulatory-ledger.json)
@@ -110,6 +114,35 @@ Corrected in the module and in the `complianceInvariants` assertion that had pin
 cite. The rule's behaviour was already correct; only the audit trail pointed at text that did
 not contain it.
 
+### C-4 — Reserve warnings used one flat threshold for every transaction type
+
+**B3-4.1-01, Determining Required Minimum Reserves.** For DU casefiles: two months for a
+second home; **six months** for a two- to four-unit principal residence, an investment
+property, and a cash-out refinance with DTI over 45%.
+
+Pre-underwriting warned at a flat two months for everything, which is wrong in both
+directions at once:
+
+- **Too lenient** where it matters. A borrower buying a three-unit primary or an investment
+  property with three months of reserves cleared the bar silently while sitting four months
+  short of what Fannie requires.
+- **Over-attributed** where it does not. Fannie states no fixed DU minimum for a one-unit
+  principal residence, yet the copy told those borrowers they were "below the 2-month reserve
+  guideline" — presenting a platform preference as an agency rule.
+
+`requiredReserveMonths()` now tiers by occupancy and unit count, and the borrower-facing copy
+cites B3-4.1-01 only where the requirement is genuinely Fannie's, naming it "our own readiness
+guideline" otherwise. `subjectProperty` already carried units and occupancy, so no schema
+change was needed.
+
+### C-5 — The revolving imputation was counted but not explained
+
+Adding C-1 put the imputed revolving payment inside `adjustedMonthlyDebt`, and therefore
+inside the DTI compared against the ceiling — but `hasHiddenDebt` still recognised only
+deferred student loans and newly opened lines. A file pushed over the ceiling *purely* by the
+imputation would have been held there with no flag and no explanation: the same silent-success
+shape the fix was meant to remove. The cause list now includes it and the copy names it.
+
 ---
 
 ## Open gaps — recorded, not silently assumed
@@ -158,6 +191,13 @@ option — B3-6-05 offers 1% or a documented fully amortizing payment. It is a l
 treatment and the enum is shared across `PRODUCT_TYPES`, so it is deliberately **left in
 place**; `product_rules` is not seeded or read today. Flagged so no future session wires 0.5%
 into a conventional path.
+
+### G-9 — The cash-out-refinance reserve leg is unimplemented (B3-4.1-01)
+
+B3-4.1-01's six-month requirement also covers "a cash-out refinance transaction with a DTI
+ratio greater than 45%". `derivePreUnderwritingFlags` runs on the purchase intake — it carries
+a purchase price and a down payment and has no refinance shape — so that leg cannot fire. It
+is not wrong today; it becomes a gap the moment refinance files enter pre-underwriting.
 
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 

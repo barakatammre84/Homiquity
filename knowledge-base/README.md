@@ -55,7 +55,7 @@ doc-drift bug to fix):
   · [SAFE_MLO_COMPLIANCE_MAP.md](compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [COMPLIANCE_COUNSEL_REVIEW.md](compliance/COMPLIANCE_COUNSEL_REVIEW.md)
 - [LAUNCH_COUNSEL_PACKET.md](compliance/LAUNCH_COUNSEL_PACKET.md) — the four counsel asks that gate the go-live flip (sendable as-is)
 - [NTHLA_609G_SPEC.md](compliance/NTHLA_609G_SPEC.md) — FCRA §609(g) Notice to Home Loan Applicant: absent today, hard-blocking for F3, and the per-bureau data the credit-vendor contract must deliver
-- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, now committed at [`docs/fannie-mae/selling-guide/`](../docs/fannie-mae/selling-guide/) and greppable without tooling). Verified-conforming table, the three corrections landed 2026-08-20, and eight recorded gaps resolved conservatively rather than assumed
+- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, now committed at [`docs/fannie-mae/selling-guide/`](../docs/fannie-mae/selling-guide/) and greppable without tooling). Verified-conforming table, the five corrections landed 2026-08-20, and nine recorded gaps resolved conservatively rather than assumed
 - [security/threat_model.md](compliance/security/threat_model.md)
 
 ### SOP Manual — written operating procedures (DRAFT) · [`sop/`](sop/)

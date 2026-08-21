@@ -14,6 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { assessLiabilities } from "../server/underwriting";
 import { adjustLiabilities } from "../server/services/underwritingNuance";
+import { derivePreUnderwritingFlags } from "../server/services/preUnderwriting";
 import type { UrlaLiability } from "@shared/schema";
 
 const liability = (over: Partial<UrlaLiability>): UrlaLiability =>
@@ -144,5 +145,103 @@ describe("B3-6-05 branch reachability", () => {
       liability({ liabilityType: "auto_loan", unpaidBalance: "15000", monthlyPayment: "420" }),
     ]);
     expect(r.totalMonthlyPayment).toBe(420);
+  });
+});
+
+describe("B3-6-05 imputation must be explained, not just counted", () => {
+  // adjustedMonthlyDebt now includes the revolving imputation, so it can push a
+  // file over the DTI ceiling on its own. If the flag's cause list does not
+  // recognise it, the borrower is held over the ceiling with no explanation —
+  // the silent-success class this codebase keeps re-learning.
+  const base = {
+    annualIncome: "90,000",
+    purchasePrice: "500,000",
+    downPayment: "100,000",
+    employmentType: "employed",
+    verifiedAssetsTotal: 400_000,
+  };
+
+  it("flags and names the revolving imputation when it alone breaches the ceiling", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...base,
+      tradelines: [
+        // No deferred student loan, no newly opened line — the imputation is the
+        // only thing pushing this file over 43%.
+        { creditor: "Big Card", type: "revolving", balance: 30_000, monthlyPayment: 0 },
+      ],
+    } as Parameters<typeof derivePreUnderwritingFlags>[0]);
+
+    const dtiFlag = flags.find((f) => f.code === "VERIFIED_DEBT_DTI");
+    expect(dtiFlag, "revolving imputation breached the ceiling but raised no flag").toBeDefined();
+    expect(dtiFlag!.reason).toContain("revolving lines that report no minimum payment");
+    expect(dtiFlag!.metrics?.revolvingImputed).toBe(1500); // 5% of 30,000
+  });
+
+  it("does not flag when the revolving line reports its own minimum", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...base,
+      tradelines: [
+        { creditor: "Big Card", type: "revolving", balance: 30_000, monthlyPayment: 150 },
+      ],
+    } as Parameters<typeof derivePreUnderwritingFlags>[0]);
+    expect(flags.find((f) => f.code === "VERIFIED_DEBT_DTI")).toBeUndefined();
+  });
+});
+
+describe("B3-4.1-01 Determining Required Minimum Reserves", () => {
+  // "Two months' reserves for a second home transaction. Six months' reserves
+  // for the following: a two- to four-unit principal residence transaction, an
+  // investment property transaction, and a cash-out refinance transaction with
+  // a DTI ratio greater than 45%."
+  const base = {
+    annualIncome: "200,000",
+    purchasePrice: "500,000",
+    downPayment: "100,000",
+    employmentType: "employed",
+  };
+
+  // ~$3.2k PITI. $110k verified − $100k down = $10k ≈ 3.1 months: clears a
+  // 2-month bar, fails a 6-month one.
+  const threeMonthsOfReserves = { ...base, verifiedAssetsTotal: 110_000 };
+
+  it("requires six months on a 2-4 unit principal residence", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...threeMonthsOfReserves,
+      subjectProperty: { numberOfUnits: 3, occupancyType: "primary_residence", estimatedMarketRent: null },
+    } as Parameters<typeof derivePreUnderwritingFlags>[0]);
+    const flag = flags.find((f) => f.code === "LOW_RESERVES_WARNING");
+    expect(flag, "three months of reserves on a 3-unit primary should breach B3-4.1-01's six").toBeDefined();
+    expect(flag!.reason).toContain("6-month");
+    expect(flag!.reason).toContain("B3-4.1-01");
+  });
+
+  it("requires six months on an investment property", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...threeMonthsOfReserves,
+      subjectProperty: { numberOfUnits: 1, occupancyType: "investment", estimatedMarketRent: null },
+    } as Parameters<typeof derivePreUnderwritingFlags>[0]);
+    expect(flags.find((f) => f.code === "LOW_RESERVES_WARNING")).toBeDefined();
+  });
+
+  it("requires only two months on a second home", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...threeMonthsOfReserves,
+      subjectProperty: { numberOfUnits: 1, occupancyType: "second_home", estimatedMarketRent: null },
+    } as Parameters<typeof derivePreUnderwritingFlags>[0]);
+    expect(flags.find((f) => f.code === "LOW_RESERVES_WARNING")).toBeUndefined();
+  });
+
+  // Fannie states no fixed DU minimum for a one-unit principal residence, so our
+  // two-month bar there must not be dressed up as an agency requirement.
+  it("labels the one-unit primary threshold as ours, not Fannie's", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...base,
+      verifiedAssetsTotal: 101_000,
+      subjectProperty: { numberOfUnits: 1, occupancyType: "primary_residence", estimatedMarketRent: null },
+    } as Parameters<typeof derivePreUnderwritingFlags>[0]);
+    const flag = flags.find((f) => f.code === "LOW_RESERVES_WARNING");
+    expect(flag).toBeDefined();
+    expect(flag!.reason).toContain("our own readiness guideline");
+    expect(flag!.reason).not.toContain("B3-4.1-01");
   });
 });
