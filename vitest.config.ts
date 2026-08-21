@@ -137,6 +137,10 @@ export default defineConfig({
       "tests/lifecycleEngine.test.ts",
       "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
+      // Pins the DTI debt-summation rules to Selling Guide B3-6-05 / B3-6-07.
+      // Every rule here previously sat on a branch the liability vocabulary
+      // could not reach, so it never ran and the suite stayed green.
+      "tests/sellingGuideMonthlyDebt.test.ts",
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
