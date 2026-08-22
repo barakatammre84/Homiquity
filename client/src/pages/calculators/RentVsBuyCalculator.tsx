@@ -171,7 +171,7 @@ export default function RentVsBuyCalculator() {
                 <div>
                   <Label>
                     Down Payment: {inputs.downPaymentPercent}% (
-                    {formatCurrency((inputs.homePrice * inputs.downPaymentPercent) / 100)})
+                    {formatCurrency((Math.max(0, inputs.homePrice) * inputs.downPaymentPercent) / 100)})
                   </Label>
                   <Slider
                     value={[inputs.downPaymentPercent]}

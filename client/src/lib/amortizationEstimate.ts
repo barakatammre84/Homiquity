@@ -85,7 +85,15 @@ export function simulate(
 }
 
 export function calculate(inputs: AmortizationInputs): AmortizationResults {
-  const { loanAmount, interestRate, loanTermYears, extraMonthly } = inputs;
+  const { interestRate, loanTermYears } = inputs;
+  // Clamp the money inputs at this boundary. Neither number input on the page
+  // carries a `min`, and a negative loan slipped straight through: `simulate`
+  // exits its `balance > 0.01` loop on the first test, so totalInterest came
+  // back 0 and `totalPaid` rendered the raw negative — "-$100,000 total paid".
+  // Clamped here rather than inside `simulate`, which is exported and
+  // characterization-tested as a lower-level primitive; its contract is unchanged.
+  const loanAmount = Math.max(0, inputs.loanAmount);
+  const extraMonthly = Math.max(0, inputs.extraMonthly);
   const numPayments = loanTermYears * 12;
   const monthlyRate = interestRate / 100 / 12;
   const monthlyPayment = monthlyPI(loanAmount, interestRate, numPayments);
