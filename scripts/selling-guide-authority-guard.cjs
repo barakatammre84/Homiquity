@@ -188,13 +188,35 @@ function detectTriggers(files) {
   return hit;
 }
 
+/**
+ * How far back to look for a historical marker. A renumbering note is routinely written across
+ * a wrapped comment —
+ *
+ *     // --- Multi-unit subject property rental income (Fannie B3-3.8-01, formerly
+ *     // B3-3.1-08): 75% of appraisal market rent is ADDED to qualifying income;
+ *
+ * — so a strictly line-local check flags the second line and calls a correctly-annotated
+ * citation a wrong one. Found by auditing the existing tree: two of the five "stale" hits were
+ * this shape. An over-firing guard trains route-arounds, which is worse than a narrower one.
+ */
+const MARKER_LOOKBACK_LINES = 2;
+
 /** Every section id on an ADDED line, minus lines flagged as deliberate history. */
 function findCitations(changedLines) {
   const out = [];
-  for (const entry of changedLines) {
+  for (let i = 0; i < changedLines.length; i++) {
+    const entry = changedLines[i];
     if (!entry.added) continue;
     if (CITATION_FIXTURE_FILES.has(entry.file)) continue;
-    if (HISTORICAL_MARKER.test(entry.line)) continue;
+    // The marker may sit on this line or on a wrapped comment line just above it, in the
+    // same file. Anything further away is a different statement, not a continuation.
+    let marked = HISTORICAL_MARKER.test(entry.line);
+    for (let b = 1; !marked && b <= MARKER_LOOKBACK_LINES; b++) {
+      const prev = changedLines[i - b];
+      if (!prev || prev.file !== entry.file) break;
+      if (HISTORICAL_MARKER.test(prev.line)) marked = true;
+    }
+    if (marked) continue;
     for (const m of entry.line.matchAll(SG_ID)) {
       out.push({ id: m[1], file: entry.file, line: entry.line.trim() });
     }

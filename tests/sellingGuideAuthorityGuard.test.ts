@@ -175,3 +175,40 @@ describe("the fixture exemption", () => {
     expect(unknown).toHaveLength(1);
   });
 });
+
+describe("historical markers across wrapped comments", () => {
+  it("exempts a continuation line whose marker sits on the line above", () => {
+    // The real shape in preUnderwriting.ts and rental.ts: the renumbering note wraps, so the
+    // id lands on the second line. A line-local check called these wrong citations.
+    const diff = [
+      "+++ b/server/services/preUnderwriting.ts",
+      "+  // --- Multi-unit subject property rental income (Fannie B3-3.8-01, formerly",
+      "+  // B3-3.1-08): 75% of appraisal market rent is ADDED to qualifying income;",
+    ].join("\n");
+    const { unknown } = resolveIds(findCitations(parseChangedLines(diff)), INDEX);
+    expect(unknown).toHaveLength(0);
+  });
+
+  it("does NOT let a marker leak across files", () => {
+    const diff = [
+      "+++ b/a.ts",
+      "+// formerly something",
+      "+++ b/b.ts",
+      "+// per B3-3.1-08",
+    ].join("\n");
+    const { unknown } = resolveIds(findCitations(parseChangedLines(diff)), INDEX);
+    expect(unknown.map((c: { id: string }) => c.id)).toEqual(["B3-3.1-08"]);
+  });
+
+  it("does NOT exempt a stale id far below an unrelated marker", () => {
+    const diff = [
+      "+++ b/a.ts",
+      "+// formerly B3-3.1-08 was here",
+      "+const x = 1;",
+      "+const y = 2;",
+      "+// per B3-3.1-08",
+    ].join("\n");
+    const { unknown } = resolveIds(findCitations(parseChangedLines(diff)), INDEX);
+    expect(unknown).toHaveLength(1);
+  });
+});
