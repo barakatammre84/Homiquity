@@ -295,6 +295,9 @@ export default defineConfig({
       // Selling Guide matrix.
       "tests/incomeSourceRequirements.test.ts",
       "tests/documentsOutstandingContract.test.ts",
+      // A file can grow requirements after intake once they derive from the
+      // SET of income sources; staff see that rather than meeting it at submission.
+      "tests/requirementsWidenedSignal.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
