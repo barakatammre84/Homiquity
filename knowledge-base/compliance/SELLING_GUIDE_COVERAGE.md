@@ -15,7 +15,7 @@ find*. Deliberate overlays we run stricter than the Guide live in
 
 ## Where we stand
 
-**93 of 423 sections have been looked at (22%).**
+**95 of 423 sections have been looked at (22%).**
 The rest are `unreviewed` — not a backlog someone forgot, but the honest measure of how much of
 the book has never been checked against this codebase. Domain Oracle works this map down daily,
 sampling **randomly as well as by suspicion**, because a queue worked only by what someone already
@@ -23,18 +23,18 @@ worried about measures nothing about the rest (D1-1-01).
 
 | Status | Sections | Meaning |
 |---|---:|---|
-| ✅ implemented | 9 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
-| 🟡 partial | 10 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
+| ✅ implemented | 10 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
+| 🟡 partial | 11 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
 | ❌ absent | 6 | The Guide states a rule that binds us and no code implements it. |
 | ➖ n/a | 68 | The section governs a function Homiquity does not perform as a broker. Reason required. |
-| · unreviewed | 330 | Nobody has looked. The default. |
+| · unreviewed | 328 | Nobody has looked. The default. |
 
 ## By part
 
 | Part | Sections | Reviewed | ✅ | 🟡 | ❌ | ➖ |
 |---|---:|---:|---:|---:|---:|---:|
-| Part A — Doing Business with Fannie Mae | 41 | 7 | 0 | 2 | 0 | 5 |
-| Part B — Origination Through Closing | 287 | 40 | 9 | 7 | 6 | 18 |
+| Part A — Doing Business with Fannie Mae | 41 | 8 | 0 | 3 | 0 | 5 |
+| Part B — Origination Through Closing | 287 | 41 | 10 | 7 | 6 | 18 |
 | Part C — Selling, Securitizing, Delivering | 48 | 41 | 0 | 0 | 0 | 41 |
 | Part D — Quality Control | 11 | 5 | 0 | 1 | 0 | 4 |
 | Part E — Quick Reference | 36 | 0 | 0 | 0 | 0 | 0 |
@@ -51,6 +51,7 @@ the lender; we adopt its shape for our own quality program **by choice**, and sa
 
 | Section | Title | Status | Evidence |
 |---|---|---|---|
+| `A2-2-04` | Limited Waiver and Enforcement Relief of Representations and Warranties | 🟡 partial | The DU limited waiver's data-accuracy condition is the reason F-0818-11 was a warranty problem and not a cosmetic one. Still partial: F-051 remains open — server/mismo.ts:862 emits a hardcoded "Approve" rather than DU's actual recommendation, which B3-2-01 requires the delivered data to match. |
 | `A3-3-01` | Outsourcing of Mortgage Processing and Third-Party Originations | 🟡 partial | No TPO-oversight model in code. This section DEFINES our position: a broker is a third-party originator, and the seller must satisfy itself we produce quality loans. It is the reason the authority gate exists (TEAM_PRACTICES §10). |
 | `A3-4-02` | Data Quality and Integrity | 🟡 partial | Data quality and integrity is the keystone obligation. Enforced piecemeal (complianceInvariants, the authority gate, audit logging); there is no single control that proves every DU-submitted field is verifiable. |
 | `B2-1.2-01` | Loan-to-Value (LTV) Ratios | ✅ implemented | server/underwritingEngine.ts:381 resolves the CONVENTIONAL_MAX_LTV matrix on the decision path. |
@@ -67,7 +68,8 @@ the lender; we adopt its shape for our own quality program **by choice**, and sa
 | `B3-4.3-04` | Personal Gifts | 🟡 partial | Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts:114, correctly). |
 | `B3-5.1-01` | General Requirements for Credit Scores | ✅ implemented | server/underwritingEngine.ts:342 reads the CONVENTIONAL_FICO_FLOOR policy scalar (620) on the decision path. |
 | `B3-5.3-09` | DU Credit Report Analysis | 🟡 partial | Collection thresholds ($5,000 / >=$250 / >$1,000) carried in data/regulatory/regulatory-ledger.json; tri-bureau pull is simulated. REVISED IN THIS EDITION — the change is Authorized User Tradelines plus a disputed-medical-tradeline note; re-verify before relying on the prior reading. |
-| `B3-6-02` | Debt-to-Income Ratios | ✅ implemented | server/underwriting.ts:440 reads CONVENTIONAL_STRETCH_DTI (50%). Platform runs a deliberately stricter 43% baseline overlay (ledger platform-conv-dti-cap-43). |
+| `B3-6-02` | Debt-to-Income Ratios | ✅ implemented | server/underwriting.ts:440 reads CONVENTIONAL_STRETCH_DTI (50%). Platform runs a deliberately stricter 43% baseline overlay (ledger platform-conv-dti-cap-43). The ratio SUBMITTED TO DU previously omitted the proposed housing payment — the back-end ratio, understating every purchase file (12.5% where the real total was 50% on the worked example). Fixed 2026-08-21 (F-0818-11): server/routes/aus.ts now composes the total ratio through computeCasefileDti. |
+| `B3-6-03` | Monthly Housing Expense for the Subject Property | ✅ implemented | Monthly Housing Expense for the Subject Property. Now included in the DU casefile DTI via computeCasefileDti (server/services/ausSubmission.ts), called from server/routes/aus.ts using the same computePaymentProjection the decision engine uses, so casefile and decision cannot disagree (B3-2-01). Fixed F-0818-11 on 2026-08-21; tests/ausCasefileDti.test.ts. |
 | `B3-6-05` | Monthly Debt Obligations | ✅ implemented | server/underwriting.ts assessLiabilities — DEFERRED_STUDENT_LOAN_FACTOR (:301, 1%) and REVOLVING_PAYMENT_FACTOR (:294, greater of $10 or 5%). REVISED IN THIS EDITION. |
 | `B3-6-07` | Debts Paid Off At or Prior to Closing | 🟡 partial | Debts paid off at closing. Was entirely unimplemented until #650 — both branches tested liability types the URLA form cannot emit, so neither could execute while the suite stayed green (conformance ledger C-2). This is the defect class that governs how `evidence` must be written. |
 | `B4-1.2-01` | Appraisal Report Forms and Exhibits | ❌ absent | Appraisal Report Forms and Exhibits — the 1004/1073/1007/1025 family. `Form 1004` returns 0 hits across server/shared/client; there is no appraisal-form handling, no UCDP/SSR submission, and the AVM adapter is a deterministic simulation. Appraisal exists only as a fee line and a condition string. |

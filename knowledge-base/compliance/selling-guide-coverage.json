@@ -99,7 +99,7 @@
     },
     "B3-6-02": {
       "status": "implemented",
-      "evidence": "server/underwriting.ts:440 reads CONVENTIONAL_STRETCH_DTI (50%). Platform runs a deliberately stricter 43% baseline overlay (ledger platform-conv-dti-cap-43).",
+      "evidence": "server/underwriting.ts:440 reads CONVENTIONAL_STRETCH_DTI (50%). Platform runs a deliberately stricter 43% baseline overlay (ledger platform-conv-dti-cap-43). The ratio SUBMITTED TO DU previously omitted the proposed housing payment — the back-end ratio, understating every purchase file (12.5% where the real total was 50% on the worked example). Fixed 2026-08-21 (F-0818-11): server/routes/aus.ts now composes the total ratio through computeCasefileDti.",
       "verified": "2026-08-21"
     },
     "B3-6-05": {
@@ -165,6 +165,16 @@
     "B3-3.7-02": {
       "status": "implemented",
       "evidence": "S-corporation (1120-S) cash flow; owner W-2 counted in addition to the K-1 share. server/services/selfEmploymentIncome.ts via the income orchestrator.",
+      "verified": "2026-08-21"
+    },
+    "B3-6-03": {
+      "status": "implemented",
+      "evidence": "Monthly Housing Expense for the Subject Property. Now included in the DU casefile DTI via computeCasefileDti (server/services/ausSubmission.ts), called from server/routes/aus.ts using the same computePaymentProjection the decision engine uses, so casefile and decision cannot disagree (B3-2-01). Fixed F-0818-11 on 2026-08-21; tests/ausCasefileDti.test.ts.",
+      "verified": "2026-08-21"
+    },
+    "A2-2-04": {
+      "status": "partial",
+      "evidence": "The DU limited waiver's data-accuracy condition is the reason F-0818-11 was a warranty problem and not a cosmetic one. Still partial: F-051 remains open — server/mismo.ts:862 emits a hardcoded \"Approve\" rather than DU's actual recommendation, which B3-2-01 requires the delivered data to match.",
       "verified": "2026-08-21"
     }
   }

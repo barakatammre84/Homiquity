@@ -127,6 +127,33 @@ export async function parsePlaidAssetReport(assetReportToken: string): Promise<P
 // Fannie Mae DU (Desktop Underwriter) Messages API — 12.1-shaped
 // ---------------------------------------------------------------------------
 
+/**
+ * The qualifying debt-to-income ratio for a DU casefile.
+ *
+ * B3-6-02 (Debt-to-Income Ratios) with B3-6-03 (Monthly Housing Expense for the Subject
+ * Property): the ratio is TOTAL monthly obligations, which INCLUDES the proposed housing
+ * payment. Recurring debts alone is the back-end ratio and understates every purchase file.
+ *
+ * Returns null when any input is unavailable. That is deliberate and it is the safer
+ * direction: A2-2-04 conditions the DU limited waiver on the casefile being "complete,
+ * accurate, and not fraudulent", so an absent ratio — which DU will ask for — beats a
+ * knowingly understated one that could earn an Approve/Eligible the file has not earned.
+ *
+ * `monthlyDebts` of 0 is a real value, not a missing one: a borrower with no other
+ * obligations still has a DTI from the housing payment alone.
+ */
+export function computeCasefileDti(input: {
+  monthlyIncome: number | null;
+  monthlyDebts: number | null;
+  proposedHousingPayment: number | null;
+}): number | null {
+  const { monthlyIncome, monthlyDebts, proposedHousingPayment } = input;
+  if (!monthlyIncome || monthlyIncome <= 0) return null;
+  if (monthlyDebts === null || proposedHousingPayment === null) return null;
+  if (!Number.isFinite(monthlyDebts) || !Number.isFinite(proposedHousingPayment)) return null;
+  return Number(((monthlyDebts + proposedHousingPayment) / monthlyIncome).toFixed(4));
+}
+
 export interface DuCasefileInput {
   applicationId: string;
   loanAmount: number;
