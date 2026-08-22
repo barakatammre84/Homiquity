@@ -419,6 +419,14 @@ export const urlaPropertyInfo = pgTable("urla_property_info", {
   // schedule / lease), used to qualify rental income on 2-4 unit
   // owner-occupied purchases — Fannie Mae Selling Guide B3-3.8-01 (formerly B3-3.1-08).
   estimatedMarketRent: decimal("estimated_market_rent", { precision: 12, scale: 2 }),
+  // Owners' association / co-op dues for the SUBJECT property, monthly.
+  // Fannie Mae Selling Guide B3-6-03 counts "any owners' association dues" and
+  // "any monthly co-op corporation fee" inside the qualifying housing expense
+  // (PITIA) used to compute the DTI ratio — so this is decision input, not
+  // display. NULL means NOT CAPTURED, never zero: the decision path treats a
+  // null on an association-bearing property type as a gap to fill rather than
+  // quietly qualifying the borrower without their dues.
+  monthlyAssociationDues: decimal("monthly_association_dues", { precision: 10, scale: 2 }),
   
   isMixedUse: boolean("is_mixed_use").default(false),
   mixedUseDescription: text("mixed_use_description"),

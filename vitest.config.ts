@@ -144,6 +144,16 @@ export default defineConfig({
       "tests/lifecycleEngine.test.ts",
       "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
+      // Pins the DTI debt-summation rules to Selling Guide B3-6-05 / B3-6-07.
+      // Every rule here previously sat on a branch the liability vocabulary
+      // could not reach, so it never ran and the suite stayed green.
+      "tests/sellingGuideMonthlyDebt.test.ts",
+      // B3-6-03 PITIA composition: association dues were absent from the
+      // decision path, and a null on a condo must gap rather than read as zero.
+      "tests/sellingGuideHousingExpense.test.ts",
+      // B2-1.3: the funnel collects a cash-out purpose the engine never read,
+      // so refi files were measured against purchase LTV ceilings.
+      "tests/sellingGuideLoanPurpose.test.ts",
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",

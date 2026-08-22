@@ -198,6 +198,20 @@ export interface UnderwritingInput {
    */
   propertyType?: string;
   /**
+   * Loan purpose — `purchase`, `refinance` (rate/term, i.e. limited cash-out),
+   * `cash_out` / `cash_out_refinance`. The funnel collects this (it is driven by
+   * the `?type=` entry point), and Fannie's maximum LTV/CLTV/HCLTV ratios differ
+   * by purpose: B2-1.3-02 and B2-1.3-03 both route the numbers to the
+   * **Eligibility Matrix**, a companion document this repo does not hold.
+   *
+   * This engine prices the PURCHASE grid. Rather than silently apply a purchase
+   * ceiling to a cash-out file — which would approve loans well above the
+   * cash-out limit — a non-purchase file is routed to human review. Omitted
+   * defaults to purchase, preserving prior behavior for the files that are
+   * genuinely purchases.
+   */
+  loanPurpose?: string;
+  /**
    * Property type and unit count as OBSERVED by an external source (e.g. the
    * address/AVM lookup), when available. Reconciled against the declared values
    * to surface a possible misrepresentation. Optional and additive: when absent,
@@ -354,6 +368,24 @@ export class ConsolidatedUnderwritingEngine {
       if (input.originalLoanAmount > conformingLimit) {
         reviewReasons.push(
           `Loan amount of $${Math.round(input.originalLoanAmount).toLocaleString()} exceeds the conforming limit of $${Math.round(conformingLimit).toLocaleString()} — jumbo product review required`,
+        );
+      }
+
+      // B2-1.3-02 / B2-1.3-03: the maximum LTV, CLTV and HCLTV ratios for a
+      // limited cash-out or cash-out refinance are NOT the purchase ratios —
+      // both topics defer the figures to the Eligibility Matrix, which this
+      // repo does not hold (the Selling Guide defers to it 39 times). The
+      // CONVENTIONAL_MAX_LTV matrix here is keyed on units x occupancy only,
+      // with no purpose dimension, so a cash-out file would be measured against
+      // a purchase ceiling — approving loans above the cash-out limit.
+      //
+      // Route it to a human instead. This tightens a gate rather than inventing
+      // a ratio we cannot source, which is the only direction a reading is
+      // allowed to move without the authority in hand.
+      const purpose = (input.loanPurpose ?? "purchase").toLowerCase().trim();
+      if (purpose !== "purchase" && purpose !== "") {
+        reviewReasons.push(
+          `Loan purpose "${purpose}" is not a purchase — refinance LTV ceilings come from the Fannie Mae Eligibility Matrix (B2-1.3-02 / B2-1.3-03), which this system does not yet encode. Manual review required.`,
         );
       }
 
