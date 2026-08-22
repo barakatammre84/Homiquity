@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { HomiLauncher } from "@/components/homi/HomiLauncher";
 import { NotificationsBell } from "@/components/NotificationsPanel";
 import { SkipLink } from "@/components/SkipLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -121,6 +122,14 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
             {children}
           </main>
           <MobileBottomNav />
+          {/*
+            Homi, reachable from wherever the borrower is stuck rather than only
+            from its own page. HomiLauncher is deliberately TINY and eager — this
+            layout is imported non-lazily by App.tsx, so anything it reaches ships
+            in the entry chunk every first-time visitor downloads. The chat lives
+            behind lazy() inside it; see the header comment on HomiLauncher.
+          */}
+          <HomiLauncher />
         </div>
       </div>
     </SidebarProvider>

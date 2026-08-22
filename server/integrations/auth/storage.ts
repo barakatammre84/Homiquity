@@ -1,6 +1,7 @@
 import { users, authTokens, type User, type AuthTokenType } from "@shared/schema";
 import { db } from "../../db";
 import { and, eq, gt, isNull } from "drizzle-orm";
+import { recordSuccess, type LockoutState } from "../../services/loginLockout";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -8,7 +9,7 @@ export interface IAuthStorage {
   upsertUser(userData: { id: string; email?: string | null; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User>;
   createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null; role?: string }): Promise<User>;
   upsertSocialUser(userData: { email: string; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null; authProvider: string }): Promise<User>;
-  setLockoutState(userId: string, state: { failedLoginAttempts: number; lockoutUntil: Date | null }): Promise<void>;
+  setLockoutState(userId: string, state: LockoutState): Promise<void>;
   // Password + email-verification token lifecycle.
   createAuthToken(input: { userId: string; type: AuthTokenType; tokenHash: string; expiresAt: Date }): Promise<void>;
   invalidateAuthTokens(userId: string, type: AuthTokenType): Promise<void>;
@@ -90,18 +91,26 @@ class AuthStorage implements IAuthStorage {
           lastName: userData.lastName ?? undefined,
           profileImageUrl: userData.profileImageUrl ?? undefined,
           updatedAt: new Date(),
+          // A social login IS a successful login, so it ends any run of failed
+          // password attempts on the same account — otherwise a user with a
+          // passwordHash who always signs in with Google accumulates failures
+          // that nothing ever clears (loginLockout.ts, defect 1). The reset
+          // lives inside the upsert so it is atomic with the login and cannot
+          // be forgotten when a fourth provider is added.
+          ...recordSuccess(),
         },
       })
       .returning();
     return user;
   }
 
-  async setLockoutState(userId: string, state: { failedLoginAttempts: number; lockoutUntil: Date | null }): Promise<void> {
+  async setLockoutState(userId: string, state: LockoutState): Promise<void> {
     await db
       .update(users)
       .set({
         failedLoginAttempts: state.failedLoginAttempts,
         lockoutUntil: state.lockoutUntil,
+        lastFailedLoginAt: state.lastFailedLoginAt,
       })
       .where(eq(users.id, userId));
   }
@@ -155,7 +164,7 @@ class AuthStorage implements IAuthStorage {
     // exactly the recovery path the reset flow exists to provide.
     await db
       .update(users)
-      .set({ passwordHash, failedLoginAttempts: 0, lockoutUntil: null })
+      .set({ passwordHash, ...recordSuccess() })
       .where(eq(users.id, userId));
   }
 

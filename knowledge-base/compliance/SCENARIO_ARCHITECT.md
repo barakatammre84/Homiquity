@@ -57,6 +57,57 @@ Follow the registry's "The process" section exactly, plus:
 2. Recurring friction → propose a scenario update (`Correction to S-XX`) or a new Backlog entry; UX-only friction → describe the fix in the report.
 3. **Friction produces proposals only.** Friction at a compliance gate is resolved by improving the explanation — never by removing the gate.
 
+## The continuous loop — states, and where each one actually stops
+
+A recurring outside proposal is a self-improving loop: research → synthesize rule → evaluate →
+diff → test → **auto-patch** → repeat. Most of it already exists here. The corrections below are
+not stylistic; each one is the difference between the loop catching a hallucination and laundering
+one.
+
+| State | Runs as | Terminates at |
+|---|---|---|
+| **Research** | `pnpm reg:watch` → signal rows ([REGULATORY_MONITORING.md](./REGULATORY_MONITORING.md) Tier 2) | a signal with its ledger candidates |
+| **Synthesize** | `pnpm reg:triage` renders a paste-ready block in the v2 schema above | an intake row with `rule: NO CITATION — needs research` |
+| **Evaluate** | [`/domain-oracle`](../../.claude/skills/domain-oracle/SKILL.md) | SHIP · **NEEDS CLARIFICATION** (default) · REJECT |
+| **Diff** | registry entry + `server/services/scenarioCatalog.ts` + a `regulatory-ledger.json` entry, **same commit** | a branch |
+| **Test** | the guideline's worked numeric example as a literal unit test, plus the compliance invariants | a green gate |
+| **Patch** | **a draft PR. Full stop.** | a human's signature |
+
+### The four corrections
+
+1. **MISMO 3.4, not 3.5.** This codebase is on the MISMO 3.4 reference model, ULDD Phase 5
+   (effective 2025-07-28) — see `shared/mismo.ts` and root `CLAUDE.md`. A rule mapped to "MISMO 3.5
+   nodes" coins container paths that do not exist here. On a mismatch the answer is **drop the
+   field and flag it**, never a plausible-looking name.
+
+2. **A model's own `makes_sense: true` is the hallucination vector, not the guard.** A model that
+   invents a rule will rate its invention coherent, because coherence is what it optimized. The
+   only validity test that has ever caught anything here is a **citation opened during that run**,
+   with locating detail a reader can check. Default verdict is NEEDS CLARIFICATION, and a run whose
+   every verdict is NEEDS CLARIFICATION is a healthy run.
+
+3. **Auto-generated test cases prove nothing about an invented rule.** Pass/borderline/fail
+   payloads derived *from the rule* confirm whatever the rule asserts — the fixture and the bug
+   share an author. The test must be the **worked numeric example from the cited guideline**, which
+   is why the v2 schema's `rule` field requires one.
+
+4. **Patch stops at a draft PR.** CHARTER §1b places credit-decision policy at **L4 (human-only)**
+   and every merge at L3, and each routine's off-limits list names the underwriting, decision and
+   rule engines. A loop that merged its own rule changes would be a machine setting credit policy —
+   and under Reg B the accountable licensee, not the machine, owns that. Extending this is a
+   founder amendment to the charter, knowingly made; it is never a capability the loop grants
+   itself. **A rail the machine can relax for itself is not a rail.**
+
+### Why "no runtime rule-injection endpoint" needs a footnote
+
+The table at the top of this file says there is deliberately no runtime rule-injection endpoint.
+That is true of the **decision path** — `server/services/ruleEngine.ts`'s `executeRules` is called
+only from `server/routes/underwriting-rules.ts` and its own test, never from `decisionEngine` or
+`underwritingEngine`. But the `underwriting_rules_dsl` table, its admin-gated CRUD, and
+`POST /api/underwriting-rules/execute` do exist, and an `isActive` flip is the only thing between
+that surface and a live one. It is exactly what an auto-patch state would reach for. Treat it as a
+staff simulation surface, and raise it as a decision rather than quietly building on it.
+
 ## Strictness
 
 - Reject scenarios that cannot be machine-detected deterministically.

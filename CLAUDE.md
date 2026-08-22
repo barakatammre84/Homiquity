@@ -81,11 +81,17 @@ For anything touching loan-originator compensation, the QM points-and-fees cap, 
 finance-charge definition, or TRID fee tolerances — consult [`docs/reg-z/`](docs/reg-z/).
 Do not answer Reg Z questions from memory.
 
-⚠️ **That directory holds no authoritative source text** — only
-[`docs/reg-z/README.md`](docs/reg-z/README.md), which is the shopping list and the procedure for
-when a document arrives. **That absence — not network access — is the reason the ledger entries
-below sit unverified.** A reading fetched live is unrepeatable and drifts silently; only a captured,
-versioned copy under `docs/reg-z/` fixes that. So the blocker is **procurement**.
+✅ **The source text is now local, as of 2026-08-20.**
+[`docs/reg-z/12-cfr-1026-regulation-z.xml`](docs/reg-z/12-cfr-1026-regulation-z.xml) holds the whole
+of **12 CFR Part 1026 plus Supplement I** (the Official Interpretations — frequently the only place
+a composition question is actually answered), pinned to eCFR Title 12 `latest_amended_on`
+**2026-08-06**. A **section → line map** and a grep recipe are in
+[`docs/reg-z/README.md`](docs/reg-z/README.md). **Cite it by section and line**, e.g.
+*§1026.36(d)(2)(i)(A), line 1704ff*.
+
+A reading fetched live is unrepeatable and drifts silently — that is why the copy is captured and
+pinned rather than fetched per session. **Re-capture, do not re-fetch ad hoc**, and record the new
+amendment date in that README when you do.
 
 🚨 **Probe before you claim a source is unreachable. Do not trust this paragraph's answer — or the
 opposite one.** This file previously stated as a permanent fact that `ecfr.gov`,
@@ -127,15 +133,32 @@ the tracked `section-index.tsv` locates any section without it. **This is the sa
 to test, not a thing to assert** — and unlike Reg Z, the fix here was procurement, and it has
 landed. Reg Z's `docs/reg-z/` still holds only a README, so its rail is unchanged.
 
-**The rail is unchanged, and its scope is wider than Reg Z.** Until a captured copy lands in
-`docs/reg-z/`, a Reg Z reading is **flagged in
+**The rail is unchanged, and its scope is wider than Reg Z.** A reading is **verified** only when
+it has been checked against a captured source *this run*, citing the locating detail; everything
+else stays **flagged in
 [`data/regulatory/regulatory-ledger.json`](data/regulatory/regulatory-ledger.json), never
-asserted** — and it must be conservative in one direction only (it may remove a borrower charge
-or tighten a gate; it may never create the violation it guards against). **11 ledger entries across
-four regimes** (Reg Z, FCRA, Reg V, CROA — plus an Illinois fee schedule) currently cite the
-2026-08-04/05 blocked-network condition in their notes; re-probing is now the first step in clearing
-any of them. **Relaxing this rail is a founder decision, not an agent's** — a rail the machine can
-relax for itself is not a rail.
+asserted**. The capture satisfies the rail's own exit condition for Part 1026 — it does not widen
+it. Two things did **not** change:
+
+- **Conservative in one direction only.** A reading may remove a borrower charge or tighten a gate;
+  it may never create the violation it guards against. A verdict that *loosens* a consent,
+  disclosure, adverse-action or FCRA gate is a founder decision even when the text supports it.
+  (Worked example: `shared/compliance/feeTolerance.ts` puts every Section C shoppable service in
+  the **zero** bucket rather than the ten-percent one. §1026.19(e)(3)(ii)(C) conditions the
+  ten-percent tier on the creditor permitting the consumer to shop per (e)(1)(vi) — and with no
+  written provider list, that condition cannot be met, so the strict bucket is both correct *and*
+  conservative. Were the written-list feature ever built, moving those lines to ten-percent would
+  **loosen** a disclosure gate, and that is a founder decision even though the text would support
+  it.)
+- **Outside Part 1026, nothing is captured.** Of the 11 ledger entries that cited the 2026-08-04/05
+  blocked-network condition, **3 are now verified** (`regz-1026-36d2-dual-compensation`,
+  `regz-1026-32b1-points-and-fees-floor`, `trid-1026-19e3-fee-tolerance`, all reset to a 180-day
+  interval). The other 8 had that now-false claim corrected in their notes but their **status is
+  untouched** — nobody has re-read them. FCRA, Reg V and CROA entries need *different* sources; the
+  CDIA Metro 2 manual is licensed and still not obtainable.
+
+**Relaxing this rail is a founder decision, not an agent's** — a rail the machine can relax for
+itself is not a rail.
 
 ## Architecture ground rules
 
