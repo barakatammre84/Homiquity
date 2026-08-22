@@ -104,7 +104,7 @@ export default function VALoans() {
                   <Medal aria-hidden="true" className="h-4 w-4 text-primary" />
                   Built by a fellow veteran
                 </div>
-                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-va-hero-title">
+                <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-va-hero-title">
                   You earned this benefit. We'll help you use it.
                 </h1>
                 <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">

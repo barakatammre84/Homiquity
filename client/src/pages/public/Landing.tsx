@@ -184,7 +184,7 @@ export default function Landing() {
             </p>
 
             <h1
-              className="mt-5 text-balance text-4xl font-extrabold leading-none tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+              className="font-display mt-5 text-balance text-4xl font-extrabold leading-none tracking-tight text-foreground sm:text-5xl lg:text-6xl"
               data-testid="text-hero-title"
             >
               See what you have the power to do.

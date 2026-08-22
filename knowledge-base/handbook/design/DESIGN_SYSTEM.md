@@ -284,6 +284,39 @@ not the capture-flow container; see §12.
 
 ---
 
+## 5a. Horizontal rhythm — `OffsetBlock`
+
+Every content block on the public pages was `mx-auto`, so the eye tracked one
+unchanging centre line from the top of a page to the bottom. `OffsetBlock`
+(`client/src/components/layout/OffsetBlock.tsx`) anchors a block to one side at
+`lg` and above, so the page zig-zags instead.
+
+| Prop | Effect at `lg`+ |
+|---|---|
+| `side="left"` | `lg:ml-16 lg:mr-auto` — hugs left, slack thrown right |
+| `side="right"` | `lg:mr-16 lg:ml-auto` — hugs right, slack thrown left |
+| `side="center"` | unchanged, `mx-auto` (the default) |
+
+Measured on `/self-employed` at 1440px: offset blocks land at 96/320 and
+320/96 (left/right gaps), five other blocks stay centred.
+
+🚨 **It collapses to centred below `lg`, and that is the load-bearing part.**
+Under ~1024px an offset block is not a rhythm, it is a cramped column with a
+useless margin — and the breakage is invisible until someone opens a laptop.
+That collapse is why this is a primitive instead of utility classes pasted onto
+sections, and `OffsetBlock.test.tsx` asserts it for all three sides.
+
+**It sets no width.** Callers keep their own `max-w-*`; line length is a
+readability decision, not a rhythm one.
+
+**Use it as a rhythm, not a metronome.** The reference centres two of its six
+blocks; `/self-employed` offsets two of seven. Alternating every section is just
+a different monotony. Keep **forms and long prose centred** — a drifting form
+reads as a bug, and drifting prose costs readability for nothing.
+
+Because it is structural rather than chromatic, it survives the tenant
+white-label constraint and is usable on authed surfaces.
+
 ## 6. Components — `client/src/components/ui/**`
 
 **33 primitives.** House additions beyond stock shadcn: `empty-state`, `stat-card`, `typography`,
