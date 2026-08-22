@@ -2,9 +2,10 @@
  * Fannie Mae Selling Guide B3-6-05, Monthly Debt Obligations (08/05/2026) and
  * B3-6-07, Debts Paid Off At or Prior to Closing (04/05/2023).
  *
- * These pin the DTI debt-summation rules to their published source. The guide is
- * committed at docs/fannie-mae/selling-guide/ — quotes below are verbatim from
- * selling-guide-text.txt so a future edition change shows up as a diff here.
+ * These pin the DTI debt-summation rules to their published source. Quotes below are
+ * verbatim from the 08-05-2026 edition, so a future edition change shows up as a diff
+ * here. The Guide is not committed (public repo, copyrighted work) — regenerate it
+ * locally with `python3 scripts/extract-selling-guide.py` to check a quote.
  *
  * Why this file exists: every rule below was previously either absent or written
  * against a liability-type spelling the application can never emit, so the

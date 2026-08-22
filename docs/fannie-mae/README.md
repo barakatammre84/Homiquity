@@ -7,9 +7,12 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
 
 ## Source of truth
 
-- **Selling Guide, edition 08-05-2026 — LOCAL, and the top of the hierarchy.**
-  `selling-guide/Selling-Guide_08-05-2026.pdf`, with a greppable text extraction and a
-  section index beside it. See [`selling-guide/`](selling-guide/) for how to query it.
+- **Selling Guide, edition 08-05-2026 — the top of the hierarchy. Greppable locally,
+  deliberately NOT committed.** This repo is public and the Guide is Fannie Mae's
+  copyrighted work, so the PDF and its full text extraction are gitignored. One command
+  makes them available on your machine:
+  `python3 scripts/extract-selling-guide.py` (it prints where it looked if it cannot find
+  the PDF, and stops rather than letting you guess).
   Conformance findings live in
   [knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md](../../knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md).
 - **Loan Delivery job aid** (searchable, current terminology, edit codes, data points):
@@ -23,19 +26,31 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
 
 ## Local inventory
 
-### Selling Guide (`selling-guide/`, added 2026-08-20)
+### Selling Guide (`selling-guide/`, added 2026-08-20; un-committed 2026-08-22)
 
-- `Selling-Guide_08-05-2026.pdf` — the full Guide, 1,185 pages, as published 08-05-2026.
-  The source PDF carries 175 highlight annotations; in this edition they mark the sections
-  **revised in that release**.
+**Tracked** (factual metadata — titles and page numbers, no Guide prose):
+
+- `section-index.tsv` — all 554 TOC entries mapped to PDF page. This is how you find a
+  section: `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv`.
+- `revised-sections.tsv` — the 25 sections revised in the 08-05-2026 edition, derived from
+  the PDF's highlight annotations. Diff this against the next edition to scope a re-scrub.
+
+**Gitignored** (the copyrighted work itself — regenerate, never commit):
+
+- `Selling-Guide_08-05-2026.pdf` — the full Guide, 1,185 pages.
 - `selling-guide-text.txt` — full text, every page prefixed `[[PAGE n | <section>]]` so a
-  plain `grep -n` identifies the governing section. No tooling needed to read it.
+  plain `grep -n` names the governing section. No tooling needed to read it once generated.
   ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an anchor and reports
   zero matches on text that is verbatim present. Lines wrap mid-sentence; grep a fragment.
-- `section-index.tsv` — all 554 TOC entries mapped to PDF page.
-- `highlights.json` — the annotations, extracted.
 
-Regenerate all three after replacing the PDF: `python3 scripts/extract-selling-guide.py`.
+Generate both with `python3 scripts/extract-selling-guide.py`. It looks at
+`$SELLING_GUIDE_PDF`, then the gitignored path above, then the founder's reference-documents
+folder — and if none exists it **says so and stops**, which is the correct outcome: a missing
+source is an honest gap, never a licence to answer from memory.
+
+Our findings from scrubbing the code against it — including which rules were checked and
+found **conforming** — live in
+[SELLING_GUIDE_CONFORMANCE.md](../../knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md).
 
 ### ULDD (Uniform Loan Delivery Dataset)
 - `uldd-implementation-guide.pdf` — ULDD implementation guide

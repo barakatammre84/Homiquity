@@ -30,3 +30,17 @@ mismo-*.xml
 # against re-adding a dead platform's identifiers, NOT as a sign Vercel is a
 # deploy target. It is not; Railway is.
 .vercel
+
+# Fannie Mae Selling Guide — the source PDF and its full text extraction.
+#
+# This repository is PUBLIC. The Guide is Fannie Mae's copyrighted work, and a
+# complete text extraction is the same content in another format, not a lesser
+# form of it — committing either would be redistribution. Regenerate locally with
+# `python3 scripts/extract-selling-guide.py`; that script explains where it looks.
+#
+# Tracked instead: section-index.tsv and revised-sections.tsv (titles and page
+# numbers — factual metadata), plus our own analysis in
+# knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
+docs/fannie-mae/selling-guide/*.pdf
+docs/fannie-mae/selling-guide/selling-guide-text.txt
+docs/fannie-mae/selling-guide/highlights.json
