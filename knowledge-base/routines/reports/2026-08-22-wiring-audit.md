@@ -3,9 +3,9 @@
 STATUS: WARN — a three-field silent write-drop on the capture path, found by tracing one value's
 whole round trip. **Half of it is fixed on branch** (the read side, `client/src`, proven by
 reintroduction); **the other half is a server allow-list outside this routine's territory** and is
-escalated below with the exact edit. WARN also because the day's full gate could not be completed
-inside the run — the machine is carrying five other `tsc` processes and two other vitest runs from
-peer worktrees — and because `reports/` has no 2026-08-21 entry from any routine.
+escalated below with the exact edit. WARN also because `pnpm check` never returned inside the run — the machine peaked at eleven
+concurrent `tsc` processes and a load average of 88 from peer worktrees — and because `reports/`
+has no 2026-08-21 entry from any routine.
 
 ## ⛔ Human actions
 
@@ -25,8 +25,10 @@ peer worktrees — and because `reports/` has no 2026-08-21 entry from any routi
 3. **The 2026-08-21 gap.** `reports/` jumps from eight `2026-08-20-*` files straight to today. Per
    CHARTER §3 that may simply mean the laptop was shut; Evening Triage is the seat that
    distinguishes "shut" from "broke". Flagging, not guessing.
-4. **The full gate did not return inside this run — see Evidence for exactly what did and did not
-   run.** No dev server was started; an unattended run cannot, so no browser verification happened.
+4. **`pnpm check` is unverified for this branch.** Both required guards, the schema-import test and
+   all 120 tests in the two directories the diff touches are green; the project typecheck ran 90
+   minutes without returning under peer load and was abandoned. Exact output in Evidence. No dev
+   server was started; an unattended run cannot, so no browser verification happened.
 
 ## Summary
 
@@ -253,16 +255,40 @@ files: [ 'client/src/pages/lending/preApproval/useDraftRestore.ts',
 triggers: []
 ```
 
-**What could NOT be verified, plainly.** `pnpm check`, the full `pnpm test` (node + client lanes),
-`pnpm guard:querykeys`, `pnpm guard:tokens` and `tests/clientSchemaImports.test.ts` were launched
-and had not returned when this report was written — `pnpm check` alone ran past 30 minutes of wall
-clock. That is contention, not failure: `ps aux` showed **five other `tsc --noEmit` processes and
-two other vitest runs** from peer worktrees (`hq-selling-guide`, `income-wt`, `sg-wt`,
-`hygiene-followup-0822`), with a 1-minute load average of **13** and a 15-minute average of **26**.
-The diff is two added lines in one client hook, a new colocated test, and one register row; it
-crosses no type boundary, no schema, no design token and no query key, so a red gate is unlikely —
-**but unlikely is not verified, and this report does not claim it was.** Run the full gate before
-merging. **No dev server was started.**
+**What ran, and what did not.** Everything below completed in this worktree and is reported from
+its real output:
+
+```
+$ pnpm guard:querykeys
+✅ guard:reachability — OK (every /api invalidation matches a real fetch key)
+guard:transport — OK (no hand-written queryFn; every key derives its own URL)
+
+$ pnpm guard:tokens
+design-token-guard: 0 raw palette color occurrences (at baseline, no regression). ✅
+design-token-guard: 97 bare white/black literal occurrences (at baseline, no regression). ✅
+
+$ npx vitest run --config vitest.config.ts tests/clientSchemaImports.test.ts
+Test Files  1 passed (1)     Tests  10 passed (10)
+
+$ npx vitest run --config vitest.client.config.ts \
+    client/src/pages/lending/preApproval client/src/funnel
+Test Files  14 passed (14)   Tests  120 passed (120)
+```
+
+**`pnpm check` never returned, and the full `pnpm test` was never run.** `tsc --noEmit` was launched
+at 09:35 and was still resident at 11:02 — roughly **90 minutes** without completing. That is
+contention, not failure: `ps aux` showed up to **eleven concurrent `tsc --noEmit` processes** plus
+other vitest runs from peer worktrees (`hq-selling-guide`, `income-wt`, `sg-wt`,
+`hygiene-followup-0822`), with the 1-minute load average climbing 13 → 31 → **88** over the run.
+The repo's own `vitest.client.config.ts` documents this machine's ~2.4x load penalty; this was worse
+than that.
+
+So: **the two guards this routine is required to run are green, the schema-import test is green, and
+every test in the two directories this diff touches is green — but the typecheck is unverified and
+this report does not claim otherwise.** The diff is two added lines in one client hook, one new
+colocated test, one register row and this report; it crosses no type boundary, no schema, no design
+token and no query key. Run `pnpm check` and the full `pnpm test` on a quiet machine before merging.
+**No dev server was started — an unattended run cannot, so no browser verification happened.**
 
 ## Proposed tickets (for Evening Triage — not landed here)
 
