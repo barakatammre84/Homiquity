@@ -289,6 +289,18 @@ export default defineConfig({
       "tests/mutationErrorHandling.test.ts",
       "tests/homiFileTruth.test.ts",
       "tests/homiReadinessDerivation.test.ts",
+      // Document requirements derive from the SET of income sources, not one
+      // employmentType scalar. Pins the both-incomes case, the Reg B opt-in
+      // branch for support income, and that every rule cites the transcribed
+      // Selling Guide matrix.
+      "tests/incomeSourceRequirements.test.ts",
+      "tests/documentsOutstandingContract.test.ts",
+      // A file can grow requirements after intake once they derive from the
+      // SET of income sources; staff see that rather than meeting it at submission.
+      "tests/requirementsWidenedSignal.test.ts",
+      // Requirement derivation must not sit behind the autopilot kill switch:
+      // it is the same deterministic rule intake runs ungated.
+      "tests/requirementSyncUngated.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

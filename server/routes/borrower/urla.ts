@@ -709,19 +709,37 @@ export function registerUrlaRoutes(
         safeResults.coApplicants = safeResults.coApplicants.map(sanitizeBorrowerResults);
       }
 
-      // Autopilot (Phase 3): proactively build the document needs list from the
-      // borrower's stated URLA data — before any upload — so there's no dead
-      // time waiting on a human to say what's needed. Detached + gated (the
-      // cached global check means an OFF agent adds no work); the orchestrator
-      // re-checks the pilot allowlist.
+      // Re-derive the document needs list from what the borrower just stated,
+      // before any upload, so there is no dead time waiting on a human to say
+      // what is needed. Detached; a failure here never fails the save.
+      //
+      // The requirement sync is DELIBERATELY UNGATED. It is the same
+      // deterministic rule evaluation intake already runs ungated
+      // (initializeLoanPipeline), producing the same DOC_REQ_<TYPE> conditions
+      // with the same idempotency — no model reads anything, no decision is
+      // issued, nothing is narrated. Gating it on autopilot froze the
+      // requirement set at whatever the borrower said FIRST: someone who later
+      // added a second employer or an other-income row owed documents nobody
+      // would ever ask for. Staff see any post-intake growth via the
+      // `requirements_widened` signal.
+      //
+      // Autopilot proper — recalculating the decision and narrating to the
+      // borrower — stays behind the kill switch, and is handed the conditions
+      // the sync just created so a save never derives twice.
       (async () => {
+        const application = await storage.getLoanApplication(applicationId);
+        if (!application) return;
+
+        const { syncDocumentRequirements } = await import("../../pipelineEngine");
+        const { created: createdConditions } = await syncDocumentRequirements(application);
+
         const { getAutopilotConfig } = await import("../../services/autopilot/config");
         if ((await getAutopilotConfig()).enabled) {
           const { runAutopilotForSection } = await import("../../services/autopilot/orchestrator");
-          await runAutopilotForSection({ applicationId, triggeredBy: user.id });
+          await runAutopilotForSection({ applicationId, triggeredBy: user.id, createdConditions });
         }
       })().catch((err) =>
-        console.warn(`[Autopilot] Section run failed for ${applicationId} (non-fatal):`, err?.message || err),
+        console.warn(`[Requirements] Section sync failed for ${applicationId} (non-fatal):`, err?.message || err),
       );
 
       res.json(safeResults);

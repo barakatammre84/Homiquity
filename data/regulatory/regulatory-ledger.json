@@ -649,6 +649,72 @@
       "lastVerified": "2026-08-08",
       "reviewIntervalDays": 14,
       "notes": "VERBATIM TEXT NOT YET VERIFIED - docs/fcra/ is README-only and consumerfinance.gov is blocked from agent environments. Opened 2026-08-08 against the external pitch's explicit revenue model: 'queue the users in a Pending Bureau Submission database state, COLLECT THE SUBSCRIPTION REVENUE, and batch-release the Metro 2 file the day you hit 100 users.' Charging a consumer monthly for credit reporting that is not occurring is a deceptive-practice exposure regardless of CROA's scope, and whether a subscription positioned as credit improvement falls inside CROA at all is the open counsel question already raised by the 2026-08-04 renter-incubation adjudication section 5.6. This entry records the conservative posture taken instead: no charge until first successful furnish. It can only forgo revenue, never create the violation. A human must obtain a CROA scope opinion before any billing lands, then reset reviewIntervalDays to 180."
+    },
+    {
+      "id": "fnma-b3-3-2-01-paystub-recency",
+      "rule": "Most recent paystub must be dated no earlier than 30 days prior to the initial loan application date and include all year-to-date earnings",
+      "value": "30",
+      "citation": "Fannie Mae Selling Guide B3-3.2-01, Standards for Employment and Income Documentation (03/04/2026)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.2-01/standards-employment-and-income-documentation",
+      "codeRef": "server/pipelineEngine.ts INCOME_SOURCE_RULES",
+      "lastVerified": "2026-08-22",
+      "reviewIntervalDays": 180,
+      "notes": "Transcribed to docs/fannie-mae/income-documentation-matrix.md from the in-repo corpus docs/fannie-mae/selling-guide/ (published 2026-08-05), p.328. The 30-day figure is stated in the borrower-documentation table but is NOT yet enforced in code — INCOME_SOURCE_RULES.w2 requests the paystub, nothing checks its date. Recency enforcement is a separate change."
+    },
+    {
+      "id": "fnma-b3-3-2-01-w2-lookback",
+      "rule": "IRS W-2 forms must cover the most recent one- or two-year period; 'most recent' is the W-2 for the calendar year prior to the current calendar year",
+      "value": "2",
+      "citation": "Fannie Mae Selling Guide B3-3.2-01, Standards for Employment and Income Documentation (03/04/2026)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.2-01/standards-employment-and-income-documentation",
+      "codeRef": "server/pipelineEngine.ts INCOME_SOURCE_RULES",
+      "lastVerified": "2026-08-22",
+      "reviewIntervalDays": 180,
+      "notes": "Transcribed to docs/fannie-mae/income-documentation-matrix.md, corpus p.328. Code requests two years (yearsRequired = [currentYear-1, currentYear-2]) — the conservative end of the one-or-two range, since the narrower period is income-type dependent. A year-end paystub covering the full year is an acceptable substitute per the same section; not yet modelled."
+    },
+    {
+      "id": "fnma-b3-3-3-02-variable-income-minimum",
+      "rule": "Bonus/commission/overtime/tip: two years' W-2s required; a minimum of 12 months' income must be included in the averaging calculation",
+      "value": "12",
+      "citation": "Fannie Mae Selling Guide B3-3.3-02, Bonus, Commission, Overtime, and Tip Income (03/04/2026)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.3-02/bonus-commission-overtime-and-tip-income",
+      "codeRef": "server/pipelineEngine.ts INCOME_SOURCE_RULES",
+      "lastVerified": "2026-08-22",
+      "reviewIntervalDays": 180,
+      "notes": "Transcribed to docs/fannie-mae/income-documentation-matrix.md, corpus p.336. Note the document difference from base pay: B3-3.3-01 needs the most recent W-2, this needs TWO years'. Only the document requirement is implemented; the averaging math is not."
+    },
+    {
+      "id": "fnma-b3-3-4-02-support-income-optin",
+      "rule": "Alimony/child support/equalization/separate maintenance may be included ONLY where the borrower discloses it on the URLA and requests it be considered; six-month receipt history; three-year continuance",
+      "value": "6",
+      "citation": "Fannie Mae Selling Guide B3-3.4-02, Alimony, Child Support, Equalization Payments, or Separate Maintenance (03/04/2026)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.4-02/alimony-child-support-equalization-payments-or-separate-maintenance",
+      "codeRef": "server/pipelineEngine.ts INCOME_SOURCE_RULES",
+      "lastVerified": "2026-08-22",
+      "reviewIntervalDays": 180,
+      "notes": "Transcribed to docs/fannie-mae/income-documentation-matrix.md, corpus p.353. LOAD-BEARING AND ENFORCED: OPT_IN_INCOME_TYPES in server/pipelineEngine.ts INCOME_SOURCE_RULES suppresses these document requirements unless the source's evidence is 'urla_elected'. This is an ECOA/Reg B gate as much as a Guide rule — Reg B bars requiring disclosure of support income unless the applicant wants it counted, so requesting a decree off an inferred signal would be a violation, not merely an unwelcome ask. Pinned both directions by tests/incomeSourceRequirements.test.ts."
+    },
+    {
+      "id": "fnma-b3-3-4-05-capital-gains-history",
+      "rule": "Capital gains income requires a minimum two-year history, documented by signed personal federal returns for the most recent two years including IRS Form 1040 Schedule D, plus evidence of a saleable asset portfolio",
+      "value": "2",
+      "citation": "Fannie Mae Selling Guide B3-3.4-05, Capital Gains Income (03/04/2026)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.4-05/capital-gains-income",
+      "codeRef": "server/pipelineEngine.ts INCOME_SOURCE_RULES",
+      "lastVerified": "2026-08-22",
+      "reviewIntervalDays": 180,
+      "notes": "Transcribed to docs/fannie-mae/income-documentation-matrix.md, corpus p.358. Implemented as the INCOME_SOURCE_RULES.investment document set (returns + brokerage_statement for asset ownership). The trend-dependent averaging — two years when stable/increasing, most recent year only when decreasing — is documented but NOT implemented."
+    },
+    {
+      "id": "fnma-b3-3-4-15-social-security-continuance",
+      "rule": "Social Security: benefits drawn on another person's record (or own record for another's benefit) require documented three-year continuance from the note date; benefits on the borrower's own record do not unless there is reason to believe otherwise",
+      "value": "3",
+      "citation": "Fannie Mae Selling Guide B3-3.4-15, Social Security Income (03/04/2026)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.4-15/social-security-income",
+      "codeRef": "server/pipelineEngine.ts INCOME_SOURCE_RULES",
+      "lastVerified": "2026-08-22",
+      "reviewIntervalDays": 180,
+      "notes": "Transcribed to docs/fannie-mae/income-documentation-matrix.md, corpus p.372. INCOME_SOURCE_RULES.social_security requests the award letter / SSA-1099 / proof of receipt; the whose-record branch that drives the continuance requirement is NOT modelled — the file does not capture whose work record the benefit is drawn on. Documented as a known gap rather than guessed."
     }
   ]
 }

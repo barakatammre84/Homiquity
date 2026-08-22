@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Building2, CheckCircle2, Clock, FileSearch, FileWarning, Radio, TimerReset } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, Clock, FilePlus2, FileSearch, FileWarning, Radio, TimerReset } from "lucide-react";
 
 interface StaffSignal {
   type:
@@ -12,7 +12,8 @@ interface StaffSignal {
     | "docs_ready_for_review"
     | "stalled"
     | "docs_expiring"
-    | "investor_candidate";
+    | "investor_candidate"
+    | "requirements_widened";
   priority: 1 | 2 | 3 | 4;
   applicationId: string | null;
   userId?: string;
@@ -54,6 +55,14 @@ const SIGNAL_META: Record<
     label: "Investor lead",
     icon: Building2,
     chipClass: "bg-status-success/10 text-status-success",
+  },
+  // The file came to owe documents nobody asked for at intake — usually a
+  // second income source appearing on a later URLA save. Warning-toned because
+  // it can put a new blocker on a file the LO believed was clear.
+  requirements_widened: {
+    label: "New reqs",
+    icon: FilePlus2,
+    chipClass: "bg-status-warning/10 text-status-warning",
   },
 };
 

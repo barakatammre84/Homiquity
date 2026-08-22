@@ -14,6 +14,11 @@ import { db } from "./db";
 import { inArray, desc, eq, max, and, count } from "drizzle-orm";
 import { computeFileHealth, daysSince, type FileHealth } from "./services/fileHealth";
 import { documentTypesMatch } from "@shared/documentTypes";
+import { INCOME_TYPES, type IncomeType } from "@shared/schema";
+import {
+  documentIncomeTypeForStoredSource,
+  type DocumentIncomeType,
+} from "@shared/incomeTypes";
 import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import {
   LOAN_APP_TRANSITIONS,
@@ -27,14 +32,60 @@ import {
   calculateDTI,
 } from "./underwriting";
 
-interface DocumentRequirement {
+export interface DocumentRequirement {
   documentType: string;
   yearsRequired?: number[];
   description: string;
   priority: "prior_to_approval" | "prior_to_docs" | "prior_to_funding";
   conditionCategory: string;
   conditionTitle: string;
+  /**
+   * Selling Guide section that requires this document, as printed in the GUIDE
+   * BODY (never the URL slug — Fannie's slugs carry stale section numbers).
+   * Required on every income-source rule; absent on the asset/property/credit
+   * rules, which are platform policy rather than a transcribed Guide rule.
+   */
+  guidelineRef?: string;
 }
+
+/** An income rule may not exist without a citation. See the matrix doc. */
+type IncomeDocumentRequirement = DocumentRequirement & { guidelineRef: string };
+
+/**
+ * `shared/incomeTypes.ts` restates the income-type union rather than importing
+ * it (that module is client-bundled; `@shared/schema` is not). These lines fail
+ * the build if the restatement ever drifts from the real union.
+ */
+type _IncomeUnionForward = DocumentIncomeType extends IncomeType ? true : never;
+type _IncomeUnionBack = IncomeType extends DocumentIncomeType ? true : never;
+const _incomeUnionsAgree: [_IncomeUnionForward, _IncomeUnionBack] = [true, true];
+void _incomeUnionsAgree;
+
+/** How we learned this income source exists. Only `urla_elected` unlocks an opt-in type. */
+export type IncomeSourceEvidence = "urla_elected" | "borrower_stated" | "document_derived";
+
+export interface IncomeSourceSignal {
+  type: IncomeType;
+  evidence: IncomeSourceEvidence;
+  /** Free-text label for the condition description, e.g. an employer name. */
+  label?: string;
+}
+
+/**
+ * 🚨 Reg B / ECOA. Selling Guide B3-3.4-02: alimony, child support,
+ * equalization or separate-maintenance income may be counted "only if the
+ * borrower discloses it on the Uniform Residential Loan Application and
+ * requests that it be considered in qualifying for the loan."
+ *
+ * So a document requirement for these types fires ONLY from the borrower's own
+ * URLA election — never from an inferred signal (a document-derived flag, a
+ * bank-statement pattern, a liability that looks like support). Asking for a
+ * divorce decree off inference is a compliance problem, not a bad ask.
+ */
+const OPT_IN_INCOME_TYPES: ReadonlySet<IncomeType> = new Set<IncomeType>([
+  "alimony",
+  "child_support",
+]);
 
 interface BorrowerProfile {
   employmentType: string | null;
@@ -47,10 +98,24 @@ interface BorrowerProfile {
   isVeteran: boolean;
   isFirstTimeBuyer: boolean;
   isSelfEmployed: boolean;
+  /**
+   * The SET of income sources this borrower actually has. A borrower who is
+   * self-employed AND holds a W-2 job has both, and owes both document sets.
+   * Optional so pre-URLA callers keep working: when absent,
+   * determineDocumentRequirements falls back to the legacy employmentType
+   * scalar (see deriveLegacyIncomeSources).
+   */
+  incomeSources?: IncomeSourceSignal[];
 }
 
 const currentYear = new Date().getFullYear();
 
+/**
+ * Required of every borrower regardless of how they are paid. `pay_stub` used
+ * to live here, which is why a self-employed borrower was asked for one: the
+ * base list ran BEFORE the employment switch, so it applied to everyone. It now
+ * lives in INCOME_SOURCE_RULES.w2 where it belongs.
+ */
 const BASE_DOCUMENT_REQUIREMENTS: DocumentRequirement[] = [
   {
     documentType: "government_id",
@@ -59,18 +124,85 @@ const BASE_DOCUMENT_REQUIREMENTS: DocumentRequirement[] = [
     conditionCategory: "compliance",
     conditionTitle: "Valid Government ID Required",
   },
-  {
-    documentType: "pay_stub",
-    yearsRequired: [currentYear],
-    description: "Most recent 30 days of pay stubs",
-    priority: "prior_to_approval",
-    conditionCategory: "income",
-    conditionTitle: "Recent Pay Stubs Required",
-  },
 ];
 
-const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
-  employed: [
+/**
+ * B3-3.3-02 treats bonus, commission, overtime and tip income identically:
+ * Form 1005, or the most recent paystub AND TWO years' W-2s (note: two, where
+ * base pay needs only the most recent one), plus a verbal VOE.
+ */
+function bonusStyleRules(kind: string, label: string): IncomeDocumentRequirement[] {
+  return [
+    {
+      documentType: "w2",
+      yearsRequired: [currentYear - 1, currentYear - 2],
+      description: `W-2 forms for the past 2 years documenting your ${kind} income`,
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: `2-Year W-2s Required (${label} Income)`,
+      guidelineRef: "B3-3.3-02",
+    },
+    {
+      documentType: "pay_stub",
+      yearsRequired: [currentYear],
+      description: `Most recent pay stub showing year-to-date ${kind} earnings`,
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "Recent Pay Stub Required",
+      guidelineRef: "B3-3.3-02",
+    },
+  ];
+}
+
+/**
+ * B3-3.4-02 — alimony / child support / equalization / separate maintenance.
+ * OPT-IN ONLY: never emitted from an inferred signal. See OPT_IN_INCOME_TYPES.
+ */
+function supportIncomeRules(label: string): IncomeDocumentRequirement[] {
+  return [
+    {
+      documentType: "support_order",
+      description: `${label} order: a divorce decree, separation agreement, or other written legal agreement or court decree stating the payment terms`,
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: `${label} Order Required`,
+      guidelineRef: "B3-3.4-02",
+    },
+    {
+      documentType: "support_receipt_proof",
+      description: `Proof you have received ${label.toLowerCase()} for the most recent 6 months — bank statements, cancelled checks, or other evidence of electronic receipt`,
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: `6 Months of ${label} Receipts Required`,
+      guidelineRef: "B3-3.4-02",
+    },
+  ];
+}
+
+/**
+ * Documents required per income SOURCE, keyed on the canonical INCOME_TYPES
+ * union. Every entry cites the Selling Guide section that requires it —
+ * transcribed in docs/fannie-mae/income-documentation-matrix.md and pinned by
+ * tests/incomeSourceRequirements.test.ts. No citation, no rule.
+ *
+ * Conventional (Fannie) only. FHA / VA / USDA carry their own documentation
+ * rules and their handbooks are not in this repo; see the matrix doc.
+ *
+ * Because the key type is a closed union, an unrecognized income value is a
+ * COMPILE error rather than a silent fall-through to the W-2 bucket.
+ */
+const INCOME_SOURCE_RULES: Record<IncomeType, IncomeDocumentRequirement[]> = {
+  w2: [
+    {
+      documentType: "pay_stub",
+      yearsRequired: [currentYear],
+      description:
+        "Most recent pay stub, dated within 30 days of your application and showing all year-to-date earnings",
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "Recent Pay Stub Required",
+      guidelineRef: "B3-3.2-01",
+    },
     {
       documentType: "w2",
       yearsRequired: [currentYear - 1, currentYear - 2],
@@ -78,14 +210,7 @@ const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
       priority: "prior_to_approval",
       conditionCategory: "income",
       conditionTitle: "W-2 Forms Required",
-    },
-    {
-      documentType: "tax_return",
-      yearsRequired: [currentYear - 1],
-      description: "Federal tax returns for the most recent year",
-      priority: "prior_to_docs",
-      conditionCategory: "income",
-      conditionTitle: "Tax Return Verification",
+      guidelineRef: "B3-3.2-01",
     },
   ],
   self_employed: [
@@ -96,6 +221,7 @@ const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
       priority: "prior_to_approval",
       conditionCategory: "income",
       conditionTitle: "2-Year Tax Returns Required (Self-Employed)",
+      guidelineRef: "B3-3.5-01",
     },
     {
       documentType: "profit_loss",
@@ -104,6 +230,7 @@ const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
       priority: "prior_to_approval",
       conditionCategory: "income",
       conditionTitle: "YTD Profit & Loss Statement Required",
+      guidelineRef: "B3-3.5-01",
     },
     {
       documentType: "business_license",
@@ -111,6 +238,7 @@ const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
       priority: "prior_to_docs",
       conditionCategory: "income",
       conditionTitle: "Business Documentation Required",
+      guidelineRef: "B3-3.2-01",
     },
     {
       documentType: "bank_statement_business",
@@ -118,43 +246,114 @@ const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
       priority: "prior_to_approval",
       conditionCategory: "assets",
       conditionTitle: "Business Bank Statements Required",
+      guidelineRef: "B3-3.5-01",
     },
   ],
-  retired: [
+  rental: [
+    {
+      documentType: "lease_agreement",
+      description: "Current signed lease agreement for each rental property",
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "Lease Agreements Required",
+      guidelineRef: "B3-3.8-01",
+    },
+    {
+      documentType: "tax_return",
+      yearsRequired: [currentYear - 1, currentYear - 2],
+      description:
+        "Complete federal tax returns for the past 2 years, including Schedule E for rental income",
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "Tax Returns Required (Rental Income)",
+      guidelineRef: "B3-3.8-01",
+    },
+  ],
+  bonus: bonusStyleRules("bonus", "Bonus"),
+  commission: bonusStyleRules("commission", "Commission"),
+  overtime: bonusStyleRules("overtime", "Overtime"),
+  social_security: [
     {
       documentType: "social_security_award",
-      description: "Social Security award letter",
+      description:
+        "Social Security Administration award letter, SSA-1099, or proof of current receipt",
       priority: "prior_to_approval",
       conditionCategory: "income",
       conditionTitle: "Social Security Documentation Required",
+      guidelineRef: "B3-3.4-15",
     },
+  ],
+  pension: [
     {
       documentType: "pension_statement",
-      description: "Pension or retirement account statements",
+      description:
+        "Any one of: a statement from the payer, a retirement award letter or benefit statement, a financial or bank account statement, a signed federal tax return, a W-2, or a 1099",
       priority: "prior_to_approval",
       conditionCategory: "income",
       conditionTitle: "Pension/Retirement Income Verification",
+      guidelineRef: "B3-3.4-03",
     },
   ],
-  // Borrowers who select "Other" (1099 contractors, trust income, etc.) have no
-  // W-2 to satisfy the "employed" bucket's requirement — without this entry the
-  // lookup below fell through to EMPLOYMENT_RULES["employed"] and silently asked
-  // for a document they cannot produce, stalling the file until an LO noticed.
+  disability: [
+    {
+      documentType: "disability_statement",
+      description:
+        "Your disability policy or benefits statement from the payer, showing current eligibility, the payment amount and frequency, and any termination or modification date",
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "Long-Term Disability Documentation Required",
+      guidelineRef: "B3-3.4-09",
+    },
+  ],
+  // 🚨 OPT-IN (Reg B). Emitted only on a URLA election — see OPT_IN_INCOME_TYPES.
+  alimony: supportIncomeRules("Alimony"),
+  child_support: supportIncomeRules("Child support"),
+  investment: [
+    {
+      documentType: "tax_return",
+      yearsRequired: [currentYear - 1, currentYear - 2],
+      description:
+        "Signed federal tax returns for the past 2 years (including Schedule D where capital gains are used)",
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "2-Year Tax Returns Required (Investment Income)",
+      guidelineRef: "B3-3.4-08",
+    },
+    {
+      documentType: "brokerage_statement",
+      description:
+        "Statements evidencing your ownership of the assets that produced the income",
+      priority: "prior_to_approval",
+      conditionCategory: "assets",
+      conditionTitle: "Asset Ownership Verification Required",
+      guidelineRef: "B3-3.4-08",
+    },
+  ],
+  /**
+   * "Other" names no specific source, so no specific document can be cited.
+   * Tax returns are the near-universal artifact by which the source CAN be
+   * identified (B3-3.1-02); beyond them this guesses nothing and routes to a
+   * human. Trust income, for one, has its own rule at B3-3.4-16.
+   */
   other: [
     {
       documentType: "tax_return",
       yearsRequired: [currentYear - 1, currentYear - 2],
-      description: "Federal tax returns for the past 2 years (documenting 1099, trust, pension, or other non-W-2 income)",
+      description:
+        "Federal tax returns for the past 2 years (documenting 1099, trust, pension, or other non-W-2 income)",
       priority: "prior_to_approval",
       conditionCategory: "income",
       conditionTitle: "2-Year Tax Returns Required (Other Income Type)",
+      guidelineRef: "B3-3.1-02",
     },
     {
       documentType: "other",
-      description: "Additional income documentation as requested by your loan officer (e.g. 1099s, K-1s, trust or pension statements)",
+      description:
+        "Documentation for your other income source — your loan officer will confirm exactly what is needed (for example 1099s, K-1s, or trust statements)",
       priority: "prior_to_docs",
       conditionCategory: "income",
       conditionTitle: "Income Documentation Review Required",
+      guidelineRef: "B3-3.4-01",
     },
   ],
 };
@@ -229,14 +428,133 @@ const CREDIT_BASED_REQUIREMENTS: { minScore: number; maxScore: number; requireme
   },
 ];
 
+/**
+ * Legacy fallback: map the single `employmentType` scalar onto income sources.
+ * Used only when a caller supplies no `incomeSources` (pre-URLA intake, where
+ * the funnel has captured one employment answer and nothing else). Preserves
+ * the old behaviour for those files instead of asking for nothing — but note it
+ * can only ever produce ONE source, which is the whole defect this replaces.
+ */
+function deriveLegacyIncomeSources(profile: BorrowerProfile): IncomeSourceSignal[] {
+  const t = profile.employmentType;
+  if (t === "self_employed" || profile.isSelfEmployed) {
+    return [{ type: "self_employed", evidence: "borrower_stated" }];
+  }
+  if (t === "retired") return [{ type: "pension", evidence: "borrower_stated" }];
+  if (t === "employed") return [{ type: "w2", evidence: "borrower_stated" }];
+  // "other" (1099, trust, pension) and any UNRECOGNIZED value both land here.
+  // Unrecognized used to fall through to the W-2 bucket and silently ask for a
+  // document the borrower cannot produce.
+  if (t) return [{ type: "other", evidence: "borrower_stated" }];
+  return [];
+}
+
+function isIncomeType(v: unknown): v is IncomeType {
+  return typeof v === "string" && (INCOME_TYPES as readonly string[]).includes(v);
+}
+
+/**
+ * The set of income sources a borrower actually has, unioned across every place
+ * we learn about one. A borrower who is self-employed AND holds a W-2 job
+ * yields BOTH — which is the point: the old single-scalar lookup gave one
+ * bucket and silently never asked for the other income's documents.
+ *
+ * Precedence: document-derived evidence outranks borrower-stated for the same
+ * type, and a URLA election outranks both (it is the only thing that unlocks an
+ * opt-in type).
+ */
+export function deriveIncomeSources(input: {
+  /** urla_employment_history rows — isSelfEmployed is PER EMPLOYER. */
+  employment?: { isSelfEmployed?: boolean | null; employerName?: string | null }[];
+  /** other_income_sources rows, already classified — the borrower's URLA election. */
+  otherIncome?: { incomeType?: string | null }[];
+  /** situationProfile flags derived from the actual tax documents. */
+  documentDerived?: IncomeType[];
+  /** Legacy scalar, used only when nothing above produced a source. */
+  profile?: BorrowerProfile;
+}): IncomeSourceSignal[] {
+  const rank: Record<IncomeSourceEvidence, number> = {
+    urla_elected: 3,
+    document_derived: 2,
+    borrower_stated: 1,
+  };
+  const best = new Map<IncomeType, IncomeSourceSignal>();
+  const add = (sig: IncomeSourceSignal) => {
+    const prev = best.get(sig.type);
+    if (!prev || rank[sig.evidence] > rank[prev.evidence]) best.set(sig.type, sig);
+  };
+
+  for (const e of input.employment ?? []) {
+    add({
+      type: e.isSelfEmployed ? "self_employed" : "w2",
+      evidence: "borrower_stated",
+      label: e.employerName ?? undefined,
+    });
+  }
+  for (const o of input.otherIncome ?? []) {
+    // Present on the URLA => the borrower elected it. This is what makes an
+    // opt-in type (alimony / child support) requestable at all.
+    if (isIncomeType(o.incomeType)) add({ type: o.incomeType, evidence: "urla_elected" });
+  }
+  for (const t of input.documentDerived ?? []) add({ type: t, evidence: "document_derived" });
+
+  if (best.size === 0 && input.profile) {
+    for (const sig of deriveLegacyIncomeSources(input.profile)) add(sig);
+  }
+  return [...best.values()];
+}
+
+/**
+ * The profile a caller should use once an application exists: identical to
+ * getBorrowerProfileFromApplication, plus the SET of income sources read from
+ * the URLA.
+ *
+ * Without this the fan-out is inert — determineDocumentRequirements falls back
+ * to the single legacy scalar and the second income's documents are never
+ * requested, which is the defect itself.
+ */
+export async function loadBorrowerProfile(application: LoanApplication): Promise<BorrowerProfile> {
+  const base = getBorrowerProfileFromApplication(application);
+  try {
+    const [employment, otherIncome] = await Promise.all([
+      storage.getEmploymentHistory(application.id),
+      storage.getOtherIncomeSources(application.id),
+    ]);
+    const elected: IncomeType[] = [];
+    for (const row of otherIncome) {
+      // classifyOtherIncomeSource is deliberately non-fuzzy: an unrecognized
+      // string yields null and is skipped rather than coerced into a type.
+      const mapped = documentIncomeTypeForStoredSource(row.incomeSource);
+      if (mapped) elected.push(mapped);
+    }
+    return {
+      ...base,
+      incomeSources: deriveIncomeSources({
+        employment: employment.map((e) => ({
+          isSelfEmployed: e.isSelfEmployed,
+          employerName: e.employerName,
+        })),
+        otherIncome: elected.map((incomeType) => ({ incomeType })),
+        profile: base,
+      }),
+    };
+  } catch {
+    // A URLA read failure must not strip a borrower's existing requirements
+    // down to the base set. Fall back to the legacy scalar, which is what the
+    // caller would have used anyway.
+    return base;
+  }
+}
+
 export function determineDocumentRequirements(profile: BorrowerProfile): DocumentRequirement[] {
   const requirements: DocumentRequirement[] = [...BASE_DOCUMENT_REQUIREMENTS];
 
-  const employmentType = profile.employmentType || "employed";
-  if (EMPLOYMENT_RULES[employmentType]) {
-    requirements.push(...EMPLOYMENT_RULES[employmentType]);
-  } else {
-    requirements.push(...EMPLOYMENT_RULES["employed"]);
+  const sources = profile.incomeSources ?? deriveLegacyIncomeSources(profile);
+  for (const source of sources) {
+    // 🚨 Reg B: an opt-in type is requestable only on the borrower's own URLA
+    // election. An inferred alimony signal produces NO document requirement.
+    if (OPT_IN_INCOME_TYPES.has(source.type) && source.evidence !== "urla_elected") continue;
+    requirements.push(...INCOME_SOURCE_RULES[source.type]);
   }
 
   requirements.push(...ASSET_REQUIREMENTS);
@@ -274,7 +592,36 @@ export function determineDocumentRequirements(profile: BorrowerProfile): Documen
     });
   }
 
-  return requirements;
+  return dedupeRequirements(requirements);
+}
+
+/**
+ * Conditions are keyed `DOC_REQ_<TYPE>`, so two sources that both want a tax
+ * return must collapse to ONE condition — otherwise the second is dropped
+ * silently by the idempotency check and its reason is lost. Collapse here
+ * instead, naming every source that drove it and widening yearsRequired to the
+ * union.
+ */
+function dedupeRequirements(requirements: DocumentRequirement[]): DocumentRequirement[] {
+  const order = { prior_to_approval: 0, prior_to_docs: 1, prior_to_funding: 2 } as const;
+  const byType = new Map<string, DocumentRequirement>();
+  for (const req of requirements) {
+    const existing = byType.get(req.documentType);
+    if (!existing) {
+      byType.set(req.documentType, { ...req });
+      continue;
+    }
+    if (existing.description !== req.description) {
+      existing.description = `${existing.description}; ${req.description}`;
+    }
+    if (req.yearsRequired?.length) {
+      const years = new Set([...(existing.yearsRequired ?? []), ...req.yearsRequired]);
+      existing.yearsRequired = [...years].sort((a, b) => b - a);
+    }
+    // Keep the earliest gate.
+    if (order[req.priority] < order[existing.priority]) existing.priority = req.priority;
+  }
+  return [...byType.values()];
 }
 
 export async function generateConditionsFromRequirements(
@@ -394,6 +741,35 @@ export function getBorrowerProfileFromApplication(app: LoanApplication): Borrowe
   };
 }
 
+/**
+ * Re-derive a file's document requirements from its current stated data and
+ * write any that are newly required. Returns ONLY the newly-created conditions.
+ *
+ * Deterministic and deliberately UNGATED. This is the same rule evaluation
+ * `initializeLoanPipeline` runs at intake — same engine, same
+ * `DOC_REQ_<TYPE>` conditions, same idempotency — just run again after the
+ * borrower states something new. It is not an autopilot capability: no model
+ * reads anything, no decision is issued, nothing is narrated. (The autopilot
+ * ROI metric had to be scoped to `AUTOPILOT_%` precisely because `DOC_REQ_%`
+ * conditions are produced by the normal intake pipeline, not the agent.)
+ *
+ * Running it only when autopilot was enabled left the requirement set frozen at
+ * whatever the borrower said first: a borrower who later added a second
+ * employer or an other-income row owed documents nobody would ever ask for.
+ * Intake was already ungated, so the gate was an inconsistency, not a control.
+ */
+export async function syncDocumentRequirements(application: LoanApplication): Promise<{
+  /** The full derived set — intake also turns these into borrower tasks. */
+  requirements: DocumentRequirement[];
+  /** Only the conditions this run newly created (idempotent by sourceRule). */
+  created: LoanCondition[];
+}> {
+  const profile = await loadBorrowerProfile(application);
+  const requirements = determineDocumentRequirements(profile);
+  const created = await generateConditionsFromRequirements(application.id, requirements);
+  return { requirements, created };
+}
+
 export async function initializeLoanPipeline(
   application: LoanApplication,
   createdByUserId: string
@@ -410,10 +786,8 @@ export async function initializeLoanPipeline(
       submittedAt: new Date(),
     }));
 
-  const profile = getBorrowerProfileFromApplication(application);
-  const requirements = determineDocumentRequirements(profile);
-
-  const conditions = await generateConditionsFromRequirements(application.id, requirements);
+  // Same derivation the section-save path re-runs; one helper, one behaviour.
+  const { requirements, created: conditions } = await syncDocumentRequirements(application);
 
   const tasks = await generateDocumentTasks(
     application.id,

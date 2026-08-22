@@ -1,6 +1,11 @@
 import { db } from "../db";
 import { storage } from "../storage";
 import {
+  buildDocumentChecklist,
+  outstandingChecklistItems,
+  borrowerAskLabel,
+} from "./documentChecklist";
+import {
   users,
   loanApplications,
   documents,
@@ -811,9 +816,41 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     eligibleLoanTypes.push(activeApp.preferredLoanType);
   }
 
-  const requiredDocs = ["pay_stub", "w2", "tax_return", "bank_statement", "government_id"];
-  const uploadedTypes = new Set(docs.map(d => d.documentType));
-  const documentsMissing = requiredDocs.filter(t => !uploadedTypes.has(t));
+  // What this borrower still owes, derived from their own loan file.
+  //
+  // This was a hardcoded five-document list — pay_stub, w2, tax_return,
+  // bank_statement, government_id — matched with `Set.has`. It feeds the
+  // assistant's "MISSING INPUTS (recommend the FIRST one only)" prompt block
+  // and its next-ask, so a self-employed borrower was told to upload a pay stub
+  // and then a W-2 (documents they cannot produce) and was NEVER asked for the
+  // P&L, while loan_conditions already recorded the right list. `Set.has` also
+  // bypassed documentTypesMatch (a `paystub` upload never satisfied `pay_stub`)
+  // and ignored status (a REJECTED document counted as present).
+  //
+  // Same builder and same three reads as GET /api/applications/:id/document-checklist
+  // and coachFileTruth, so the assistant, the chat panel and the Documents page
+  // cannot disagree about what is outstanding.
+  let documentsMissing: string[] = [];
+  if (activeApp) {
+    try {
+      const [checklistConditions, appDocs, appTasks] = await Promise.all([
+        storage.getLoanConditionsByApplication(activeApp.id),
+        storage.getDocumentsByApplication(activeApp.id),
+        storage.getTasksByApplication(activeApp.id),
+      ]);
+      const derivedChecklist = buildDocumentChecklist({
+        conditions: checklistConditions,
+        documents: appDocs,
+        tasks: appTasks,
+      });
+      documentsMissing = outstandingChecklistItems(derivedChecklist.documents).map(borrowerAskLabel);
+    } catch {
+      // A read failure must not invent a document list. An empty list makes the
+      // assistant fall through to asking for missing INPUTS, which is the right
+      // behaviour when we cannot see the file.
+      documentsMissing = [];
+    }
+  }
 
   const readiness: ReadinessSnapshot = {
     completionPercentage: 0,

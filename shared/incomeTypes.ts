@@ -164,3 +164,68 @@ export function otherIncomeTypeLabel(id: OtherIncomeTypeId): string {
 export function hasUncitedQualifyingTreatment(id: OtherIncomeTypeId): boolean {
   return otherIncomeTypeDefinition(id).qualifyingAuthority === null;
 }
+
+/**
+ * The document-requirement vocabulary (`INCOME_TYPES` in
+ * `shared/schema/underwritingTasks.ts`), restated as a bare union.
+ *
+ * It is restated rather than imported because this module is pulled into the
+ * CLIENT bundle by the URLA picker, and `@shared/schema` drags 174 pgTable
+ * definitions with it — the leak `tests/clientSchemaImports.test.ts` exists to
+ * prevent. `server/pipelineEngine.ts` asserts at compile time that this union
+ * and `IncomeType` are the same set, so they cannot drift silently.
+ */
+export type DocumentIncomeType =
+  | "w2" | "self_employed" | "rental" | "bonus" | "commission" | "overtime"
+  | "social_security" | "pension" | "disability" | "alimony" | "child_support"
+  | "investment" | "other";
+
+/**
+ * Which document rule an other-income type falls under.
+ *
+ * A type maps to its own rule ONLY where the Selling Guide section is
+ * transcribed in `docs/fannie-mae/income-documentation-matrix.md`. Everything
+ * else maps to `other` — which asks for tax returns and routes to a human —
+ * because naming a specific document for an untranscribed rule would be
+ * inventing one. Each such row carries the section that WOULD govern it, so
+ * filling the gap later is a transcription, not a hunt.
+ *
+ * 🚨 `separate_maintenance` maps to `alimony` deliberately: B3-3.4-02 governs
+ * "Alimony, Child Support, Equalization Payments, or Separate Maintenance" as
+ * one rule, so it inherits the same Reg B opt-in gate.
+ */
+export const OTHER_INCOME_TO_DOCUMENT_TYPE: Record<OtherIncomeTypeId, DocumentIncomeType> = {
+  alimony: "alimony",                          // B3-3.4-02 — transcribed (opt-in)
+  child_support: "child_support",              // B3-3.4-02 — transcribed (opt-in)
+  separate_maintenance: "alimony",             // B3-3.4-02 — same rule (opt-in)
+  disability: "disability",                    // B3-3.4-09 — transcribed
+  social_security: "social_security",          // B3-3.4-15 — transcribed
+  retirement: "pension",                       // B3-3.4-03 — transcribed
+  interest_and_dividends: "investment",        // B3-3.4-08 — transcribed
+  capital_gains: "investment",                 // B3-3.4-05 — transcribed
+  // Untranscribed: the section is named, the rule is not yet in-repo.
+  notes_receivable: "other",                   // would be B3-3.4-11
+  royalty_payments: "other",                   // would be B3-3.4-13
+  unemployment_benefits: "other",              // would be B3-3.4-17
+  automobile_allowance: "other",               // would be B3-3.3-04
+  mortgage_credit_certificate: "other",        // would be B3-3.4-10
+  public_assistance: "other",                  // would be B3-3.4-12
+  boarder_income: "other",                     // would be B3-3.4-04
+  foster_care: "other",                        // would be B3-3.4-07
+  housing_or_parsonage: "other",               // would be B3-3.3-04
+  trust: "other",                              // would be B3-3.4-16
+  va_compensation: "other",                    // would be B3-3.4-18
+  other: "other",
+};
+
+/**
+ * Read the free-text `other_income_sources.income_source` column as a document
+ * rule key. Returns `null` for anything the catalog cannot classify — never a
+ * guess, and in particular never an opt-in type.
+ */
+export function documentIncomeTypeForStoredSource(
+  stored: string | null | undefined,
+): DocumentIncomeType | null {
+  const id = classifyOtherIncomeSource(stored);
+  return id ? OTHER_INCOME_TO_DOCUMENT_TYPE[id] : null;
+}
