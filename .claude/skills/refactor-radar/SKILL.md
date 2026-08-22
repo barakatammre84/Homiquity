@@ -5,6 +5,13 @@ description: Use ONLY when the user explicitly invokes /refactor-radar or explic
 
 # Refactor Radar — looping autonomous UI-vs-logic separation routine
 
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
+job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
+read out of the committed text this run — never from memory. An id the index does not know is a
+**wrong** citation, not an old one. A value read out of a **table** is unverified until you open
+the PDF page. (TEAM_PRACTICES §10; enforced by `pnpm guard:authority`.)
+
 One run = at most ONE reviewable PR, never merged by you. Every merge to main
 auto-deploys to production; the human owner is the only merger. If any rail below
 conflicts with making progress, the rail wins: stop, record, report.

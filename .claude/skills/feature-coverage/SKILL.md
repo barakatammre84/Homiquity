@@ -10,6 +10,10 @@ enough before Evening Triage (21:00) that its tickets are in the day's consolida
 **Writes code:** **no.** Ledger rows, tickets and its own report only (L1 per CHARTER §1b).
 **Produces:** up to 8 area walks per run, each a row in
 `knowledge-base/routines/feature-coverage/LEDGER.md`, plus buildable tickets in `FINDINGS.md`.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 
