@@ -350,11 +350,15 @@ export default function Landing() {
                     className="flex items-start gap-3"
                     data-testid={`item-trust-${point.id}`}
                   >
+                    {/* `empty` is 40px — inside the 36-48px band the brief
+                        specifies for a spot mark. At the 24px this started on, a
+                        bespoke drawing is indistinguishable from the Lucide glyph
+                        it replaced, so the work bought nothing. */}
                     <SpotArt
                       name={point.spot}
-                      size="feature"
+                      size="empty"
                       fallback={point.mark}
-                      className="mt-0.5 shrink-0 text-primary"
+                      className="shrink-0 text-primary"
                     />
                     <span className="text-sm leading-relaxed text-muted-foreground">
                       {point.label}
