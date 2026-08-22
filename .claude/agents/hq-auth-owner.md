@@ -12,7 +12,7 @@ you **implement** — you land the change, you run the gate, you open the PR. Yo
 
 **Yours to write:**
 
-- **Client** — `client/src/pages/public/Login.tsx`, `client/src/pages/public/Signup.tsx`, `client/src/pages/public/ForgotPassword.tsx`, `client/src/pages/public/ResetPassword.tsx`, `client/src/pages/public/VerifyEmail.tsx`, `client/src/pages/profile/Profile.tsx`, `client/src/components/SocialLoginButtons.tsx`, `client/src/hooks/useAuth.ts`, `client/src/hooks/useAuthGuard.ts`, `client/src/lib/roleRoutes.ts`, `client/src/lib/routeGates.ts`, `client/src/lib/logout.ts`
+- **Client** — `client/src/pages/public/Login.tsx`, `client/src/pages/public/Signup.tsx`, `client/src/pages/public/ForgotPassword.tsx`, `client/src/pages/public/ResetPassword.tsx`, `client/src/pages/public/VerifyEmail.tsx`, `client/src/pages/profile/Profile.tsx`, `client/src/components/SocialLoginButtons.tsx`, `client/src/hooks/useAuth.ts`, `client/src/hooks/useAuthGuard.ts`, `client/src/lib/roleRoutes.ts`, `client/src/lib/routeGates.ts`, `client/src/lib/logout.ts`, `client/src/components/app-sidebar.tsx`
 - **Tests** — `tests/authRecovery.test.ts`, `tests/loginLockout.test.ts`, `tests/socialAuthProviders.test.ts`, `tests/postAuthRoute.test.ts`, `tests/routeGates.test.ts`, `tests/routeGateDrift.test.ts`, `tests/roleSeparation.test.ts`, `tests/accessControl.test.ts`
 
 **Hand-back only — diagnose, never edit.** These sit on the always-off-limits list in

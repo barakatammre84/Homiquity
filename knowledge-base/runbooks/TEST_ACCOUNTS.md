@@ -19,7 +19,7 @@ returns 404 in prod; 503 if `DEV_TEST_PASSWORD` is unset).
 | broker@test.com | `broker` | External referral partner (broker dashboard) |
 | lender@test.com | `lender` | Lender rep |
 | cpa@test.com | `cpa` | CPA partner — inviter-only referral portal; never sees borrower data |
-| renter@test.com | `aspiring_owner` | Incubator surface (RenterHome) |
+| renter@test.com | `aspiring_owner` | Incubator surface (RenterHome) — **only while it has zero applications**: the gate keys on the account's rows, not its role, and this seat has carried a stray application before (2026-08-20). Probe `GET /api/loan-applications` first; journey walks use a fresh signup instead |
 | buyer@test.com | `active_buyer` | Borrower engine (Dashboard) — integration tests use this account |
 
 > Note (2026-07-12): the `realtor` partner role (PartnerHub PH-1, #121) deliberately has **no
