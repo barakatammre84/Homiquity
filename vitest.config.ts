@@ -289,6 +289,12 @@ export default defineConfig({
       "tests/mutationErrorHandling.test.ts",
       "tests/homiFileTruth.test.ts",
       "tests/homiReadinessDerivation.test.ts",
+      // Document requirements derive from the SET of income sources, not one
+      // employmentType scalar. Pins the both-incomes case, the Reg B opt-in
+      // branch for support income, and that every rule cites the transcribed
+      // Selling Guide matrix.
+      "tests/incomeSourceRequirements.test.ts",
+      "tests/documentsOutstandingContract.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
