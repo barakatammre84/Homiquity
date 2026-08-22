@@ -11,6 +11,7 @@ const {
   loadSectionIndex,
   parseChangedLines,
   ATTESTATION,
+  CITATION_FIXTURE_FILES,
 } = require("../scripts/selling-guide-authority-guard.cjs");
 
 // -----------------------------------------------------------------------------
@@ -157,5 +158,20 @@ describe("section index loading", () => {
 
   it("returns null when the corpus is absent, so the guard can say it is inert", () => {
     expect(loadSectionIndex(join(tmpdir(), "definitely-not-here-section-index.tsv"))).toBeNull();
+  });
+});
+
+describe("the fixture exemption", () => {
+  it("covers this file, and only this file", () => {
+    // This test names invalid ids on purpose. Without the exemption the guard fails its own
+    // PR — which it did, on the first run. The exemption is one named file: widening it to
+    // `tests/**` would let a genuinely stale citation hide in any test in the repo.
+    expect([...CITATION_FIXTURE_FILES]).toEqual(["tests/sellingGuideAuthorityGuard.test.ts"]);
+  });
+
+  it("still flags an unresolvable id in a file that is not exempt", () => {
+    const diff = ["+++ b/server/underwriting.ts", "+// per B3-3.1-08"].join("\n");
+    const { unknown } = resolveIds(findCitations(parseChangedLines(diff)), INDEX);
+    expect(unknown).toHaveLength(1);
   });
 });

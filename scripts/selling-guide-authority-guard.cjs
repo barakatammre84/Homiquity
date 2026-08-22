@@ -83,6 +83,17 @@ const SG_ID = /(?<![A-Za-z0-9.\-])([A-E]\d{0,2}-\d(?:\.\d+)?-\d{2})(?![\d.])/g;
 const HISTORICAL_MARKER = /formerly|renumber|superseded|historical|was\s+[A-E]\d{0,2}-\d/i;
 
 /**
+ * The one place an invalid section id must appear LITERALLY: this guard's own fixtures,
+ * which exercise the unknown-id path. Marking those lines `formerly` would exempt them and
+ * the test would stop testing anything. Deliberately a single named file rather than a
+ * pattern — `tests/**` would let a genuinely stale cite hide in any test in the repo.
+ *
+ * Found by running this guard against its own PR. It failed, correctly by its own rule and
+ * wrongly in substance, which is the calibration an unexercised guard never gets.
+ */
+const CITATION_FIXTURE_FILES = new Set(["tests/sellingGuideAuthorityGuard.test.ts"]);
+
+/**
  * Paths whose logic traces to the Guide. Mirrored in TEAM_PRACTICES §10 — the register
  * and this array are edited in the same PR, the way §9 and security-review-guard are.
  */
@@ -182,6 +193,7 @@ function findCitations(changedLines) {
   const out = [];
   for (const entry of changedLines) {
     if (!entry.added) continue;
+    if (CITATION_FIXTURE_FILES.has(entry.file)) continue;
     if (HISTORICAL_MARKER.test(entry.line)) continue;
     for (const m of entry.line.matchAll(SG_ID)) {
       out.push({ id: m[1], file: entry.file, line: entry.line.trim() });
@@ -368,6 +380,7 @@ module.exports = {
   loadSectionIndex,
   parseChangedLines,
   PATH_TRIGGERS,
+  CITATION_FIXTURE_FILES,
   ATTESTATION,
   SG_ID,
 };
