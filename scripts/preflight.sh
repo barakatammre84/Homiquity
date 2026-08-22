@@ -118,7 +118,7 @@ else
   step "security review (§9 triggers)" security_review
 fi
 
-step "unit tests (node + client)"     pnpm test
+step "unit tests + collection floor" pnpm test
 step "dependency audit (prod, high+)" pnpm audit --prod --audit-level=high
 
 if [ "$FAST" = 1 ]; then
