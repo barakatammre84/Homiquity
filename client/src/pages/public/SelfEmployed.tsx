@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
+import { OffsetBlock } from "@/components/layout/OffsetBlock";
 import { RelatedGuides } from "@/components/RelatedGuides";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
@@ -212,7 +213,7 @@ export default function SelfEmployed() {
         </ImageTextSection>
 
         <section aria-labelledby="se-pain-heading" className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
+          <OffsetBlock side="left" className="max-w-5xl" data-testid="offset-se-pain">
             <h2 id="se-pain-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               Why online lenders keep telling you no
             </h2>
@@ -229,12 +230,12 @@ export default function SelfEmployed() {
                 </Card>
               ))}
             </div>
-          </div>
+          </OffsetBlock>
         </section>
 
         {/* The counter — what we actually do differently (all claims code-true) */}
         <section aria-labelledby="se-approach-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
+          <OffsetBlock side="right" className="max-w-5xl" data-testid="offset-se-approach">
             <h2 id="se-approach-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               How we handle income like yours
             </h2>
@@ -251,7 +252,7 @@ export default function SelfEmployed() {
                 </Card>
               ))}
             </div>
-          </div>
+          </OffsetBlock>
         </section>
 
         {/* FAQ — objection handling via progressive disclosure */}
