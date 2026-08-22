@@ -60,10 +60,13 @@ and is the counsel seat · Vendor & Procurement (Mon 09:37) holds commercial sta
 above-conforming borrower — the one door with no explainer, the conforming boundary, and the
 honesty of what we tell a borrower above the limit.
 
-**Review seats reachable by name:** the four `journey-walker-*` agents walk one client journey each
-in a real browser (`knowledge-base/feature-review/JOURNEYS.md`), fronted by the **`/journey-walk`**
-skill. They are the only lens in the fleet whose subject is the space *between* surfaces, and the
-only ones that can re-verify Move-Up Lane's work — **no seat signs off its own.**
+**Review seats reachable by name:** the client `journey-walker-*` agents walk one client journey each
+in a real browser (`knowledge-base/feature-review/JOURNEYS.md`), fronted by **`/journey-walk`**; the
+five `journey-walker-staff-*` agents walk one staff desk each as the seat **and** its counterpart
+(`knowledge-base/feature-review/STAFF_JOURNEYS.md`), fronted by **`/staff-journey-walk`** and run
+daily at 13:40 by `staff-journey-walk`. Together they are the only lens in the fleet whose subject
+is the space *between* surfaces and *between* desks, and the only seats that re-verify a builder's
+fix from the person's side — **no seat signs off its own.**
 
 ### Seats with no routine, and deliberately so
 
@@ -86,6 +89,7 @@ Each new seat had to pass one test: **what does it catch that nothing else does?
 | Integration Readiness | **added** | Nothing records, per adapter, the distance between simulation and a signed contract. That distance currently gets discovered at contract time. |
 | QA Mutation Verifier | **added** | The sweep *finds* defects; nothing verifies a **fix** is load-bearing. A test that passes with and without the fix is invisible to every guard. |
 | Move-Up Lane | **added 2026-08-19** | Nothing owns the above-conforming borrower. Complex File Engine owns income *complexity*; jumbo is loan *size*, a different axis. Primary Engineer is launch-ranked, and launch is Illinois-first conforming business, so this lane never reaches the top of its queue. Weekly, not daily, so it does not contend with the three daily builders. **What it caught on day one:** the funnel gated its jumbo advisory on the 2024 limit (`766550` vs `806_500`), telling conforming borrowers they were jumbo across a $40k band — green under a one-limit test that named two files and could not see the funnel. |
+| Staff-journey walkers (×5: lo, processor, underwriter, closer, broker) | **added 2026-08-22** | A staff journey is one file crossing many hands; its seam is the handoff between desks and the borrower-side consequence of a staff action. Every existing lens holds one role — domain 11 has never been reviewed, no workflow covers "LO invites a client", and every open staff finding came in from the borrower side or from code. **Admin is not a seat** (it bypasses every scoping gate and so can see no seam gates create — it is the counterpart with two verbs); **loa** is folded into the LO seat (every difference is a subtraction that renders as a 403); **lender** is deferred by policy. The closer seat is scoped like the affluent one — to the absence — and is expected to report `DEAD-ENDED (by design)`, minted once. |
 | Client-journey walkers (×4) | **added 2026-08-19** | Report-only, so no file contention. Every existing seat is discontinuous — a domain reviewer never leaves its domain, a workflow verifier never re-renders a nav, a surface auditor sees one page at one role. Nothing could see a value dropped crossing a boundary or a promise with no surface that keeps it. |
 | A white-glove / concierge service tier | **rejected — not a routine at all** | No such tier exists in the product, and a service promise is a staffing and Reg N commitment, not code. Move-Up Lane rail M2 forbids any routine from creating one; it is a founder decision, escalated as a proposal. |
 | A full-stack routine | rejected | Three seats already build daily. A fourth would contend for the same files and the founder's merge throughput, which is the real constraint. |

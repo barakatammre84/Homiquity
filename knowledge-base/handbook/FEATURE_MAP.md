@@ -327,7 +327,7 @@ What it does:
 - Staff see the **narrowest actionable next step**, not a wall of state.
 - Cockpit data is scoped to what that staff member may see. Scoping is a security property.
 
-- **Server** — `server/pipelineEngine.ts`, `server/routes/cockpit.ts`, `server/routes/comms.ts`, `server/storage/pipeline.ts`, `server/services/nextAction.ts`, `server/services/lifecycleEngine.ts`, `server/services/cycleTimeReport.ts`, `server/services/frictionLog.ts`, `server/services/activitySummary.ts`
+- **Server** — `server/pipelineEngine.ts`, `server/routes/cockpit.ts`, `server/routes/comms.ts`, `server/storage/pipeline.ts`, `server/services/nextAction.ts`, `server/services/lifecycleEngine.ts`, `server/services/cycleTimeReport.ts`, `server/services/frictionLog.ts`, `server/services/activitySummary.ts`, `server/routes/lending/statusDecisions.ts`, `server/routes/borrower/dealTeam.ts` *(provisional, assigned 2026-08-22 by the staff-journey PR — was unowned; move if a better home exists)*
 - **Client** — `client/src/pages/lending/LoanPipeline.tsx`, `client/src/pages/lending/loanPipeline/`, `client/src/pages/staff/LoCommandCenter.tsx`, `client/src/pages/staff/loCommandCenter/`, `client/src/pages/staff/StaffDashboard.tsx`, `client/src/pages/staff/staffDashboard/`, `client/src/pages/staff/BorrowerFile.tsx`, `client/src/pages/staff/borrowerFile/`, `client/src/components/StaffSignalsPanel.tsx`
 - **Shared / schema** — `shared/loanApplicationStatus.ts`, `shared/statusVocabularies.ts`, `shared/cycleTimeReport.ts`, `shared/borrowerActivityView.ts`, `shared/compliance/loCommsLint.ts`
 - **Owned tests** — 10 files, listed in the agent
@@ -477,7 +477,7 @@ What it does:
 - An invite carries attribution that survives the borrower's whole journey.
 
 - **Server** — `server/routes/agent-broker/`, `server/services/lenderMatchingEngine.ts`
-- **Client** — `client/src/pages/agent-broker/BrokerDashboard.tsx`, `client/src/pages/agent-broker/InviteGenerator.tsx`, `client/src/pages/agent-broker/inviteGenerator/`, `client/src/pages/agent-broker/AgentPipeline.tsx`, `client/src/pages/agent-broker/AgentDashboard.tsx`, `client/src/pages/agent-broker/AgentEdit.tsx`, `client/src/pages/agent-broker/AgentCoBranding.tsx`, `client/src/pages/agent-broker/PartnerServices.tsx`
+- **Client** — `client/src/pages/agent-broker/BrokerDashboard.tsx`, `client/src/pages/agent-broker/InviteGenerator.tsx`, `client/src/pages/agent-broker/inviteGenerator/`, `client/src/pages/agent-broker/AgentPipeline.tsx`, `client/src/pages/agent-broker/AgentDashboard.tsx`, `client/src/pages/agent-broker/AgentEdit.tsx`, `client/src/pages/agent-broker/AgentCoBranding.tsx`, `client/src/pages/agent-broker/PartnerServices.tsx`, `client/src/pages/agent-broker/ApplyInvite.tsx` *(provisional, assigned 2026-08-22 by the staff-journey PR — was unowned; move if a better home exists)*
 - **Shared / schema** — `shared/businessChannel.ts`
 - **Owned tests** — 2 files, listed in the agent
 
@@ -576,7 +576,7 @@ What it does:
 - Client route gates and the sidebar read from **one** source, so a gate cannot drift between them.
 - A client gate is a convenience. The server gate is the security boundary, and both must agree.
 
-- **Client** — `client/src/pages/public/Login.tsx`, `client/src/pages/public/Signup.tsx`, `client/src/pages/public/ForgotPassword.tsx`, `client/src/pages/public/ResetPassword.tsx`, `client/src/pages/public/VerifyEmail.tsx`, `client/src/pages/profile/Profile.tsx`, `client/src/components/SocialLoginButtons.tsx`, `client/src/hooks/useAuth.ts`, `client/src/hooks/useAuthGuard.ts`, `client/src/lib/roleRoutes.ts`, `client/src/lib/routeGates.ts`, `client/src/lib/logout.ts`
+- **Client** — `client/src/pages/public/Login.tsx`, `client/src/pages/public/Signup.tsx`, `client/src/pages/public/ForgotPassword.tsx`, `client/src/pages/public/ResetPassword.tsx`, `client/src/pages/public/VerifyEmail.tsx`, `client/src/pages/profile/Profile.tsx`, `client/src/components/SocialLoginButtons.tsx`, `client/src/hooks/useAuth.ts`, `client/src/hooks/useAuthGuard.ts`, `client/src/lib/roleRoutes.ts`, `client/src/lib/routeGates.ts`, `client/src/lib/logout.ts`, `client/src/components/app-sidebar.tsx` *(provisional, assigned 2026-08-22 by the staff-journey PR — was unowned; move if a better home exists; it renders the role gates this area owns)*
 - **Hand-back only** — `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`, `server/services/accountRecovery.ts`, `server/services/loginLockout.ts`, `server/clientIp.ts`, `server/trustProxy.ts`
 - **Owned tests** — 8 files, listed in the agent
 
