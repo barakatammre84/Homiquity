@@ -22,12 +22,17 @@ import path from "node:path";
 const h = vi.hoisted(() => ({
   application: null as any,
   costEntries: [] as any[],
+  propertyInfo: null as any,
 }));
 
 vi.mock("../server/storage", () => ({
   storage: {
     getLoanApplication: async () => h.application,
     getLoanCostEntries: async () => h.costEntries,
+    // B3-6-03: the projection reads subject-property association dues to build
+    // the qualifying PITIA. `h.propertyInfo` defaults to null (no URLA property
+    // row), which is the shape a fresh intake actually has.
+    getUrlaPropertyInfo: async () => h.propertyInfo,
   },
 }));
 

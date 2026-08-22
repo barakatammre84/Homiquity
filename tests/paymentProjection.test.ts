@@ -28,12 +28,17 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 const h = vi.hoisted(() => ({
   application: null as any,
   costEntries: [] as any[],
+  propertyInfo: null as any,
 }));
 
 vi.mock("../server/storage", () => ({
   storage: {
     getLoanApplication: async () => h.application,
     getLoanCostEntries: async () => h.costEntries,
+    // B3-6-03: the projection reads subject-property association dues to build
+    // the qualifying PITIA. `h.propertyInfo` defaults to null (no URLA property
+    // row), which is the shape a fresh intake actually has.
+    getUrlaPropertyInfo: async () => h.propertyInfo,
   },
 }));
 
@@ -177,6 +182,53 @@ describe("computePaymentProjection — compensation independence (WF1-002)", () 
     const { interestRate: withElection } = await computePaymentProjection("app-1");
 
     expect(withElection).toBe(withoutElection);
+  });
+});
+
+describe("B3-6-03 qualifying PITIA vs the disclosed projected payment", () => {
+  // Two figures, two regimes. estimatedMonthlyTotal holds Loan Estimate parity;
+  // qualifyingPitia is what the DTI is built on and adds association dues per
+  // Selling Guide B3-6-03. Collapsing them would either drop the dues from the
+  // DTI (the defect) or silently change a disclosure on an unverifiable Reg Z
+  // reading (what CLAUDE.md's Reg Z rail forbids).
+  it("adds association dues to the qualifying figure but not to the LE figure", async () => {
+    h.application = application({ loCompensationModel: "lender_paid", loCompensationBps: 125 });
+    h.propertyInfo = { monthlyAssociationDues: "450.00" } as any;
+
+    const p = await computePaymentProjection("app-1");
+
+    expect(p.monthlyAssociationDues).toBe(450);
+    expect(p.qualifyingPitia).toBe(Math.round((p.estimatedMonthlyTotal + 450) * 100) / 100);
+
+    const le = await generateLoanEstimate("app-1");
+    expect(
+      p.estimatedMonthlyTotal,
+      "the LE-parity figure must not move when dues are captured",
+    ).toBe(le.projectedPayments.years1Through5.estimatedTotal);
+  });
+
+  it("leaves the two equal when there are no dues", async () => {
+    h.application = application({ loCompensationModel: "lender_paid", loCompensationBps: 125 });
+    h.propertyInfo = { monthlyAssociationDues: "0" } as any;
+    const p = await computePaymentProjection("app-1");
+    expect(p.qualifyingPitia).toBe(p.estimatedMonthlyTotal);
+  });
+
+  // A null on a condo is "not captured", and the decision path must gap on it
+  // rather than qualify the borrower on a housing expense it knows is short.
+  it("flags uncaptured dues on an association-bearing property", async () => {
+    h.application = application({ propertyType: "condo" } as any);
+    h.propertyInfo = null as any;
+    const p = await computePaymentProjection("app-1");
+    expect(p.monthlyAssociationDues).toBeNull();
+    expect(p.associationDuesUncaptured).toBe(true);
+  });
+
+  it("does not flag a detached single-family file", async () => {
+    h.application = application({ propertyType: "single_family" } as any);
+    h.propertyInfo = null as any;
+    const p = await computePaymentProjection("app-1");
+    expect(p.associationDuesUncaptured).toBe(false);
   });
 });
 

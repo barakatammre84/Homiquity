@@ -241,6 +241,11 @@ function primeOrchestrator(app: Record<string, unknown>, data: {
   });
   mocks.computePaymentProjection.mockResolvedValue({
     estimatedMonthlyTotal: data.piti ?? 3000,
+    // B3-6-03 qualifying PITIA — what the DTI and reserves are actually built
+    // on. These personas carry no association dues, so it equals the LE figure.
+    qualifyingPitia: data.piti ?? 3000,
+    monthlyAssociationDues: null,
+    associationDuesUncaptured: false,
   });
 }
 
