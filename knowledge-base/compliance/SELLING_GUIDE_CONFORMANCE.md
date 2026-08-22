@@ -68,6 +68,8 @@ Checked against the 08-05-2026 text; code agrees. Re-verify on the next edition.
 | Rental section renumbering | B3-3.8-01 (was B3-3.1-08) | cited in `rental.ts` | current cite, renumbering tracked |
 | Reserves, second home | B3-4.1-01 | `requiredReserveMonths()` | 2 months |
 | Reserves, 2–4 unit primary / investment | B3-4.1-01 | `requiredReserveMonths()` | 6 months |
+| Qualifying rate, fixed-rate | B3-6-04 | `derivePricing` | note rate |
+| Association dues inside PITIA | B3-6-03 | `qualifyingPitia` | included (C-6) |
 
 Deliberate conservative overlays, already carried in
 [`data/regulatory/regulatory-ledger.json`](../../data/regulatory/regulatory-ledger.json)
@@ -150,6 +152,56 @@ deferred student loans and newly opened lines. A file pushed over the ceiling *p
 imputation would have been held there with no flag and no explanation: the same silent-success
 shape the fix was meant to remove. The cause list now includes it and the copy names it.
 
+### C-6 — Association dues were absent from the qualifying housing expense
+
+**B3-6-03, Monthly Housing Expense for the Subject Property.** PITIA is "the sum of the
+following": P&I; property, flood, and mortgage insurance; real estate taxes; ground rent;
+special assessments; **any owners' association dues**; any monthly co-op corporation fee; and
+any subordinate financing payments on the subject property. It is explicitly "the monthly
+housing expense used to calculate the debt-to-income (DTI) ratio."
+
+The decision path computed PITIA as **P&I + MI + escrow**, and `estimateMonthlyEscrow` is
+property tax plus homeowner's insurance only. Association dues were nowhere in it. Worse, they
+were nowhere they *could* be: `urla_property_info` had no column for them. The figure existed
+only on `loan_options.hoa_fees` — a display/offer row — and in the public calculators, which
+collect it from visitors and then drop it.
+
+So a condo borrower was decisioned with their dues omitted. At a routine **$300–800/month**
+that is a larger DTI understatement than C-1, in the same forbidden direction.
+
+Fixed across the capture path, not just the arithmetic:
+
+- `migrations/0057_subject_property_association_dues.sql` — expand-only, nullable, **no
+  DEFAULT**. Zero is a claim ("this property has no association"); defaulting every existing
+  row to it would fabricate the exact figure the column exists to stop assuming.
+- `computePaymentProjection` adds the dues to `estimatedMonthlyTotal` and reports them.
+- **A null on an association-bearing type gaps the file.** `decisionEngine` returns
+  `NEEDS_MORE_INFO` asking for the dues rather than qualifying on a housing expense it knows
+  is incomplete. `isAssociationBearingPropertyType` covers condo / co-op / PUD / townhouse and
+  the spelling variants intake actually produces — a detached SFR is left alone, where zero is
+  a plausible default and gapping every file would be noise rather than rigor.
+- The URLA property section captures it.
+
+Still missing from PITIA and recorded below rather than faked: flood insurance, ground rent,
+special assessments, and subordinate-financing payments (gap G-10).
+
+### C-7 — The engine would decision on an undefined housing expense
+
+Found by a fixture, not by design. Pointing `decisionEngine` at `qualifyingPitia` made an older
+persona mock return a projection without that field — and **nothing failed**. The `undefined`
+propagated through the DTI and reserve math and came out the far end as a decision reporting
+**zero months of reserves on a file holding $2.05M in assets**. A decision computed on nothing,
+rendered as a decision computed on something.
+
+That is the dominant defect shape in this codebase, reached from a new direction: not an
+operation that did not happen, but a number that was never there being spent anyway.
+
+The engine now throws when the qualifying PITIA is not a finite number. It deliberately does
+**not** fall back to `estimatedMonthlyTotal` — that is the figure which *excludes* association
+dues, so a fallback would quietly resurrect C-6 the moment any caller went quiet. Pinned by
+`tests/sellingGuideHousingExpense.test.ts`, which asserts the guard rather than the arithmetic,
+because the arithmetic is precisely what failed to notice.
+
 ---
 
 ## Open gaps — recorded, not silently assumed
@@ -205,6 +257,69 @@ B3-4.1-01's six-month requirement also covers "a cash-out refinance transaction 
 ratio greater than 45%". `derivePreUnderwritingFlags` runs on the purchase intake — it carries
 a purchase price and a down payment and has no refinance shape — so that leg cannot fire. It
 is not wrong today; it becomes a gap the moment refinance files enter pre-underwriting.
+
+### G-11 — The disclosed Loan Estimate still omits association dues (Reg Z, not Selling Guide)
+
+C-6 added association dues to the **qualifying** PITIA (`qualifyingPitia`) and deliberately left
+`estimatedMonthlyTotal` — the figure that holds byte-parity with the Loan Estimate's
+`projectedPayments.years1Through5` — unchanged. They are two figures under two regimes:
+B3-6-03 governs what Fannie qualifies on and is verifiable against the committed Guide; what
+belongs on the **disclosed** projected-payments table is Reg Z §1026.37(c), and
+[`docs/reg-z/`](../../docs/reg-z/) still holds no captured source text.
+
+Per CLAUDE.md's Reg Z rail a reading there is **flagged, never asserted**, and may never be
+acted on unilaterally — changing a borrower disclosure on an unverifiable reading is precisely
+what the rail exists to prevent. So the disclosure is left as-is and the question is recorded
+here: whether §1026.37(c)(4)'s "Estimated Taxes, Insurance & Assessments" line should carry
+association dues, and how the escrowed/not-escrowed split is presented, needs the captured
+Reg Z text — i.e. the same procurement that unblocks the other eleven ledger entries.
+
+### G-12 — ARM qualifying rate is unimplemented, and an ARM product is already seeded
+
+**B3-6-04, Qualifying Payment Requirements.** The qualifying rate is the note rate only for
+fixed-rate mortgages. An ARM with a five-year initial fixed period must be qualified at the
+**greater of** the note rate plus the first rate-change cap, or the fully indexed rate; an ARM
+with a three-year-or-shorter initial period, at the maximum rate that could apply during the
+first five years.
+
+None of that exists — there is no `qualifyingRate`, no first-rate-change cap, and no fully
+indexed rate anywhere in the codebase. **Today this is not a live defect:** `derivePricing`
+prices only `conventional` / `fha` / `va` at a fixed 360-month term, so the note rate *is* the
+correct qualifying rate for everything it can produce.
+
+🚨 **But the trap is already loaded.** `server/seedMarketPricing.ts` seeds a *5/6 ARM
+(30-Year Term)* with `productType: "ARM"`, and the URLA offers `adjustable` as an amortization
+type. The moment anything routes a file to that product, every ARM borrower is qualified at the
+teaser rate — understating the payment and the DTI in the forbidden direction. Wiring ARM
+pricing **requires** B3-6-04 in the same change; do not treat the qualifying rate as a
+follow-up.
+
+### G-13 — Temporary buydowns must not be qualified at the bought-down rate (B3-6-04)
+
+"Loans subject to temporary interest rate buydowns must be qualified without consideration of
+the bought-down rate." Buydowns are not modeled in pricing, so we qualify at the note rate by
+default and conform by construction. The exposure is that Illinois DPA programs already in
+`server/seedData/illinoisDpa.ts` explicitly allow their funds to go toward "a mortgage rate
+buydown" — so the product can reach a bought-down borrower before the engine can represent one.
+Same rule as G-12: whoever models the buydown owes the qualifying-rate carve-out with it.
+
+### G-10 — Four PITIA components still absent (B3-6-03)
+
+B3-6-03 lists eight components; C-6 closed the association-dues one. Four remain unmodeled:
+
+- **flood insurance premiums** — nothing in the codebase models flood insurance as a payment
+  component (`floodCertFee` is a closing fee, and a CoreLogic flood adapter is seeded but
+  unused). Material in a SFHA, where premiums run into the thousands annually.
+- **ground rent** — leasehold estates are governed by B2-3-03, revised in this very release.
+- **special assessments** — common on condos with pending capital work, and the same B4-2.1-03
+  review that flags "unaddressed critical repairs" is the context they arise in.
+- **subordinate financing payments on the subject property** — `CLTV` exists on the
+  underwriting schema and `subordinateFinancingExists` on the delivery record, so the concept
+  is represented at delivery but not in the qualifying payment. A piggyback second's payment is
+  therefore outside PITIA.
+
+Each understates the housing expense where it applies. None is fabricated as zero today
+because none is captured at all; the honest fix is capture, as C-6 did for dues.
 
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 

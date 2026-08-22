@@ -143,6 +143,26 @@ export function PropertySection({
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            {/*
+              Fannie Mae Selling Guide B3-6-03 counts owners' association and
+              co-op dues inside the qualifying housing expense (PITIA) used to
+              compute the DTI. This is decision input, not a display nicety —
+              leaving it blank on a condo/PUD gaps the file rather than
+              qualifying the borrower on an incomplete housing expense.
+            */}
+            <Label htmlFor="monthly-association-dues">Monthly HOA / Association Dues</Label>
+            <MoneyInput
+              id="monthly-association-dues"
+              value={propertyInfo.monthlyAssociationDues ?? ""}
+              onChange={(e) => onChange({ ...propertyInfo, monthlyAssociationDues: e.target.value })}
+              data-testid="input-monthly-association-dues"
+            />
+            <p className="text-sm text-muted-foreground">
+              Enter 0 if the property has no association. Condos, co-ops and PUDs almost
+              always have dues, and they count toward your qualifying payment.
+            </p>
+          </div>
         </div>
 
         <hr />
