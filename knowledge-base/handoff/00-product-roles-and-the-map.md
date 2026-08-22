@@ -81,7 +81,7 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
   to a deal-team before accessing any borrower record." (Chapter 02 shows the predicate that
   enforces it.)
 - **Persona is the role.** `users.role` is a `varchar` defaulting to `aspiring_owner`
-  (`shared/schema/core.ts:53`); there is no persona column. The single promotion site is
+  (`shared/schema/core.ts:55`); there is no persona column. The single promotion site is
   `server/routes/lending/applications.ts:130-142` (`storage.updateUserRole(userId, "active_buyer")`,
   guarded to exactly `aspiring_owner`, audited). `grep -rn 'updateUserRole(' server --include='*.ts'`.
 - **Four root docs, three living plus a stub.** `knowledge-base/README.md:5-8` names `CLAUDE.md`,
@@ -122,7 +122,7 @@ grep -cE '^export const (STAFF|CLIENT|PARTNER|INTERNAL_STAFF)_ROLES' shared/role
 grep -n 'export const ALL_ROLES' shared/roles.ts
 # → 42:export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES, ...PARTNER_ROLES] as const; @ 074899e3
 grep -n 'default("aspiring_owner")' shared/schema/core.ts
-# → 53:  role: varchar("role", { length: 50 }).default("aspiring_owner").notNull(), @ 074899e3
+# → 55:  role: varchar("role", { length: 50 }).default("aspiring_owner").notNull(), // See ALL_ROLES constant @ 074899e3
 grep -rn 'updateUserRole(' server --include='*.ts' | grep -v 'async updateUserRole' | wc -l
 # → 4   (applications.ts promotion · admin.ts · staff-invites.ts redeem · auth.ts dev test-login) @ 074899e3
 grep -cE '^\| [0-9]+ \| \[' knowledge-base/handbook/FEATURE_MAP.md ; ls .claude/agents/hq-*-owner.md | wc -l

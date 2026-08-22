@@ -74,6 +74,11 @@ flowchart TD
   components 173, lib 48, hooks 19, funnel 5. Pages per persona directory: borrower 56, staff 48,
   public 27, lending 27, agent-broker 26, calculators 24, admin 23, education 17, property 14,
   homeowner 8, rates 6, realtor-engine 4, profile 1.
+- **The borrower's home page**, for orientation: `client/src/pages/borrower/Dashboard.tsx`, lazy-loaded
+  at `client/src/App.tsx:73` and mounted at `/dashboard` (`App.tsx:398`); its data comes from
+  `GET /api/dashboard` (`server/routes/lending/dashboard.ts`) through the `dashboardKeys` factory
+  (`client/src/lib/queryClient.ts:259`). The staff equivalent is `client/src/pages/staff/StaffDashboard.tsx`
+  (`App.tsx:90`).
 - **The router.** `client/src/App.tsx:2` `import { Switch, Route, useLocation } from "wouter"`;
   `grep -c "<Route" client/src/App.tsx` → `121`; `grep -c "lazy(" client/src/App.tsx` → `113`;
   one `<Suspense fallback={<PageLoader />}>` wraps the whole Switch (`:245`); `:300` "Must precede
@@ -129,7 +134,7 @@ flowchart TD
   `scripts/query-key-reachability.cjs` (every invalidate/remove/refetch/reset key must element-wise
   prefix-match a fetched key, `:35-37`; cross-file misses are warnings, `:71-72`; sibling omission
   is out of scope, `:60-68`) and `scripts/query-key-transport-guard.cjs` (no hand-written `queryFn`,
-  `:46-48`). The invariant, quoted from query-core inside the guard (`reachability.cjs:18-28`): it
+  `:46-48`). The invariant, quoted from query-core inside the guard (`scripts/query-key-reachability.cjs:18-28`): it
   "reads like a prefix and behaves like a string equality test on segment 0". Companion:
   `tests/queryKeyConvergence.test.ts` (432 lines).
 - **Fetch census.** 176 files call `useQuery` (491 call sites), 102 `useMutation`, 182

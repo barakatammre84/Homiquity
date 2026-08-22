@@ -32,12 +32,15 @@ cannot produce any of those four is most of the way to safe.
 | Tier | Commands (run in the worktree) | Proves | Cannot see | Measured @ 074899e3 | When in the loop |
 |---|---|---|---|---|---|
 | **T-1 standing** | `git fetch origin && git rev-list --count HEAD..origin/main` (must be ≤ 2); `gh pr list --state open --json number,files`; read `knowledge-base/routines/REGISTER.md` | you are fresh and unclaimed | code | seconds | every iteration start |
-| **T0 static** | `pnpm check`; `for f in scripts/*.cjs; do node --check "$f" \|\| exit 1; done`; `pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:querykeys && pnpm guard:tokens && pnpm guard:ui` | types; the guard scripts parse; the ratchets did not regress; the migration ledger is intact | runtime; classNames built by `cn()`/templates (the UI guards read literal strings); `guard:tokens` and `guard:ui` rewrite their baseline on a shrink | `tsc` **57 s** · `node --check` 1 s · nine guards **13 s**, tree clean afterwards | after every edit |
+| **T0 static** | `pnpm check`; `for f in scripts/*.cjs; do node --check "$f" \|\| exit 1; done`; `pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:querykeys && pnpm guard:tokens && pnpm guard:ui` | types; the guard scripts parse; the ratchets did not regress; the migration ledger is intact | runtime; classNames built by `cn()`/templates (the UI guards read literal strings); `guard:tokens` and `guard:ui` rewrite their baseline on a shrink | `tsc` **57 s** on the first run (cold cache, six evidence agents grepping in parallel) and **5–9 s** warm · `node --check` 1 s · nine guards **13 s**, tree clean afterwards | after every edit |
 | **T1 unit** | `pnpm test > "$SCRATCH/t1.log" 2>&1` (never `\| tail`); then the **collection sanity check**: the node lane's `Test Files … (N)` must equal `grep -cE '^\s*"tests/' vitest.config.ts`, the client lane's must equal `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l`; and your new test's file name must appear in the log | in-process logic, the 63 source-text invariants, components in happy-dom | HTTP, the database, layout; a stranded or silently truncated collection (the reason for the equality checks); timeouts under load read as failures | **139 s** wall — node lane 218/218 files, 3,156 tests, 83 s; client lane 120/120 files, 808 tests, 51 s | after T0 |
 | **T2 `pnpm preflight --fast`** | needs ≥ 1 commit on the branch, else the §9 stage reports SKIPPED | T0 + T1 + `pnpm audit --prod --audit-level=high` + the §9 security-review guard **exactly as CI computes it** (merge-base diff) | build, boot and the integration lane — reported SKIPPED, which is neither a pass nor a fail | **142 s** wall on the second run (`tsc` 5 s warm, unit lanes ≈ 2 min); 13 stages `ok`, 4 `SKIPPED — --fast`; its closing block lists what it cannot see even when green | before every push |
 | **T3 `pnpm preflight`** | `bash scripts/local-db.sh up` first if no Postgres answers (needs `pg_ctl` or Docker; neither was present on the measuring machine) | + `pnpm build` + `guard:bundle` + a production-mode boot on 3999 answering `/api/health` + the 18-file integration lane on 4000 | production data shape; anything outside the 18 files; `/api/health` is `SELECT 1`; `guard:bundle` rewrites its baseline on a shrink | **204 s** wall with the database stages skipped: 16 stages `ok` including `production build` and `client bundle ratchet`; `self-host boot` and `integration lane` reported `SKIPPED — no database — run: bash scripts/local-db.sh up` (this laptop has neither `pg_ctl` nor Docker); tree clean afterwards | before opening the PR; after every rebase |
 | **T4 browser** | `PORT=5002 pnpm dev` **inside the worktree** (prove it: `lsof -a -p <pid> -d cwd`); `node scripts/browser-probe.cjs --url http://localhost:5002/<route> --width 320` (and 768, 1280); the `journey-walker-*` / `workflow-verifier` agents, findings only | real render at three widths, end-to-end wiring | contrast and full a11y; anything `browser-probe.cjs` does not check; agents are snapshotted at session start | not measured (needs the database for a server) | UI or workflow changes; evidence = pasted probe output |
 | **T5 post-merge** | `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` must equal the merge SHA; if a migration rode along and `migrate-prod` is still dispatch-only, a human dispatches the CI workflow with `dry_run=false` and reads `applied N migration(s)` | prod runs the merge; the migration landed | a commit match is not a schema match; 200 is not the right database | — | never by the loop — it writes these commands into the PR body |
+
+The same table without the measurements is R14 in `prompts/_RAILS.md` — the loop reads only that
+file, so the copy is deliberate and the rails file is the one to edit.
 
 The Tier Rule, in one line: **the completion promise may be written only when the LOOP REPORT
 cites T0–T3 summary lines copied from the output files, plus T4 output when UI changed. Belief
@@ -103,7 +106,10 @@ job through `/api/jobs/<name>` + `.github/workflows/cron-jobs.yml` + `tests/cron
 Tests: pure logic → `tests/<name>.test.ts` + the allowlist (END); rule-shaped → a source-text test;
 HTTP → the integration config with `X-Forwarded-Proto: https`, `Origin`, `/api/test-login` with
 `<role>@test.com` / `DEV_TEST_PASSWORD`, a per-file session cache, the server booted with
-`RATE_LIMIT_RELAXED=true`. A new env var lands in `.env.example` **and** `CICD.md`.
+`RATE_LIMIT_RELAXED=true`. A new env var lands in `.env.example` **and** `CICD.md`. A schema change obliges, in the same
+PR: the FACTS rows it moves (F-01 for a table, F-37 for a foreign key), the feature-map row if
+ownership moves, and [app-guide 03](../handbook/app-guide/03-database.md)'s domain table if a
+table is added — otherwise the PR body's doc-sync line says "no doc update required" and why.
 
 **Frontend.** A `lazy()` `Route` in `client/src/App.tsx` in the right `Switch` position (first
 match wins), inside a layout, wrapped by a gate from `client/src/lib/routeGates.ts`; public pages
@@ -197,15 +203,17 @@ is where the third one **stops**:
    is non-empty (today: `tests/maintenanceMode.test.ts`, HO-0822-23) — and append that file.
 6. **A seventh ledger check**: duplicate `when` in `migrations/meta/_journal.json` (HO-0822-24) —
    the one mistake that makes `migrate-prod` skip a migration silently.
-7. **Shared `tests/helpers/loginAs.ts` + `http.ts`** — nine files define `loginAs`, fourteen
-   hand-roll the headers; the commonest integration-test authoring error disappears.
+7. **Shared test helpers** — a `loginAs` and an HTTP helper under a new tests/helpers/ directory
+   (proposed, so not backticked): nine files define `loginAs`, fourteen hand-roll the headers; the
+   commonest integration-test authoring error disappears.
 8. **Bring pre-push and preflight to parity with the gate**: add `guard:citations` and the two
    missing query-key scripts (today they run one of three).
 9. **A source-text test that no decision-path module calls `tryResolveMatrixValue`** (HO-0822-U8).
 10. **A `routeMeta` ↔ `SEOHead` contract test** — the hand-mirror has no guard (ch. 06).
 11. **`pnpm harness:t0|t1|t2|t3` aliases** so the playbook cites one token per tier
    (`package.json` is founder territory).
-12. **Ignore the ralph state file** (`.claude/ralph-loop.local.md` is not gitignored).
+12. **Ignore the ralph state file** — .claude/ralph-loop.local.md (untracked by design, hence no
+   backticks) is not gitignored today.
 13. **A scheduled persona smoke** via the journey walkers, report-only, in the cloud fleet.
 14. **Assign owners** to `server/routes.ts`, `server/db.ts`, `server/index-prod.ts`,
    `railway.json`, `scripts/migrate-prod.cjs`, `.github/workflows/ci.yml` (HO-0822-13).

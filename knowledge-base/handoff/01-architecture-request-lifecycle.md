@@ -38,7 +38,7 @@ flowchart TD
   REQ([request]) --> TP["trust proxy + query parser - app.ts:36, :46"]
   TP --> CMP["compression, SSE excluded - app.ts:54"]
   CMP --> HLM["helmet: CSP report-only in prod, frameguard deny - app.ts:200"]
-  HLM --> HLT{"GET /health ? - app.ts:226"}
+  HLM --> HLT{"GET /health ? - app.ts:224"}
   HLT -- yes --> LIVE[["200 - liveness, no I/O"]]
   HLT -- no --> BG["betaGateMiddleware - app.ts:233 - no-op unless BETA_ACCESS_CODE; /api/ exempt"]
   BG --> RL["11 rate-limit mounts - app.ts:330-377"]
@@ -57,7 +57,7 @@ flowchart TD
     H5 --> H6["app.all /api/*splat -> 404 JSON - routes.ts:151"]
   end
   RR --> ERR["error handler - app.ts:539 - 5xx detail hidden in prod"]
-  ERR --> SETUP["setup(app, server) mounted LAST - app.ts:568"]
+  ERR --> SETUP["setup(app, server) mounted LAST - app.ts:566"]
   SETUP -- dev --> DEV["prerenderMiddleware, vite middlewares, SPA shell - index-dev.ts:43-46"]
   SETUP -- prod --> PRD["prerenderMiddleware, express.static dist/public, index.html - index-prod.ts:24-51"]
 ```
@@ -75,7 +75,7 @@ flowchart TD
   `text/event-stream` frames past their flush (the assistant streams over SSE).
 - **CSP is report-only in production until `CSP_ENFORCE=true`, and off outside production;
   frame blocking is done by `X-Frame-Options: DENY`.** `server/app.ts:181-189`, `:192-197`.
-- **Liveness and readiness are two endpoints on purpose.** `GET /health` (`server/app.ts:226`,
+- **Liveness and readiness are two endpoints on purpose.** `GET /health` (`server/app.ts:224`,
   event loop only) vs `GET /api/health` (`server/routes.ts:76-92`: `SELECT 1`, returns
   `commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null`, 503 on a DB failure). `railway.json:9`
   points `healthcheckPath` at the readiness one, so a container that cannot reach the database
@@ -177,7 +177,7 @@ grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l
 | The same chapter says "CSP disabled" (`:58`) — it is enabled report-only in production. | `app-guide/02-architecture.md:58` vs `server/app.ts:181-188` | `tests/securityHeaders.test.ts` pins the *code* (frameguard, not CSP, blocks framing); nothing tests the doc. |
 | The same chapter describes the logger as a **denylist** ("response bodies for sensitive paths … are suppressed", `:71`). It is an allow-list of three paths, and the code forbids reverting. Acting on the doc — adding a route to a denylist — would log borrower SSNs. | `app-guide/02-architecture.md:71` vs `server/app.ts:475-487` | Nothing automated. The most dangerous stale line in the chapter. LEDGER HO-0822-12. |
 | The same chapter points at `server/prerender.ts` as the mounted middleware; the mounted symbol is `prerenderMiddleware` from `server/routes/seo.ts:187`, whose `:237` says it is deliberately not mounted in that file. | `app-guide/02-architecture.md:88`, `app-guide/10-deploy-ops.md:152`, `runbooks/CICD.md:129` | Partially — `guard:citations` passes because `server/prerender.ts` exists. |
-| Mount-order fragility: move `/health` below the beta gate and the liveness probe 401s the instant `BETA_ACCESS_CODE` is set. | `server/app.ts:226` vs `:233` | No order test. `tests/betaGate.test.ts:115` proves `/api/*` is never gated; nothing pins `/health`'s position. |
+| Mount-order fragility: move `/health` below the beta gate and the liveness probe 401s the instant `BETA_ACCESS_CODE` is set. | `server/app.ts:224` vs `:233` | No order test. `tests/betaGate.test.ts:115` proves `/api/*` is never gated; nothing pins `/health`'s position. |
 | The CSRF webhook carve-out is a bare prefix — a new route under `/api/webhooks/` that forgets its signature check is unauthenticated *and* un-CSRF'd. | `server/app.ts:424-429` | No central test; enforcement is per route. |
 | In development the CSRF check is bypassed after the allowlist fails, so a CSRF regression is invisible locally and in the integration lane (which runs against a dev server). | `server/app.ts:436`, `:458-460` | Nothing. |
 | The SPA pattern is one brace away from 404ing the homepage. | `server/spaCatchAll.ts:14` | Yes — `tests/spaCatchAll.test.ts:83` ("serves the HTML shell for the bare root") and `:103` ("does not shadow the API"). |

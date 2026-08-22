@@ -90,7 +90,7 @@ never adds a bypass. **Exceptions.** `logAudit` deliberately swallows its own er
 listed by file name in a test. **Evidence.** `grep -rn "updatePipelineStage(" server --include='*.ts' | wc -l`
 → 5 (definition + four callers); `tests/statusVocabulary.test.ts:254-259` allow-lists four files.
 **Loop rule.** Status changes go through `updatePipelineStage`; a loop that needs a new writer
-has found a hand-back. **Exceptions.** `finalizeIntake` (`server/services/loanAnalysis.ts:436,453,588`)
+has found a hand-back. **Exceptions.** `finalizeIntake` (`server/services/loanAnalysis.ts:436,455,588`)
 — and it compensates by hand for the side effects it skips (chapter 04).
 
 ### A7. Two-axis status vocabularies, `varchar` + `as const`, re-pinned with `z.enum`
@@ -107,7 +107,7 @@ derives a bare string for `varchar` (`:293-297`). **Evidence.** `grep -o "pgEnum
 
 **What.** `safeParse` → gate → service/storage → `logAudit` on every mutation → typed JSON, with
 side effects that cannot fail the request. **Evidence.** `grep -rn "logAudit(" server --include='*.ts' | wc -l`
-→ 138 (133 in routes); `grep -c "non-fatal" server/routes/lending/applications.ts` → 9;
+→ 138 (133 in routes); `grep -c "non-fatal" server/routes/lending/applications.ts` → 7;
 `grep -rn "safeParse(" server/routes --include='*.ts' | wc -l`. **Loop rule.** Copy the shape of
 `server/routes/lending/applications.ts`; every mutation calls `logAudit`; a new gate comes from the
 table in chapter 05. **Exceptions.** Six `.transaction(` sites in the whole backend — multi-table
@@ -178,7 +178,7 @@ for the loop rails in chapter 12, and most already are.
 
 | # | Pattern | Evidence | What the loop rails inherit |
 |---|---|---|---|
-| B1 | **Router vs routine**: four thin skills auto-load; seventeen carry the anti-autoload template and `R1: STOP if loaded without invocation`. | `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` → 17; `refactor-radar/SKILL.md:3,19-20` | A loop template is invoked by a pointer prompt, never by context. |
+| B1 | **Router vs routine**: six skills may auto-load (the four thin routers plus the two journey walks); seventeen carry the anti-autoload template and `R1: STOP if loaded without invocation`. | `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` → 17; `refactor-radar/SKILL.md:3,19-20` | A loop template is invoked by a pointer prompt, never by context. |
 | B2 | **One rails file, read not copied.** | `.claude/agents/_OWNER_RAILS.md:3`; `FEATURE_MAP.md:16-17` | `prompts/_RAILS.md` is read every iteration; templates never restate a rail. |
 | B3 | **The routine skeleton**: preamble → lettered rails → Phase 0 memory/sync/backpressure → detect with date-qualified ids → fix in lanes → verify loop with a TEST-RAN assertion → ledger in the same PR → `STATUS` report → negative scope. | `refactor-radar/SKILL.md:17-111,165-205,238-277`; `doc-accuracy/SKILL.md:32-82,167-203` | Every template has the same eight sections in the same order. |
 | B4 | **Freshness ≤ 2 commits; backpressure ≥ 2 open PRs ⇒ assist, never idle.** | `financial-audit/SKILL.md:24`; `doc-accuracy/SKILL.md:36-38`; `CHARTER.md:434-449` | `_RAILS.md` R1; "an idle tick is a failed tick". |
@@ -213,20 +213,21 @@ for the loop rails in chapter 12, and most already are.
 
 ## C. The repetitive work, from the history
 
-Reproduce (the numbers are the 074899e3 outputs):
+Reproduce (every `git log` is anchored to the stamped commit so the 300-commit window does not
+slide under a reader; the `gh pr list` lines are as measured on 2026-08-22 and will move):
 
 ```bash
-git log -300 --format='%s' | sed -E 's/^([a-z]+)(\([^)]*\))?!?:.*/\1/' | sort | uniq -c | sort -rn | head -8
+git log -300 074899e3 --format='%s' | sed -E 's/^([a-z]+)(\([^)]*\))?!?:.*/\1/' | sort | uniq -c | sort -rn | head -8
 # → 91 fix · 51 docs · 34 feat · 25 chore · 14 refactor · 11 ci · 6 test · 5 audit
-git log -300 --format='%s' | grep -oE '^[a-z]+\([^)]*\)' | sort | uniq -c | sort -rn | head -6
+git log -300 074899e3 --format='%s' | grep -oE '^[a-z]+\([^)]*\)' | sort | uniq -c | sort -rn | head -6
 # → 20 docs(routine) · 6 fix(ci) · 6 chore(routines) · 5 refactor(pages) · 5 feat(rent) · 5 chore(deps)
 gh pr list --state merged --limit 100 --json title --jq '.[].title' | sed -E 's/^([a-z]+)(\([^)]*\))?!?:.*/\1/' | sort | uniq -c | sort -rn | head -5
 # → 28 fix · 22 docs · 4 rescue · 3 feat · 2 routines   (+ ~32 unprefixed narrative titles)
-git log --format='%s' | grep -cE '^docs\(routine\)' ; git log --format='%s' | grep -ciE '^(fix|rescue)\((ci|guard|hooks)\)' ; git log --format='%s' | grep -cE '^rescue' ; git log --format='%s' | grep -ci baseline
+git log 074899e3 --format='%s' | grep -cE '^docs\(routine\)' ; git log 074899e3 --format='%s' | grep -ciE '^(fix|rescue)\((ci|guard|hooks)\)' ; git log 074899e3 --format='%s' | grep -cE '^rescue' ; git log 074899e3 --format='%s' | grep -ci baseline
 # → 40 · 11 · 4 · 5
 gh pr list --state all --limit 200 --json title,author --jq '.[] | select(.author.login=="app/dependabot") | .title' | wc -l
 # → 7
-git log --format='%h %ad %s' --date=short -- migrations/ | head -3
+git log 074899e3 --format='%h %ad %s' --date=short -- migrations/ | head -3
 # → only three migration-bearing commits since 2026-08-06; one since 2026-08-12
 ```
 

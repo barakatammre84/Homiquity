@@ -15,9 +15,12 @@ when it did not.
 Under `.claude/` there are 23 skills and 58 agents, and they are not documentation — they are
 executable job descriptions Claude loads and obeys, so they are versioned, reviewed and CI-gated
 like `server/`. Seventeen of the 23 skills open with `NEVER auto-load` because the default failure
-was a heavyweight autonomous routine hijacking a two-line question; only four (`api-routes`,
-`ui-components`, `mortgage-calculations`, `seo-content`) may load themselves, and `CLAUDE.md`
-names exactly those four. The 41 `hq-*-owner` agents each own a file list and inherit one shared
+was a heavyweight autonomous routine hijacking a two-line question; only six may load themselves
+— the four router skills (`api-routes`, `ui-components`, `mortgage-calculations`, `seo-content`),
+which `CLAUDE.md` names, plus the two journey-walk skills. Two ladders share the labels L1–L3 and
+mean different things: the *doc* ladder (vision → compliance → specs, chapter 00) and the
+*charter* ladder (how far a machine may take an artifact before a human signs); this chapter is
+about the second. The 41 `hq-*-owner` agents each own a file list and inherit one shared
 rails file, `.claude/agents/_OWNER_RAILS.md`, which is *read, not copied* — so a rail changes in one
 place and there is nothing to drift. Anything autonomous is bound by `knowledge-base/routines/CHARTER.md`,
 an 855-line contract with a decision-authority matrix (L1 acts, L2 acts then flags, L3 a human

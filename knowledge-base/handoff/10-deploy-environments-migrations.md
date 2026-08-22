@@ -70,7 +70,7 @@ flowchart TD
   `knowledge-base/runbooks/CICD.md:146-152` records that `"24.x"` is npm range syntax Railpack's
   version resolver cannot parse, so every build failed while CI (which resolves `24.x` fine) stayed
   green.
-- **CI has three jobs.** `grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml` → `100: gate`,
+- **CI has three jobs.** `grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml` → `87: push` (a trigger key the pattern also matches, not a job), `100: gate`,
   `533: migrate-prod`, `609: verify-deploy`. `gate` runs on pull requests only, skips drafts and
   title-only edits (`:135-140`).
 - **The change-scope step fails closed.** `.github/workflows/ci.yml:196` (`id: scope`), rationale
@@ -151,7 +151,7 @@ curl -s -m 10 https://homiquity-production.up.railway.app/api/health
 git rev-parse origin/main
 # → 074899e3d420bbf3361f63b06a3a019398dabc55   (equal to the commit above ⇒ prod is CURRENT) @ 074899e3
 grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml
-# → 100: gate / 533: migrate-prod / 609: verify-deploy @ 074899e3
+# → 87: push (a trigger key, not a job) / 100: gate / 533: migrate-prod / 609: verify-deploy @ 074899e3
 sed -n '553p;621p' .github/workflows/ci.yml
 # → if: github.event_name == 'workflow_dispatch'   /   if: false @ 074899e3
 grep -rn "PAUSED" knowledge-base/runbooks/CICD.md knowledge-base/runbooks/DB_MIGRATIONS.md knowledge-base/runbooks/ROLLBACK.md knowledge-base/handbook/app-guide/10-deploy-ops.md || echo "(no matches — the runbooks do not record the pause)"
@@ -168,7 +168,7 @@ grep -cE '^[A-Z][A-Z0-9_]*=' .env.example ; grep -oE '^#? ?[A-Z][A-Z0-9_]{2,}=' 
 # → 9 / 65 @ 074899e3
 sed -n '23,24p' server/db.ts
 # → const useLocalPg = process.env.USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url); @ 074899e3
-sed -n '37,38p' scripts/preflight.sh ; grep -n 'PORT="${PORT:-5001}"' scripts/dev-up.sh
+sed -n '37,38p' scripts/preflight.sh ; grep -nF 'PORT="${PORT:-5001}"' scripts/dev-up.sh   # -F: BSD grep mis-parses the $ inside the pattern
 # → BOOT_PORT 3999 / INT_PORT 4000 / 27:PORT="${PORT:-5001}" @ 074899e3
 git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/workflows/ci.yml
 # → e762743b 2026-08-20 chore: pause the prod deploy pipeline — local-only development @ 074899e3

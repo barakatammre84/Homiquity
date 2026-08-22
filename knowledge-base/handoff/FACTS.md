@@ -11,10 +11,13 @@ edit in the chapter that cites it and, if another document carried the old numbe
 (a follow-up to this corpus, in a separate PR) — until then, the "re-derive by hand" recipe at the
 bottom is the generator.
 
-Two portability rules, both learned the hard way during the first derivation: quote
+Three portability rules, all learned the hard way during the first derivation and the first
+fresh-hire read-through: quote
 `--include='*.ts'` (unquoted, zsh expands the glob and the pipeline reports a **silent false
 zero**), and prefer `git ls-tree -r --name-only HEAD -- <dir>` over a `**` glob (the glob
-silently drops the top-level files of the directory — 196 vs 200 for the knowledge base).
+silently drops the top-level files of the directory — 196 vs 200 for the knowledge base), and
+use `grep -F` for a literal pattern containing `$` (BSD grep on macOS mis-parses it mid-pattern
+and returns nothing — a false "the file changed").
 
 <!-- BEGIN GENERATED — do not hand-edit; re-derive with the recipe below and paste -->
 
@@ -51,7 +54,7 @@ silently drops the top-level files of the directory — 196 vs 200 for the knowl
 | F-29 | production cron sweeps | `grep -c "cron:" .github/workflows/cron-jobs.yml` | 7 |
 | F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 81,467 · shared 22,979 · client/src 106,662 · tests 45,823 |
 | F-31 | commits on `main` | `git rev-list --count HEAD` | 1,077 |
-| F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 (23 chain links + `DatabaseStorage`) |
+| F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
 | F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 63 |
 | F-35 | query-key factories | `grep -cE '^export const [a-zA-Z]+Keys' client/src/lib/queryClient.ts` | 17 |

@@ -162,12 +162,19 @@ flowchart TD
   "No citation → not implemented"; even the generation prompt says "write 'NO CITATION — needs
   research' instead of guessing" (`:37`). Every `shared/fannieMae/*.ts` names its captured PDF and
   forbids extending from memory.
-- **§9 security-review triggers.** `knowledge-base/governance/TEAM_PRACTICES.md:299-360` — twelve
+- **§9 security-review triggers, and the incidents that added them.** `knowledge-base/governance/TEAM_PRACTICES.md:299-360` — twelve
   bullets: PII vault/encryption; auth & sessions; role gates + per-resource ownership; uploads;
   outbound messaging; webhook receivers **and their delegates** ("A path trigger must cover the
   delegate, not just the caller", `:326-327`); request identity & trust boundary; rate-limit
   policy; PII encryption **call sites**; consumer-data furnishing; money movement; logging near PII.
-  "Keep the triggers narrow" (`:387-390`). `scripts/security-review-guard.cjs:18-22` — "It proves a
+  "Keep the triggers narrow" (`:387-390`). Four of the twelve carry their dated incident in the
+  doc: **logging near PII** — the response-body denylist that missed `/api/urla/*` SSNs
+  (`server/app.ts:475-480`); **webhook receivers and their delegates** — added 2026-08-06 when the
+  route was a trigger but the service doing the signature check was not (`:321-327`); **PII
+  encryption call sites** — added 2026-08-12 after encrypting a landlord email in a new module
+  produced zero triggers (`:336-344`); **rate-limit / lockout policy** — added 2026-08-19 because
+  against a distributed credential-stuffing attacker the lockout threshold is the only remaining
+  control (`:302-315`). `scripts/security-review-guard.cjs:18-22` — "It proves a
   review was *documented*. It cannot prove the review was competent, and with one engineer nothing
   can"; the schema-PII trigger is "a FLOOR, not a ceiling" (`:29-34`); it skips (exit 0) when
   `CHANGED_FILES` is unset (`:41-42`).
@@ -229,7 +236,7 @@ grep -n "assertEncryptionConfig\|initEncryption(" server/routes.ts
 grep -rn "requireConsent(" server --include='*.ts' | wc -l
 # → 3   (doc comment, definition, the single mount at server/routes/underwriting/delivery.ts:81) @ 074899e3
 grep -rn 'CREDIT_VENDOR_MODE' server/services/creditPulls.ts | wc -l
-# → 6 @ 074899e3
+# → 9 @ 074899e3
 grep -n "^- \*\*" knowledge-base/governance/TEAM_PRACTICES.md | awk -F: '$1>=299 && $1<=360' | wc -l
 # → 12   (the §9 trigger categories) @ 074899e3
 ```

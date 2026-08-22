@@ -76,7 +76,7 @@ erDiagram
   `grep -rn "references(() => users.id)" shared/schema/*.ts | wc -l` → `130`. Naming split:
   `applicationId` is the column name in 18 schema files, `loanId:` in 14 declarations (the UAL
   document pipeline and `underwritingCore.ts`) — a real navigation hazard when joining.
-- **`users`.** `shared/schema/core.ts:47`; `:53` `role: varchar("role",{length:50}).default("aspiring_owner").notNull()`;
+- **`users`.** `shared/schema/core.ts:47`; `:55` `role: varchar("role",{length:50}).default("aspiring_owner").notNull()`;
   `sessions` `:37-45` (the connect-pg-simple store); `auth_tokens` `:86-94` stores only a SHA-256
   `tokenHash`.
 - **`loan_applications`.** `shared/schema/lendingCore.ts:26`; `:29` `status … default("draft")`;
@@ -89,7 +89,7 @@ erDiagram
   is server-written AI lineage; `borrowerDescription` is "UNTRUSTED INPUT — never parse as extraction
   output" (finding F-027, migration 0046). `applicationId` is nullable (`:379`), `userId` is not.
 - **URLA: one row per (application, borrower sequence) where it matters.**
-  `shared/schema/lendingUrla.ts:107` `uniqueIndex("urla_personal_info_app_seq_idx")`; the SSN
+  `shared/schema/lendingUrla.ts:97` `uniqueIndex("urla_personal_info_app_seq_idx")`; the SSN
   quartet `:34-44` (`ssn` varchar is **DEPRECATED plaintext**, writes go to `ssnEncrypted` /
   `ssnIv` / `ssnKeyId` / `ssnLast4`); the insert schema `.omit`s the four server-managed columns
   (`:104-114`). Employment, other income, assets and liabilities are multi-row
@@ -125,8 +125,9 @@ erDiagram
 - **Validation pattern.** `grep -rn "createInsertSchema(" shared server | wc -l` → `177`;
   `grep -rn "z.enum(" shared/schema | wc -l` → `22`. Shape: `createInsertSchema(table).omit({id,
   createdAt, updatedAt}).extend({ col: z.enum(VOCAB) })`.
-- **The access layer.** `server/storage/index.ts` (23 lines): 25 domain classes in a linear
-  inheritance chain ending in `DatabaseStorage`; `export type IStorage = DatabaseStorage` — derived,
+- **The access layer.** `server/storage/index.ts` (23 lines): 24 domain classes — `UsersStorage` plus 23 that
+  each extend the previous one — in a linear chain ending in `DatabaseStorage`, with two helper
+  modules (`server/storage/batchGroup.ts`, `server/storage/urlaBatch.ts`) beside them: 26 files; `export type IStorage = DatabaseStorage` — derived,
   not hand-maintained (the old 733-line interface had to move in lockstep with every method).
   `grep -rln "\.transaction(" server` → 6 files; `grep -rn "inArray(" server --include='*.ts' | wc -l` → `56`.
 - **The driver.** `server/db.ts:23-24` picks node-postgres for a localhost URL (or
@@ -136,7 +137,7 @@ erDiagram
   → `58`; journal entry shape `{idx, version:"7", when, tag, breakpoints:true}`. `package.json:25,29`
   block `db:generate` and `db:push` with an explaining `echo … && exit 1`.
   `scripts/schema-migration-guard.cjs:5-18` exists because of the 2026-07-13 outage and runs schema
-  → migrations only; `scripts/migration-ledger-guard.cjs:20-27` runs six hard checks.
+  → migrations only; `scripts/migration-ledger-guard.cjs:18-24` runs six hard checks.
 - **Stale counts in the wild.** `knowledge-base/handbook/app-guide/03-database.md:7` "21 schema
   files, 178 tables"; "174 Drizzle tables" in `shared/loanApplicationStatus.ts:9`,
   `shared/statusVocabularies.ts:8`, `client/src/pages/lending/preApproval/useServerDraftAutosave.ts:24`,
@@ -159,7 +160,7 @@ wc -l shared/schema.ts ; grep -c "pgTable(" shared/schema/lending.ts shared/sche
 grep -rn "references(() => loanApplications.id)" shared/schema/*.ts | wc -l ; grep -rn "references(() => users.id)" shared/schema/*.ts | wc -l
 # → 91 / 130 @ 074899e3
 grep -n "urla_personal_info_app_seq_idx" shared/schema/lendingUrla.ts ; grep -n "loan_delivery_data_application_idx" shared/schema/delivery.ts
-# → 107 / 100 @ 074899e3
+# → 97 / 100 @ 074899e3
 grep -rn "_encrypted" shared/schema/*.ts | wc -l
 # → 8 @ 074899e3
 grep -rn "createInsertSchema(" shared server | wc -l ; grep -rn "z.enum(" shared/schema | wc -l
@@ -185,7 +186,7 @@ grep -rn "174" shared/loanApplicationStatus.ts shared/statusVocabularies.ts
 | `guard:schema` is a name-presence check, not table-scoped: a drifted column whose name coincides with any quoted identifier in any migration passes — its own documented blind spot. | `scripts/schema-migration-guard.cjs:20-25` | Catches genuinely new names only. |
 | `guard:schema`'s baseline allow-list can be regenerated to silence a failure; the comment forbids it, no code enforces it. | `scripts/schema-migration-guard.cjs:34-41` | Nothing. |
 | Prod's `DATABASE_URL` and CI's minted URL are independent settings; `/api/health` answers green from the wrong Neon branch. | `app-guide/03-database.md:29-35` (the 2026-08-06 incident) | Nothing reconciles the two URLs (chapter 10). |
-| The storage chain is 25 links deep and order-sensitive for `this.x()` cross-domain calls; a method-name collision between two links is a silent override. | `server/storage/index.ts:3-9` | TypeScript catches a call to a later link; nothing catches a shadowed name. |
+| The storage chain is 23 links deep and order-sensitive for `this.x()` cross-domain calls; a method-name collision between two links is a silent override. | `server/storage/index.ts:3-9` | TypeScript catches a call to a later link; nothing catches a shadowed name. |
 | `decision_snapshots` reproducibility depends on `resolvedPolicy`/`policyFingerprint` being populated — both nullable. | `shared/schema/decisions.ts:42-50` | Nothing. |
 | `documents.applicationId` is nullable — any query that joins documents → applications silently drops orphans. | `shared/schema/lendingCore.ts:379-380` | Nothing schema-level. |
 | The app-guide lists `lending.ts` (44 tables) and `underwriting.ts` (36) as real domains; both are zero-table shims. | `app-guide/03-database.md:40-41` vs `shared/schema/lending.ts:1` | Nothing automated. LEDGER HO-0822-01. |

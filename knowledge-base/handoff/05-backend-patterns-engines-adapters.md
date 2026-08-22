@@ -19,8 +19,8 @@ mutation and side effects that can never fail the request. The 558 handlers unde
 are mostly one file per domain, but the four biggest (`borrower/`, `lending/`, `underwriting/`,
 `agent-broker/`) are directories whose `index.ts` calls its registrars *in the original order*
 because Express matches in registration order — that sequence is a correctness invariant, spelled
-out in all four files. Data access goes through `server/storage/`: 23 domain classes chained by
-`extends` and collapsed into one `DatabaseStorage`, with `IStorage` *derived* from the class rather
+out in all four files. Data access goes through `server/storage/`: 24 domain classes — `UsersStorage` plus 23 that
+each extend the previous — collapsed into one `DatabaseStorage`, with `IStorage` *derived* from the class rather
 than hand-maintained. The engines — `server/underwritingEngine.ts`, `server/services/decisionEngine.ts`,
 `server/services/ruleEngine.ts` — are deterministic by contract: no hard-coded fallbacks, every
 threshold resolved at run time from the Postgres lookup matrices through `lookupResolver`, and zero
@@ -71,7 +71,7 @@ flowchart TD
   `safeParse` `:42` → `unlicensedStateRejection` `:52` → draft consumption through
   `updatePipelineStage` `:103` → `logAudit` `:105,110` → role promotion `:134-145` → `res.status(201)`
   `:279` → `finalizeIntake` after the response `:294`. `grep -c "non-fatal" server/routes/lending/applications.ts`
-  → `9`: readiness, promotion, outcome stamp, TRID, consent, invite, LO assignment are all
+  → `7`: readiness, promotion, outcome stamp, TRID, consent, invite, LO assignment are all
   wrapped so they can never fail intake.
 - **Sub-registrar order is the matching order.** All four `server/routes/*/index.ts` files carry
   the "ORIGINAL registration order" comment; `server/routes/borrower/index.ts:43-45` shows the
@@ -159,7 +159,9 @@ flowchart TD
   credential is always fatal.
 - **Homi.** `server/services/coachingClient.ts:48` `COACH_MODEL = "claude-sonnet-5"`, `:54`
   `COACH_PROMPT_VERSION = "homi-2.5.0"`, `:83` `MAX_MODEL_CALLS_PER_TURN = 4` (raised from 2 on
-  measurement: "zero text in 12/12 trials" at 2, `:68-72`), `:89-91` budgets 90 s / 2,048 tokens /
+  measurement: "zero text in 12/12 trials" at 2, `:68-72`; `tool_choice: {type:"none"}` on the
+  final call was tried first and rejected — it returns an empty message rather than forcing prose,
+  `:74-77`), `:89-91` budgets 90 s / 2,048 tokens /
   24 messages. One Anthropic call site: `server/services/coachingTurn.ts:189` inside the call loop
   (`:182`). `STATIC_COACH_PROMPT` must stay byte-stable — it carries `cache_control`
   (`coachingPrompt.ts:27-29`, attached at `coachingTurn.ts:358`). 8 tools in a fixed order because

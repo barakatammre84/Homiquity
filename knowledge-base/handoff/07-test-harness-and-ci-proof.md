@@ -11,10 +11,11 @@
 
 ## The mental model
 
-Four independent proof lanes — `tsc`, the node allowlist, the client glob, the integration lane —
-and only two and a half of them run anywhere automatically; the PR gate is the merge proof,
-`preflight` is the ship proof, and `complianceInvariants` reads the source as text, so a failure
-there is an incident, not a flake.
+Four proof lanes — `tsc`, the node allowlist, the client glob, the integration lane — of which
+three run in CI and the fourth never does; above them the browser probe is run by nothing and
+the deploy verifier is switched off. The PR gate is the merge proof, `preflight` is the ship
+proof, and `complianceInvariants` reads the source as text, so a failure there is an incident,
+not a flake.
 
 ## Explain it to a new hire
 
@@ -40,7 +41,7 @@ is re-armed.
 
 ```mermaid
 flowchart TD
-  A["pnpm check - tsc --noEmit - types line up; blind to runtime, bundling, wiring"]
+  A["pnpm check - tsc, noEmit via tsconfig - types line up; blind to runtime, bundling, wiring"]
   A --> B["vitest.config.ts - node lane - 218-entry ALLOWLIST, placeholder DATABASE_URL, 45s hang detector"]
   B --> C["vitest.client.config.ts - GLOB client/src/**/*.test.{ts,tsx} - happy-dom, no layout engine"]
   C --> D["14 scripts/*-guard.cjs against 7 baselines - text scans; counts may only go down"]
@@ -136,7 +137,8 @@ flowchart TD
 - **The guard fleet.** `ls scripts/*-guard.cjs | wc -l` → `14`; `ls scripts/*baseline*.json | wc -l`
   → `7`. Ratchets (down only; **auto-tighten on a shrink**): `bundle-size` (`:217-218`), `design-token`
   (`:116-119`), `citation`, `doc-staleness`, `schema-migration` (baseline allow-list), `ui-standard`,
-  `delivery-stack-freeze` (may shrink, not grow). Hard pass/fail with no baseline: `kb-index`,
+  `delivery-stack-freeze` (= `pnpm guard:channel`: the four GSE-delivery files may shrink, never
+  grow, until the channel decision flips — `scripts/delivery-stack-freeze-guard.cjs`). Hard pass/fail with no baseline: `kb-index`,
   `migration-ledger`, `query-key`, `query-key-transport`, `security-review`, `hooks-installed`.
   Calendar-based: `doc-freshness` (weekly workflow, deliberately outside the gate).
 - **Gaps between the lanes.** Neither pre-push nor preflight runs `guard:citations`
@@ -226,7 +228,7 @@ sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' te
 
 | Question | What resolves it |
 |---|---|
-| Is the gate green on 074899e3? This chapter is about configuration and structure; nothing here ran the suites. | The playbook's tier dry-run (`pnpm check`, `pnpm test`, `pnpm preflight`), recorded with runtimes. |
+| Was the gate green on 074899e3? This chapter is about configuration and structure. | Measured on 2026-08-22 in chapter 12 §1: T0–T3 green on the stamped commit plus the corpus, 218/218 and 120/120 files collected, the two database stages SKIPPED. |
 | Would `tests/maintenanceMode.test.ts` pass if it were listed? | Append it to the allowlist in a worktree and run the node lane. |
 | Do the open hook PR and the open collection-guard PR conflict? Both touch `.githooks/pre-push` and `package.json`. | `gh pr diff` on each. |
 | Does `enforce_admins: true` with an empty context list have any effect at all? | The `ci.yml` comment asserts it does not; untested. |

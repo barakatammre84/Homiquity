@@ -19,13 +19,13 @@
 ## 01 — Architecture and the request lifecycle
 
 1. Nothing — until `BETA_ACCESS_CODE` is set. Then `/health` returns the 401 lock screen because the gate exempts only `/api/` (`server/middleware/betaGate.ts:124`); the comment at `server/app.ts:206-209` names exactly this.
-2. `GET /health` (`server/app.ts:226`) is liveness — event loop only, no I/O. `GET /api/health` (`server/routes.ts:76`) is readiness — `SELECT 1` plus `RAILWAY_GIT_COMMIT_SHA`. `railway.json:9` points the healthcheck at the readiness one so a container that cannot reach the database never replaces one that can (`app.ts:220-223`).
+2. `GET /health` (`server/app.ts:224`) is liveness — event loop only, no I/O. `GET /api/health` (`server/routes.ts:76`) is readiness — `SELECT 1` plus `RAILWAY_GIT_COMMIT_SHA`. `railway.json:9` points the healthcheck at the readiness one so a container that cannot reach the database never replaces one that can (`app.ts:220-223`).
 3. Nothing. Do not add it to `RESPONSE_BODY_LOG_ALLOWLIST` (`server/app.ts:481`) — that list is for paths that "can never contain personal or credential data" (`:479-480`); the method/path/status line already logs. The comment at `:477-479` records that a denylist leaked SSNs from `/api/urla/*`.
 4. The path prefix. `server/app.ts:429` carves out only `req.path.startsWith("/api/webhooks/")`; anything else is 403'd by the Origin/Referer check at `:406` because a server-to-server POST carries neither header (`:462-465`). The carve-out also means the route must verify its own signature (`:424-428`).
 5. Express 5 / path-to-regexp v8: a bare `/*splat` requires at least one segment, so `/login` matches and `/` does not; the braces make the wildcard optional (`server/spaCatchAll.ts:5-8,14`). Regression test: `tests/spaCatchAll.test.ts:83`.
 6. `server/routes.ts:95` `assertEncryptionConfig()` and `:99` `await initEncryption()`, before `setupAuth` and every registrar — "Fails closed: a misconfigured KMS setup stops boot rather than silently falling back" (`:96-98`).
 7. It logs, reports, and `process.exit(1)` (`server/app.ts:625`). Rationale `:618-624`: a process that survives an uncaught throw "keeps serving in an undefined state behind a green /api/health". A 50-events-in-5-s storm also exits (`:595-604`).
-8. Because `setup` mounts the SPA catch-all that matches everything; `server/app.ts:564-567` — "run the final setup after setting up all the other routes so the catch-all route doesn't interfere". The `/api/*splat` 404 at `routes.ts:151` is the complementary guard.
+8. Because `setup` mounts the SPA catch-all that matches everything; `server/app.ts:564-566` — "run the final setup after setting up all the other routes so the catch-all route doesn't interfere". The `/api/*splat` 404 at `routes.ts:151` is the complementary guard.
 
 ## 02 — Authentication and authorization
 
@@ -46,7 +46,7 @@
 4. `shared/schema/compliance.ts:232-240` — rows written before the column existed cannot have their basis reconstructed, and "a backfilled guess on a compliance record would be a falsified record". `fcraCompliant` (`:244`) is likewise computed per notice.
 5. Edit `shared/schema/<domain>.ts` → hand-author `migrations/NNNN_*.sql` + a `migrations/meta/_journal.json` entry → `pnpm db:migrate`. Forbidden: `pnpm db:push` and `pnpm db:generate` (`package.json:25,29`, `exit 1`). CI runs `scripts/schema-migration-guard.cjs` and `scripts/migration-ledger-guard.cjs`.
 6. It is derived: `server/storage/index.ts:21` `export type IStorage = DatabaseStorage;`; `:11-13` — "the old 733-line interface had to be edited in lockstep with every method change". `DatabaseStorage` (`:16`) is the terminal link of a 23-link `extends` chain.
-7. Cardinality. `urla_personal_info` is one row per (application, borrower sequence) — `uniqueIndex("urla_personal_info_app_seq_idx")` at `shared/schema/lendingUrla.ts:107` — so `server/storage/urla.ts:116` `upsertUrlaPersonalInfo` is the only sensible shape; `employment_history` has no unique index, so `:188-204` are create/update/delete by id.
+7. Cardinality. `urla_personal_info` is one row per (application, borrower sequence) — `uniqueIndex("urla_personal_info_app_seq_idx")` at `shared/schema/lendingUrla.ts:97` — so `server/storage/urla.ts:116` `upsertUrlaPersonalInfo` is the only sensible shape; `employment_history` has no unique index, so `:188-204` are create/update/delete by id.
 8. `server/services/creditAuditChain.ts:120` `db.transaction` — `:115-119`: the log entry and the chain tip must move together, or "the tip would name an earlier entry and every subsequent verification would report a truncation that never happened".
 
 ## 04 — Data flow: a loan's journey
@@ -68,7 +68,7 @@
 4. A hard-coded fallback in a lending decision is a Fair Lending liability: `server/underwritingEngine.ts:238-239` "there are no hardcoded fallbacks"; a miss becomes `UnderwritingError` kind `POLICY_OUT_OF_BAND` (`:21-25`) and routes to a human. `tryResolveMatrixValue` (`server/services/lookupResolver.ts:225`) is for display surfaces only (`:222-223`).
 5. `server/mcp/vendors.ts:69-76` — a present key with no live adapter **throws** ("remove the key to use simulation"); a half-configured vendor must fail loudly rather than fall back to fabricated data. Same shape for DU/LPA (`server/services/ausSubmission.ts:157-160,226-230`) and AVM (`vendors.ts:171-175`).
 6. `server/pipelineEngine.ts:588-592` declares `updatePipelineStage` THE single writer and forbids direct status writes "(see tests/statusVocabulary.test.ts)"; even intake strips the status from the payload (`server/routes/lending/applications.ts:95`) and calls the engine at `:103`.
-7. `server/services/coachingClient.ts:56-83` — at 2 "the model emitted zero text in 12/12 trials"; `tool_choice: none` "returns an EMPTY message rather than forcing prose"; cost is bounded because the prefix is a cache read after the first call (`:79-81`).
+7. `server/services/coachingClient.ts:56-83` — at 2 "the model emitted zero text in 12/12 trials"; `tool_choice: {type:"none"}` on the final call was tried first and rejected because it "returns an EMPTY message rather than forcing prose" (`:74-77`); cost is bounded because the prefix is a cache read after the first call (`:79-81`).
 8. Nowhere strong: `server/auditLog.ts:23-25` swallows every error; 138 call sites (133 in routes). Coverage is broad, durability is best-effort — an audit-write failure is a silent evidence gap, not a request failure.
 
 ## 06 — Frontend patterns
