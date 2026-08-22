@@ -176,6 +176,16 @@
       "status": "partial",
       "evidence": "The DU limited waiver's data-accuracy condition is why F-0818-11 was a warranty problem and not a cosmetic one. Partial because the waiver presumes a real DU casefile and ours is simulated; AutomatedUnderwritingCaseIdentifier is deliberately not emitted rather than assert the simulator's sim-du-<sha1> as a real case id (F-068).",
       "verified": "2026-08-21"
+    },
+    "B2-1.4-02": {
+      "status": "partial",
+      "evidence": "Adjustable-Rate Mortgages. The rate sheet seeds a 5/6 ARM (server/seedMarketPricing.ts) and the URLA captures amortizationType (server/routes/borrower/urla.ts), but server/mismo.ts DELIVERED every file as fixed-rate — the compile-time literal \"Fixed\" (F-053). Fixed 2026-08-21: mapAmortizationType reads the stored value, enum verified against the committed MISMO_3_0.xsd, unmapped values throw. Still partial: no ARM-specific underwriting (qualifying rate, caps, index/margin) exists — only the delivery element is now honest.",
+      "verified": "2026-08-21"
+    },
+    "B2-1.4-01": {
+      "status": "implemented",
+      "evidence": "Fixed-Rate Loans — the default product; delivered as LoanAmortizationType Fixed via mapAmortizationType (server/mismo.ts), which now asserts the platform default only when the field is unset rather than overriding a stored value.",
+      "verified": "2026-08-21"
     }
   }
 }

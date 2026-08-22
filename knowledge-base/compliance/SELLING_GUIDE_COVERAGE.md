@@ -15,7 +15,7 @@ find*. Deliberate overlays we run stricter than the Guide live in
 
 ## Where we stand
 
-**95 of 423 sections have been looked at (22%).**
+**97 of 423 sections have been looked at (23%).**
 The rest are `unreviewed` — not a backlog someone forgot, but the honest measure of how much of
 the book has never been checked against this codebase. Domain Oracle works this map down daily,
 sampling **randomly as well as by suspicion**, because a queue worked only by what someone already
@@ -23,18 +23,18 @@ worried about measures nothing about the rest (D1-1-01).
 
 | Status | Sections | Meaning |
 |---|---:|---|
-| ✅ implemented | 10 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
-| 🟡 partial | 11 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
+| ✅ implemented | 11 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
+| 🟡 partial | 12 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
 | ❌ absent | 6 | The Guide states a rule that binds us and no code implements it. |
 | ➖ n/a | 68 | The section governs a function Homiquity does not perform as a broker. Reason required. |
-| · unreviewed | 328 | Nobody has looked. The default. |
+| · unreviewed | 326 | Nobody has looked. The default. |
 
 ## By part
 
 | Part | Sections | Reviewed | ✅ | 🟡 | ❌ | ➖ |
 |---|---:|---:|---:|---:|---:|---:|
 | Part A — Doing Business with Fannie Mae | 41 | 8 | 0 | 3 | 0 | 5 |
-| Part B — Origination Through Closing | 287 | 41 | 10 | 7 | 6 | 18 |
+| Part B — Origination Through Closing | 287 | 43 | 11 | 8 | 6 | 18 |
 | Part C — Selling, Securitizing, Delivering | 48 | 41 | 0 | 0 | 0 | 41 |
 | Part D — Quality Control | 11 | 5 | 0 | 1 | 0 | 4 |
 | Part E — Quick Reference | 36 | 0 | 0 | 0 | 0 | 0 |
@@ -55,6 +55,8 @@ the lender; we adopt its shape for our own quality program **by choice**, and sa
 | `A3-3-01` | Outsourcing of Mortgage Processing and Third-Party Originations | 🟡 partial | No TPO-oversight model in code. This section DEFINES our position: a broker is a third-party originator, and the seller must satisfy itself we produce quality loans. It is the reason the authority gate exists (TEAM_PRACTICES §10). |
 | `A3-4-02` | Data Quality and Integrity | 🟡 partial | Data quality and integrity is the keystone obligation. Enforced piecemeal (complianceInvariants, the authority gate, audit logging); there is no single control that proves every DU-submitted field is verifiable. |
 | `B2-1.2-01` | Loan-to-Value (LTV) Ratios | ✅ implemented | server/underwritingEngine.ts:381 resolves the CONVENTIONAL_MAX_LTV matrix on the decision path. |
+| `B2-1.4-01` | Fixed-Rate Loans | ✅ implemented | Fixed-Rate Loans — the default product; delivered as LoanAmortizationType Fixed via mapAmortizationType (server/mismo.ts), which now asserts the platform default only when the field is unset rather than overriding a stored value. |
+| `B2-1.4-02` | Adjustable-Rate Mortgages (ARMs) | 🟡 partial | Adjustable-Rate Mortgages. The rate sheet seeds a 5/6 ARM (server/seedMarketPricing.ts) and the URLA captures amortizationType (server/routes/borrower/urla.ts), but server/mismo.ts DELIVERED every file as fixed-rate — the compile-time literal "Fixed" (F-053). Fixed 2026-08-21: mapAmortizationType reads the stored value, enum verified against the committed MISMO_3_0.xsd, unmapped values throw. Still partial: no ARM-specific underwriting (qualifying rate, caps, index/margin) exists — only the delivery element is now honest. |
 | `B2-2-03` | Multiple Financed Properties for the Same Borrower | 🟡 partial | TABLE-VERIFIED against PDF p.245 by coordinate reconstruction, not text order: principal residence non-HomeReady = no limit; principal residence HomeReady = 2; second home/investment = DU-10; high-LTV refi exempt (B5-7-01). CORRECTS FINDINGS U-23, which says the code ignores occupancy — it does not. shared/fannieMae/loanDeliveryEdits.ts:638 already scopes edit 6439 to SecondHome/Investment; the actual gap is the THRESHOLD (>6 vs DU-10) plus the unenforced HomeReady limit of 2. The 6 comes from a June-2020 EarlyCheck workbook; B2-2-03 moved to 10 effective 11/05/2025. Guide-vs-job-aid conflict => ESCALATE per CLAUDE.md, do not pick. Also note the edit lives in the frozen delivery stack (guard:channel, zero client callers), so changing it alters validation nothing currently reaches. |
 | `B3-2-01` | General Information on DU | 🟡 partial | The lender must ensure delivery data matches the final DU submission and that the casefile receives an eligible recommendation. The delivered recommendation is now honest — server/mismo.ts maps the recorded AUS value via mapAusRecommendation and OMITS the whole AUTOMATED_UNDERWRITINGS container when there is none (F-051 fixed in #545; the compile-time "Approve" literal is gone). Still partial because submitToDU is a deterministic simulation: there is no real casefile, so 'matches the final DU submission' cannot yet be satisfied end to end (blocked on F6). |
 | `B3-2-02` | DU Validation Service | ❌ absent | DU validation service / Day 1 Certainty relief is parsed in ausSubmission.ts but the asset-verification-report spec is not procured, so the validation legs cannot be adjudicated. Also carries the Asset Verification Report policy that CTO_ROADMAP F14 needs. |
