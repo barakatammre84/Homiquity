@@ -76,6 +76,22 @@ gate (see the roadmap ticket) instead of relying solely on the hand-built valida
   manually** (Cloudflare blocks scripted fetch): **Form 1084 (Cash Flow Analysis)** and the
   business-return analysis subsections — see that file's "Missing artifacts" section.
 
+### Income documentation by source (Income Assessment, Chapter B3-3)
+- `income-documentation-matrix.md` — one row per `INCOME_TYPES` value: the documents the Guide
+  requires, the minimum history, and the continuance rule, each cited to section + PDF page in
+  `selling-guide/`. Grounds `INCOME_SOURCE_RULES` in `server/pipelineEngine.ts`;
+  `tests/incomeSourceRequirements.test.ts` fails the build if a rule cites a section this file
+  does not contain. **Conventional only** — FHA/VA/USDA rows are `UNVERIFIED` with the named
+  handbook each needs, because those sources returned 403 rather than being omitted by choice.
+
+  🚨 **Two things recorded there that cost time to rediscover.** First, Fannie's **URL slugs
+  carry stale section numbers while the page bodies carry current ones** — `…/b3-3.2-01/…`
+  serves *B3-3.5-01*, `…/b3-3.1-09/…` serves *Section B3-3.4*, `…/b3-3.1-08/…` serves
+  *Section B3-3.8*. Cite the number printed in the body; `selling-guide/section-index.tsv`
+  carries the body's own numbering and is the safe way to look one up. Second, **B3-3.4-02 makes
+  alimony and child support opt-in** — includable only where the borrower elected them on the
+  URLA — which is a Reg B branch any document-derivation must respect, not a preference.
+
 ### Rental income (Income Assessment, Chapter B3-3)
 - `rental-income-reference.md` — verified capture of the current Selling Guide rental-income
   sections, including the 2026-07-17 renumbering check. Grounds the deterministic rental
