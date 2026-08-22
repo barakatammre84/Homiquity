@@ -81,11 +81,31 @@ export function registerStatusDecisionRoutes(
         "loanPurpose", "isVeteran", "isFirstTimeBuyer", "propertyState",
         "employerName", "propertyAddress", "propertyCity", "propertyZip",
         "incomeSources",
+        // The three answers the funnel captures AFTER the #202 registrar split
+        // and this list never learned about. Every autosave validated them,
+        // returned 200, and wrote nothing — the two VA residual-income inputs
+        // (38 CFR 36.4340(e)) were re-asked on every resume, and the UAL
+        // routing opt-in came back as a silent "no" beside two checkboxes that
+        // restored correctly (2026-08-19 wiring audit, break 2).
+        "householdFamilySize", "homeSquareFootage", "avoidsInterestFinancing",
       ] as const;
       const updateData: Record<string, unknown> = {};
       for (const key of UPDATABLE_COLUMNS) {
         const value = (formData as Record<string, unknown>)[key];
         if (value !== undefined) updateData[key] = value;
+      }
+      // The two VA inputs are INTEGER columns, but the update schema hands them
+      // over as digit strings (stringifyIntakeScalars normalises numbers to
+      // strings for the shared validators) — the same parseInt the intake POST
+      // applies in applications.ts. Copying the string straight through would
+      // put a string into an integer column. The validator lets "" through as
+      // "not answered", so an empty string is treated as absent rather than
+      // written as NaN; neither field is clearable, so null never arrives.
+      for (const key of ["householdFamilySize", "homeSquareFootage"] as const) {
+        if (typeof updateData[key] !== "string") continue;
+        const n = parseInt(updateData[key] as string, 10);
+        if (Number.isFinite(n)) updateData[key] = n;
+        else delete updateData[key];
       }
 
       const updated = await storage.updateLoanApplication(id, updateData);
