@@ -148,6 +148,7 @@ export default defineConfig({
       // Every rule here previously sat on a branch the liability vocabulary
       // could not reach, so it never ran and the suite stayed green.
       "tests/sellingGuideMonthlyDebt.test.ts",
+      "tests/liabilityExclusions.test.ts",
       // B3-6-03 PITIA composition: association dues were absent from the
       // decision path, and a null on a condo must gap rather than read as zero.
       "tests/sellingGuideHousingExpense.test.ts",

@@ -4,6 +4,7 @@ import { db } from "../db";
 import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
 import { computePaymentProjection } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
+import { isExcludedAsPaidByOtherParty, type PaidByOtherPartyFacts } from "@shared/liabilityExclusions";
 import { decisionSnapshots, incomePathEvaluations, type LoanApplication, type IncomeSourceEntry } from "@shared/schema";
 import {
   computeIncomePaths,
@@ -158,13 +159,23 @@ export function describeEngineGap(err: unknown): string[] {
  * simulator so the two can never quote different debt pictures.
  */
 export function sumOpenMonthlyLiabilities(
-  liabilities: Array<{ toBePaidOff: boolean | null; monthlyPayment: unknown }>,
+  liabilities: Array<
+    { toBePaidOff: boolean | null; monthlyPayment: unknown } & Partial<PaidByOtherPartyFacts>
+  >,
   fallbackMonthlyDebts: unknown,
 ): number {
   if (liabilities.length === 0) return safe(fallbackMonthlyDebts);
   let total = 0;
   for (const liability of liabilities) {
     if (liability.toBePaidOff) continue;
+    // B3-6-05, Debts Paid by Others: a payment another party actually makes
+    // leaves the recurring obligations once the borrower's answers satisfy the
+    // rule (shared/liabilityExclusions.ts — the same predicate the staff
+    // calculations engine and the MISMO export read). The 12-month payment
+    // history the Guide requires rides as an auto-generated condition; the
+    // borrower is qualified on the ratio the Guide entitles them to, with the
+    // paperwork named, rather than on one it says they need not carry.
+    if (isExcludedAsPaidByOtherParty(liability)) continue;
     total += safe(liability.monthlyPayment);
   }
   return total;

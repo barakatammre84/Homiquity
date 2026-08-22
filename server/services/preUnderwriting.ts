@@ -3,6 +3,13 @@ import { db } from "../db";
 import { creditPulls, loanApplications, verificationReports } from "@shared/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { storage } from "../storage";
+import {
+  PAID_BY_OTHER_PARTY_CONDITION_RULE,
+  THIRD_PARTY_PAYMENT_HISTORY_DOCUMENT_TYPE,
+  THIRD_PARTY_PAYMENT_HISTORY_MONTHS,
+  assessPaidByOtherParty,
+  type PaidByOtherPartyFacts,
+} from "@shared/liabilityExclusions";
 import { sendEmail } from "./emailService";
 
 /**
@@ -102,7 +109,8 @@ export type PreUwFlagCode =
   | "LARGE_DEPOSIT_SOURCING"
   | "RENTAL_INCOME_OFFSET"
   | "SUBJECT_PROPERTY_RENTAL_OFFSET"
-  | "RENTAL_CONVERSION_OFFSET";
+  | "RENTAL_CONVERSION_OFFSET"
+  | "THIRD_PARTY_PAID_DEBT";
 
 export interface PreUwRequiredDoc {
   documentType: string;
@@ -142,6 +150,36 @@ export interface PreUwInput {
     estimatedMarketRent: string | number | null;
     monthlyPitia: string | number | null;
   } | null;
+  /**
+   * URLA Section 2c rows with the borrower's "someone else pays this" answers
+   * (B3-6-05, Debts Paid by Others). The ELIGIBLE ones are excluded from the
+   * DTI by both engines and need the Guide's 12-month payment history.
+   */
+  declaredLiabilities?: DeclaredLiability[] | null;
+}
+
+export interface DeclaredLiability extends PaidByOtherPartyFacts {
+  id: string;
+  creditorName: string | null | undefined;
+  monthlyPayment: string | number | null | undefined;
+  otherPartyRelationship?: string | null;
+}
+
+/** The liabilities B3-6-05 lets out of the ratio, each owing a 12-month history. */
+export function excludableThirdPartyPaidDebts(
+  liabilities: DeclaredLiability[] | null | undefined,
+): DeclaredLiability[] {
+  return (liabilities ?? []).filter((l) => assessPaidByOtherParty(l).status === "excludable");
+}
+
+function relationshipPhrase(relationship: string | null | undefined): string {
+  switch (relationship) {
+    case "family_member": return "the family member who pays it";
+    case "former_spouse": return "your former spouse or partner";
+    case "employer": return "your employer";
+    case "business": return "the business that pays it";
+    default: return "the person who makes the payments";
+  }
 }
 
 
@@ -449,7 +487,43 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
+  // B3-6-05, Debts Paid by Others. Each eligible debt has already left the
+  // qualifying ratio (shared/liabilityExclusions.ts); what the Guide still
+  // requires is "the most recent 12 months' canceled checks (or bank
+  // statements) from the other party making the payments". One flag per file,
+  // one document line per debt, so the borrower sees exactly which checks to
+  // gather — and runPreUnderwriting turns each into its own condition.
+  const thirdPartyPaid = excludableThirdPartyPaidDebts(input.declaredLiabilities);
+  if (thirdPartyPaid.length > 0) {
+    const monthly = thirdPartyPaid.reduce((sum, l) => sum + toMoney(l.monthlyPayment), 0);
+    const creditors = thirdPartyPaid.map((l) => l.creditorName || "a debt");
+    flags.push({
+      code: "THIRD_PARTY_PAID_DEBT",
+      severity: "warning",
+      reason:
+        `You told us someone else makes the payments on ${formatList(creditors)}, so we left ` +
+        `$${Math.round(monthly).toLocaleString()}/month out of your debt ratio — the way Fannie Mae allows. ` +
+        `To keep it out, we need the most recent ${THIRD_PARTY_PAYMENT_HISTORY_MONTHS} months of cancelled checks or bank statements ` +
+        `from the person who pays, showing every payment made on time.`,
+      requiredDocs: thirdPartyPaid.map((l) => ({
+        documentType: THIRD_PARTY_PAYMENT_HISTORY_DOCUMENT_TYPE,
+        description:
+          `${THIRD_PARTY_PAYMENT_HISTORY_MONTHS} months of cancelled checks or bank statements from ` +
+          `${relationshipPhrase(l.otherPartyRelationship)} showing on-time payments to ${l.creditorName || "the creditor"}`,
+      })),
+      metrics: {
+        thirdPartyPaidDebts: thirdPartyPaid.length,
+        monthlyExcluded: Number(monthly.toFixed(2)),
+      },
+    });
+  }
+
   return flags;
+}
+
+function toMoney(value: string | number | null | undefined): number {
+  const n = typeof value === "string" ? parseFloat(value) : value ?? 0;
+  return Number.isFinite(n) ? (n as number) : 0;
 }
 
 /** The "frictionless fix": one personalized message instead of an LO email chain. */
@@ -473,6 +547,7 @@ export function buildFlagOutreach(
       case "RENTAL_INCOME_OFFSET":
       case "SUBJECT_PROPERTY_RENTAL_OFFSET":
       case "RENTAL_CONVERSION_OFFSET":
+      case "THIRD_PARTY_PAID_DEBT":
         // These reasons are already written borrower-first with the specific
         // numbers and the resolution path baked in.
         return f.reason;
@@ -526,6 +601,59 @@ function flagsHash(flags: PreUwFlag[]): string {
 }
 
 /** "a", "a and b", "a, b and c" — used in borrower-facing flag copy. */
+/**
+ * Keep the per-liability B3-6-05 documentation conditions in step with the
+ * borrower's current declarations: create for newly eligible debts, re-open a
+ * retired one if the claim returns, retire (not_applicable) an open one whose
+ * debt is no longer excludable. A cleared condition is history and is left
+ * alone. Exported for its test.
+ */
+export async function reconcileThirdPartyPaidDebtConditions(
+  applicationId: string,
+  declaredLiabilities: DeclaredLiability[] | null | undefined,
+): Promise<void> {
+  const prefix = `${PAID_BY_OTHER_PARTY_CONDITION_RULE}:`;
+  const wanted = new Map(
+    excludableThirdPartyPaidDebts(declaredLiabilities).map((d) => [`${prefix}${d.id}`, d] as const),
+  );
+  const existing = await storage.getLoanConditionsByApplication(applicationId);
+  for (const c of existing) {
+    if (!c.sourceRule?.startsWith(prefix)) continue;
+    if (wanted.has(c.sourceRule)) {
+      if (c.status === "not_applicable") {
+        await storage.updateLoanCondition(c.id, { status: "outstanding", clearanceNotes: null });
+      }
+      wanted.delete(c.sourceRule);
+    } else if (c.status === "outstanding" || c.status === "submitted") {
+      await storage.updateLoanCondition(c.id, {
+        status: "not_applicable",
+        clearanceNotes:
+          "The borrower withdrew the third-party payment claim on this liability (or the answers no longer qualify " +
+          "under B3-6-05), so the payment is back in the qualifying ratio — no payment history is needed.",
+      });
+    }
+  }
+  for (const [sourceRule, debt] of wanted) {
+    await storage.createLoanCondition({
+      applicationId,
+      category: "credit",
+      title: `Third-party payment history — ${debt.creditorName || "liability"}`,
+      description:
+        `The borrower reports that ${relationshipPhrase(debt.otherPartyRelationship)} makes the payments on this ` +
+        `${debt.creditorName || "debt"}, and the payment has been excluded from the qualifying DTI under ` +
+        `Selling Guide B3-6-05, Debts Paid by Others. To sustain the exclusion, obtain the most recent ` +
+        `${THIRD_PARTY_PAYMENT_HISTORY_MONTHS} months' cancelled checks (or bank statements) from that party ` +
+        `documenting a ${THIRD_PARTY_PAYMENT_HISTORY_MONTHS}-month payment history with no delinquent payments. ` +
+        `If the history cannot be documented, uncheck "someone else pays this" on the liability so the payment returns to the ratio.`,
+      priority: "prior_to_docs",
+      status: "outstanding",
+      requiredDocumentTypes: [THIRD_PARTY_PAYMENT_HISTORY_DOCUMENT_TYPE],
+      isAutoGenerated: true,
+      sourceRule,
+    });
+  }
+}
+
 function formatList(items: string[]): string {
   if (items.length <= 1) return items[0] ?? "";
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
@@ -537,7 +665,7 @@ function formatList(items: string[]): string {
  */
 export async function runPreUnderwriting(
   applicationId: string,
-  trigger: "intake" | "voa_received",
+  trigger: "intake" | "voa_received" | "liability_declared",
 ): Promise<{ flags: PreUwFlag[]; notified: boolean }> {
   const [application] = await db
     .select()
@@ -546,7 +674,7 @@ export async function runPreUnderwriting(
     .limit(1);
   if (!application) throw new Error(`Application ${applicationId} not found`);
 
-  const [[voa], [pull], propertyInfo] = await Promise.all([
+  const [[voa], [pull], propertyInfo, declaredLiabilities] = await Promise.all([
     db
       .select({ totalBalance: verificationReports.totalBalance, rawPayload: verificationReports.rawPayload })
       .from(verificationReports)
@@ -581,6 +709,7 @@ export async function runPreUnderwriting(
       .orderBy(desc(creditPulls.completedAt))
       .limit(1),
     storage.getUrlaPropertyInfo(applicationId),
+    storage.getUrlaLiabilities(applicationId),
   ]);
 
   const flags = derivePreUnderwritingFlags({
@@ -602,6 +731,7 @@ export async function runPreUnderwriting(
           estimatedMarketRent: propertyInfo.estimatedMarketRent,
         }
       : null,
+    declaredLiabilities,
     currentPropertyDisposition: application.currentPropertyDisposition,
     departingResidence:
       (application.departingResidence as {
@@ -635,6 +765,17 @@ export async function runPreUnderwriting(
       });
     }
   }
+
+  // B3-6-05, Debts Paid by Others: one outstanding condition per excluded
+  // debt, keyed by liability id so a re-run never duplicates it, and so the
+  // staff clearing workflow on the conditions tab IS the Guide's verification
+  // of the 12-month payment history — no staff-only column on the liability
+  // row for a borrower to self-set. Reconciled on every run, regardless of the
+  // Autopilot kill switch (like the reserves condition above): the exclusion
+  // is live in the ratio the moment it is claimed, so the paperwork must be
+  // live with it — and retired the moment the claim is withdrawn, so no one
+  // is chasing cancelled checks for a payment that is back in the ratio.
+  await reconcileThirdPartyPaidDebtConditions(applicationId, declaredLiabilities);
 
   // Autopilot: give the remaining flags teeth. runPreUnderwriting only
   // materializes LOW_RESERVES above; when Autopilot is active this converts the

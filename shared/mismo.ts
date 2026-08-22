@@ -1129,20 +1129,27 @@ export interface LiabilityDetail {
   liabilityExclusionIndicator?: boolean;
 }
 
-export type LiabilityType = 
-  | "Revolving"
+/**
+ * LiabilityTypeEnumerated, verbatim from MISMO_3_0.xsd
+ * (docs/fannie-mae/schemas/uldd-phase5-extension, element at line 9773).
+ * The previous union carried "Mortgage", "Other", "Alimony", "ChildSupport"
+ * and others that the schema does not enumerate — F-020 — so a real file
+ * failed schema validation at the lender on any such row. Alimony, child
+ * support and separate maintenance are EXPENSE items in MISMO, not liability
+ * types; until an EXPENSE container exists they are delivered as
+ * OtherLiability (a valid, if coarse, value) rather than an invalid one.
+ */
+export type LiabilityType =
+  | "CollectionsJudgmentsAndLiens"
+  | "HELOC"
   | "Installment"
-  | "Open"
-  | "Mortgage"
-  | "CollectionsJudgmentsLiens"
   | "LeasePayments"
+  | "MortgageLoan"
+  | "OtherLiability"
+  | "Revolving"
   | "Taxes"
-  | "ChildCare"
-  | "Alimony"
-  | "ChildSupport"
-  | "SeparateMaintenanceExpense"
-  | "JobRelatedExpenses"
-  | "Other";
+  | "DeferredStudentLoan"
+  | "BorrowerEstimatedTotalMonthlyLiabilityPayment";
 
 export interface LiabilityHolder {
   name?: Name;
