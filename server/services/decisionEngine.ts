@@ -415,6 +415,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
     // intake is the remaining piece to catch a consistent misstatement.
     propertyType: app.propertyType ?? undefined,
+    // B2-1.3-02 / B2-1.3-03: refinance LTV ceilings differ from purchase and
+    // live in the Eligibility Matrix. Passing the purpose lets the engine route
+    // a non-purchase file to review instead of measuring it against a purchase
+    // ceiling it was never entitled to.
+    loanPurpose: app.loanPurpose ?? undefined,
     householdFamilySize: app.householdFamilySize ?? undefined,
     homeSquareFootage: app.homeSquareFootage ?? undefined,
   };

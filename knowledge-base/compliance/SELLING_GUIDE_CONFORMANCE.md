@@ -217,6 +217,26 @@ dues, so a fallback would quietly resurrect C-6 the moment any caller went quiet
 `tests/sellingGuideHousingExpense.test.ts`, which asserts the guard rather than the arithmetic,
 because the arithmetic is precisely what failed to notice.
 
+### C-8 — The engine never read the loan purpose, so cash-out files met purchase ceilings
+
+**B2-1.3-02 (Limited Cash-Out Refinance)** and **B2-1.3-03 (Cash-Out Refinance)**. Both route
+the maximum LTV, CLTV and HCLTV ratios to the **Eligibility Matrix** — a companion document
+this repo does not hold (see G-14).
+
+The funnel collects `loanPurpose`; it is driven by the `?type=` entry point
+(`client/src/pages/lending/preApproval/entryType.ts`, whose own comment says "`loanPurpose`
+drives program eligibility and pricing from there"), and the funnel branches its copy on
+`cash_out`. But `underwritingEngine.ts`, `decisionEngine.ts` and `loanEstimate.ts` contained
+**zero references to it**, and `CONVENTIONAL_MAX_LTV` is keyed on units × occupancy with no
+purpose dimension. A cash-out file was therefore measured against the *purchase* ceiling —
+95% for a one-unit primary — and approved well above the cash-out limit.
+
+Fixed by routing any non-purchase purpose to **human review**, citing both topics and naming
+the Matrix as the missing authority. Deliberately **no ratio is hardcoded**: we do not hold the
+Matrix, and a fabricated ceiling would be exactly the failure this whole pass exists to
+prevent. Tightening a gate is the only direction a reading may move without its source in hand.
+Omitted purpose still defaults to `purchase`, so genuine purchase files are byte-identical.
+
 ---
 
 ## Open gaps — recorded, not silently assumed
@@ -335,6 +355,97 @@ B3-6-03 lists eight components; C-6 closed the association-dues one. Four remain
 
 Each understates the housing expense where it applies. None is fabricated as zero today
 because none is captured at all; the honest fix is capture, as C-6 did for dues.
+
+### G-14 — 🚨 The Eligibility Matrix is absent, and the Guide defers to it **39 times**
+
+This bounds the whole exercise and is the most important thing on this page. The Selling Guide
+is the top of the hierarchy, but it is not self-contained: it routes numeric limits to the
+**Eligibility Matrix** in 39 places — maximum LTV/CLTV/HCLTV by transaction and occupancy,
+minimum credit scores for manual underwriting, minimum reserve requirements for manually
+underwritten loans (B3-4.1-01 says so explicitly), and the cash-out ceilings behind C-8.
+
+We do not hold it. It is not in `docs/fannie-mae/` and not in the founder's reference-documents
+folder. **A conformance verdict on any of those numbers is therefore unavailable, not merely
+unchecked** — and the honest response is a review route (as C-8 takes) rather than a plausible
+figure.
+
+Procurement item, same shape as `docs/reg-z/`: the fix is obtaining the document, not more
+analysis.
+
+### G-15 — Representative credit score ignores co-borrowers, while their income counts
+
+**B3-5.1-02, Representative Credit Score.** Step 2: one score per borrower — the **lower** of
+two, the **middle** of three. Step 3: with multiple borrowers, take the **lowest** applicable
+score across the group; a borrower with no score is excluded, not treated as zero.
+
+Step 2 is satisfied where scores are produced (the credit adapter sorts three and takes the
+middle, which also gets the Guide's tie examples right: 700/680/680 → 680, 700/700/680 → 700).
+
+**Step 3 cannot be satisfied at all.** `credit_score` is a single integer on
+`loan_applications`; no per-borrower score exists anywhere in the schema. Meanwhile
+`decisionEngine` aggregates **income across every `borrowerSequenceNumber`**, and sums
+liabilities across them too.
+
+So a co-borrower's income helps the DTI and their debts hurt it, but **their credit is
+invisible**. A 760 primary with a 600 co-borrower is priced and gated at 760 where Fannie
+requires 600 — clearing the 620 floor it should fail, and pricing several LLPA and PMI bands
+too cheaply. The asymmetry runs in the forbidden direction: we take the co-borrower's benefit
+without their risk.
+
+Closing it needs a per-borrower score column plus capture, and then `min()` across borrowers —
+the same shape as C-6. Not undertaken unilaterally; it is a schema and intake change, and the
+founder should choose when.
+
+*(Checked and sound while here: `CREDIT_SCORE_UNKNOWN_DEFAULT = 680` for a borrower who selects
+"not sure" is explicitly named, documented as a midpoint rather than a silent clamp, and stays
+`self_reported` provenance until a real pull replaces it — the decision carries `isVerified`
+off that provenance. That is a placeholder the system knows is a placeholder, not a fabricated
+score.)*
+
+### G-16 — 🚨 Real Estate Owned cannot be captured, yet is scored as "reviewed"
+
+The URLA form has **no Real Estate Owned section**. `SectionsPayload` / `UrlaSavePayload`
+(`client/src/pages/borrower/urla/types.ts`) carry personal info, employment, assets,
+liabilities, declarations, demographics, other income, subject property and loan details — and
+nothing for the borrower's *other* properties. The `real_estate_owned` table exists, is fully
+shaped for the job (`mortgage_balance` = UPB, `occupancy_type`, `will_be_sold`, `status`), is
+read by storage and batch loaders — and is written **only** by an internal API route
+(`server/routes/intelligence.ts:96`). No borrower-facing path populates it.
+
+Worse than merely absent: `scoreRealEstateOwned` (`server/services/mismoValidation.ts`) scores
+section 2c by asserting a single hardcoded field — **"Real estate ownership reviewed" = "yes"**
+— whenever `reo.length === 0`. A borrower who owns three rentals has no way to say so, and the
+completeness scorer then affirms the section was reviewed. **That is an unknown rendered as a
+pass**, the identical shape as the TRID `null → true` defect this codebase already fixed and
+documents at length in `services/loanEstimate.ts` (finding ux-30). An absence of data is not a
+clean review.
+
+### G-17 — Multiple-financed-property rules are unimplemented (B2-2-03, B3-4.1-01)
+
+Downstream of G-16, and fully specified in the Guide — no Eligibility Matrix needed:
+
+- **B2-2-03, Limits on the Number of Financed Properties.** Principal residence: no limit
+  (HomeReady: 2). Second home or investment: **DU maximum 10**. The count includes every
+  one-to-four-unit property the borrower is personally obligated on — *even where the housing
+  expense is excluded from DTI under B3-6-05* — counting a multi-unit property as one.
+- **B3-4.1-01, Calculation of Reserves for Multiple Financed Properties.** Additional reserves
+  on second home / investment subjects, as a percentage of the aggregate UPB of mortgages and
+  HELOCs on the borrower's *other* financed properties: **2%** for 1–4 financed properties,
+  **4%** for 5–6, **6%** for 7–10 (DU only). The aggregate excludes the subject property, the
+  principal residence, properties sold or pending sale, and accounts paid by closing. Not
+  cumulative across simultaneous applications, and not applicable to HomeReady.
+
+Neither is implemented: `decisionEngine`, `underwritingEngine` and `preUnderwriting` contain
+**zero references to `realEstateOwned`**. The reserve tiering added in C-4 is months-based and
+covers only occupancy and unit count; this is a separate dollar requirement stacked on top.
+
+Both are computable from columns that already exist — the blocker is capture (G-16), not
+authority. That makes this the **highest-readiness gap on this page**: unlike G-7/G-8/G-14 it
+needs no document we do not hold, and unlike G-15 it needs no new schema.
+
+Also blocked behind G-16: **B3-6-06, Qualifying Impact of Other Real Estate Owned** (how an
+existing property's PITIA counts) and the B3-6-05 rule that a mortgage the borrower is
+obligated on must enter the financed-property count regardless of who pays it.
 
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 

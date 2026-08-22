@@ -144,6 +144,9 @@ export default defineConfig({
       // B3-6-03 PITIA composition: association dues were absent from the
       // decision path, and a null on a condo must gap rather than read as zero.
       "tests/sellingGuideHousingExpense.test.ts",
+      // B2-1.3: the funnel collects a cash-out purpose the engine never read,
+      // so refi files were measured against purchase LTV ceilings.
+      "tests/sellingGuideLoanPurpose.test.ts",
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
