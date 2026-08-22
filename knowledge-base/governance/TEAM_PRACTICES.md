@@ -203,11 +203,18 @@ discovered trap gets a line here in the same PR.
 ## 6. Push and merge policy *(rewritten 2026-07-19: platform enforcement follows plan/visibility — verify it, don't assume it)*
 
 - **Nobody direct-pushes `main`, founder included, and no PR merges before its `gate` is
-  green.** Branch protection currently enforces this (required `gate` check +
-  `enforce_admins`; force-push and deletion of `main` blocked; re-applied 2026-07-19
-  ~19:45Z, probe-verified by unmerged PR #262). Work lands as a short-lived branch → PR →
-  gate green → **squash merge**. No required reviews: the author merges their own green PR.
-  Recipe: [CICD.md](../runbooks/CICD.md) §Shipping.
+  green.** Work lands as a short-lived branch → PR → gate green → **squash merge**. No
+  required reviews: the author merges their own green PR. Recipe:
+  [CICD.md](../runbooks/CICD.md) §Shipping.
+  ⚠️ **Half of that is doctrine only — measured 2026-08-22.** Force-push and deletion of
+  `main` *are* still blocked (`allow_force_pushes` / `allow_deletions` both `false`) and
+  `enforce_admins` is on; but
+  `gh api repos/barakatammre84/Homiquity/branches/main/protection` returns
+  `"contexts": []`, `"checks": []`, `strict: false` — **admins bound to zero checks**, so no
+  platform rule stops a pre-green merge. This bullet asserted "branch protection currently
+  enforces this (required `gate` check …)" from 2026-07-19 (#261, `65b17793`) until this
+  correction. Run the enforcement probe below before relying on `--auto`. Whether the
+  required `gate` context should be restored is escalated to the founder, not settled here.
 - **⚠️ The 2026-07-19 lesson: GitHub enforces branch protection only while plan/visibility
   allow it, and a flip can silently *drop the rule entirely*.** The repo went private
   ~17:20Z that day (Free plan ⇒ no protection on private repos) — the rule wasn't merely
