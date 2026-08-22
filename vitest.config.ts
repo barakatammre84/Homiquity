@@ -298,6 +298,9 @@ export default defineConfig({
       // A file can grow requirements after intake once they derive from the
       // SET of income sources; staff see that rather than meeting it at submission.
       "tests/requirementsWidenedSignal.test.ts",
+      // Requirement derivation must not sit behind the autopilot kill switch:
+      // it is the same deterministic rule intake runs ungated.
+      "tests/requirementSyncUngated.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

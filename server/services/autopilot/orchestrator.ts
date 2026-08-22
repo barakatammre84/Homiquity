@@ -12,15 +12,13 @@ import { logAiInteraction } from "../aiInteractionLog";
 import { recalculateDecision } from "../decisionEngine";
 import { evaluateBrokerSubmissionReadiness } from "../brokerSubmissionReadiness";
 import {
-  loadBorrowerProfile,
-  determineDocumentRequirements,
-  generateConditionsFromRequirements,
+  syncDocumentRequirements,
 } from "../../pipelineEngine";
 import { isAutopilotEnabled, canGenerateFollowUps } from "./config";
 import { materializeFlagsToFollowUps } from "./followUps";
 import { publishReviewing, publishCurrentStatus } from "./events";
 import type { PreUwFlag } from "../preUnderwriting";
-import type { LoanApplication } from "@shared/schema";
+import type { LoanApplication, LoanCondition } from "@shared/schema";
 import { toNum } from "@shared/lib/number";
 
 /**
@@ -159,6 +157,12 @@ function buildNarration(p: {
 export async function runAutopilotForSection(params: {
   applicationId: string;
   triggeredBy: string;
+  /**
+   * Conditions the caller's own (ungated) requirement sync just created.
+   * Passed in so the derivation runs ONCE per save: the deterministic half is
+   * no longer autopilot's job, but autopilot still narrates what it produced.
+   */
+  createdConditions?: LoanCondition[];
 }): Promise<void> {
   const { applicationId } = params;
   try {
@@ -167,9 +171,11 @@ export async function runAutopilotForSection(params: {
     if (!(await isAutopilotEnabled(application.loanOfficerId))) return;
     if (!(await canGenerateFollowUps())) return;
 
-    const profile = await loadBorrowerProfile(application);
-    const requirements = determineDocumentRequirements(profile);
-    const created = await generateConditionsFromRequirements(applicationId, requirements);
+    // The requirement sync is deterministic and runs whether or not autopilot
+    // is on (server/pipelineEngine.ts syncDocumentRequirements). Re-derive only
+    // when the caller did not already do it, so a save never derives twice.
+    const created =
+      params.createdConditions ?? (await syncDocumentRequirements(application)).created;
 
     // Refresh the pre-qualification snapshot from the newly-stated data.
     await recalculateDecision(applicationId, "autopilot_section");

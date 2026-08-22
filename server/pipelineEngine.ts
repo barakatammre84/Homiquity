@@ -32,7 +32,7 @@ import {
   calculateDTI,
 } from "./underwriting";
 
-interface DocumentRequirement {
+export interface DocumentRequirement {
   documentType: string;
   yearsRequired?: number[];
   description: string;
@@ -741,6 +741,35 @@ export function getBorrowerProfileFromApplication(app: LoanApplication): Borrowe
   };
 }
 
+/**
+ * Re-derive a file's document requirements from its current stated data and
+ * write any that are newly required. Returns ONLY the newly-created conditions.
+ *
+ * Deterministic and deliberately UNGATED. This is the same rule evaluation
+ * `initializeLoanPipeline` runs at intake — same engine, same
+ * `DOC_REQ_<TYPE>` conditions, same idempotency — just run again after the
+ * borrower states something new. It is not an autopilot capability: no model
+ * reads anything, no decision is issued, nothing is narrated. (The autopilot
+ * ROI metric had to be scoped to `AUTOPILOT_%` precisely because `DOC_REQ_%`
+ * conditions are produced by the normal intake pipeline, not the agent.)
+ *
+ * Running it only when autopilot was enabled left the requirement set frozen at
+ * whatever the borrower said first: a borrower who later added a second
+ * employer or an other-income row owed documents nobody would ever ask for.
+ * Intake was already ungated, so the gate was an inconsistency, not a control.
+ */
+export async function syncDocumentRequirements(application: LoanApplication): Promise<{
+  /** The full derived set — intake also turns these into borrower tasks. */
+  requirements: DocumentRequirement[];
+  /** Only the conditions this run newly created (idempotent by sourceRule). */
+  created: LoanCondition[];
+}> {
+  const profile = await loadBorrowerProfile(application);
+  const requirements = determineDocumentRequirements(profile);
+  const created = await generateConditionsFromRequirements(application.id, requirements);
+  return { requirements, created };
+}
+
 export async function initializeLoanPipeline(
   application: LoanApplication,
   createdByUserId: string
@@ -757,10 +786,8 @@ export async function initializeLoanPipeline(
       submittedAt: new Date(),
     }));
 
-  const profile = await loadBorrowerProfile(application);
-  const requirements = determineDocumentRequirements(profile);
-
-  const conditions = await generateConditionsFromRequirements(application.id, requirements);
+  // Same derivation the section-save path re-runs; one helper, one behaviour.
+  const { requirements, created: conditions } = await syncDocumentRequirements(application);
 
   const tasks = await generateDocumentTasks(
     application.id,
