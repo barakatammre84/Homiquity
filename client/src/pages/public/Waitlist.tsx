@@ -76,7 +76,7 @@ export default function Waitlist() {
 
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
         <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
-        <Button asChild variant="ghost" size="sm" data-testid="button-login">
+        <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
           <Link href="/login">Sign in</Link>
         </Button>
       </header>
@@ -139,7 +139,7 @@ export default function Waitlist() {
             <p className="text-sm text-muted-foreground">
               While you wait, explore our free mortgage calculators.
             </p>
-            <Button asChild variant="outline" size="sm" className="mt-3 gap-2" data-testid="button-waitlist-calculators">
+            <Button asChild variant="outline" size="sm" className="touch-target mt-3 gap-2" data-testid="button-waitlist-calculators">
               <Link href="/calculators">
                 Open the calculators
                 <ArrowRight className="h-4 w-4" />

@@ -143,12 +143,18 @@ export default function LoanOptions() {
                     Under Review
                   </span>
                 </div>
+                {/* Broker rail: Homiquity arranges financing and does not make
+                    credit decisions or fund loans — the standing disclosure in
+                    this page's own footer. This read "Your application is with
+                    our underwriting team / A licensed underwriter is reviewing
+                    your numbers", which two independent journey walks flagged
+                    against that disclosure a few hundred pixels below it. */}
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                  Your application is with our underwriting team
+                  Your file is being prepared for review
                 </h1>
                 <p className="mt-4 text-muted-foreground" data-testid="text-under-review">
-                  A licensed underwriter is reviewing your numbers — check your dashboard for what
-                  was flagged. The scenarios below are estimates, not offers.
+                  We're getting your numbers ready for a lending partner to review — check your
+                  dashboard for what was flagged. The scenarios below are estimates, not offers.
                 </p>
               </>
             ) : (
@@ -230,7 +236,7 @@ export default function LoanOptions() {
             {options.length > 1 && (
               <div className="flex rounded-lg border p-0.5" role="group" aria-label="View mode">
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant={viewMode === "cards" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("cards")}
                   data-testid="button-view-cards"
@@ -238,7 +244,7 @@ export default function LoanOptions() {
                   Cards
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant={viewMode === "compare" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("compare")}
                   data-testid="button-view-compare"

@@ -247,7 +247,7 @@ export function UploadDocumentDialog({
                   <Button
                     key={item.id}
                     type="button"
-                    size="sm"
+                    size="sm" className="touch-target"
                     variant={selectedType === item.documentType ? "default" : "outline"}
                     onClick={() => setSelectedType(item.documentType)}
                     data-testid={`chip-needed-${item.documentType}`}
@@ -392,7 +392,7 @@ export function DocumentNeedsSummary({
         applicationId={applicationId}
         confirmToRecipientId={recipientId}
         trigger={
-          <Button size="sm" variant="outline" className="shrink-0" data-testid="button-needs-upload">
+          <Button size="sm" variant="outline" className="touch-target shrink-0" data-testid="button-needs-upload">
             <Upload className="mr-1.5 h-3.5 w-3.5" />
             Upload
           </Button>

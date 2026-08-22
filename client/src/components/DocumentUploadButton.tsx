@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
+import { apiRequest, applicationResourceKeys, coachContextKeys, dashboardKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -69,12 +69,19 @@ export function DocumentUploadButton({
       // This used to fire `["/api/documents"]`, which no client query has ever
       // read — the borrower Documents page moved to the checklist endpoint and
       // the invalidation was never migrated. The result was that a document
-      // uploaded from the AI Coach panel (the only place this button mounts)
+      // uploaded from the Homi panel (the only place this button mounts)
       // refreshed nothing, while the same upload through UploadDocumentDialog
       // refreshed correctly.
       queryClient.invalidateQueries({ queryKey: applicationResourceKeys.all() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       queryClient.invalidateQueries({ queryKey: ["/api/coach/insights"] });
+      // The assistant's own checklist. NOT covered by the insights key above:
+      // partialMatchKey is element-wise, so ["/api/coach/insights"] never
+      // matches ["/api/coach/context"] — a shared "/api/coach" prefix matches
+      // nothing. Without this the upload lands, the condition flips, and the
+      // panel the borrower uploaded FROM still reads "Needed" — the same
+      // silent-success shape this whole change exists to remove.
+      queryClient.invalidateQueries({ queryKey: coachContextKeys.root() });
       toast({ title: "Document received", description: "Thanks — that's added to your file. I'll take it from here." });
       onDone?.();
     },

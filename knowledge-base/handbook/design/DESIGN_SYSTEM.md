@@ -40,22 +40,22 @@ sites actually use it.
 | Capability | State | Measured |
 |---|---|---|
 | `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 282 page files import it — *pnpm guard:ui → `pageShellDrift`* |
-| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 5%** | 17 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
+| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 21 file(s) import the registry, 322 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
 | `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
-| Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 33 in 24 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
-| `EmptyState` | **BUILT** | 8 file(s) use it |
+| Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 34 in 25 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
+| `EmptyState` | **BUILT** | 9 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 104 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 118 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
-| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
+| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **322** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
 | `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **151** occurrence(s) |
 | `blindSpotPaletteClasses` — palette class in a shape the token guard cannot see | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
-| `subMinTouchTarget` — Button size="sm" (h-9 = 36px) with no .touch-target | ratcheting down | **232** occurrence(s) |
+| `subMinTouchTarget` — Button size="sm" (h-9 = 36px) with no .touch-target | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **62** occurrence(s) |
 
 <!-- END GENERATED -->
@@ -237,8 +237,25 @@ not the capture-flow container; see §12.
 
 ## 5. Radii, elevation, motion
 
-- **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
-  (inputs/buttons), `rounded-sm` 4px (chips).
+- **Radii — six rungs, all derived from `--radius` (.75rem).** Radius encodes container
+  **size**: the bigger the box, the rounder the corner.
+
+  | Class | Value | Use |
+  |---|---|---|
+  | `rounded-sm` | 4px | chips, badges |
+  | `rounded-md` | 8px | inputs, selects, buttons |
+  | `rounded-lg` | 12px | cards, modals |
+  | `rounded-xl` | 16px | feature cards |
+  | `rounded-2xl` | 24px | large panels |
+  | `rounded-3xl` | 32px | hero and band containers |
+
+  🚨 **The three large rungs must stay declared in `tailwind.config.ts`.** They live under
+  `theme.extend`, which previously overrode only sm/md/lg — so `rounded-xl` fell through to
+  Tailwind's default `0.75rem`, which is **12px**, which is exactly what `--radius` already
+  is. `rounded-lg` and `rounded-xl` rendered **identically**, and the 40 files reaching for
+  `rounded-xl` to get a softer container got no change at all. A silent no-op rather than a
+  wrong value, which is why it survived so long. Deleting an `xl`/`2xl`/`3xl` line
+  reintroduces it, and nothing will go red.
 - **Elevation.** The neutral-tinted `--shadow-*` vars are wired into Tailwind as a named card
   scale: `shadow-card` (= `--shadow-sm`), `shadow-card-hover` (= `--shadow-md`), `shadow-card-lg`
   (= `--shadow-lg`).

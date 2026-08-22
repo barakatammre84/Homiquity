@@ -64,7 +64,7 @@ export function IntakeInboxCard() {
             <Button
               size="sm"
               variant="secondary"
-              className="h-7 shrink-0 px-2 text-xs"
+              className="touch-target h-7 shrink-0 px-2 text-xs"
               onClick={() => claim.mutate(file.applicationId)}
               disabled={claim.isPending}
               data-testid={`claim-${file.applicationId}`}

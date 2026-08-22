@@ -158,7 +158,7 @@ export function DocumentItemRow({
             <Button
               size="sm"
               variant="ghost"
-              className="gap-1.5"
+              className="touch-target gap-1.5"
               data-testid={`button-download-${row.key}`}
               onClick={() => window.open(`/api/documents/${row.documentId}/download`, "_blank")}
             >
@@ -170,7 +170,7 @@ export function DocumentItemRow({
             <Button
               size="sm"
               variant="outline"
-              className="gap-1.5"
+              className="touch-target gap-1.5"
               data-testid={`button-upload-${row.key}`}
               disabled={anyUploadBusy}
               onClick={onBrowse}

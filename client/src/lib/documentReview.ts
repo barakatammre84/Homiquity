@@ -40,7 +40,7 @@ export interface ParsedExtractionNotes {
  * orchestrator). It is no longer overloaded: the borrower's upload description
  * moved to its own `borrowerDescription` column in migration 0046, because
  * while it shared this column a borrower could type JSON here and have
- * borrowerGraph and the AI coach read it back as document-verified extraction
+ * borrowerGraph and Homi read it back as document-verified extraction
  * (F-027). Anything borrower-authored belongs in `borrowerDescription`.
  *
  * Still parse defensively — historical rows predating 0046 may hold a

@@ -16,9 +16,13 @@ commands that no longer exist. **This routine owns the gap: semantic currency.**
 against the code, corrects what drifted, banners what history overtook, proposes pruning for what
 died, and learns which docs drift and why so the drift stops recurring.
 
-The cadence is deliberately tight — **every 6 hours** (founder, 2026-08-18: sessions must never
-be steered by stale documentation, so drift gets hours to live, not days). That only works
-because ticks are cheap: the diff window since `last-swept SHA` is usually small or empty, and a
+The cadence the routine was designed for is deliberately tight — **every 6 hours** (founder,
+2026-08-18: sessions must never be steered by stale documentation, so drift gets hours to live,
+not days). **The registered seat runs once daily at 19:30 as of 2026-08-20** (founder decision,
+recorded in the scheduled task `doc-accuracy-daily`; the routine had no seat at all between the
+2026-08-19 suite rewrite and then) — so a tick's diff window is about a day wide, and
+re-tightening toward 6-hourly is a founder scheduling call, not a skill change. Ticks stay cheap
+either way: the diff window since `last-swept SHA` is usually small or empty, and a
 tick that finds nothing says so briefly and stops — that is a success, not a wasted run. A day's
 ticks share at most ONE open docs-only PR (later ticks extend it), never merged by you. If any
 rail conflicts with making progress, the rail wins: stop, record, report.

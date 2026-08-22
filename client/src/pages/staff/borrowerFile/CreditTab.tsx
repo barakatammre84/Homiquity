@@ -217,7 +217,7 @@ export function CreditTab({
                 <p className="text-sm text-muted-foreground">
                   Borrower must provide credit authorization before a credit pull can be performed.
                 </p>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" className="touch-target" asChild>
                   <Link href={`/credit-consent/${applicationId}`}>
                     Request Consent
                   </Link>
@@ -235,7 +235,7 @@ export function CreditTab({
                 Credit Report
               </CardTitle>
               <Button
-                size="sm"
+                size="sm" className="touch-target"
                 disabled={!creditData?.hasActiveConsent || pullCreditMutation.isPending}
                 onClick={() => pullCreditMutation.mutate("tri_merge")}
                 data-testid="button-pull-credit"
@@ -386,7 +386,7 @@ export function CreditTab({
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="sm" className="touch-target"
                     onClick={() => handleDownloadAdverseActionPdf(creditData.latestAdverseAction!.id)}
                     disabled={downloadingNotice}
                     data-testid="button-download-adverse-action-pdf"
@@ -400,7 +400,7 @@ export function CreditTab({
                       onOpenChange={(o) => setNoticeDelivery(prev => ({ ...prev, open: o }))}
                     >
                       <DialogTrigger asChild>
-                        <Button size="sm" data-testid="button-confirm-notice-delivery">
+                        <Button size="sm" className="touch-target" data-testid="button-confirm-notice-delivery">
                           <CheckCircle2 className="h-4 w-4 mr-2" />
                           Confirm delivery
                         </Button>

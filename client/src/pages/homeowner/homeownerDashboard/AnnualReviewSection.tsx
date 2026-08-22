@@ -55,7 +55,7 @@ export function AnnualReviewSection({ profile }: { profile: HomeownerProfile }) 
           </div>
           <div className="flex items-end">
             <Button
-              size="sm"
+              size="sm" className="touch-target"
               onClick={() => scheduleMutation.mutate()}
               disabled={scheduleMutation.isPending}
               data-testid="button-schedule-review"

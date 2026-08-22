@@ -106,7 +106,7 @@ export function ScenarioSimulatorDialog({ applicationId, borrowerName }: Scenari
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" data-testid={`open-simulator-${applicationId}`}>
+        <Button variant="outline" size="sm" className="touch-target" data-testid={`open-simulator-${applicationId}`}>
           <Calculator className="mr-1 h-4 w-4" aria-hidden="true" />
           What-If
         </Button>

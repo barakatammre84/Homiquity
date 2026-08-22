@@ -206,7 +206,7 @@ export function COCRuleBuilder() {
               <TableCell><Badge variant="destructive">Invalidate</Badge></TableCell>
               <TableCell>FANNIE, FREDDIE</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="touch-target">
                   <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -216,7 +216,7 @@ export function COCRuleBuilder() {
               <TableCell><Badge variant="outline">Re-verify</Badge></TableCell>
               <TableCell>FANNIE, FREDDIE, FHA</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="touch-target">
                   <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -226,7 +226,7 @@ export function COCRuleBuilder() {
               <TableCell><Badge variant="outline">Re-verify</Badge></TableCell>
               <TableCell>All</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="touch-target">
                   <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>

@@ -139,7 +139,7 @@ export function PublishDialog({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label>Cells</Label>
               <Button
-                size="sm"
+                size="sm" className="touch-target"
                 variant="outline"
                 onClick={() => setCells((prev) => [...prev, emptyCell()])}
                 data-testid="button-add-cell"

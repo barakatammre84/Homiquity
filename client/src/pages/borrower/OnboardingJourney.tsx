@@ -292,7 +292,7 @@ function FeedbackForm({ onSubmitted }: { onSubmitted: () => void }) {
         data-testid="input-feedback-comment"
       />
       <Button
-        size="sm"
+        size="sm" className="touch-target"
         onClick={() => mutation.mutate()}
         disabled={rating === 0 || mutation.isPending}
         data-testid="button-submit-feedback"
@@ -419,7 +419,7 @@ export default function OnboardingJourney() {
                 <p className="text-sm text-muted-foreground mt-0.5">{nextStep.description}</p>
               </div>
               {nextStep.href && (
-                <Button size="sm" asChild data-testid="button-next-step">
+                <Button size="sm" className="touch-target" asChild data-testid="button-next-step">
                   <Link href={nextStep.href}>
                     Continue
                     <ChevronRight className="h-4 w-4 ml-1" />
@@ -458,7 +458,7 @@ export default function OnboardingJourney() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
                 {step.active && !step.complete && step.href && (
-                  <Button variant="outline" size="sm" className="mt-2" asChild data-testid={`button-step-${step.id}`}>
+                  <Button variant="outline" size="sm" className="touch-target mt-2" asChild data-testid={`button-step-${step.id}`}>
                     <Link href={step.href}>
                       Get Started
                       <ChevronRight className="h-3 w-3 ml-1" />
@@ -496,7 +496,7 @@ export default function OnboardingJourney() {
                 </div>
               ))}
             </div>
-            <Button variant="outline" size="sm" className="mt-4" asChild>
+            <Button variant="outline" size="sm" className="touch-target mt-4" asChild>
               <Link href="/learn">
                 Browse Learning Center
                 <ChevronRight className="h-3 w-3 ml-1" />

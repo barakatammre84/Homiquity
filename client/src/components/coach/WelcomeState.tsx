@@ -44,7 +44,7 @@ export function InsightsBanner({
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 text-xs"
+              className="touch-target shrink-0 text-xs"
               onClick={() => onAction(insight.action!)}
               data-testid={`button-insight-action-${insight.type}`}
             >
@@ -99,7 +99,7 @@ export function WelcomeState({ onStart, insights }: { onStart: (msg: string) => 
           </div>
           <div>
             <h2 className="text-2xl font-bold text-foreground sm:text-3xl" data-testid="text-coach-welcome">
-              Your AI Homebuyer Coach
+              Meet Homi
             </h2>
             <p className="text-muted-foreground mt-3 leading-relaxed max-w-lg mx-auto">
               Tell me about your situation and I'll organize everything for you — your answers are
@@ -141,7 +141,7 @@ export function WelcomeState({ onStart, insights }: { onStart: (msg: string) => 
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 text-xs"
+                    className="touch-target shrink-0 text-xs"
                     onClick={() => onStart(insight.action!)}
                     data-testid={`button-welcome-insight-${insight.type}`}
                   >

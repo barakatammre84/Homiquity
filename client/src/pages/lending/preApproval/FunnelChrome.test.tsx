@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./FunnelChrome";
 import type { AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
+import { companyNmlsDisplay } from "@shared/companyIdentity";
 
 const SAMPLE_ESTIMATE: AffordabilityEstimateResults = {
   maxHomePrice: 480000,
@@ -29,6 +30,20 @@ describe("FunnelFooter", () => {
     expect(text).toContain("Pre-approval is not a commitment to lend");
     expect(text).toContain("does not make credit decisions or fund loans");
     expect(text).toContain("Equal Housing Opportunity");
+  });
+
+  it("displays the company NMLS identifier inline, not just a Consumer Access link", () => {
+    // The borrower submitting income/debt/consent data on this page must see
+    // the license credential without leaving the flow. The expectation is
+    // computed from the same helper the footer renders (single source, no
+    // hardcoded id here) — and it must be non-null first, so this test fails
+    // loudly if the id ever reverts to PENDING instead of vacuously passing
+    // on an empty string.
+    const display = companyNmlsDisplay();
+    expect(display).not.toBeNull();
+    render(<FunnelFooter />);
+    const text = screen.getByTestId("footer-compliance").textContent ?? "";
+    expect(text).toContain(display!);
   });
 });
 

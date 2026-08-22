@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getPostAuthRoute } from "@/lib/roleRoutes";
+import { getPostAuthRoute } from "@/lib/postAuthRoute";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function Login() {
@@ -70,7 +70,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/">
-            <span className="text-2xl font-bold tracking-tight text-primary cursor-pointer" data-testid="text-brand-logo">
+            <span className="text-2xl font-bold tracking-tight text-flare cursor-pointer" data-testid="text-brand-logo">
               homiquity
             </span>
           </Link>

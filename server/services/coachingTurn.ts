@@ -14,7 +14,7 @@ import {
   MAX_COMPLETION_TOKENS,
   HISTORY_WINDOW_MESSAGES,
 } from "./coachingClient";
-import { type VerifiedUserContext, type CoachResponse, buildVerifiedContextPrompt, deriveCompletionPercentage } from "./coachingContext";
+import { type VerifiedUserContext, type CoachResponse, buildVerifiedContextPrompt, deriveCompletionPercentage, deriveReadinessProfile } from "./coachingContext";
 import { STATIC_COACH_PROMPT } from "./coachingPrompt";
 import { type CoachLintHit, findStreamingHardBlock, applyCoachLintFilter, COACH_LINT_SAFE_MESSAGE } from "./coachingLint";
 import { COACH_TOOLS, executeCoachTool, type CoachEmit, type CoachToolContext, type CoachToolTurnState } from "./coachTools";
@@ -86,7 +86,7 @@ export interface CoachTurnResult {
 
 function mapAnthropicError(err: unknown): CoachTurnError {
   if (err instanceof Anthropic.AuthenticationError) {
-    return new CoachTurnError("not_configured", "The AI coach credentials are invalid on this environment.", false);
+    return new CoachTurnError("not_configured", "Homi's credentials are invalid on this environment.", false);
   }
   if (err instanceof Anthropic.RateLimitError) {
     return new CoachTurnError("provider_rate_limited", "The AI service is briefly rate-limited. Please try again in a moment.", true);
@@ -105,7 +105,7 @@ function mapAnthropicError(err: unknown): CoachTurnError {
 }
 
 /**
- * Run one coach turn: Claude Sonnet 5 streaming tool-loop (max 2 model calls),
+ * Run one coach turn: Claude Sonnet 5 streaming tool-loop (MAX_MODEL_CALLS_PER_TURN),
  * side effects through coachTools executors, deterministic lint post-filter,
  * one ai_interactions row per model call.
  *
@@ -119,7 +119,7 @@ function mapAnthropicError(err: unknown): CoachTurnError {
 export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnResult> {
   if (!isCoachConfigured()) {
     const fallback = generateOfflineResponse(opts.userMessage, opts.history, opts.verifiedContext);
-    const message = `**Offline guidance mode** — the AI coach isn't configured in this environment, so here is standard guidance:\n\n${fallback.message}`;
+    const message = `**Offline guidance mode** — Homi isn't configured in this environment, so here is standard guidance:\n\n${fallback.message}`;
     opts.emit({ type: "text", delta: message });
     return {
       message,
@@ -133,6 +133,17 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
   const state: CoachToolTurnState = {};
   const deadline = Date.now() + TURN_BUDGET_MS;
 
+  // The readiness panel is now SERVER-DERIVED and emitted before the model
+  // says a word, rather than waiting for the model to call update_readiness.
+  //
+  // Two things this fixes. The panel used to appear only if the model chose to
+  // call the tool, so on a turn where it did not, the borrower saw whatever
+  // the last turn happened to leave there. And when it did call it, the model
+  // was restating tier / completed / outstanding figures the server had just
+  // handed it in context — a lossy round-trip through a language model whose
+  // only possible outcomes were "identical" or "wrong".
+  state.profile = deriveReadinessProfile(opts.verifiedContext);
+
   let lintAbortHit: CoachLintHit | null = null;
   let visible = "";
   const guardedEmit: CoachEmit = (event) => {
@@ -145,7 +156,10 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
   const toolCtx: CoachToolContext = {
     req: opts.req,
     userId: opts.userId,
+    userRole: opts.userRole ?? "",
     conversationId: opts.conversationId,
+    // Resolved from the session in the route, never from tool input.
+    workableApplicationId: opts.verifiedContext.workableApplicationId ?? null,
     emit: guardedEmit,
     state,
   };
@@ -278,14 +292,10 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
     messages.push({ role: "user", content: results });
   }
 
-  // completionPercentage is server-derived — the model never controls it.
-  if (state.profile) {
-    state.profile = {
-      ...state.profile,
-      completionPercentage: deriveCompletionPercentage(opts.verifiedContext),
-    };
-    guardedEmit({ type: "panel", profile: state.profile });
-  }
+  // Emitted after the tool loop so a record_intake writeback this turn is
+  // reflected. The values are the server's either way — the model has no tool
+  // that can touch them any more.
+  guardedEmit({ type: "panel", profile: state.profile, source: "file" });
 
   // Deterministic compliance post-filter on the full reply.
   let finalMessage = visible.trim();
@@ -491,7 +501,7 @@ ${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`,
     }
 
     return {
-      message: `Welcome! I'm your Homiquity readiness assistant. I'll help you organize your information and prepare everything needed for underwriting review — step by step, at your own pace.
+      message: `Welcome! I'm Homi, your Homiquity assistant. I'll help you organize your information and prepare everything needed for underwriting review — step by step, at your own pace.
 
 ${formatNextRequiredInput(
   "Your employment type",

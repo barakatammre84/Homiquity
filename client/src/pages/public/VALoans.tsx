@@ -86,7 +86,7 @@ export default function VALoans() {
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
-        <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
+        <section className="bg-muted px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-va-home">
@@ -190,11 +190,11 @@ export default function VALoans() {
           imageAlt={lifestyleImages.landingHero.alt}
           imagePosition="center 25%"
           reverse
-          className="border-t bg-muted/30"
+          className="bg-muted"
         >
           <p>
             The VA home loan is one of the strongest benefits of your service — no down payment
-            required and no monthly mortgage insurance. We underwrite it against the VA's own
+            required and no monthly mortgage insurance. Your file is prepared and reviewed against the VA's own
             residual-income standard, the way it's meant to be read.
           </p>
           <p>
@@ -225,7 +225,7 @@ export default function VALoans() {
         </section>
 
         {/* Differentiator — the human/veteran angle vs algorithmic lenders */}
-        <section aria-labelledby="va-why-us-heading" className="px-4 pb-16 sm:px-6 lg:px-8">
+        <section aria-labelledby="va-why-us-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl rounded-lg border border-card-border bg-card p-8">
             <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:text-left">
               <VeteranFoundedBadge
@@ -258,7 +258,7 @@ export default function VALoans() {
         </section>
 
         {/* FAQ — objection handling via progressive disclosure */}
-        <section aria-labelledby="va-faq-heading" className="px-4 pb-16 sm:px-6 lg:px-8">
+        <section aria-labelledby="va-faq-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <h2 id="va-faq-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               Common questions

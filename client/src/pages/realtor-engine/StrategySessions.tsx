@@ -114,7 +114,7 @@ function SessionCard({
             {session.status === "scheduled" && (
               <div className="flex items-center gap-1 flex-wrap">
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant="outline"
                   onClick={() => onAddNotes(session)}
                   data-testid={`button-add-notes-${session.id}`}
@@ -123,7 +123,7 @@ function SessionCard({
                   Add Notes
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   onClick={() => onComplete(session)}
                   data-testid={`button-complete-${session.id}`}
                 >
@@ -131,7 +131,7 @@ function SessionCard({
                   Complete
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" className="touch-target"
                   variant="ghost"
                   onClick={() => onCancel(session.id)}
                   data-testid={`button-cancel-${session.id}`}
@@ -143,7 +143,7 @@ function SessionCard({
             )}
             {session.status !== "scheduled" && (
               <Button
-                size="sm"
+                size="sm" className="touch-target"
                 variant="outline"
                 onClick={() => onAddNotes(session)}
                 data-testid={`button-add-notes-${session.id}`}

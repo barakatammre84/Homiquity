@@ -5,13 +5,44 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    testTimeout: 15000,
-    hookTimeout: 30000,
+    // TIMEOUTS ARE A HANG DETECTOR HERE, NOT A PERFORMANCE ASSERTION.
+    //
+    // Raised 15s -> 45s (and hooks 30s -> 60s) on 2026-08-19. Several sessions build and
+    // test on this machine at once, and the measured cost is real: the same suite runs
+    // 172s idle and 305-419s under load, ~2.4x. Any test doing more than ~6s of honest
+    // work therefore crossed a 15s ceiling at random — tests/statusVocabulary.test.ts and
+    // tests/intakeNeverDenies.test.ts both did, neither for a reason in the code.
+    //
+    // That matters more than a slow suite. `main` no longer requires a CI status check
+    // (Actions billing failed; development is local-only), so .githooks/pre-push is the
+    // only gate there is. A gate that fails at random teaches --no-verify, and that habit
+    // disables it permanently — the exact failure the hook's own header warns about.
+    //
+    // Deliberately 45s and not 300s: a genuinely hung test must still be caught. If a test
+    // needs more than this, the test is the problem — profile it, do not raise this again.
+    // The root-cause fix is still preferable where it is cheap: statusVocabulary went
+    // 41s -> 1.4s by reading the tree once instead of once per test.
+    testTimeout: 45000,
+    hookTimeout: 60000,
     // Unit / logic tests. Pure in-process logic — no running HTTP server and no
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/inertButtons.test.ts",
       "tests/amortization.test.ts",
+      // The reduced-motion accessibility floor — a presence ratchet against
+      // someone deleting it while refactoring index.css.
+      "tests/reducedMotion.test.ts",
+      // The radius scale — a presence ratchet. An undeclared rung silently
+      // inherits Tailwind's default instead of erroring; that is how xl and lg
+      // rendered identically for the life of the project.
+      "tests/radiusScale.test.ts",
+      // The advertising gate on "we shop your file" — a compliance rail, so it
+      // runs in the gate rather than living as an untested constant.
+      "tests/lenderPanel.test.ts",
+      // One name for the assistant in user-visible copy. It drifted to four
+      // across a single visitor journey with the suite fully green.
+      "tests/assistantNaming.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       // The CI trigger surface. A `branches:` filter under pull_request means a
@@ -83,6 +114,7 @@ export default defineConfig({
       "tests/scenarioSimulator.test.ts",
       "tests/cockpitScoping.test.ts",
       "tests/signalEngine.test.ts",
+      "tests/acceleratorProgress.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
@@ -110,8 +142,10 @@ export default defineConfig({
       "tests/letterIntegrity.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
+      "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/incomeOrchestrator.test.ts",
+      "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",
       "tests/nonQmProgramGate.test.ts",
       "tests/halalLaneGate.test.ts",
@@ -180,6 +214,7 @@ export default defineConfig({
       "tests/documentFacts.test.ts",
       "tests/readinessSelfAttestation.test.ts",
       "tests/extractionReadinessWiring.test.ts",
+      "tests/extractionPersistence.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
       "tests/cpaPartners.test.ts",
@@ -205,6 +240,7 @@ export default defineConfig({
       "tests/autopilotAusFollowUps.test.ts",
       "tests/autopilotDecisionRelay.test.ts",
       "tests/autopilotConsole.test.ts",
+      "tests/autopilotStatus.test.ts",
       "tests/riskBrief.test.ts",
       "tests/sensitiveInputGuard.test.ts",
       "tests/licensedStates.test.ts",
@@ -254,6 +290,8 @@ export default defineConfig({
       "tests/vaResidualEngineParity.test.ts",
       "tests/inviteValidateAudit.test.ts",
       "tests/mutationErrorHandling.test.ts",
+      "tests/homiFileTruth.test.ts",
+      "tests/homiReadinessDerivation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

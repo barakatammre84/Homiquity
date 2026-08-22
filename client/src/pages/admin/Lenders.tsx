@@ -241,7 +241,7 @@ export default function AdminLenders() {
                       </TableCell>
                       <TableCell className="space-x-2 text-right">
                         <Button
-                          size="sm"
+                          size="sm" className="touch-target"
                           variant="outline"
                           onClick={() => setApprovalTarget(lender)}
                           // Rule 3: a fictional company is never approvable, so
@@ -253,7 +253,7 @@ export default function AdminLenders() {
                           Approval
                         </Button>
                         <Button
-                          size="sm"
+                          size="sm" className="touch-target"
                           variant="ghost"
                           onClick={() => setTermsTarget(lender)}
                           disabled={approval !== "approved"}

@@ -3,7 +3,7 @@
 **What this is:** the standing QA program that reviews every Homiquity feature against its
 intended use and verifies the end-to-end workflows function correctly. **Thirteen domain teams
 + a cross-cutting UX lens** (`DOMAINS.md`) + one workflow-verification pass (`WORKFLOWS.md`) +
-documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
+**four client-journey walks** (`JOURNEYS.md`) + documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
 after any significant change — the teams are durable agents in `.claude/agents/`.
 
 > **Verified census (supersedes "37/40/7"):** ~95 backend subsystems · 88 client pages · ~14
@@ -20,6 +20,13 @@ after any significant change — the teams are durable agents in `.claude/agents
 | `finding-verifier` | Adversarial skeptic — tries to refute every finding before it enters the register |
 | `compliance-auditor` | Verifies compliance-touching findings against `docs/fannie-mae/`, `docs/nmls/`, CFR |
 | `doc-governance-reviewer` | Audits the `.md` corpus vs the 4-point framework (prescriptive · Business-Intent · L1/L2/L3 · friction); flags stale/contradictory docs |
+| `journey-walker-aspiring-owner` | Walks the renter/sandbox journey in the browser; proves the sandbox has a floor and never crosses the application boundary |
+| `journey-walker-w2-buyer` | Walks the W-2 salaried buyer journey in the browser; owns the `aspiring_owner → active_buyer` promotion seam |
+| `journey-walker-self-employed` | Walks the self-employed buyer journey in the browser; proves the funnel's `complexIncome` branch is carried, not merely taken |
+| `journey-walker-affluent` | Walks the affluent move-up journey in the browser; owns the door with no explainer, the jumbo threshold, and promise-vs-reachability |
+
+All four are reachable without knowing their names via the **`/journey-walk`** skill — a subagent
+nobody can find is not a control.
 
 ## Program rules (binding)
 
@@ -39,6 +46,31 @@ after any significant change — the teams are durable agents in `.claude/agents
 6. **Cross-reference, don't duplicate.** `knowledge-base/logs/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
    already track known issues; findings that overlap must cite them. Known deliberate cuts
    (the roadmap, `ASSUMPTIONS.md`) are not defects.
+7. **Journeys file seams, never surfaces.** A `journey-walker-*` files only what requires **two
+   surfaces to be visible**: a value dropped crossing a boundary, a role or state transition that
+   leaves the UI stale, a dead end, a promise made on one surface and unkept on another, a gate
+   that collides with a persona's route. Anything visible on a single surface belongs to that
+   domain's `feature-reviewer` (behaviour), to `ux-reviewer` (friction, uniformity, copy) or to the
+   `app-walker` routine (layout, overflow, touch targets), and is reported as a **HANDOFF line
+   naming the owner — no id is minted**. Where the file has an `hq-*-owner`
+   (`knowledge-base/handbook/FEATURE_MAP.md` maps every owned path to exactly one), name that agent:
+   owners implement, so a hand-off that names one becomes work rather than a line nobody reads. A walker that re-files a domain finding under a journey id
+   has not added a control, it has added a duplicate; the register already paid for that lesson
+   (the flat-0.5% PMI claim, filed independently by two agents and wrong on both grounds — Domain 5).
+8. **Journey findings live in their own id space: `J-<MMDD>-<NN>`,** minted from the walker's own
+   run date, never a next-free integer. `J-` ids never enter the `ux-NN` space — a journey walker
+   does not get to grade a page — and never appear in a `WORKFLOWS.md` trace, which is
+   `workflow-verifier`'s HTTP evidence. A journey finding that is really an existing
+   `F-`/`ux-`/`D-` finding **cites it and merges**, as Domain 7 did with ux-30 rather than
+   re-minting (D-012 discipline). Rule 2 is not bypassed: every `J-` finding still passes
+   `finding-verifier` before it enters the register.
+9. **A journey not driven in a browser is not a journey.** The walkers exist because `curl` cannot
+   see a stale nav, a value that renders blank, or a next step that was never offered. A walker
+   whose browser tools are absent reports `BLOCKED` with the exact error and stops; substituting
+   HTTP calls and reporting a walk is a `FAIL` for the run, not a degraded pass. Same rail, same
+   reason, as `.claude/skills/app-walker/SKILL.md` R3. *(Verified 2026-08-19: pointed at a dead
+   port, `journey-walker-aspiring-owner` returned `BLOCKED` and explicitly refused to substitute a
+   live port on its own initiative.)*
 
 ## Reality Map — read BEFORE reviewing (stops false-positive findings)
 
@@ -69,6 +101,15 @@ false positive:
   the audit and closed in #135's §9 review — the "no IDOR" line predates that discovery.)*
 - **`grep-only` compliance tests give false confidence** — `complianceInvariants.test.ts` (F-014)
   executes nothing. A green run there ≠ correct regulated math.
+- **The prelaunch gate is OPEN locally and CLOSED in production — both are correct.** `.env` sets
+  no `PRELAUNCH_GATED`, so `server/services/prelaunchGate.ts:25-31` falls back to
+  `NODE_ENV === "production" && isCompanyNmlsPending()`, and `client/src/lib/prelaunch.ts:17-19`
+  gates only on `PROD`. Locally every persona route walks. **A journey that terminates at the
+  waitlist under PRELAUNCH is the gate working** — record it in the `JOURNEYS.md` walkability
+  column as a launch-readiness fact, never as a finding. What *is* a finding: a surface that
+  survives the gate while soliciting, or a `<Gated>` redirect that strands state (the
+  calculator→funnel sessionStorage handoff is read-and-consumed, so a redirect between write and
+  read silently destroys it).
 - **Design system:** `main` is **Royal Blue Emerald** (2026-07-08 repaint #93; PageShell
   scaffold #131). Audit artifacts referencing Obsidian Indigo or Charcoal Emerald predate it —
   don't file color findings from them.
@@ -121,3 +162,22 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
 - Test entities use clearly-fake identities (`wfqa+*@test.local`, test-pattern SSNs matching
   the existing test-suite convention).
 - Nothing pushes to `main`; all changes land via PRs.
+- **Journey walks use one account per walker.** `journey-walker-aspiring-owner` logs in as the
+  seeded `renter@test.com` (`server/auth.ts:362`) and **must never apply** — applying promotes that
+  shared seat (`server/routes/lending/applications.ts:134`). The three buyer walkers self-register
+  `jw2+` / `jse+` / `jaf+<MMDD>@test.local` so the promotion they are testing is real; **never
+  `buyer@test.com`**, which is pinned to `active_buyer` (`server/auth.ts:363`) and cannot cross the
+  seam. `/test-login` rewrites the role on every login (`server/auth.ts:381`), so a polluted seed
+  role self-heals — the application rows it created do not.
+- **Browser-driven runs are local only, and default to 5001** (the primary checkout) — **never**
+  the deployed site, where a failed Railway build leaves the previous container serving. A local
+  `/api/health` answers `commit: null` on every branch, so identify the serving checkout with
+  `lsof -a -p <pid> -d cwd` plus the process start time before trusting any measurement. Stale
+  listeners are the norm — two distinct staleness traps, both observed 2026-08-19: the `:5002`
+  "worktree" port was still served by a **14-day-old orphan** from the deleted `launch-hygiene`
+  worktree (its `/api/health` returns only `{status,timestamp}` while current code also returns
+  `commit` and `email` — the cheapest tell); and even the *right* checkout serves stale **server**
+  code, because `pnpm dev` is `tsx server/index-dev.ts` with **no watch flag** — the server half
+  freezes at process start while the client is Vite-transformed per request and stays current.
+  Compare process start time against `server/**` mtimes before attributing any server-side finding
+  to HEAD.

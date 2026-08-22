@@ -214,7 +214,7 @@ export function KycReviewQueue() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      size="sm"
+                      size="sm" className="touch-target"
                       variant="outline"
                       onClick={() => openDialog(screening, "failed")}
                       data-testid={`button-kyc-fail-${screening.id}`}
@@ -223,7 +223,7 @@ export function KycReviewQueue() {
                       Fail
                     </Button>
                     <Button
-                      size="sm"
+                      size="sm" className="touch-target"
                       onClick={() => openDialog(screening, "cleared")}
                       data-testid={`button-kyc-clear-${screening.id}`}
                     >
