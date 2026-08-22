@@ -1,6 +1,6 @@
 # SOP-000 — Operations Manual Charter
 
-> **Freshness:** last verified 2026-08-20 · review every 90 days
+> **Freshness:** last verified 2026-08-22 · review every 90 days
 > **Code anchors:** `knowledge-base/governance/TEAM_PRACTICES.md`
 
 | | |
@@ -18,16 +18,21 @@
 Three separate forces require it, and they do not overlap:
 
 1. **Fannie Mae, through our wholesale lenders.** We originate as a **third-party originator (TPO)**.
-   Selling Guide **A3-3-01** makes the *lender* fully responsible to Fannie Mae for functions
-   outsourced to us, and requires the lender to review the TPO's QC procedures against its own
-   standards — including that the TPO maintain a written QC plan and a process for resolving QC
-   discrepancies and tracking corrective actions. No manual, no broker approval. This is the
-   commercial gate.
-   ⚠️ **Citation unverified in-repo** (2026-08-20): `docs/fannie-mae/` holds no Selling Guide
-   A3-3 text, so the requirements above restate the drafting session's reading rather than a
-   captured source — the original draft carried them as direct quotes, downgraded here to
-   paraphrase for that reason. Procure the section into `docs/fannie-mae/` and re-verify before
-   treating this wording as authoritative (CLAUDE.md compliance hierarchy).
+   Selling Guide **A3-3-01**, *Outsourcing of Mortgage Processing and Third-Party Originations*
+   (02/07/2024; edition of 08-05-2026, printed pp. 105–106), makes the *seller* — our wholesale
+   lender — "fully responsible to Fannie Mae for functions that are outsourced to third parties,"
+   and requires its approval procedures to review "the third party's QC procedures so that the
+   seller can determine if the party and its originations meet the seller's standards for
+   quality." Its management-procedures table requires that the TPO "have a written QC plan and a
+   method to validate the existence of that plan," and "a process for resolving QC discrepancies
+   and tracking corrective actions." No manual, no broker approval. This is the commercial gate.
+   ✅ **Verified 2026-08-22** against the 08-05-2026 edition (founder-supplied PDF; the repo
+   capture lives at docs/fannie-mae/selling-guide — full text with page markers plus a section
+   index — once the source-of-truth seating lands). The same table is the wholesale lender's
+   checklist for approving us: current licenses, principal-officer résumés and background checks,
+   exclusion-list screening of everyone from application through closing (GSA Excluded Parties,
+   HUD LDP, FHFA Suspended Counterparty), annual financial-statement review, and quarterly review
+   of our loans' performance — the SOP-2xx backlog.
 2. **State examiners and the SAFE Act.** An Illinois RMLA examination asks for written policies
    before it asks for files. Our licence, our NMLS record, and our Mortgage Call Reports are all
    attached to procedures somebody has to be able to produce.
@@ -163,3 +168,4 @@ Where two sources disagree:
 |---|---|---|
 | 2026-08-19 | Manual established; charter, template, register and freshness guard created. | Founder |
 | 2026-08-20 | Correction + landing. Of the four items the row above claims, **only this charter existed** — it sat untracked in the primary checkout (snapshot: `wip/sop-manual-draft-2026-08-19`), where it silently blocked every push via the pre-push `kb-index` check. Landed as indexed DRAFT per founder decision: template / RACI / freshness-guard references rewritten as planned items; Selling Guide A3-3-01 quotes downgraded to ⚠️-flagged paraphrase pending procurement into `docs/fannie-mae/`. Today's pass verified citations and existence claims only — §2's per-control `[SYSTEM]` claims still await the §5.2 technical accuracy review, which is why status remains DRAFT. | Founder-directed hygiene session |
+| 2026-08-22 | A3-3-01 verified against the 08-05-2026 edition supplied by the founder (printed pp. 105–106): the original direct quotes were accurate and are restored; the ⚠️ unverified flag is cleared. The edition's repo capture (docs/fannie-mae/selling-guide) was in flight in a peer PR at the time. The section's management-procedures table is recorded in §1.1 as the SOP-2xx backlog. | Founder-directed hygiene session |

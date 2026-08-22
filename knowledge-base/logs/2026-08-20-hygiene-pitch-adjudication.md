@@ -1,5 +1,15 @@
 # Hygiene-loop pitch adjudication — 2026-08-20
 
+> ⚠️ **Correction 2026-08-22.** The worktree table below calls `musing-engelbart-0a72db` an
+> "active REGISTER claim — off limits." That was read from the shared primary checkout, which
+> sits on a stale branch; on `origin/main` Evening Triage had already cleared that claim at
+> 2026-08-20T02:30Z (its PR #556 merged 08-18). The worktree's two unmerged commits stay
+> preserved on `backup/2026-08-20/claude/security-guard-lockout-trigger`; the disposition call
+> is unchanged. The trap is the one the local-dev memory names — never read repo state from the
+> primary checkout — and this memo walked into it while writing about hygiene. Also since this
+> memo: the SOP charter's A3-3-01 flag was cleared against the founder-supplied 08-05-2026
+> Selling Guide (see the charter's §9).
+
 Dated, immutable snapshot (TEAM_PRACTICES §2). Founder-directed session; plan approved by the
 founder 2026-08-20, including the scheduler seat and the SOP landing recorded below.
 
