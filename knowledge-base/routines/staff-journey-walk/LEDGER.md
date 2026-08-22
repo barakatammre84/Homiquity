@@ -27,7 +27,8 @@ together — the client lane's two ledgers already drift (#644 updated one and n
   `preview_start {name}` — it boots the shared primary checkout.
 - **Sessions are sequential** (one cookie jar): `POST /api/auth/logout` → assert `/api/auth/user`
   is 401 → log in as the counterpart. The user endpoint is `/api/auth/user`; `/api/auth/me` is 404.
-  Verify the shared-jar assumption on the first run and record it here.
+  **Verified 2026-08-22 before the first run**: a cookie set in one pane tab was read verbatim in a
+  second tab — the jar is per pane, not per tab.
 - **Seeded staff seats are correct here** (role rewritten on login; your subject is the fresh file).
   Record the queue count `N` at login; a delta you did not cause is a concurrent run, not the product.
 - **Minted invite links are `https://localhost:<port>/…` locally** (`PUBLIC_BASE_URL` unset) —

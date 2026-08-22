@@ -84,9 +84,7 @@ borrower-side consequence of a staff action — neither visible to a review that
   → 401, then `/test-login` or `/login` as the next. Record every switch with a timestamp in
   `SESSIONS:`. **Never read both sides from one admin session** — admin sees everything and
   therefore proves nothing about scoping. Live-staleness (a nav changing under a session without
-  reload) is assertable only *within* one session. *(Verify the shared-jar assumption on your first
-  run: `tabs_create` → `/api/auth/user` in the second tab; if tabs isolate cookies, say so — the
-  cross-role "no reload" assertion becomes available.)*
+  reload) is assertable only *within* one session. *(Verified 2026-08-22: a cookie set in one browser-pane tab was read verbatim in a second tab of the same pane — the jar is per pane, not per tab. Sequential sessions are the rule, not a precaution.)*
 - **J7 — Create the file you act on, and act on no other.** Sign up the borrower fresh as
   `jst+<MMDD><seat>@test.local`, apply through the entrance your charter names, submit. That setup
   leg **re-walks journey 2 and files nothing from it** — a seam noticed there is a HANDOFF to

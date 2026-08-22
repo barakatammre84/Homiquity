@@ -22,8 +22,8 @@ Client journeys: `JOURNEYS.md`.
 > counterpart's — the borrower it created, the upstream or downstream desk, or (for exactly two
 > verbs) admin. The browser pane's tabs share one cookie jar, so sessions are sequential:
 > `POST /api/auth/logout` → assert `GET /api/auth/user` is 401 → log in as the counterpart. A handoff
-> observed from one side is `INCONCLUSIVE`, never `CLEAN`. *(Verify the shared-jar assumption on the
-> first run; if tabs isolate cookies, cross-role "no reload" assertions become available.)*
+> observed from one side is `INCONCLUSIVE`, never `CLEAN`. *(Verified 2026-08-22: a cookie set
+> in one pane tab was read verbatim in a second — the jar is per pane, not per tab.)*
 
 ## Why these seats exist alongside the owner fleet and the desk partition
 
