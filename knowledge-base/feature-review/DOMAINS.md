@@ -287,8 +287,8 @@ Status ledger (updated by the orchestrator after each run):
   `ssnVault.ts` + `piiVault.ts`, `server/auditLog.ts`, `server/auth.ts` + `server/integrations/auth/*`
   + `socialAuth.ts`, `loginLockout.ts` + `accountRecovery.ts`, `rateLimitPolicy.ts`,
   `maintenanceMode.ts` + `prelaunchGate.ts`, `server/services/errorMonitoring.ts` +
-  `server/routes/monitoring.ts`, `server/storage.ts` (~5,600-line sole PII write path — concentration
-  risk), `server/mcp/*` (AG-1 audit chain, AG-2 identity), `shared/roles.ts`.
+  `server/routes/monitoring.ts`, `server/storage/` (split from a single 5,723-line file into 22 domain modules in #182 —
+  still the sole PII write path, so the concentration risk is unchanged), `server/mcp/*` (AG-1 audit chain, AG-2 identity), `shared/roles.ts`.
 - **Client**: auth pages, role-gated layout wrappers (`PrivateLayout` requiredRoles vs server gates).
 - **Intended use**: SSNs/accounts ciphertext + last4 only, decryption only at MISMO/AUS seams +
   audited staff reveal; sessions rolling; lockout; consent gate 403s unconsented delivery; MCP

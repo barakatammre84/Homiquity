@@ -52,7 +52,7 @@ gates create — it is the counterpart with two permitted verbs); `loa` is folde
 5. **Compliance humility.** Nobody rules on MISMO/ULDD/UCD/QM/SFC/TRID/FCRA/ECOA/TCPA/NMLS/
    ESIGN questions from memory. Verify against `docs/fannie-mae/`, `docs/nmls/`, or eCFR — or
    mark UNVERIFIABLE and escalate. Never invent MISMO names, edit codes, or SFCs.
-6. **Cross-reference, don't duplicate.** `knowledge-base/logs/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
+6. **Cross-reference, don't duplicate.** `knowledge-base/archive/ux-audit/page-audit.md` (archived 2026-08-06 by #458 — quarantined history, cite it for provenance only) and `CTO_ROADMAP.md`
    already track known issues; findings that overlap must cite them. Known deliberate cuts
    (the roadmap, `ASSUMPTIONS.md`) are not defects.
 7. **Journeys file seams, never surfaces.** A `journey-walker-*` files only what requires **two
