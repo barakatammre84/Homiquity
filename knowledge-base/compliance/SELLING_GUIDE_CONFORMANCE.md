@@ -263,6 +263,49 @@ capture. Deliberately no rate or cap is invented — the terms needed to compute
 are not captured, so this is uncomputable rather than merely unimplemented. Fixed-rate files are
 byte-identical.
 
+### C-10 — 🚨 The entire URLA Section 5 declarations table never reached the decision
+
+**The largest finding of this pass.** Found by extending the capture-versus-consumption audit to
+the URLA tables — the blind spot the first audit named.
+
+`borrower_declarations` carries **33 columns** and reaches exactly two consumers: document
+generation (`routes/lending/documents.ts`) and MISMO completeness scoring
+(`mismoValidation.scoreDeclarations`). **Zero of it reached the decision path**, and no engine
+file contained the words bankruptcy, foreclosure, short sale, judgment or federal debt at all.
+
+So a borrower could declare a **foreclosure**, a **Chapter 7 bankruptcy**, a **deed-in-lieu**, a
+**short sale**, **outstanding judgments**, or **delinquency on federal debt** — and be
+decisioned exactly as though they had not. These are among the most basic conventional
+eligibility rules there are.
+
+**B3-5.3-07, Significant Derogatory Credit Events — Waiting Periods:**
+
+| Derogatory event | Waiting period | With extenuating circumstances |
+|---|---|---|
+| Bankruptcy — Chapter 7 or 11 | **4 years** | 2 years |
+| Bankruptcy — Chapter 13 | 2 years from discharge; **4 from dismissal** | 2 / 2 |
+| Multiple filings in the past 7 years | **5 years** | 3 years |
+| Foreclosure | **7 years** | 3 years (≤90% LTV, purchase primary or limited cash-out) |
+| Deed-in-lieu, preforeclosure sale, charge-off of a mortgage | **4 years** | 2 years |
+
+**And the schema cannot clear them either.** Every period runs from a discharge, dismissal or
+completion **date**, and the columns are **booleans** (`has_been_foreclosed`,
+`has_declared_bankruptcy`, with `bankruptcy_types` as free text). No dates are captured, so the
+waiting period is uncomputable — the same shape as the ARM terms in C-9.
+
+But being unable to **clear** an event is not a reason to **ignore** it. Declared events now
+route to human review, citing B3-5.3-07 and naming the missing dates. No waiting period is
+hardcoded, and the test asserts no "N years" literal appears in the block — a period applied to
+data that cannot support it would be worse than none.
+
+Read across **all borrowers** via `getAllBorrowerDeclarations`. Scoping to the primary would
+have repeated G-15 exactly: counting a co-borrower's income while ignoring their risk. Pinned by
+a test that fails if a co-borrower's foreclosure is invisible.
+
+**Still not captured, and needed before any of this can be decided rather than reviewed:** the
+event dates, whether extenuating circumstances are documented, and the number of prior filings
+(the 5-year multiple-filing rule).
+
 ---
 
 ## The capture-versus-consumption audit (2026-08-22)
@@ -295,10 +338,23 @@ One defect in twenty-one, and the rest explained. That is the useful outcome: th
 but it is now **enumerated**, and this table is the thing to re-run after any schema change
 rather than rediscovering the shape a sixth time.
 
-**What this audit could not see**, and what would need its own pass: values captured on tables
-*other* than `loan_applications` — `urla_property_info` (which is how C-6 hid), `urla_liabilities`,
-`other_income_sources`, `real_estate_owned` — and values that exist only in marketing surfaces
-with no column at all, which is how G-21 (DPA seconds) hid.
+### Round 2 — the URLA tables (same method, the blind spot the first round named)
+
+| Table | Cols | Reachable | Verdict |
+|---|---|---|---|
+| `borrower_declarations` | 33 | **0** | 🚨 **C-10** — the whole table stopped at document generation and MISMO scoring |
+| `real_estate_owned` | 25 | 5 | Already G-16/G-17 — no borrower-facing capture path |
+| `urla_property_info` | 21 | 6 | ✅ The 11 unread are address, county, legal description, mixed-use and manufactured-width — not decision inputs |
+| `urla_liabilities` | 13 | 4 | ✅ The 5 unread are creditor name and the encrypted account-number quartet — correctly not decisioned on |
+| `urla_assets` | 11 | 2 | ✅ Same: institution name and the encrypted quartet |
+| `other_income_sources` | 5 | 5 | ✅ Fully consumed |
+
+Two rounds, one method, two real defects (C-9, C-10) out of ~120 columns — and every other
+unread column now carries a written verdict rather than an open question.
+
+**What neither round could see:** values that exist only in a marketing surface with **no column
+at all**, which is how G-21 (the DPA second liens) hid. That needs a different technique —
+starting from what the product *promises* rather than from what it *stores*.
 
 ---
 

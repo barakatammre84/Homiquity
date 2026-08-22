@@ -1,4 +1,5 @@
 import { eq, desc } from "drizzle-orm";
+import type { BorrowerDeclarations } from "@shared/schema";
 import { storage } from "../storage";
 import { db } from "../db";
 import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
@@ -188,6 +189,8 @@ interface AggregatedFinancials {
   income: IncomeOrchestrationResult;
   incomeInputsFingerprint: string;
   incomeEvaluationFingerprint: string;
+  /** B3-5.3-07 events declared on URLA Section 5, across all borrowers. */
+  declaredDerogatoryEvents: string[];
 }
 
 /**
@@ -197,8 +200,43 @@ interface AggregatedFinancials {
  * are not being paid off at closing. Falls back to the application-level summary
  * figures when line items haven't been captured yet.
  */
+/**
+ * URLA Section 5 declarations that carry a B3-5.3-07 waiting period, collapsed to
+ * human-readable labels across ALL borrowers.
+ *
+ * Read across every borrower on purpose. Income is already aggregated across
+ * `borrowerSequenceNumber`, so scoping a co-borrower's foreclosure to the
+ * primary would repeat the asymmetry recorded as G-15 — counting a co-borrower's
+ * benefit while ignoring their risk.
+ *
+ * These are declarations, not verified events; the engine routes them to a human
+ * rather than declining, because B3-5.3-07's waiting periods run from discharge /
+ * dismissal / completion dates that `borrower_declarations` does not store.
+ */
+export function summarizeDeclaredDerogatoryEvents(
+  declarations: Array<Partial<BorrowerDeclarations>>,
+): string[] {
+  const events: string[] = [];
+  const seen = new Set<string>();
+  const add = (label: string) => {
+    if (!seen.has(label)) { seen.add(label); events.push(label); }
+  };
+  for (const d of declarations) {
+    if (d.hasDeclaredBankruptcy) {
+      const types = (d.bankruptcyTypes ?? "").trim();
+      add(types ? `bankruptcy (${types})` : "bankruptcy");
+    }
+    if (d.hasBeenForeclosed) add("foreclosure");
+    if (d.hasConveyedTitleInLieuOfForeclosure) add("deed-in-lieu of foreclosure");
+    if (d.hasCompletedShortSale) add("preforeclosure / short sale");
+    if (d.hasOutstandingJudgments) add("outstanding judgments");
+    if (d.isDelinquentOnFederalDebt) add("delinquency on federal debt");
+  }
+  return events;
+}
+
 async function aggregateBorrowerFinancials(app: LoanApplication): Promise<AggregatedFinancials> {
-  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis, propertyInfo] =
+  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis, propertyInfo, declarations] =
     await Promise.all([
       storage.getEmploymentHistory(app.id),
       storage.getOtherIncomeSources(app.id),
@@ -206,6 +244,8 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
       storage.getUrlaAssets(app.id),
       loadLatestBankStatementAnalysis(app.id),
       storage.getUrlaPropertyInfo(app.id),
+      // B3-5.3-07 — across ALL borrowers, not just the primary (see G-15).
+      storage.getAllBorrowerDeclarations(app.id),
     ]);
 
   // Assets across all borrowers, bucketed for the engine's reserve haircuts.
@@ -272,6 +312,7 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     totalMonthlyIncome: income.primaryMonthlyQualifyingIncome,
     monthlyDebts,
     borrowerCount: Math.max(borrowerSeqs.size, 1),
+    declaredDerogatoryEvents: summarizeDeclaredDerogatoryEvents(declarations),
     incomeBasis: income.incomeBasis,
     assets,
     income,
@@ -424,6 +465,9 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // "Adjustable Rate (ARM)" and this column stores it, so the engine must see
     // it rather than price every file as a 30-year fixed.
     amortizationType: app.amortizationType ?? undefined,
+    // B3-5.3-07: a declared bankruptcy/foreclosure must reach the decision.
+    // Before this the whole declarations table stopped at document generation.
+    declaredDerogatoryEvents: fin.declaredDerogatoryEvents,
     householdFamilySize: app.householdFamilySize ?? undefined,
     homeSquareFootage: app.homeSquareFootage ?? undefined,
   };

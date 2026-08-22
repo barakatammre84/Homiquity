@@ -232,6 +232,26 @@ export interface UnderwritingInput {
    */
   amortizationType?: string;
   /**
+   * Significant derogatory credit events declared on URLA Section 5, across ALL
+   * borrowers — bankruptcy, foreclosure, deed-in-lieu, preforeclosure/short
+   * sale — plus outstanding judgments and delinquency on federal debt.
+   *
+   * B3-5.3-07 sets a WAITING PERIOD after each, measured from the discharge,
+   * dismissal or completion date: 4 years for Chapter 7/11, 2 years from
+   * discharge (4 from dismissal) for Chapter 13, 5 years for multiple filings
+   * within 7 years, 7 years for foreclosure, 4 years for a deed-in-lieu,
+   * preforeclosure sale or charge-off.
+   *
+   * `borrower_declarations` stores these as BOOLEANS with no dates, so the
+   * waiting period is uncomputable from captured data — the same shape as the
+   * ARM terms above. A declared event therefore routes to a human rather than
+   * being ignored, which is what happened before: the entire declarations table
+   * (33 columns) reached document generation and MISMO scoring and never the
+   * decision path, so a borrower could declare a foreclosure and be decisioned
+   * as though they had not.
+   */
+  declaredDerogatoryEvents?: string[];
+  /**
    * Property type and unit count as OBSERVED by an external source (e.g. the
    * address/AVM lookup), when available. Reconciled against the declared values
    * to surface a possible misrepresentation. Optional and additive: when absent,
@@ -420,6 +440,16 @@ export class ConsolidatedUnderwritingEngine {
       if (amortization === "adjustable" || amortization === "arm") {
         reviewReasons.push(
           `Adjustable-rate loan: B3-6-04 requires qualifying at the greater of the note rate plus the first rate-change cap or the fully indexed rate, not the initial rate. The ARM terms needed to compute that (index, margin, caps) are not captured, so this file cannot be qualified automatically. Manual review required.`,
+        );
+      }
+
+      // B3-5.3-07, Significant Derogatory Credit Events. Every one of these
+      // carries a waiting period measured from a date this system does not
+      // capture, so none of them can be cleared automatically — and being
+      // unable to clear an event is not a reason to ignore it.
+      if (input.declaredDerogatoryEvents && input.declaredDerogatoryEvents.length > 0) {
+        reviewReasons.push(
+          `Declared on the application: ${input.declaredDerogatoryEvents.join("; ")}. B3-5.3-07 sets a waiting period for each, measured from the discharge, dismissal or completion date — dates this system does not capture, so eligibility cannot be determined automatically. Manual review required.`,
         );
       }
 

@@ -154,6 +154,9 @@ export default defineConfig({
       // B2-1.3: the funnel collects a cash-out purpose the engine never read,
       // so refi files were measured against purchase LTV ceilings.
       "tests/sellingGuideLoanPurpose.test.ts",
+      // B3-5.3-07: the declarations table reached document generation and MISMO
+      // scoring and never the decision path — a declared foreclosure was invisible.
+      "tests/sellingGuideDerogatoryEvents.test.ts",
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",

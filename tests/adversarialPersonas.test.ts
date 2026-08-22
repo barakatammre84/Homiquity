@@ -190,6 +190,10 @@ const mocks = vi.hoisted(() => ({
   getUrlaLiabilities: vi.fn(),
   getUrlaAssets: vi.fn(),
   getUrlaPropertyInfo: vi.fn(),
+  // B3-5.3-07: the decision now reads Section 5 declarations across ALL
+  // borrowers. These personas declare no derogatory events, so the default is
+  // an empty list — set `data.declarations` to exercise the review route.
+  getAllBorrowerDeclarations: vi.fn(),
   getLatestBankStatementAnalysis: vi.fn(),
   generateLoanEstimate: vi.fn(),
   computePaymentProjection: vi.fn(),
@@ -235,6 +239,7 @@ function primeOrchestrator(app: Record<string, unknown>, data: {
   mocks.getUrlaLiabilities.mockResolvedValue(data.liabilities ?? []);
   mocks.getUrlaAssets.mockResolvedValue(data.urlaAssets ?? []);
   mocks.getUrlaPropertyInfo.mockResolvedValue(data.propertyInfo ?? undefined);
+  mocks.getAllBorrowerDeclarations.mockResolvedValue(data.declarations ?? []);
   mocks.getLatestBankStatementAnalysis.mockResolvedValue(undefined);
   mocks.generateLoanEstimate.mockResolvedValue({
     projectedPayments: { years1Through5: { estimatedTotal: data.piti ?? 3000 } },
