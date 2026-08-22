@@ -29,6 +29,7 @@
 
 import {
   borrowerPaidOriginationAllowed,
+  borrowerPaidCompensationAllowed,
   compensationAmount,
   evaluatePointsAndFeesFloor,
   type CompensationModel,
@@ -127,15 +128,28 @@ export interface PlatformFinanceCharge {
    * what makes the F-17 fit honest rather than a fiction.
    */
   reducible: boolean;
+  /**
+   * True when the platform KEEPS this money.
+   *
+   * Deliberately separate from `reducible`, which they happen to coincide with
+   * today. `reducible` answers "may we discount it"; this answers "is it
+   * compensation under §1026.36(a)(3)" — comment 36(a)-5.ii turns on the
+   * originator RETAINING the amount, and .iii exempts bona fide charges passed
+   * on to an unaffiliated third party. A future fee could easily be one and not
+   * the other, and collapsing them would silently mis-gate it.
+   */
+  retained: boolean;
 }
 
 export function platformFinanceCharges(
   schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): PlatformFinanceCharge[] {
   return [
-    { id: "application", name: "Application fee", amount: schedule.applicationFee, reducible: true },
-    { id: "underwriting", name: "Underwriting fee", amount: schedule.underwritingFee, reducible: true },
-    { id: "tax_service", name: "Tax service fee", amount: schedule.taxServiceFee, reducible: false },
+    { id: "application", name: "Application fee", amount: schedule.applicationFee, reducible: true, retained: true },
+    { id: "underwriting", name: "Underwriting fee", amount: schedule.underwritingFee, reducible: true, retained: true },
+    // Passed through to the tax service vendor — comment 36(a)-5.iii, so not
+    // compensation, so it survives a lender-paid election.
+    { id: "tax_service", name: "Tax service fee", amount: schedule.taxServiceFee, reducible: false, retained: false },
   ];
 }
 
@@ -307,6 +321,33 @@ export function maxPlatformFinanceChargeTotal(
   return low;
 }
 
+/**
+ * Zero every RETAINED charge when the originator is paid by anyone but the
+ * consumer — §1026.36(d)(2)(i)(A).
+ *
+ * WHY THIS EXISTS: `borrowerPaidOriginationAllowed` has always gated the
+ * origination fee, but the platform's retained application and underwriting
+ * fees were charged on EVERY file, lender-paid included. Comment 36(a)-5.ii
+ * (verified 2026-08-20 against docs/reg-z/12-cfr-1026-regulation-z.xml) makes
+ * a retained fee compensation regardless of its label, so that combination —
+ * borrower pays us, lender also pays us, same transaction — is the dual
+ * compensation prohibition itself. Calling the fee "application" instead of
+ * "origination" never changed the analysis.
+ *
+ * The codebase had already half-conceded the point: resolvePlatformFinanceCharges
+ * trims these same fees to fit the QM points-and-fees cap, i.e. scores them as
+ * originator-side charges under §1026.32(b)(1), while the (d)(2) gate ignored
+ * them. This closes that inconsistency in the only direction it can be closed —
+ * the fees come off.
+ */
+export function applyDualCompensationGate(
+  charges: PlatformFinanceCharge[],
+  model: CompensationModel,
+): PlatformFinanceCharge[] {
+  if (borrowerPaidCompensationAllowed(model)) return charges;
+  return charges.map(charge => (charge.retained ? { ...charge, amount: 0 } : charge));
+}
+
 export interface ResolvedPlatformCharges {
   /** What to actually charge, id-for-id with PLATFORM_FINANCE_CHARGES. */
   charges: PlatformFinanceCharge[];
@@ -335,8 +376,12 @@ export function resolvePlatformFinanceCharges(
   compensation: OriginatorCompensation,
   schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): ResolvedPlatformCharges {
-  const standardTotal = platformFinanceChargeTotal(schedule);
-  const standard = () => platformFinanceCharges(schedule);
+  // The dual-compensation gate runs FIRST, before any QM fitting: a fee we may
+  // not charge at all is not a fee to be trimmed. Everything downstream —
+  // the Loan Estimate, the points-and-fees floor, the originable verdict —
+  // then reasons about what is actually chargeable.
+  const standard = () => applyDualCompensationGate(platformFinanceCharges(schedule), compensation.model);
+  const standardTotal = standard().reduce((sum, c) => sum + c.amount, 0);
   const budget = maxPlatformFinanceChargeTotal(noteDate, loanAmount, compensation, schedule);
 
   // No table for the note year, or compensation alone is over the cap: charge
@@ -357,8 +402,10 @@ export function resolvePlatformFinanceCharges(
   }
 
   const reducibleStandard = standardTotal - platformNonReducibleTotal(schedule);
+  // Under a lender-paid election the gate has already zeroed everything
+  // reducible, so there is nothing left to scale and `scale` below is 0/0-safe.
   const scale = reducibleStandard > 0 ? reducibleBudget / reducibleStandard : 0;
-  const charges = platformFinanceCharges(schedule).map(charge =>
+  const charges = standard().map(charge =>
     charge.reducible
       ? { ...charge, amount: Math.floor(charge.amount * scale) }
       : { ...charge },
