@@ -36,7 +36,11 @@ export function SelfEmployedDeskArt({ className, "data-testid": testId }: Illust
       data-testid={testId}
     >
       {/* Ground panel — the mint container the rest sits inside. */}
-      <rect x="0" y="0" width="320" height="180" rx="20" className="fill-muted" />
+      {/* No ground panel. The brief says transparent background, always — and a
+          `fill-muted` panel is INVISIBLE on the mint bands these sit on today
+          while appearing as a box the moment one is placed on white. An
+          illustration that changes shape with its surroundings is a trap, not a
+          container. */}
 
       {/* Desk line. */}
       <rect x="24" y="139" width="272" height="3" rx="1.5" className="fill-primary/25" />
