@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,6 +7,9 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { CoachPromptBar } from "@/components/CoachPromptBar";
+import { Reveal, Stagger, StaggerItem, ScenePauseButton } from "@/components/motion";
+import { Scene } from "@/components/motion/Scene";
+import { getScene, sceneAssets, type SceneId } from "@/lib/sceneAssets";
 import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -148,6 +152,12 @@ const TRUST_POINTS = [
 export default function Landing() {
   usePageView("/");
 
+  // WCAG 2.2.2: any page whose motion starts on its own and runs past five
+  // seconds owes the visitor a way to stop it, and a loop never ends. One control
+  // governs every scene; it only exists once artwork does.
+  const [scenesPaused, setScenesPaused] = useState(false);
+  const hasScenes = Object.keys(sceneAssets).length > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <SEOHead
@@ -162,26 +172,26 @@ export default function Landing() {
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — the whole page's centre of gravity. */}
         <section
-          className="bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
+          className="bg-muted px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
           data-testid="section-hero"
         >
           <div className="mx-auto max-w-4xl text-center">
             <p
-              className="text-sm font-medium text-primary-foreground/75"
+              className="text-sm font-semibold uppercase tracking-widest text-flare-ink"
               data-testid="text-hero-eyebrow"
             >
               Renting, self-employed, refinancing, or moving up — start anywhere
             </p>
 
             <h1
-              className="mt-5 text-balance text-4xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl"
+              className="mt-5 text-balance text-4xl font-extrabold leading-none tracking-tight text-foreground sm:text-5xl lg:text-6xl"
               data-testid="text-hero-title"
             >
               See what you have the power to do.
             </h1>
 
             <p
-              className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-primary-foreground/80"
+              className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted-foreground"
               data-testid="text-hero-subtitle"
             >
               Buying a home is stressful because nobody tells you where you stand until
@@ -198,11 +208,11 @@ export default function Landing() {
                 It points at the band below rather than off to /afford — the
                 no-signup answer is on this page, so sending them to another
                 route to find it was a needless step. */}
-            <p className="mt-8 text-sm text-primary-foreground/80">
+            <p className="mt-8 text-sm text-muted-foreground">
               Rather not sign up yet?{" "}
               <a
                 href="#buying-power"
-                className="touch-target inline-flex items-center font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"
+                className="touch-target inline-flex items-center font-semibold text-foreground underline underline-offset-4 hover:no-underline"
                 data-testid="link-hero-afford"
               >
                 See your buying power
@@ -217,7 +227,7 @@ export default function Landing() {
             is the alternative to Homi, not a footnote to it. */}
         <section
           id="buying-power"
-          className="scroll-mt-20 border-b bg-muted/30 px-4 py-20 sm:px-6 lg:px-8"
+          className="scroll-mt-20 bg-background px-4 py-20 sm:px-6 lg:px-8"
           data-testid="section-estimator"
         >
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -238,25 +248,51 @@ export default function Landing() {
         </section>
 
         {/* Four doors. */}
-        <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
+        <section className="bg-muted px-4 py-20 sm:px-6 lg:px-8" data-testid="section-journeys">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-              Wherever you're starting from
-            </h2>
+            <Reveal>
+              <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+                Wherever you're starting from
+              </h2>
+            </Reveal>
+            {hasScenes ? (
+              <div className="mt-6 flex justify-center">
+                <ScenePauseButton
+                  paused={scenesPaused}
+                  onToggle={() => setScenesPaused((p) => !p)}
+                />
+              </div>
+            ) : null}
 
-            <div className="mt-12 grid gap-6 sm:grid-cols-2">
+            <Stagger className="mt-12 grid gap-6 sm:grid-cols-2">
               {JOURNEYS.map((journey) => {
                 const Icon = journey.icon;
                 return (
+                  <StaggerItem key={journey.id}>
                   <Card
-                    key={journey.id}
-                    className="hover-elevate"
+                    className="h-full rounded-3xl border-0 bg-card hover-elevate"
                     data-testid={`card-journey-${journey.id}`}
                   >
                     <CardContent className="p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <Icon className={iconSize.feature} aria-hidden="true" />
-                      </div>
+                      {(() => {
+                        // Auto-discovered from attached_assets/scenes/. Absent
+                        // until the illustrator delivers, so the icon tile is the
+                        // real state today rather than a placeholder box.
+                        const scene = getScene(journey.id as SceneId);
+                        return scene ? (
+                          <Scene
+                            poster={scene.poster}
+                            video={scene.video}
+                            alt={scene.alt}
+                            paused={scenesPaused}
+                            className="mb-5 w-full"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Icon className={iconSize.feature} aria-hidden="true" />
+                          </div>
+                        );
+                      })()}
                       <h3
                         className="mt-5 text-xl font-semibold"
                         data-testid={`text-journey-title-${journey.id}`}
@@ -279,15 +315,16 @@ export default function Landing() {
                       </Button>
                     </CardContent>
                   </Card>
+                  </StaggerItem>
                 );
               })}
-            </div>
+            </Stagger>
           </div>
         </section>
 
         {/* One trust row — what the customer gets, not who we are. */}
         <section
-          className="border-y bg-muted/30 px-4 py-14 sm:px-6 lg:px-8"
+          className="bg-background px-4 py-14 sm:px-6 lg:px-8"
           data-testid="section-trust"
         >
           <div className="mx-auto max-w-6xl">

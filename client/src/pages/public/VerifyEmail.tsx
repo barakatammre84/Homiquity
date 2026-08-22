@@ -43,7 +43,7 @@ export default function VerifyEmail() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/">
-            <span className="text-2xl font-bold tracking-tight text-primary cursor-pointer" data-testid="text-brand-logo">
+            <span className="text-2xl font-bold tracking-tight text-flare cursor-pointer" data-testid="text-brand-logo">
               homiquity
             </span>
           </Link>

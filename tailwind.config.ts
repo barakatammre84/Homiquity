@@ -5,10 +5,27 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      /**
+       * Radius scale — SIX rungs, all derived from `--radius` so they move together.
+       *
+       * The three large rungs are here because they were NOT here. `extend` only
+       * overrode sm/md/lg, so `rounded-xl` fell through to Tailwind's default
+       * 0.75rem — which is 12px — which is exactly what `--radius` already is.
+       * `rounded-lg` and `rounded-xl` therefore rendered IDENTICALLY, and the 40
+       * files reaching for `rounded-xl` to get a softer container got no change at
+       * all. Silent no-op, not a wrong value, which is why nobody caught it.
+       *
+       * Radius now encodes container SIZE: the bigger the box, the rounder the
+       * corner. A 4px chip and a 32px hero panel sharing one radius is most of
+       * what "everything looks the same" actually meant.
+       */
       borderRadius: {
-        lg: "var(--radius)", /* 12px — cards, modals */
+        sm: "calc(var(--radius) - 8px)", /* 4px — chips, badges */
         md: "calc(var(--radius) - 4px)", /* 8px — inputs, selects, buttons */
-        sm: "calc(var(--radius) - 8px)", /* 4px — small chips, badges */
+        lg: "var(--radius)", /* 12px — cards, modals */
+        xl: "calc(var(--radius) + 4px)", /* 16px — feature cards */
+        "2xl": "calc(var(--radius) + 12px)", /* 24px — large panels */
+        "3xl": "calc(var(--radius) + 20px)", /* 32px — hero and band containers */
       },
       /* Card elevation scale — wires the near-flat neutral --shadow-* vars
          (index.css) so surfaces use a named, tunable card shadow instead of
@@ -131,14 +148,32 @@ export default {
         // persona/landing pages; the light end (500→50) stays neutral slate for
         // micro-copy, borders, and section fills. Prefer the semantic tokens
         // (bg-background, text-foreground, …) in components.
+        flare: {
+          DEFAULT: "hsl(var(--flare))",
+          foreground: "hsl(var(--flare-foreground))",
+          ink: "hsl(var(--flare-ink))",
+        },
         precision: {
-          950: "#0A1E52", // deep royal navy — hero gradient anchor
-          900: "#1B3B9E", // royal blue — hero gradient mid
-          700: "#2456D6", // vivid royal blue — hero gradient end + glow
-          500: "#64748B", // Muted Slate — placeholders, micro-copy
-          300: "#94A3B8", // slate-400 — hover borders, disabled states
-          100: "#E2E8F0", // slate-200 — card hairlines, active input bg
-          50: "#F8FAFC", // Ultra-Light Gray — data-section separation
+          // Green-black, 2026-08-20. Was clay; before that royal blue.
+          //
+          // Rebuilt on Monzo's structure after measuring their live site: their
+          // whole palette is white + a near-black (#091723) + ONE tint
+          // (#F2F8F3). The restraint is the craft — not the specific hues.
+          //
+          // Deliberately NOT their navy-black. Homiquity is a mortgage broker,
+          // Monzo is a bank; an indistinguishable palette in the same sector is
+          // trade-dress risk, not homage. So the near-black is tinted with
+          // Homiquity's own emerald instead of their navy, which keeps the
+          // discipline and drops the resemblance.
+          //
+          // White on 950 measures 17.30:1 and on 700 measures 14.07:1.
+          950: "#0B1E19", // green-black — hero anchor
+          900: "#112823", // green-black mid
+          700: "#17302A", // deep emerald-slate — hero end
+          500: "#5A726C", // muted green-grey — micro-copy (5.17:1 on white)
+          300: "#93A5A0", // hover borders, disabled
+          100: "#E2E9E7", // hairlines
+          50: "#F1F8F5", // the single pale tint
         },
       },
       fontFamily: {
