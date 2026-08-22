@@ -47,47 +47,89 @@
   /* Layer 0: Stark White canvas */
   --background: 0 0% 100%;
   /* Primary typography: near-black slate #0F172A (cool blue undertone) */
-  --foreground: 222 47% 11%;
+  --foreground: 165 45% 8%;
   /* Slate-200 #E2E8F0 hairlines — soft separation, no harsh borders */
-  --border: 214 32% 91%;
+  --border: 160 14% 90%;
   /* Layer 1: white cards separated by slate hairline */
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
+  --card-foreground: 165 45% 8%;
+  --card-border: 160 14% 90%;
   /* Sidebar: deep royal-blue navigation container (~#122A6B) */
-  --sidebar: 224 71% 24%;
+  --sidebar: 165 35% 14%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 224 40% 34%;
+  --sidebar-border: 165 25% 24%;
   /* Active nav item: light pill on royal blue */
   --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 224 52% 32%;
+  --sidebar-primary-foreground: 165 45% 8%;
+  --sidebar-accent: 165 28% 22%;
   --sidebar-accent-foreground: 210 40% 98%;
   --sidebar-ring: 160 84% 39%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 88%;
+  --popover-foreground: 165 45% 8%;
+  --popover-border: 160 14% 87%;
   /* Layer 2: conversion action = Emerald #047857 (green means "Go";
      700-depth so white button text passes AA) */
   --primary: 163 94% 24%;
   --primary-foreground: 0 0% 100%;
   /* Secondary surfaces: slate-100 chip */
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 155 40% 94%;
+  --secondary-foreground: 165 45% 8%;
   /* Data-section separation: Ultra-Light Gray #F8FAFC */
-  --muted: 210 40% 98%;
+  --muted: 155 44% 92%;
   /* Secondary/micro-copy: green-grey per the 2026-08-18 overhaul direction —
      quiet text carries the brand hue (was blue-grey Muted Slate 215 24% 37%).
      Verified ~5.8:1 on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1).
      Still clearly recessive vs the near-black primary type (~16:1). */
-  --muted-foreground: 168 12% 37%;
+  --muted-foreground: 165 12% 40%;
+
+  /**
+   * Flare — the warm accent, added 2026-08-20.
+   *
+   * Monzo runs a hot coral (#FF4F40) against their near-black: 24 text uses, 24
+   * borders, 31 SVG fills on their home page alone. The JOB it does — one jolt of
+   * warmth against a cold near-black, used sparingly — is what makes their
+   * restraint read as confidence rather than austerity. That job is worth copying.
+   *
+   * The colour is not. #FF4F40 is Monzo's single most recognisable asset, and
+   * Homiquity is a mortgage broker to their bank — the same sector, where an
+   * indistinguishable accent is trade dress rather than homage. So this is a true
+   * orange at hue 24deg against coral's 5deg: adjacent job, different colour.
+   *
+   * 🚨 USAGE IS CONSTRAINED BY CONTRAST, and the same constraint binds Monzo's
+   * coral (theirs is 3.26:1 on white — they never set it as text there either):
+   *   ALLOWED  flare as text ON the dark surface        4.77:1
+   *   ALLOWED  --flare-foreground text ON a flare fill  4.77:1
+   *   ALLOWED  fills, borders, illustration, focus rings on any ground
+   *   FORBIDDEN white text on a flare fill              3.63:1
+   *   FORBIDDEN flare as text on white                  3.63:1
+   */
+  --flare: 24 88% 46%;
+  --flare-foreground: 165 45% 8%;
+
+  /**
+   * flare-ink — the same orange, dark enough to be TEXT.
+   *
+   * `--flare` at 46% lightness fails AA as text on every ground this design uses:
+   * mint 3.37:1, white 3.63:1, even the dark footer 3.88:1. It is a FILL colour —
+   * logo, borders, illustration, focus rings — and treating it as a text colour is
+   * the mistake this pair exists to prevent. (Monzo's coral has exactly the same
+   * property, which is why theirs is never body text either.)
+   *
+   * This is the text-safe sibling: 5.56:1 on mint, 5.99:1 on white. Same hue, same
+   * family, legible.
+   *
+   * ⚠️ Logos are EXEMPT from WCAG 1.4.3, so the wordmark may use the bright
+   * `--flare` on white even though that pair measures 3.63:1. That is an exemption,
+   * not a loophole to reuse for anything a person has to read.
+   */
+  --flare-ink: 24 90% 34%;
   /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
      --muted #F8FAFC) that white cards sit ON so their shadow-card reads.
      Public/reading surfaces stay on the white --background. */
-  --surface: 210 40% 97%;
-  --surface-foreground: 222 47% 11%;
+  --surface: 155 30% 96%;
+  --surface-foreground: 165 45% 8%;
   /* Accent: deep royal-blue chip — quieter than the emerald primary */
-  --accent: 224 60% 24%;
+  --accent: 165 35% 14%;
   --accent-foreground: 0 0% 100%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
@@ -144,6 +186,31 @@
   --font-mono: "Geist Mono", "JetBrains Mono", monospace;
   /* Precision radius: 12px cards, tighter than consumer-soft */
   --radius: .75rem;
+
+  /**
+   * Motion tokens — added 2026-08-20. There were none.
+   *
+   * DESIGN_SYSTEM §5's entire motion spec was one line
+   * (`transition-all duration-150 ease-in-out`), so every animation in the app
+   * either reused that single duration or invented its own. Without a scale,
+   * "add some animation" means every author picks a number and the result reads
+   * as assembled rather than designed.
+   *
+   * Three durations, not seven: micro for state changes the eye should barely
+   * catch, base for anything that moves across the screen, slow for a deliberate
+   * entrance. The easing is a single custom curve — a gentle overshoot-free
+   * ease-out that settles rather than snaps, which is what the warm direction
+   * calls for. `--ease-exit` is faster and linear-ish because leaving should not
+   * be savoured.
+   *
+   * These are consumed by the motion primitives; the reduced-motion floor above
+   * overrides all of them to 0.01ms.
+   */
+  --duration-micro: 120ms;
+  --duration-base: 240ms;
+  --duration-slow: 420ms;
+  --ease-entrance: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* Near-flat neutral shadows; hairlines and whitespace carry the depth */
   --shadow-2xs: 0 1px 2px 0 hsl(215 25% 10% / 0.03);
   --shadow-xs: 0 1px 3px 0 hsl(215 25% 10% / 0.04), 0 1px 2px -1px hsl(215 25% 10% / 0.03);
@@ -306,6 +373,44 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer base {
+  /**
+   * Reduced motion — the quality floor, added 2026-08-20.
+   *
+   * Before this the app respected `prefers-reduced-motion` NOWHERE: framer-motion
+   * ran in 8 files, `transition-all duration-150` sat on every interactive atom,
+   * and a visitor who had asked their OS to stop animation got animated anyway.
+   * That is an accessibility defect (WCAG 2.3.3) and it had to be fixed before the
+   * design work adds motion, not after — otherwise every new animation ships
+   * broken for the people most affected by it.
+   *
+   * 🚨 `0.01ms`, NOT `0s`, and not `animation: none`. A zero-length animation may
+   * never fire `animationend` / `transitionend`, and code that waits on those
+   * callbacks then hangs forever — Radix unmount cycles and framer-motion's
+   * `AnimatePresence` both complete on those events. 0.01ms is imperceptible AND
+   * still dispatches, so motion stops without stalling any state machine that
+   * depends on it finishing.
+   *
+   * Deliberately global (`*`) rather than opt-in per component: an opt-in rule is
+   * one every future component author must remember, which is the same failure as
+   * the icon registry (38 concepts, 323 files bypassing it). The floor holds by
+   * default; a component that genuinely needs motion must ask for it explicitly.
+   *
+   * JS-driven animation cannot be reached by CSS. framer-motion's own
+   * `useReducedMotion()` covers that half and is what the motion primitives use.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

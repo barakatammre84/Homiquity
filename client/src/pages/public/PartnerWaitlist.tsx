@@ -94,7 +94,7 @@ export default function PartnerWaitlist() {
 
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
         <Link href="/">
-          <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
+          <span className="text-2xl font-bold tracking-tight text-flare">homiquity</span>
         </Link>
         <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
           <Link href="/login">Sign in</Link>
