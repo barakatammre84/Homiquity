@@ -40,6 +40,8 @@ import {
   ArrowRight,
   ChevronRight,
   ChevronLeft,
+  Minus,
+  ExternalLink,
   Calendar,
   Phone,
   Mail,
@@ -99,6 +101,9 @@ export const Icons = {
   settings: Settings, // settings
   rate: Percent, // rate / pricing
   coach: Sparkles, // the Homi (dominant glyph on /ai-coach)
+  minimize: Minus, // collapse a panel WITHOUT discarding it (Homi dock) — not
+                   // `reject`/XCircle, which means deny and would read as "give up"
+  externalLink: ExternalLink, // open the full-page version of an inline surface
   send: Send, // submit a chat message (dominant: coach Composer)
 } satisfies Record<string, LucideIcon>;
 
