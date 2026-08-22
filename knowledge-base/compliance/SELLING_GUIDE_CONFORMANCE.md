@@ -447,6 +447,56 @@ Also blocked behind G-16: **B3-6-06, Qualifying Impact of Other Real Estate Owne
 existing property's PITIA counts) and the B3-6-05 rule that a mortgage the borrower is
 obligated on must enter the financed-property count regardless of who pays it.
 
+### G-18 — Non-taxable gross-up is now *authorised* but deliberately not applied (B3-3.1-01)
+
+**B3-3.1-01, Nontaxable Income:** where income is verified non-taxable and its tax-exempt
+status is likely to continue, the lender "should develop an 'adjusted gross income' … by adding
+an amount equivalent to **25%** of the nontaxable income" — or the actual tax a wage earner in
+a similar bracket would pay, if that exceeds 25%.
+
+`shared/incomeTypes.ts` carries `qualifyingAuthority: null` for all twenty Section 1e types, and
+its docstring gave the reason as "there is no Selling Guide income chapter in-repo". **That
+reason expired on 2026-08-20.** The rule is in hand.
+
+It is still not applied, for a different and better reason: **gross-up raises qualifying
+income, which loosens the DTI gate.** The standing rail lets a reading tighten a gate or remove
+a borrower charge — never loosen one. Applying it is a founder decision, not an agent's. The
+module docstring and the agency-wage note now say exactly that, so the next session does not
+re-derive the citation and quietly wire it in.
+
+### G-19 — Three-year continuance is unimplementable: no expiration date is captured (B3-3.1-01)
+
+**B3-3.1-01, Continuance of Income:** income with a defined expiration date, or dependent on
+depletion of an asset account or other limited benefit, must be documented to continue **at
+least three years from the note date**. Where an asset account is the sole or majority source
+of qualifying income, the lender must additionally assess repayment ability once it depletes.
+And where the lender is told the borrower is moving to a lower pay structure — pending
+retirement, a new job — **the lower amount must be used**.
+
+This one moves in the permitted direction (it removes income), but `other_income_sources`
+carries only `income_source` and `monthly_amount`. There is no expiration date, no benefit
+term, and no pending-change flag to test against, so every Section 1e source is counted at face
+value for an unbounded horizon. Alimony ending in eighteen months and a lifetime pension are
+indistinguishable to the engine.
+
+Capture gap, same shape as C-6 before it was fixed.
+
+### G-20 — Income paid in virtual currency is ineligible, and unrepresentable (B3-3.1-01)
+
+"Any income paid to or earned by the borrower in the form of virtual currency, such as
+cryptocurrencies, **is not eligible to be used to qualify for the loan**." Unlike the gross-up
+and continuance rules this is absolute, and it pairs with G-3 (debt *secured by* virtual
+currency must be *included* in the DTI). Neither is representable: the Section 1e catalog has no
+crypto type and the codebase models virtual currency nowhere. Not currently violable — and not
+currently enforceable either.
+
+🚨 **A trap the public-repo decision created, recorded here because it will bite whoever closes
+G-18 or G-19.** `tests/incomeTypes.test.ts` enforces citations with `fs.existsSync`. The Guide
+text is now gitignored, so citing
+`docs/fannie-mae/selling-guide/selling-guide-text.txt` passes locally and **fails in CI**, where
+the fresh clone lacks it. Cite the tracked `section-index.tsv` (or this ledger) and name the
+section.
+
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 
 B2-1.5-01: the conforming limits "vary, depending upon the number of units in the property and
