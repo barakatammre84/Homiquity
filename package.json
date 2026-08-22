@@ -36,6 +36,7 @@
     "guard:querykeys": "node scripts/query-key-guard.cjs && node scripts/query-key-reachability.cjs && node scripts/query-key-transport-guard.cjs",
     "guard:migrations": "node scripts/migration-ledger-guard.cjs",
     "guard:security": "node scripts/security-review-guard.cjs",
+    "guard:authority": "node scripts/selling-guide-authority-guard.cjs",
     "guard:kb": "node scripts/kb-index-guard.cjs",
     "guard:staleness": "node scripts/doc-staleness-guard.cjs",
     "guard:citations": "node scripts/citation-guard.cjs",

@@ -60,7 +60,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
+| founder-directed session (Selling Guide constitution) | `scripts/selling-guide-authority-guard.cjs` (new) · `tests/sellingGuideAuthorityGuard.test.ts` (new) · `.github/workflows/ci.yml` · `package.json` (one script line) · every `.claude/skills/<slug>/SKILL.md` · `.claude/agents/_OWNER_RAILS.md` · `knowledge-base/governance/TEAM_PRACTICES.md` | scratchpad/sg-wt | compliance/selling-guide-constitution | 2026-08-21T12:20Z | Installs the Selling Guide as the governing authority: the §10 authority gate, the Guide-first rewrite of the skill fleet, and the shared owner rails. **Deliberately NOT claimed** — `CLAUDE.md` (#650, #642), `knowledge-base/routines/CHARTER.md` (#647), `knowledge-base/routines/TEAM.md` (#645) and SELLING\_GUIDE\_CONFORMANCE.md (#650, not yet on main) are all in flight; those edits wait for those PRs rather than racing them (§5: a file in an open PR is claimed). The gate ships **inert** until the corpus from #650 lands, and arms itself automatically then. |
 
 
 ## Recently released

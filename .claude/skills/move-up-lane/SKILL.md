@@ -9,6 +9,10 @@ description: Use ONLY when the user explicitly invokes /move-up-lane or explicit
 **Writes code:** yes — at most ONE PR per run, never merged (L2 per CHARTER §1b).
 **Owns:** the move-up / jumbo lane — the "You're moving up" door, the conforming-limit boundary,
 jumbo product surfacing, and the honesty of what we tell a borrower above the limit.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 **Journey charter:** [JOURNEYS.md §4](../../../knowledge-base/feature-review/JOURNEYS.md) — the

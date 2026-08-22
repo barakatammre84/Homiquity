@@ -376,6 +376,40 @@ jobs:
           CHANGED_FILES_FILE="$RUNNER_TEMP/changed_files.txt" \
           CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
             pnpm guard:security
+
+      - name: Selling Guide authority guard (TEAM_PRACTICES §10)
+        # Fails when the PR changes Guide-governed logic (underwriting, income, AUS,
+        # delivery) without naming the governing Selling Guide section, and when any
+        # added line cites a section the committed edition does not contain. The second
+        # rule is the load-bearing one: the Guide renumbers between editions and a stale
+        # cite does not announce itself — when self-employment income moved off B3-3.2 on
+        # 2026-03-04, six sites kept citing the old chapter and the URL still returned 200.
+        # Like the §9 guard it proves the citation was WRITTEN DOWN, never that the reading
+        # is correct. It is INERT until the Guide corpus lands on the branch, and says so
+        # loudly rather than passing silently. (Job `name:` above deliberately unchanged.)
+        env:
+          # Via env, never inlined into run: — the PR body is attacker-controlled text.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Own temp filenames so this step never depends on the §9 step's ordering.
+          # Explicit merge-base with a base-tip fallback, for the same reasons documented
+          # on that step: two-dot over-attributes files the PR never touched, and `A...B`
+          # shorthand kills the step outright on a branch with no common ancestor.
+          if MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null)"; then
+            DIFF_BASE="$MERGE_BASE"
+          else
+            DIFF_BASE="$BASE_SHA"
+            echo "::warning::§10 guard: no merge-base between base and head; falling back to the base tip. The changed-file list may over-report."
+          fi
+          git diff --name-only "$DIFF_BASE" "$HEAD_SHA" > "$RUNNER_TEMP/sg_changed_files.txt"
+          git diff -U0 "$DIFF_BASE" "$HEAD_SHA" > "$RUNNER_TEMP/sg_changed_lines.diff"
+          CHANGED_FILES_FILE="$RUNNER_TEMP/sg_changed_files.txt" \
+          CHANGED_LINES_FILE="$RUNNER_TEMP/sg_changed_lines.diff" \
+            pnpm guard:authority
       - name: Query-key convergence guard
         if: steps.scope.outputs.code == 'true'
         # TWO checks, both behind this one script. `invalidateQueries` is the only

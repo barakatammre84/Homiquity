@@ -5,6 +5,13 @@ description: Walk one client journey end to end in the real browser as that pers
 
 # Journey Walk — experience the product as one continuous thing
 
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
+job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
+read out of the committed text this run — never from memory. An id the index does not know is a
+**wrong** citation, not an old one. A value read out of a **table** is unverified until you open
+the PDF page. (TEAM_PRACTICES §10; enforced by `pnpm guard:authority`.)
+
 **Writes code:** no. Findings only.
 **Charters:** [knowledge-base/feature-review/JOURNEYS.md](../../../knowledge-base/feature-review/JOURNEYS.md)
 **Program rules:** [knowledge-base/feature-review/CHARTER.md](../../../knowledge-base/feature-review/CHARTER.md)
