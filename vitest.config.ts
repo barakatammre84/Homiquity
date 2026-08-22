@@ -30,6 +30,13 @@ export default defineConfig({
     include: [
       "tests/inertButtons.test.ts",
       "tests/amortization.test.ts",
+      // The reduced-motion accessibility floor — a presence ratchet against
+      // someone deleting it while refactoring index.css.
+      "tests/reducedMotion.test.ts",
+      // The radius scale — a presence ratchet. An undeclared rung silently
+      // inherits Tailwind's default instead of erroring; that is how xl and lg
+      // rendered identically for the life of the project.
+      "tests/radiusScale.test.ts",
       // The advertising gate on "we shop your file" — a compliance rail, so it
       // runs in the gate rather than living as an untested constant.
       "tests/lenderPanel.test.ts",
@@ -286,6 +293,7 @@ export default defineConfig({
       "tests/mutationErrorHandling.test.ts",
       "tests/homiFileTruth.test.ts",
       "tests/homiReadinessDerivation.test.ts",
+      "tests/assistantIdentity.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
