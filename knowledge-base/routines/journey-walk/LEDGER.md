@@ -18,15 +18,60 @@ and treat the `SKILL.md` summaries as a convenience copy. Record which source ea
 
 | next run walks | persona | account convention |
 |---|---|---|
-| **→ Journey 2** | Active buyer, W-2 salaried | fresh `/signup` as `jw2+<MMDD>@test.local`; starts `aspiring_owner`, **must end `active_buyer`** |
+| **→ Journey 3** | Active buyer, self-employed / business owner | fresh `/signup` as `jse+<MMDD>@test.local`; answers must be **genuinely complex** — `employmentType: "self_employed"`, ownership ≥ 25%, two entities, one rental property |
 
 ## Run history
 
 | date | journey | source used | server (commit) | verdict | report |
 |---|---|---|---|---|---|
+| 2026-08-20 (2nd run) | **2 — Active buyer, W-2 salaried** | **`JOURNEYS.md` on `origin/main`** — authoritative, as this ledger directed. First run to use it | `c23079b5` via a dedicated worktree on :5001; **`main` did not move during the run** (re-checked at the end) | **WARN** — the promotion and the whole client→server capture path are clean; the damage is post-submission. 12 findings (`J-0820-01`..`12`), 12 tickets. **2 candidate findings tested and withdrawn before filing** | [2026-08-20-journey-walk-j2.md](../reports/2026-08-20-journey-walk-j2.md) |
 | 2026-08-20 | **1 — Aspiring owner** | `SKILL.md` summaries — JOURNEYS.md was absent from `origin/main` at 12:31Z and **arrived at 12:47Z, mid-walk**, via #595 | `b799b91d` (`origin/main` tip at start; main advanced to `8260d734` during the run) via a dedicated worktree on :5001 | **WARN** — 2 data-correctness defects, 1 surface unreachable at 320px, 11 tickets. Findings re-verified against `8260d734` after the merge; **one claim withdrawn**, one new finding (`ux-50`) found by that re-verification | [2026-08-20-journey-walk.md](../reports/2026-08-20-journey-walk.md) |
 
 ## Standing notes for the next walker
+
+- **🚨 THE BIG ONE — the browser pane is `visibilityState: "hidden"` and `requestAnimationFrame`
+  NEVER FIRES** (measured: `rafFired: 0` over 655 ms). The funnel step card is inside
+  `AnimatePresence mode="wait"`, which mounts the next step only after an rAF-driven exit — so
+  **the header advances to step N+1 while the step-N question stays frozen on screen.** I watched
+  it go 1 → 2 → 3 with the question never changing and was one step from filing *"the funnel is
+  unusable — you can only ever answer question one."* **It is a documented artifact, not a defect:**
+  `client/src/pages/lending/PreApproval.tsx:788-803` describes this exact desync, verified
+  2026-07-17, and records that a real user cannot reach it. ✅ **Workaround that works: take a
+  `computer{action:"screenshot"}` after every click** — it forces a frame and the card resyncs.
+  Injecting an rAF shim *after* page load does **not** work (framer-motion already captured the
+  reference). **Read PreApproval.tsx:788-803 before walking any funnel.**
+- **`element.click()` does not operate the funnel's toggle controls.** `toggle-isFirstTimeBuyer`
+  stayed `false` in the draft through scripted `.click()`, and I nearly filed *"the first-time-buyer
+  toggle silently drops its answer."* A **real coordinate click** set it on the first try — the
+  difference is a trusted pointer sequence. This is the second consecutive run to hit the
+  dead-control trap this ledger warns about; it is now two-for-two, so treat it as the default
+  assumption: **confirm every dead-control claim with a real click.**
+- **Screenshots only render at scroll origin.** At `scrollY > 0` the capture returns blank white
+  while the DOM is demonstrably populated. `scrollIntoView({block:'start'})` first, then capture.
+  Also: the key name `Right` does nothing; use `ArrowRight`.
+- **Clear `localStorage`/`sessionStorage` before starting.** The pane arrived carrying a prior
+  run's `homiquity_preapproval_draft` (income 137000, downPayment 400000 on a 434892 home).
+- **Two findings were withdrawn by testing them — budget time for this, it is the job.**
+  (1) *"`/loan-options` says Under Review while the dashboard says pre-approved"* — false;
+  `LoanOptions.tsx:129-131` excludes `pre_approved` from `awaitingDecision`, so the banner was
+  correct at that instant and a reload showed agreement. (2) *"the consent action item can never
+  clear"* — the dashboard's item **did** clear; only `/loan-options` keeps demanding 3. Both
+  survived as much smaller, true rows (`J-0820-12`, `J-0820-02`).
+- **Finding ids: this run minted the first `J-<MMDD>-<NN>` rows** (`J-0820-01`..`12`), per the
+  FINDINGS.md id convention for client-journey seams. Journey 1's same-day run used `ux-44`..`ux-50`
+  and `F-0820-01/02`, which predate that convention — **do not renumber them**, and do not assume
+  `J-0820-` is free on a future 08-20.
+- **Journey 2 leftovers for whoever walks it next.** `/verification` and `/credit-consent/:id` were
+  **not walked**; **seam 1 (`/calculators/affordability` → funnel via `calculatorPrefill`) was not
+  walked** — I entered via the Landing estimator (seam 2), and since `calculatorPrefill` is
+  read-and-consumed only one funnel entry can be in flight. **The documented raw-score-vs-band
+  credit vocabulary question is therefore still untested.** Enter via the calculator next time.
+- **I did not enter an SSN and neither should you.** Entering government identifiers is prohibited
+  regardless of the DB being local and the value fake, so URLA §1a was never submitted and
+  sections 3–7 were not exercised. Say so plainly rather than implying the URLA was walked.
+- **Reachability of the seeded seats is not the only drift.** Signing consents through `/e-consent`
+  now writes `applicationId: null` rows (`J-0820-01`); if you sign again from a gate card you will
+  create a **duplicate** consent row. Be deliberate about which you use, and say which.
 
 - **Do not use `preview_start {name}`.** It boots the *primary checkout*, which is routinely on a
   peer's feature branch with uncommitted files. Add a worktree at `origin/main`, `pnpm install`,
