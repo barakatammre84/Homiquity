@@ -30,7 +30,7 @@ boundary, a role that changes under a live session, a promise made on one surfac
 that keeps it, a persona that runs out of next step. That is also the repo's dominant defect class
 — *silent success* and the *capture path* — so this is where the finding density is.
 
-## The four seats
+## The five seats
 
 | Journey | Agent | Owns |
 |---|---|---|
@@ -38,13 +38,16 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
 | 2. Active buyer — W-2 salaried | `journey-walker-w2-buyer` | the `aspiring_owner → active_buyer` promotion seam |
 | 3. Active buyer — self-employed | `journey-walker-self-employed` | the `complexIncome` branch carry |
 | 4. Active buyer — move-up / jumbo | `journey-walker-affluent` | the door with no explainer; promise-vs-reachability |
+| 5. Active buyer — condo / project | `journey-walker-condo-buyer` | the **property** axis — whether answering `condo` changes anything the borrower is shown |
 
 ## Rails
 
 **Binding. Each maps to a failure this design is meant to prevent.**
 
-- **W1 — One journey per run.** A run takes ONE charter. Four journeys in one run produces four
-  shallow walks and a register full of duplicates.
+- **W1 — One journey per run.** A run takes ONE charter. Five journeys in one run produces five
+  shallow walks and a register full of duplicates. **One exception, by design:** journey 5 walks a
+  `single_family` *control pass* alongside its condo pass — that is one journey walked twice, not
+  two journeys, and without the control its central finding cannot be stated.
 - **W2 — Browser or nothing.** The walker's first action is a browser call; absence ⇒ `BLOCKED`,
   and you report that verdict unchanged. **Never accept a walk that was driven with `curl`** —
   substituting HTTP calls and reporting a walk is a `FAIL` for the run (CHARTER §9). *Verified

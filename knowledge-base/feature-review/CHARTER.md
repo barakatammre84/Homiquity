@@ -24,6 +24,7 @@ after any significant change — the teams are durable agents in `.claude/agents
 | `journey-walker-w2-buyer` | Walks the W-2 salaried buyer journey in the browser; owns the `aspiring_owner → active_buyer` promotion seam |
 | `journey-walker-self-employed` | Walks the self-employed buyer journey in the browser; proves the funnel's `complexIncome` branch is carried, not merely taken |
 | `journey-walker-affluent` | Walks the affluent move-up journey in the browser; owns the door with no explainer, the jumbo threshold, and promise-vs-reachability |
+| `journey-walker-condo-buyer` | Walks the condo/project journey in the browser against a detached control; owns the **property** axis, where a qualified borrower is declined for the building |
 | `journey-walker-staff-lo` | Walks the loan-officer desk as `lo@test.com` **and** as the borrower it invites; owns the seven-hop attribution chain (pointer **and** team row **and** `LoanTeamCard`) where the server is non-fatal |
 | `journey-walker-staff-processor` | Walks the processor desk and the borrower; owns one document rendered by two roles across two vocabularies (`status` vs `verificationStatus`) |
 | `journey-walker-staff-underwriter` | Walks the underwriter desk and two borrowers; owns the decision both directions — the 422 chain as rendered, then *can the borrower find the notice* (ux-24) |
