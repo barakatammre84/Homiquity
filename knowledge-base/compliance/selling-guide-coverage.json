@@ -84,7 +84,7 @@
     },
     "B3-4.2-02": {
       "status": "partial",
-      "evidence": "server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine.",
+      "evidence": "server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. Two comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Re-cited 2026-08-21. The id resolved, so no machine could catch it — this is the F-063 class, found only by reading.",
       "verified": "2026-08-21"
     },
     "B3-5.1-01": {
@@ -140,6 +140,31 @@
     "B4-1.3-01": {
       "status": "absent",
       "evidence": "Review of the Appraisal Report. No appraisal review logic of any kind; `server/services/decisionEngine.ts:373` takes `appraisalValue = propertyValue || purchasePrice`, i.e. it substitutes the contract price for a value nobody reviewed.",
+      "verified": "2026-08-21"
+    },
+    "B3-4.3-04": {
+      "status": "partial",
+      "evidence": "Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts:114, correctly).",
+      "verified": "2026-08-21"
+    },
+    "B3-3.8-01": {
+      "status": "implemented",
+      "evidence": "server/services/income/paths/rental.ts, reached on the decision path via computeIncomePaths (server/services/decisionEngine.ts:17 imports ./income/orchestrator). 75% of gross rent net of each property's PITIA. The most-cited section in the tree: 40 sites.",
+      "verified": "2026-08-21"
+    },
+    "B3-3.5-01": {
+      "status": "implemented",
+      "evidence": "Length of Self-Employment. server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Seasoning assessed in underwritingNuance.ts assessIncomeSeasoning.",
+      "verified": "2026-08-21"
+    },
+    "B3-3.7-01": {
+      "status": "implemented",
+      "evidence": "Partnership (Form 1065) cash-flow add-backs and subtractions x ownership share, in server/services/selfEmploymentIncome.ts, reached via the income orchestrator.",
+      "verified": "2026-08-21"
+    },
+    "B3-3.7-02": {
+      "status": "implemented",
+      "evidence": "S-corporation (1120-S) cash flow; owner W-2 counted in addition to the K-1 share. server/services/selfEmploymentIncome.ts via the income orchestrator.",
       "verified": "2026-08-21"
     }
   }

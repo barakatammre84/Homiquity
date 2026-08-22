@@ -49,7 +49,7 @@ export interface ParsedAssetReport {
   avgMonthlyBalance: number;
   payroll: { employerName: string; avgMonthlyDeposit: number; monthsObserved: number };
   transactionTrend: "stable" | "growing" | "declining";
-  /** Depository transactions (negative = inflow) — feeds B3-4.3-04 large-deposit sourcing. */
+  /** Depository transactions (negative = inflow) — feeds B3-4.2-02 large-deposit sourcing. */
   transactions: Array<{ amount: number; date: string; description?: string }>;
 }
 

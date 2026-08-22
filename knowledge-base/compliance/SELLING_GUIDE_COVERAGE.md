@@ -15,7 +15,7 @@ find*. Deliberate overlays we run stricter than the Guide live in
 
 ## Where we stand
 
-**88 of 423 sections have been looked at (21%).**
+**93 of 423 sections have been looked at (22%).**
 The rest are `unreviewed` — not a backlog someone forgot, but the honest measure of how much of
 the book has never been checked against this codebase. Domain Oracle works this map down daily,
 sampling **randomly as well as by suspicion**, because a queue worked only by what someone already
@@ -23,18 +23,18 @@ worried about measures nothing about the rest (D1-1-01).
 
 | Status | Sections | Meaning |
 |---|---:|---|
-| ✅ implemented | 5 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
-| 🟡 partial | 9 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
+| ✅ implemented | 9 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
+| 🟡 partial | 10 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
 | ❌ absent | 6 | The Guide states a rule that binds us and no code implements it. |
 | ➖ n/a | 68 | The section governs a function Homiquity does not perform as a broker. Reason required. |
-| · unreviewed | 335 | Nobody has looked. The default. |
+| · unreviewed | 330 | Nobody has looked. The default. |
 
 ## By part
 
 | Part | Sections | Reviewed | ✅ | 🟡 | ❌ | ➖ |
 |---|---:|---:|---:|---:|---:|---:|
 | Part A — Doing Business with Fannie Mae | 41 | 7 | 0 | 2 | 0 | 5 |
-| Part B — Origination Through Closing | 287 | 35 | 5 | 6 | 6 | 18 |
+| Part B — Origination Through Closing | 287 | 40 | 9 | 7 | 6 | 18 |
 | Part C — Selling, Securitizing, Delivering | 48 | 41 | 0 | 0 | 0 | 41 |
 | Part D — Quality Control | 11 | 5 | 0 | 1 | 0 | 4 |
 | Part E — Quick Reference | 36 | 0 | 0 | 0 | 0 | 0 |
@@ -58,8 +58,13 @@ the lender; we adopt its shape for our own quality program **by choice**, and sa
 | `B3-2-01` | General Information on DU | 🟡 partial | server/services/ausSubmission.ts submitToDU is a deterministic simulation. The Guide requires delivery data to match the final DU submission; server/mismo.ts:862 emits a hardcoded "Approve". FINDINGS F-051. |
 | `B3-2-02` | DU Validation Service | ❌ absent | DU validation service / Day 1 Certainty relief is parsed in ausSubmission.ts but the asset-verification-report spec is not procured, so the validation legs cannot be adjudicated. Also carries the Asset Verification Report policy that CTO_ROADMAP F14 needs. |
 | `B3-2-03` | Risk Factors Evaluated by DU | ❌ absent | Carries the positive rent-history policy DU uses (12-month third-party AVR or credit report; one borrower renting >=12 months at >=$300/mo). Nothing consumes it. This is the Selling Guide leg of CTO_ROADMAP F14, now unblocked; the DU Release Notes and AVR spec legs remain absent. |
+| `B3-3.5-01` | Underwriting Factors and Documentation for a Self-Employed Borrower | ✅ implemented | Length of Self-Employment. server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Seasoning assessed in underwritingNuance.ts assessIncomeSeasoning. |
+| `B3-3.7-01` | Analyzing Partnership Returns for a Partnership or LLC | ✅ implemented | Partnership (Form 1065) cash-flow add-backs and subtractions x ownership share, in server/services/selfEmploymentIncome.ts, reached via the income orchestrator. |
+| `B3-3.7-02` | Analyzing Returns for an S Corporation | ✅ implemented | S-corporation (1120-S) cash flow; owner W-2 counted in addition to the K-1 share. server/services/selfEmploymentIncome.ts via the income orchestrator. |
+| `B3-3.8-01` | Rental Income | ✅ implemented | server/services/income/paths/rental.ts, reached on the decision path via computeIncomePaths (server/services/decisionEngine.ts:17 imports ./income/orchestrator). 75% of gross rent net of each property's PITIA. The most-cited section in the tree: 40 sites. |
 | `B3-4.1-01` | Minimum Reserve Requirements | 🟡 partial | server/services/preUnderwriting.ts:204 requiredReserveMonths, reached in production ONLY via runPreUnderwriting (dynamic import at server/routes/aus.ts:115 and server/services/loanAnalysis.ts:580). The resulting flags are read by NEITHER decisionEngine.ts NOR underwritingEngine.ts (0 references, verified) — computed and surfaced, not binding. CTO_ROADMAP §3.6. |
-| `B3-4.2-02` | Depository Accounts | 🟡 partial | server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. |
+| `B3-4.2-02` | Depository Accounts | 🟡 partial | server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. Two comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Re-cited 2026-08-21. The id resolved, so no machine could catch it — this is the F-063 class, found only by reading. |
+| `B3-4.3-04` | Personal Gifts | 🟡 partial | Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts:114, correctly). |
 | `B3-5.1-01` | General Requirements for Credit Scores | ✅ implemented | server/underwritingEngine.ts:342 reads the CONVENTIONAL_FICO_FLOOR policy scalar (620) on the decision path. |
 | `B3-5.3-09` | DU Credit Report Analysis | 🟡 partial | Collection thresholds ($5,000 / >=$250 / >$1,000) carried in data/regulatory/regulatory-ledger.json; tri-bureau pull is simulated. REVISED IN THIS EDITION — the change is Authorized User Tradelines plus a disputed-medical-tradeline note; re-verify before relying on the prior reading. |
 | `B3-6-02` | Debt-to-Income Ratios | ✅ implemented | server/underwriting.ts:440 reads CONVENTIONAL_STRETCH_DTI (50%). Platform runs a deliberately stricter 43% baseline overlay (ledger platform-conv-dti-cap-43). |
