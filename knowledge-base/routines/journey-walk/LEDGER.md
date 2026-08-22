@@ -18,12 +18,13 @@ and treat the `SKILL.md` summaries as a convenience copy. Record which source ea
 
 | next run walks | persona | account convention |
 |---|---|---|
-| **→ Journey 3** | Active buyer, self-employed / business owner | fresh `/signup` as `jse+<MMDD>@test.local`; answers must be **genuinely complex** — `employmentType: "self_employed"`, ownership ≥ 25%, two entities, one rental property |
+| **→ Journey 3** | Active buyer, self-employed / business owner | fresh `/signup` as `jse+<MMDD>@test.local`; **answers must actually be complex** — `employmentType: "self_employed"`, ownership ≥ 25%, two entities, one rental property. A walker who answers like a W-2 employee has walked journey 2 under a different filename |
 
 ## Run history
 
 | date | journey | source used | server (commit) | verdict | report |
 |---|---|---|---|---|---|
+| 2026-08-22 | **2 — Active buyer, W-2 salaried** | **`JOURNEYS.md` §2 on `origin/main`** — present at `git cat-file -e`, used as authoritative; the `SKILL.md` summaries were not relied on | `4206025f` (`origin/main` tip; **re-checked at the END of the walk — unchanged**, so nothing needed re-dating) via a dedicated worktree on :5001, pid verified with `lsof` | **WARN** — journey completes and all 13 answers persist exactly; 3 affordability answers in one session ending at "$607,000", the promotion never reaches the nav in-session, and an unclearable consent to-do. 6 `J-` + 2 `ux-` findings, 13 tickets; 4 candidate findings checked and **withdrawn** | [2026-08-22-journey-walk.md](../reports/2026-08-22-journey-walk.md) |
 | 2026-08-20 (2nd run) | **2 — Active buyer, W-2 salaried** | **`JOURNEYS.md` on `origin/main`** — authoritative, as this ledger directed. First run to use it | `c23079b5` via a dedicated worktree on :5001; **`main` did not move during the run** (re-checked at the end) | **WARN** — the promotion and the whole client→server capture path are clean; the damage is post-submission. 12 findings (`J-0820-01`..`12`), 12 tickets. **2 candidate findings tested and withdrawn before filing** | [2026-08-20-journey-walk-j2.md](../reports/2026-08-20-journey-walk-j2.md) |
 | 2026-08-20 | **1 — Aspiring owner** | `SKILL.md` summaries — JOURNEYS.md was absent from `origin/main` at 12:31Z and **arrived at 12:47Z, mid-walk**, via #595 | `b799b91d` (`origin/main` tip at start; main advanced to `8260d734` during the run) via a dedicated worktree on :5001 | **WARN** — 2 data-correctness defects, 1 surface unreachable at 320px, 11 tickets. Findings re-verified against `8260d734` after the merge; **one claim withdrawn**, one new finding (`ux-50`) found by that re-verification | [2026-08-20-journey-walk.md](../reports/2026-08-20-journey-walk.md) |
 
@@ -109,3 +110,24 @@ and treat the `SKILL.md` summaries as a convenience copy. Record which source ea
 - **Before filing any 320px or touch-target finding, check open PRs.** #587 (public calculator
   overflow) and #605 (touch targets, 232 → 0) were both open on 2026-08-20 and already covered
   findings this walk would otherwise have re-reported.
+
+## Added 2026-08-22 (journey 2)
+
+- **🚨 The funnel cannot be walked in this harness without forcing a frame after every click.**
+  The browser pane runs with `document.visibilityState === "hidden"` and **0 rAF callbacks/sec**,
+  so `AnimatePresence mode="wait"` stalls: the step counter advances while the question stays in
+  the DOM frozen at `opacity: 0`. **Not a defect** — `PreApproval.tsx:786-802` documents it,
+  verified 2026-07-17, and says only scripted drivers can reach it. Its own advice is the fix:
+  **take a screenshot after each click** — one delivered frame completes the transition. The real
+  Chrome surface (`claude-in-chrome`) was also backgrounded and measured 0 fps, so switching
+  browsers does not help.
+- **Clicking by `ref` still does not deliver** (same as 2026-08-20). Click by screenshot
+  coordinate and confirm the effect in the DOM.
+- **Do not re-file these — checked 2026-08-22 and found fixed or already registered:** `ux-30`
+  (the LE is reachable and correctly `ConsentGate`d), `ux-49` (no fabricated loan team),
+  **F-0820-21**, **F-061**, **F-079** (all three re-confirmed live, still open).
+- **`preview_start {name}` remains forbidden.** On 2026-08-22 the primary checkout was on
+  `feat/landing-coach-first`, **42 commits behind `origin/main`** with three uncommitted files.
+- **The seeded verification vendor is unconfigured locally**, so the self-reported → verified leg
+  cannot be walked. Report that leg as **not walked**; never infer it from the code.
+
