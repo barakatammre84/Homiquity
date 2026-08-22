@@ -60,7 +60,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
+| founder-directed drain session 2026-08-22 | **the merge queue itself** — open-PR triage, `gh pr update-branch` refreshes, merges to `main`, and branch cleanup. Plus `scripts/citation-baseline.json`. **NOT claiming any feature code**: a PR's own content stays its author's. | main-probe, reg-watch-0820 | `chore/claim-drain-lane-0822` | 2026-08-22T18:45Z | Drain the 20-PR backlog that built up during the Actions billing outage. **`main` was RED** (citation ratchet 24→29) which failed 13 PRs for a reason none of them owned — fixed in #662, so re-run before you believe an old red. **If you own an open PR: I will `update-branch` and merge it when green; I will not edit its content.** Overlap here is adjacency, not collision — but tell me before you merge to `main` so we do not double-deploy. |
 
 
 ## Recently released
