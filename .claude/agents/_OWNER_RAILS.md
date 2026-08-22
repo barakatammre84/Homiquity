@@ -53,11 +53,31 @@ the file.** Writing the failing test is fine when the test file itself is not on
 
 ## 4. Regulated logic
 
+- **The Selling Guide is the policy authority, and it is local.** Edition 08-05-2026 is committed
+  at `docs/fannie-mae/selling-guide/` — 423 citable sections. It controls over every job aid in
+  `docs/fannie-mae/`, and over anything in this repo. Reading it needs no tooling: find the page
+  with `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv`, then read the section
+  out of `docs/fannie-mae/selling-guide/selling-guide-text.txt`, where every page is prefixed
+  `[[PAGE n | <section>]]` so a plain grep for any phrase names the section that states it.
+  **Never answer a Fannie policy question from memory when one grep settles it.**
+- **An id that does not resolve is a WRONG citation, not an old one.** The Guide renumbers between
+  editions — 2026-03-04 moved self-employment income off B3-3.2/B3-3.4 — and a stale cite does not
+  announce itself: the old URL returned HTTP 200 and silently served the renumbered page, which is
+  how six sites came to cite a chapter that no longer stated their rule. Re-derive every id from
+  `section-index.tsv`. `pnpm guard:authority` fails the gate on an unresolvable id anywhere in a
+  diff, and on Guide-governed logic that names no section at all (TEAM_PRACTICES §10).
+- 🚨 **A value read out of a TABLE is not verified until you check the PDF page.** The text
+  extraction flattens tables: ruled ones survive, borderless ones do not — B2-2-03's
+  financed-property limits table is the known case, where reading order survives but the
+  row/column association does not. Prose may be trusted from the text; a threshold, matrix cell or
+  eligibility limit may not. The section index gives you the page number; open the PDF.
 - **Regulated math changes only with a citation** — a `data/regulatory/regulatory-ledger.json`
   entry in the same commit. No citation, no code change.
 - **Never invent** a MISMO data-point name, enumeration, XML container path, edit code or Special
-  Feature Code. If `docs/fannie-mae/` and the Fannie Loan Delivery job aid cannot confirm it,
-  stop and flag it. On a schema mismatch, drop the field — never invent a name to fill it.
+  Feature Code. The Selling Guide governs *policy*; the job aids in `docs/fannie-mae/` govern
+  *delivery mechanics* and are where MISMO names live. If neither can confirm it, stop and flag
+  it — the online Loan Delivery job aid returns 403 from here, so treat it as unavailable rather
+  than as a step you can execute. On a schema mismatch, drop the field — never invent a name.
 - **Reg Z readings are flagged, never asserted** — `docs/reg-z/` holds no authoritative source
   text, so a reading there is a ledger entry, not a claim, and it may move in one direction only:
   it may remove a borrower charge or tighten a gate, never create the violation it guards against.
