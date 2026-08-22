@@ -3,7 +3,7 @@
 **What this is:** the standing QA program that reviews every Homiquity feature against its
 intended use and verifies the end-to-end workflows function correctly. **Thirteen domain teams
 + a cross-cutting UX lens** (`DOMAINS.md`) + one workflow-verification pass (`WORKFLOWS.md`) +
-**four client-journey walks** (`JOURNEYS.md`) + documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
+**the client-journey walks** (`JOURNEYS.md`) + **the staff-journey walks** (`STAFF_JOURNEYS.md`) + documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
 after any significant change — the teams are durable agents in `.claude/agents/`.
 
 > **Verified census (supersedes "37/40/7"):** ~95 backend subsystems · 88 client pages · ~14
@@ -24,9 +24,18 @@ after any significant change — the teams are durable agents in `.claude/agents
 | `journey-walker-w2-buyer` | Walks the W-2 salaried buyer journey in the browser; owns the `aspiring_owner → active_buyer` promotion seam |
 | `journey-walker-self-employed` | Walks the self-employed buyer journey in the browser; proves the funnel's `complexIncome` branch is carried, not merely taken |
 | `journey-walker-affluent` | Walks the affluent move-up journey in the browser; owns the door with no explainer, the jumbo threshold, and promise-vs-reachability |
+| `journey-walker-condo-buyer` | Walks the condo/project journey in the browser against a detached control; owns the **property** axis, where a qualified borrower is declined for the building |
+| `journey-walker-staff-lo` | Walks the loan-officer desk as `lo@test.com` **and** as the borrower it invites; owns the seven-hop attribution chain (pointer **and** team row **and** `LoanTeamCard`) where the server is non-fatal |
+| `journey-walker-staff-processor` | Walks the processor desk and the borrower; owns one document rendered by two roles across two vocabularies (`status` vs `verificationStatus`) |
+| `journey-walker-staff-underwriter` | Walks the underwriter desk and two borrowers; owns the decision both directions — the 422 chain as rendered, then *can the borrower find the notice* (ux-24) |
+| `journey-walker-staff-closer` | Walks the desk with no verb; owns promise-vs-reachability for a named role the product gives no way to fund — expected `DEAD-ENDED (by design)`, minted once |
+| `journey-walker-staff-broker` | Walks the broker and the borrower it referred; the only negative headline in either fleet — stage must carry, contents must **not** (a leak is P0) |
 
-All four are reachable without knowing their names via the **`/journey-walk`** skill — a subagent
-nobody can find is not a control.
+Every `journey-walker-*` is reachable without knowing its name — client seats via **`/journey-walk`**,
+staff seats via **`/staff-journey-walk`** — because a subagent nobody can find is not a control.
+`admin` is deliberately not a staff seat (it bypasses every scoping gate and so can see no seam
+gates create — it is the counterpart with two permitted verbs); `loa` is folded into the LO seat;
+`lender` is deferred by policy. `STAFF_JOURNEYS.md` records why, so the question is not reopened.
 
 ## Program rules (binding)
 
@@ -57,7 +66,12 @@ nobody can find is not a control.
    owners implement, so a hand-off that names one becomes work rather than a line nobody reads. A walker that re-files a domain finding under a journey id
    has not added a control, it has added a duplicate; the register already paid for that lesson
    (the flat-0.5% PMI claim, filed independently by two agents and wrong on both grounds — Domain 5).
-8. **Journey findings live in their own id space: `J-<MMDD>-<NN>`,** minted from the walker's own
+   **For a staff walker, "two surfaces" includes two roles**: a control the client offers and the
+   server refuses is a client↔server seam — but per the route-gate-drift doctrine (*narrow the
+   client, never widen the server*) it is a HANDOFF to the client file's owner citing F-0818-13,
+   not a minted id. Only *named role, no verb, no path* mints a `DEAD-END`, once.
+8. **Journey findings live in their own id space: `J-<MMDD>-<NN>` for client walks and
+   `JS-<MMDD>-<NN>` for staff walks** (two lanes run on the same day), minted from the walker's own
    run date, never a next-free integer. `J-` ids never enter the `ux-NN` space — a journey walker
    does not get to grade a page — and never appear in a `WORKFLOWS.md` trace, which is
    `workflow-verifier`'s HTTP evidence. A journey finding that is really an existing
@@ -162,13 +176,25 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
 - Test entities use clearly-fake identities (`wfqa+*@test.local`, test-pattern SSNs matching
   the existing test-suite convention).
 - Nothing pushes to `main`; all changes land via PRs.
-- **Journey walks use one account per walker.** `journey-walker-aspiring-owner` logs in as the
-  seeded `renter@test.com` (`server/auth.ts:362`) and **must never apply** — applying promotes that
-  shared seat (`server/routes/lending/applications.ts:134`). The three buyer walkers self-register
-  `jw2+` / `jse+` / `jaf+<MMDD>@test.local` so the promotion they are testing is real; **never
-  `buyer@test.com`**, which is pinned to `active_buyer` (`server/auth.ts:363`) and cannot cross the
-  seam. `/test-login` rewrites the role on every login (`server/auth.ts:381`), so a polluted seed
-  role self-heals — the application rows it created do not.
+- **Client journey walks use one fresh account per walker.** `journey-walker-aspiring-owner` signs
+  up fresh as `jr+<MMDD>@test.local` and **must never apply** — *(amended 2026-08-20: the seeded
+  `renter@test.com` seat is retired as the primary because its central surface keys on the account's
+  own rows, and the dev DB had accumulated a `processing` application on it — `JOURNEYS.md` §1
+  records the probe to run if you want the seeded seat anyway)*. The buyer walkers self-register
+  `jw2+` / `jse+` / `jaf+` / `jcd+<MMDD>@test.local` so the promotion they are testing is real;
+  **never `buyer@test.com`**, which is pinned to `active_buyer` (`server/auth.ts:363`) and cannot
+  cross the seam. `/test-login` rewrites the role on every login (`server/auth.ts:381`), so a
+  polluted seed role self-heals — the application rows it created do not.
+- **Staff journey walks use the seeded `/test-login` seat for the role and a fresh borrower for
+  the file** — and the reason is the opposite of the client rule: a staff desk's central surfaces
+  key on the **file under test**, which the walker creates fresh as `jst+<MMDD><seat>@test.local`
+  and is the **only** file it acts on; the seat's accumulated rows are residue, not subject. Two
+  sessions, sequentially (one cookie jar). Admin is opened for exactly two verbs — team-add of the
+  walked seat to the walker's own file, and one staff-invite code for the LO seat's optional
+  onboarding leg — each listed with its audit action. Never change a role, never `force`, never
+  deliver an adverse-action notice, never run a sweep, never click the Intelligence tab
+  (F-0820-20). The borrower withdraws the file at the end unless it is terminal. Own worktree, own
+  port (5003), torn down after. Full rails: `STAFF_JOURNEYS.md` and J6–J13 in each staff agent.
 - **Browser-driven runs are local only, and default to 5001** (the primary checkout) — **never**
   the deployed site, where a failed Railway build leaves the previous container serving. A local
   `/api/health` answers `commit: null` on every branch, so identify the serving checkout with

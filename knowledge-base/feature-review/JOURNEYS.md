@@ -59,6 +59,7 @@ Status ledger (updated by the orchestrator after each run):
 | 2 | Active buyer — W-2 salaried | OPEN locally · **route dies under PRELAUNCH** (`/apply` is `<Gated>`, `App.tsx:267`) | — | not yet run |
 | 3 | Active buyer — self-employed / business owner | OPEN locally · **route dies under PRELAUNCH** (`/self-employed` `App.tsx:257` + `/apply` both `<Gated>`) | — | not yet run |
 | 4 | Active buyer — affluent / move-up (jumbo) | OPEN locally · **route dies under PRELAUNCH at the first click** (the door links straight to `<Gated>` `/apply`) | — | not yet run |
+| 5 | Active buyer — condo / project-eligibility | OPEN locally · **route dies under PRELAUNCH** (`/apply` is `<Gated>`) · ⚠️ **charter cites the Selling Guide, which is not on `main`** — see the entry | — | not yet run |
 
 ---
 
@@ -340,6 +341,104 @@ Status ledger (updated by the orchestrator after each run):
 > advisory — so between $766,550 and $806,500 the funnel calls a conforming loan "Jumbo."
 
 ---
+
+
+---
+
+## 5. Active buyer — condo / project-eligibility
+
+> **Why this seat exists, and why it is not an income journey.** Journeys 2–4 are shaped by *how the
+> borrower earns*. This one is shaped by *what they are buying* — the axis on which a perfectly
+> qualified borrower is declined. The funnel offers `condo` as one of four property types
+> (`shared/preApprovalForm.ts` — `single_family | condo | townhouse | multi_family`), and that
+> answer is then **consulted by almost nothing the borrower ever sees**: a unit-count regex in
+> `server/underwritingEngine.ts`, a pass-through field on `server/services/pricingAdapter.ts`, one
+> condition in `server/services/borrowerGraph.ts`, and — on the delivery side only — Special
+> Feature Code 588 for a detached condo unit
+> The genuine zeros, verified 2026-08-22 across `client/src`, `server` and `shared`: **`leasehold`
+> returns zero files**; so do *project review method*, *limited review*, *waiver of project review*,
+> *PERS*, and *condo questionnaire*; and **HOA appears in none of the four decision files**
+> (`underwritingEngine.ts`, `decisionEngine.ts`, `ruleEngine.ts`, `preUnderwriting.ts`). The funnel
+> enum has **no PUD and no co-op option at all**.
+>
+> **But it is not a clean absence, and the three exceptions are the best leads on this route.
+> Verify each before reporting it — these are leads, not findings:**
+>
+> 1. **The product already knows condos need project review — in the wrong path.**
+>    `server/propertyAnalyzer.ts` pushes the risk flag
+>    `"Condo - verify HOA, reserves, warrantability"`. Its only callers are `server/pricing.ts` and
+>    `server/routes/calculators.ts` — **the calculator path, not the application path.** The
+>    awareness exists where it costs nothing and is absent where the borrower relies on it. Find out
+>    whether that flag is ever rendered to anyone.
+> 2. **`isCooperative` is derived from a value the product cannot produce.**
+>    `server/services/loanDeliveryReadiness.ts` sets
+>    `isCooperative: propertyType.includes("co-op") || propertyType.includes("coop")`, while the
+>    intake enum is exactly `single_family | condo | townhouse | multi_family`. Nothing writes
+>    `co-op`, so the flag is permanently unset — yet `shared/fannieMae/loanDeliveryEdits.ts` carries
+>    EarlyCheck edits **6158** and **6159** governing cooperatives. **Delivery-side rules for a
+>    property type intake cannot represent** is a two-surface seam (intake → delivery), squarely the
+>    *silent success* class.
+> 3. **The education surface teaches what the funnel never asks.**
+>    `client/src/pages/education/glossaryData.ts` explains **HO-6** condo insurance and
+>    **Cooperative/co-op**. Both are concepts the intake has no field for. Explaining a thing and
+>    then never asking about it is a promise made on one surface and declined on another — this
+>    seat's subject, not a glossary complaint.
+>
+> **This is not a claim that the product is wrong** — a broker may reasonably defer project review
+> to the lender. It is a claim that the borrower is never told, and that is a two-surface finding
+> by construction: the property type is captured on one surface and its consequences appear on none.
+
+- **Persona**: buying an attached unit in a condo project. Enters through any door — there is no
+  condo door and no condo explainer — and picks `condo` at the property-type step. Their income may
+  be immaculate and their loan still impossible, for reasons no surface on their route mentions.
+- **Account**: fresh `/signup` as `jcd+<MMDD>@test.local`; starts `aspiring_owner`, ends
+  `active_buyer`. Select `propertyType: "condo"` at the funnel step and **change nothing else from
+  a clean W-2 profile** — the whole point is to isolate the property axis from the income axis. Walk
+  a `single_family` control pass and diff the two routes.
+- **Route**: `/` → `/apply` (choose `condo`) → complete the funnel → **submit / promotion** →
+  `/dashboard` → `/urla-form` (property section) → `/documents` (the generated request set) →
+  `/application-summary`, `/loan-options/:id`.
+- **Seams**:
+  1. **`propertyType` : funnel → every downstream surface.** The load-bearing assertion of this
+     journey. Read what the borrower is shown at each stop and record, per surface, whether the
+     answer `condo` changed **anything at all** versus the `single_family` control. A field captured
+     and never reflected is the capture-path defect class in its purest form.
+  2. property type → the document request set (`server/pipelineEngine.ts`). A condo file needs
+     project documentation a detached file does not. Assert whether the generated list differs.
+  3. property type → the decision explanation and any conditions shown to the borrower.
+  4. property type → the offers/pricing surface — `pricingAdapter` carries the field; find whether
+     anything the borrower sees is priced differently, or whether the field is inert.
+- **Promises**: the Landing doors promise to *"map the whole picture"* and to tell the borrower
+  *"what's actually within reach"* (`client/src/pages/public/Landing.tsx`). For a condo buyer,
+  reachability depends on the **project**, not only on them. Quote what they were promised and name
+  the surface that addresses it, or record that none does.
+- **Dead-end watch**: the pre-approval or decision surface — does it disclose that a condo is
+  subject to project review at all? An approval that is silent about the project is the outcome to
+  look hardest at, and it is a **compliance-risk flag**, not merely a UX gap: it shapes what the
+  borrower believes they can buy.
+- **Gate collisions**: `<Gated>` on `/apply` under PRELAUNCH, as journeys 2–4.
+- **Forbidden**: as journey 2. **And specifically: do not implement, propose, or assert project
+  policy.** You are recording what the product does and does not tell a condo buyer. Whether
+  Homiquity should model project review is a founder/product decision (see *Authority* below).
+- **Crosses domains**: 1 (public funnel), 2 (application & intake), 5 (underwriting & decisioning),
+  6 (pricing & disclosures), 8 (GSE delivery), 12 (property), UX lens.
+- **Owners crossed** (`knowledge-base/handbook/FEATURE_MAP.md`): `hq-intake-funnel-owner`,
+  `hq-property-owner`, `hq-underwriting-owner`, `hq-pricing-owner`, `hq-documents-owner`,
+  `hq-gse-delivery-owner`. Route every single-surface hand-off to one of these by name (CHARTER §7).
+
+> **Authority, and an honest gap.** The founder's highlighted Selling Guide (08-05-2026) marks the
+> project-eligibility cluster more heavily than anything else in the document — **B4-2.1-01**
+> (project types · review methods · waiver · delivery requirements · review expiration),
+> **B4-2.1-02** (waiver of project review), **B4-2.1-03** (ineligible projects), **B4-2.2-01**
+> (full review), **B4-2.2-04** (PERS), **B4-2.3-01** (PUD units) — alongside project insurance
+> (**B7-3-03**, **B7-3-04**, **B7-4-01/02**) and leasehold estates (**B2-3-03**).
+>
+> ⚠️ **Those sections are not citable from `main`.** `docs/fannie-mae/selling-guide/` is **empty on
+> `main`**; the captured corpus lives on PR **#650** and on a local-only branch (see
+> `knowledge-base/compliance/` once either lands). Until one merges, a walker **must not assert a
+> project-eligibility requirement** — it records what the product tells the borrower, flags the
+> finding `compliance-risk: yes (Fannie B4-2)`, and defers the requirement itself to
+> `compliance-auditor`. No captured source, no assertion.
 
 ## Baseline
 
