@@ -49,7 +49,7 @@
     },
     "A3-4-02": {
       "status": "partial",
-      "evidence": "Data quality and integrity is the keystone obligation. Enforced piecemeal (complianceInvariants, the authority gate, audit logging); there is no single control that proves every DU-submitted field is verifiable.",
+      "evidence": "Data Quality and Integrity — the keystone: data must be \"complete and accurate\", all DU data \"verifiable\", with \"adequate procedures in place to validate the integrity of specific data for each underwriting recommendation\"; inaccuracy is life-of-loan under A2-2-07. SWEPT 2026-08-21 for the defect class it forbids — a stored value discarded for a compile-time constant in the delivered package. Results: F-051 (AUS recommendation) already fixed in #545; F-053 (LoanAmortizationType) was live and is fixed here; LoanManualUnderwritingIndicator \"false\" is ACCURATE (no manual-UW path exists in either engine); CountryCode/PartyRoleType/TaxpayerIdentifierType/ContactPointRoleType/DataVersion are legitimate per-context constants. 🚨 COUPLED TRAP: BorrowerClassificationType is the literal \"Primary\" (server/mismo.ts:400) and is correct ONLY because buildPartyNode is called exactly once — the DTO has no co-borrower concept. Whoever fixes F-080 must make it Primary/Secondary keyed off borrowerSequenceNumber, which is the only valid discriminator; array position is not. Still `partial` overall: no single control proves every DU-submitted field is verifiable.",
       "verified": "2026-08-21"
     },
     "B2-1.2-01": {
@@ -185,6 +185,11 @@
     "B2-1.4-01": {
       "status": "implemented",
       "evidence": "Fixed-Rate Loans — the default product; delivered as LoanAmortizationType Fixed via mapAmortizationType (server/mismo.ts), which now asserts the platform default only when the field is unset rather than overriding a stored value.",
+      "verified": "2026-08-21"
+    },
+    "B1-1-01": {
+      "status": "partial",
+      "evidence": "Application package documentation. The delivered MISMO package carries ONE borrower — buildPartyNode (server/mismo.ts:1300) and buildBorrowerNode (:755) are each called once and the DTO has no co-borrower concept, so a co-borrower is dropped entirely and their employment is attributed to the primary. Registered as FINDINGS F-080 (P1) and CTO_ROADMAP 2.5; structural, not a literal swap. Verified open 2026-08-21.",
       "verified": "2026-08-21"
     }
   }
