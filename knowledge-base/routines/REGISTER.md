@@ -44,6 +44,39 @@ that `main` cannot show until work lands.
 
 Humans claim too — a routine cannot see your editor.
 
+## Before you touch someone else's PR — the check `gh` cannot do
+
+Added 2026-08-22, after a drain session update-branched PRs that had **live interactive sessions
+attached to them**. Neither `gh pr view` nor `ListAgents` shows this. A peer had to say it out loud.
+
+```bash
+# each row carries prNumber + isRunning — test it, do not eyeball the sidebar
+mcp__ccd_session_mgmt__list_sessions
+```
+
+`isRunning: true` with a `prNumber` means **a human or session is editing that PR right now**.
+Refreshing its branch or merging it pulls the rug out mid-edit. On 2026-08-22 that was **two**
+sessions on #650 and one each on #653 and #660 — invisible from the CLI.
+
+**Rule: run this before any `gh pr update-branch` or merge on a PR you did not open.**
+
+### Three things that look like a CI verdict and are not
+
+All three cost real time on 2026-08-22:
+
+1. **`main` itself can be red, and it fails everyone.** `guard:citations` failed on pristine
+   `origin/main` (24 → 29). CI tests the **merge-with-main** commit, so **13 open PRs went red on a
+   step none of them owned**. Two sessions diagnosed it independently from opposite directions
+   before either attributed it correctly. **Before debugging your own diff, run the failing guard
+   against pristine `origin/main`.** Fixed in #662.
+2. **A draft PR accumulates `statusCheckRollup` rows that read as coverage.** The gate's `if:`
+   includes `draft == false`, so it never ran — but #653 showed `checks=6` while ungated. The
+   failure mode is not an obvious blank, it is six green-ish rows. Same class of lie as
+   `mergeStateStatus: CLEAN`, which only ever meant "no conflicts". `gh pr ready` to get a verdict.
+3. **A rerun of a billing-era corpse can be a second corpse.** `gh run rerun` re-queues under the
+   *current* billing state. Check `steps` on the **rerun**, not just on the original: a real gate
+   run is 28–29 steps / ~3 min; a corpse is `steps=0` in ~2s.
+
 ## Graduated overlap response
 
 When your intended work meets a live claim, the answer is rarely "stop":
