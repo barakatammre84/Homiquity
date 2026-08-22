@@ -59,7 +59,7 @@
     },
     "B2-2-03": {
       "status": "partial",
-      "evidence": "Financed-property limits exist ONLY as delivery edit shared/fannieMae/loanDeliveryEdits.ts:642 (>6, from a 2020 EarlyCheck workbook) — not as an eligibility rule in the decision path. The Guide is occupancy-conditional: principal residence non-HomeReady no limit, HomeReady 2, second home/investment DU-10. FINDINGS U-23. Table-derived: confirm against the PDF page before coding.",
+      "evidence": "TABLE-VERIFIED against PDF p.245 by coordinate reconstruction, not text order: principal residence non-HomeReady = no limit; principal residence HomeReady = 2; second home/investment = DU-10; high-LTV refi exempt (B5-7-01). CORRECTS FINDINGS U-23, which says the code ignores occupancy — it does not. shared/fannieMae/loanDeliveryEdits.ts:638 already scopes edit 6439 to SecondHome/Investment; the actual gap is the THRESHOLD (>6 vs DU-10) plus the unenforced HomeReady limit of 2. The 6 comes from a June-2020 EarlyCheck workbook; B2-2-03 moved to 10 effective 11/05/2025. Guide-vs-job-aid conflict => ESCALATE per CLAUDE.md, do not pick. Also note the edit lives in the frozen delivery stack (guard:channel, zero client callers), so changing it alters validation nothing currently reaches.",
       "verified": "2026-08-21"
     },
     "B3-2-01": {
