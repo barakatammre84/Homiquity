@@ -107,6 +107,7 @@ doc-drift bug to fix):
 The re-runnable QA teams (agents in `.claude/agents/`) that review every feature vs intended use.
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
+- [design-identity/ILLUSTRATION_BRIEF.md](design-identity/ILLUSTRATION_BRIEF.md) — what to commission for the animated scenes, and the mechanism that already exists.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
