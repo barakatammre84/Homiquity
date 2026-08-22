@@ -10,6 +10,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { SelfEmployedDeskArt } from "@/components/illustrations/SelfEmployedDeskArt";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
   ArrowRight,
@@ -140,13 +141,24 @@ export default function SelfEmployed() {
                 </div>
               </div>
 
-              <FramedPhoto
-                src={lifestyleImages.selfEmployed.src}
-                alt={lifestyleImages.selfEmployed.alt}
-                testId="img-hero-se"
-                position="center 25%"
-                loading="eager"
+              {/* Replaces a posed stock photograph — the most generic thing on
+                  the page, and part of no system.
+
+                  🚨 NOT wired to `Scene`/`getScene`, deliberately. Doing that
+                  costs 106 EAGER bytes for every visitor of every page: those
+                  modules were imported by Landing alone, and a module shared by
+                  a second lazy route gets hoisted into the common eager entry.
+                  `guard:bundle` caught it and removing the import returned the
+                  build to the baseline exactly. 106 bytes forever is a bad
+                  trade for saving one future five-line edit.
+
+                  When the illustrator delivers `self-employed_poster.png`, the
+                  Landing journey card picks it up automatically (same id); wire
+                  this hero to `Scene` in that same change and move the baseline
+                  then, when the bytes actually buy something. */}
+              <SelfEmployedDeskArt
                 className="mx-auto w-full max-w-lg lg:max-w-none"
+                data-testid="img-hero-se"
               />
             </div>
           </div>
@@ -214,7 +226,7 @@ export default function SelfEmployed() {
 
         <section aria-labelledby="se-pain-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <OffsetBlock side="left" className="max-w-5xl" data-testid="offset-se-pain">
-            <h2 id="se-pain-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 id="se-pain-heading" className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-left">
               Why online lenders keep telling you no
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-6">
@@ -236,7 +248,7 @@ export default function SelfEmployed() {
         {/* The counter — what we actually do differently (all claims code-true) */}
         <section aria-labelledby="se-approach-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
           <OffsetBlock side="right" className="max-w-5xl" data-testid="offset-se-approach">
-            <h2 id="se-approach-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 id="se-approach-heading" className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-left">
               How we handle income like yours
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-6">
