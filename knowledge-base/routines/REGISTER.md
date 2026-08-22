@@ -60,7 +60,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
+| Capture Path Engineer (wiring audit 2026-08-22) | `client/src/pages/lending/preApproval/useDraftRestore.ts` + a colocated test — the server-draft restore mapping | strange-kilby-c389c0 | claude/musing-kepler-ca48fc | 2026-08-22T09:30Z | The server-draft restore drops the two VA residual-income answers. Adjacency noted: PR #634 claims `PreApproval.tsx`, `calculatorPrefill.ts` and `useDeferredSubmit.test.ts` in the same directory — this diff touches none of them. |
 
 
 ## Recently released
