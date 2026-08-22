@@ -1,21 +1,35 @@
 # Selling Guide conformance ledger
 
-**Source of truth:** Fannie Mae *Selling Guide*, edition **08-05-2026**, committed at
-[`docs/fannie-mae/selling-guide/`](../../docs/fannie-mae/selling-guide/).
+**Source of truth:** Fannie Mae *Selling Guide*, edition **08-05-2026**.
+
+The Guide itself is **not committed** — this repository is public and the Guide is Fannie
+Mae's copyrighted work. One command makes it greppable on your machine:
+
+```bash
+python3 scripts/extract-selling-guide.py
+```
+
+If it cannot find the PDF it prints where it looked and **stops**. That is the correct
+outcome, and it matches CLAUDE.md: a missing source is an honest gap, never a licence to
+answer a Fannie policy question from memory.
 
 Per [CLAUDE.md](../../CLAUDE.md) the *Selling Guide* is the top of the Fannie document
 hierarchy — it **controls over every job aid** in `docs/fannie-mae/`, and over anything in
-this repo. Until 2026-08-20 that hierarchy was unenforceable in practice: the Guide itself
-was not in the repo, the online job aid returns `403`, and several sections carried blocked
-verdicts because there was nothing to check them against. It is now local and greppable.
+this repo. Until 2026-08-20 that hierarchy was unenforceable in practice: the Guide was not available
+at all, the online job aid returns `403`, and several sections carried blocked verdicts
+because there was nothing to check them against. It is now one command away, and the
+sections that carried those verdicts (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292) are present.
 
-## How to check a rule (no tooling required)
+## How to check a rule
+
+`section-index.tsv` is **tracked**, so finding the governing section needs nothing at all:
 
 ```bash
 grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv
 ```
 
-That gives the PDF page. Then read the section straight out of the committed text:
+That gives the PDF page. Then read the section out of the generated text
+(`selling-guide-text.txt`, gitignored — run the script above once if it is absent):
 
 ```bash
 awk '/\[\[PAGE 523 /,/\[\[PAGE 531 /' docs/fannie-mae/selling-guide/selling-guide-text.txt
@@ -32,9 +46,10 @@ mode for a source-of-truth document. `grep -cF` on the same phrase returns 1. Ex
 artifacts also wrap lines mid-sentence, so a long quotation may legitimately span two lines:
 grep a distinctive fragment, not a whole sentence.
 
-`highlights.json` carries the 175 highlight annotations from the source PDF. In this
-edition they mark the sections **revised in the 08-05-2026 release** — treat it as the
-change list, not as commentary.
+`revised-sections.tsv` is **tracked** and lists the **25 sections revised in the
+08-05-2026 release**, derived from the source PDF's 175 highlight annotations. Titles and
+page numbers only — the annotated body text is quoted Guide content and is deliberately not
+reproduced. Diff it against the next edition to scope a re-scrub.
 
 ## Standing rule
 

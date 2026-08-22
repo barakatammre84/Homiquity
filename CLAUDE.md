@@ -23,11 +23,15 @@ The rules below still bind every session regardless of which skill is active.
 Before building or modifying **anything** that touches Fannie Mae loan delivery, ULDD, UCD,
 URLA, MISMO export, AUS/DU submission, edit codes, or Special Feature Codes:
 
-1. **Start at the Selling Guide — it is local and greppable.** Edition 08-05-2026 lives at
-   [`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/) as a PDF plus a full text
-   extraction where every page is prefixed `[[PAGE n | <section>]]`. `grep` the text, or look
-   the section up in `section-index.tsv`. **No tooling is required to read it** — do not answer
-   a Fannie policy question from memory when one `grep` settles it.
+1. **Start at the Selling Guide — one command makes it greppable.** Edition 08-05-2026.
+   `section-index.tsv` in [`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/)
+   is **tracked**, so `grep -n "B3-6-05" …/section-index.tsv` finds any section's page with no
+   setup. The full text is **gitignored** — this repo is public and the Guide is Fannie Mae's
+   copyrighted work — so generate it once with `python3 scripts/extract-selling-guide.py`, then
+   `grep` it freely (every page is prefixed `[[PAGE n | <section>]]`). If the script cannot
+   find the PDF it says where it looked and **stops**; that is an honest gap, not a licence to
+   answer from memory. ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an
+   anchor and reports zero matches on text that is verbatim there.
 2. **Then the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
    spec, UCD job aids, URLA documents, Special Feature Codes). See the README there for the
    expected inventory. If a document you need is missing, say so — do not proceed from memory.
@@ -115,10 +119,11 @@ grep -c "lowest total dollar amount of discount points" /tmp/regz.html   # 0 = y
 (`singlefamily.fanniemae.com/job-aid/loan-delivery`) returns **403**, so that instruction has no
 executable path in-session. But the claim that once followed it here — that Selling Guide
 **A2-2-04** and **B3-2-01/B3-2-02** were absent and carried blocked verdicts — **stopped being
-true on 2026-08-20**, when the full 08-05-2026 Guide was committed to
-[`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/). All three sections are
-present (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292), verified by body text and not by a page
-count. **This is the same lesson as the Reg Z paragraph above: an availability claim is a thing
+true on 2026-08-20**, when the founder supplied the full 08-05-2026 Guide. All three sections
+are present (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292), verified by body text and not by a page
+count. The Guide is *available*, not *committed* — the repo went public on 2026-08-22 and the
+copyrighted text is gitignored; `scripts/extract-selling-guide.py` regenerates it locally, and
+the tracked `section-index.tsv` locates any section without it. **This is the same lesson as the Reg Z paragraph above: an availability claim is a thing
 to test, not a thing to assert** — and unlike Reg Z, the fix here was procurement, and it has
 landed. Reg Z's `docs/reg-z/` still holds only a README, so its rail is unchanged.
 
