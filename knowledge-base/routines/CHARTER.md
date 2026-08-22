@@ -188,6 +188,7 @@ and the launch/procurement seats reduced to one weekly and one monthly.
 | 09:20 | `10 9 * * *` | **Capture Path Engineer** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
 | 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | one end-to-end workflow driven in a browser, first seam **fixed** |
 | 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
+| 13:40 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | one staff desk walked as the seat **and** its counterpart, own port 5003, torn down after |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
 | 17:06 | `5 17 * * *` | **Client Journey Walk** (`client-journey-walk`) | daily | no — trace + tickets | one persona walked end to end in a real browser |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
