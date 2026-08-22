@@ -173,7 +173,7 @@ export function Navigation() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="touch-target flex items-center">
-            <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
+            <span className="text-2xl font-bold tracking-tight text-flare">homiquity</span>
           </Link>
 
           <div className="hidden items-center gap-1 lg:flex">

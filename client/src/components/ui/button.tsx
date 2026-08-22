@@ -11,8 +11,26 @@ import { cn } from "@/lib/utils"
  *  outline   = Layer 1: white + hairline (elevate supplies the hover tint)
  *  destructive = semantic pop (danger red, outside the ramp)
  */
+/**
+ * Radius and weight, 2026-08-20: `rounded-md` (8px) → `rounded-full`, and
+ * `font-medium` → `font-semibold`.
+ *
+ * Measured off Habito's live CTA rather than chosen by taste: border-radius 32px
+ * on a 48px control (a full pill), padding 0 32px, font-weight 700. Monzo's
+ * display sits at 800. A pill reads as a deliberate control; an 8px rectangle is
+ * what every shadcn app ships unmodified, which is precisely the "generic"
+ * complaint this work exists to answer.
+ *
+ * font-semibold rather than the reference's 700, because this app pairs it with
+ * Inter/Geist rather than Roobert — 700 in Inter at 14px goes muddy where
+ * Roobert stays crisp. The reference is a reference, not a spec.
+ *
+ * Every variant and size inherits this, so the change reaches every button in
+ * the app without touching a single call site. Nothing asserts button classes in
+ * the test suite, verified before editing.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-150 ease-in-out" +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-150 ease-in-out" +
   " hover-elevate active-elevate-2",
   {
     variants: {

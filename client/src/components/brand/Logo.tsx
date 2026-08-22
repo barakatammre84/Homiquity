@@ -32,7 +32,9 @@ const imgHeight = {
 } as const;
 
 const toneClass = {
-  brand: "text-primary", // brand hue on light surfaces
+  brand: "text-flare", // the wordmark carries the orange accent on light surfaces.
+  // WCAG 1.4.3 exempts logotypes from contrast, which is why the BRIGHT flare is
+  // permitted here and nowhere a person has to read prose (use --flare-ink there).
   onDark: "text-sidebar-foreground", // on the royal sidebar / dark surfaces
   mono: "text-foreground", // neutral
 } as const;

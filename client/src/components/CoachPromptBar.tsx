@@ -20,10 +20,11 @@ import { setPendingCoachQuestion } from "@/lib/pendingCoachQuestion";
  * pre-approval funnel uses for a deferred submit) and the visitor is sent to
  * /signup; getPostAuthRoute then lands them on /ai-coach, which sends it.
  *
- * Colour note: this renders on the dark royal-blue hero, so its type and hairlines
- * are `primary-foreground` (the token that resolves to pure white) rather than a
- * bare literal — the substitution design-token-guard names in its remediation hint.
- * (The guard's regex reads comments too, so don't spell the literal here.)
+ * Colour note: this now renders on the MINT hero, not a dark one. It was styled
+ * white-on-dark (`primary-foreground` type, translucent chips); on a light ground
+ * every one of those went invisible. It reads from the ordinary light-surface
+ * tokens instead — white chips with a hairline on mint, which is also the
+ * container treatment used across the page.
  */
 
 /**
@@ -60,7 +61,7 @@ export function CoachPromptBar() {
           e.preventDefault();
           ask(question);
         }}
-        className="flex items-center gap-2 rounded-2xl border border-primary-foreground/15 bg-card p-2 shadow-card-lg sm:gap-3 sm:p-3"
+        className="flex items-center gap-2 rounded-full border border-border bg-card p-2 shadow-card-lg sm:gap-3 sm:p-3"
       >
         <span
           className="ml-1 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:flex"
@@ -97,7 +98,7 @@ export function CoachPromptBar() {
         <Button
           type="submit"
           size="icon"
-          className="h-11 w-11 shrink-0 rounded-xl"
+          className="h-11 w-11 shrink-0"
           disabled={!question.trim()}
           aria-label="Ask Homi"
           data-testid="button-coach-ask"
@@ -112,7 +113,7 @@ export function CoachPromptBar() {
             key={prompt}
             type="button"
             onClick={() => ask(prompt)}
-            className="min-h-11 rounded-full border border-primary-foreground/25 bg-primary-foreground/10 px-4 py-2 text-sm text-primary-foreground backdrop-blur transition-colors hover:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+            className="min-h-11 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             data-testid={`button-coach-prompt-${prompt.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`}
           >
             {prompt}
@@ -124,7 +125,7 @@ export function CoachPromptBar() {
           And the broker fact — Homiquity does not make credit decisions or fund
           loans (Footer.tsx), so the page must never leave the impression that the
           assistant, or we, decide anything. */}
-      <p className="mt-4 text-center text-sm text-primary-foreground/75" data-testid="text-coach-disclaimer">
+      <p className="mt-4 text-center text-sm text-muted-foreground" data-testid="text-coach-disclaimer">
         Homi explains and prepares — lenders make the credit decision. Guidance and
         estimates, not a loan approval, offer, or commitment.
       </p>
