@@ -14,6 +14,8 @@ import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { Icons, iconSize } from "@/lib/icons";
+import { SpotArt } from "@/components/SpotArt";
+import { GuidanceMark, IncomeMark, AdvocacyMark, LicensingMark } from "@/components/illustrations/trustMarks";
 import { lenderAdvocacyClause, lenderAdvocacyLine } from "@shared/lenderPanel";
 
 /**
@@ -124,11 +126,17 @@ const TRUST_POINTS = [
   {
     id: "guidance",
     icon: Icons.coach,
+    /** SpotArt keys uploaded art off this concept; the mark is the interim. */
+    spot: "coach" as const,
+    mark: <GuidanceMark />,
     label: "Homi answers your questions any hour, in plain English",
   },
   {
     id: "income",
     icon: Icons.done,
+    /** SpotArt keys uploaded art off this concept; the mark is the interim. */
+    spot: "done" as const,
+    mark: <IncomeMark />,
     // Was "We work out every way your income can count — not just the obvious
     // one". The multi-path engine exists (shared/incomePaths.ts) but the funnel
     // does not feed self-employment into it, so the claim is false at the only
@@ -138,11 +146,17 @@ const TRUST_POINTS = [
   {
     id: "advocacy",
     icon: Icons.people,
+    /** SpotArt keys uploaded art off this concept; the mark is the interim. */
+    spot: "people" as const,
+    mark: <AdvocacyMark />,
     label: `We work for you. ${lenderAdvocacyLine()}`,
   },
   {
     id: "licensing",
     icon: Icons.security,
+    /** SpotArt keys uploaded art off this concept; the mark is the interim. */
+    spot: "security" as const,
+    mark: <LicensingMark />,
     label: "Licensed, regulated, and straight with you",
     href: "/disclosures#licensing",
     linkLabel: "See where we're licensed",
@@ -330,16 +344,17 @@ export default function Landing() {
           <div className="mx-auto max-w-6xl">
             <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {TRUST_POINTS.map((point) => {
-                const Icon = point.icon;
                 return (
                   <li
                     key={point.id}
                     className="flex items-start gap-3"
                     data-testid={`item-trust-${point.id}`}
                   >
-                    <Icon
-                      className={`${iconSize.emphasis} mt-0.5 shrink-0 text-primary`}
-                      aria-hidden="true"
+                    <SpotArt
+                      name={point.spot}
+                      size="feature"
+                      fallback={point.mark}
+                      className="mt-0.5 shrink-0 text-primary"
                     />
                     <span className="text-sm leading-relaxed text-muted-foreground">
                       {point.label}
