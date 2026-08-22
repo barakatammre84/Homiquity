@@ -3,7 +3,7 @@
 **What this is:** the standing QA program that reviews every Homiquity feature against its
 intended use and verifies the end-to-end workflows function correctly. **Thirteen domain teams
 + a cross-cutting UX lens** (`DOMAINS.md`) + one workflow-verification pass (`WORKFLOWS.md`) +
-**four client-journey walks** (`JOURNEYS.md`) + documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
+**five client-journey walks** (`JOURNEYS.md`) + documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
 after any significant change — the teams are durable agents in `.claude/agents/`.
 
 > **Verified census (supersedes "37/40/7"):** ~95 backend subsystems · 88 client pages · ~14
@@ -24,6 +24,7 @@ after any significant change — the teams are durable agents in `.claude/agents
 | `journey-walker-w2-buyer` | Walks the W-2 salaried buyer journey in the browser; owns the `aspiring_owner → active_buyer` promotion seam |
 | `journey-walker-self-employed` | Walks the self-employed buyer journey in the browser; proves the funnel's `complexIncome` branch is carried, not merely taken |
 | `journey-walker-affluent` | Walks the affluent move-up journey in the browser; owns the door with no explainer, the jumbo threshold, and promise-vs-reachability |
+| `journey-walker-condo-buyer` | Walks the condo/project journey in the browser against a detached control; owns the **property** axis, where a qualified borrower is declined for the building |
 
 All four are reachable without knowing their names via the **`/journey-walk`** skill — a subagent
 nobody can find is not a control.
