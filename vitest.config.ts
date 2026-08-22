@@ -93,6 +93,10 @@ export default defineConfig({
       "tests/complaintEscalation.test.ts",
       "tests/cycleTimeReport.test.ts",
       "tests/ruleEngine.test.ts",
+      // The Research state of the guideline loop. It went silent for 47 days
+      // with every gate green — a monitor that stops running emits nothing to
+      // be wrong about, and two of its four sources report false-clean.
+      "tests/regulatoryWatch.test.ts",
       "tests/decisionEngineGaps.test.ts",
       // WF1-002: the engine's compensation-independent pricing projection.
       "tests/paymentProjection.test.ts",
