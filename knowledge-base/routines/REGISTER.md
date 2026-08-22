@@ -60,10 +60,12 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| Capture Path Engineer (wiring audit 2026-08-22) | `client/src/pages/lending/preApproval/useDraftRestore.ts` + a colocated test — the server-draft restore mapping | strange-kilby-c389c0 | claude/musing-kepler-ca48fc | 2026-08-22T09:30Z | The server-draft restore drops the two VA residual-income answers. Adjacency noted: PR #634 claims `PreApproval.tsx`, `calculatorPrefill.ts` and `useDeferredSubmit.test.ts` in the same directory — this diff touches none of them. |
+| *(none)* | — | — | — | — | The board is empty as of 2026-08-22T10:05Z. Claim before you write. |
 
 
 ## Recently released
+
+| Capture Path Engineer (wiring audit 2026-08-22) | `client/src/pages/lending/preApproval/useDraftRestore.ts` + colocated test | strange-kilby-c389c0 / `claude/musing-kepler-ca48fc` | claimed 2026-08-22 09:30, released 10:05 | **landed on branch, not merged** — the authenticated draft restore dropped `householdFamilySize` and `homeSquareFootage` (the VA residual-income pair, 38 CFR 36.4340(e)): collected by the funnel, autosaved, stored as integers, and then reset to blank by `form.reset` while the banner said "we loaded your saved progress". `draftToFormValues` is now exported and guarded by a completeness test — no key of `PRE_APPROVAL_DEFAULTS` may survive a full draft still equal to its blank default. Adjacency: PR #634 holds `PreApproval.tsx` / `calculatorPrefill.ts` / `useDeferredSubmit.test.ts` in the same directory; untouched here. Report: [reports/2026-08-22-wiring-audit.md](reports/2026-08-22-wiring-audit.md). |
 
 | founder-directed close-out session 2026-08-20 | the merge queue itself — conflict resolutions inside PRs #624 #598 #619 #617 #607 #623 #605 #628 #632 #630 #636, baseline/table regenerations, branch deletions, the close-out report | (three drain worktrees) | released same day | **shipped** — 19 open PRs + ~30 bare branches drained to 4 open (1 parked on the billing outage, 2 review drafts); 21 PRs' content merged, locally gated end to end; 14 dead branches tombstoned; the #615 stacked-base incident caught and recovered as #630 (`baseRefName` is now a mandatory pre-merge check). Full narrative: [logs/2026-08-20-merge-queue-close-out.md](../logs/2026-08-20-merge-queue-close-out.md). Standing anti-drain rules now bind future sessions: drain before build · done = merged + health-verified · no bare branches (first commit → draft PR) · docs-only routine reports ride a fast lane. |
 

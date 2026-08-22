@@ -41,7 +41,25 @@ function draftHasAnswers(draft: LoanApplication): boolean {
   );
 }
 
-function draftToFormValues(
+/**
+ * The server draft → form-values mapping. **Every field the funnel collects and
+ * the draft row persists must appear here**, because the restore is a
+ * `form.reset` over these values: a field omitted here is not "left alone", it
+ * is reset to the funnel's blank default while the banner says the progress was
+ * loaded.
+ *
+ * That is exactly how the VA residual-income pair was lost. `householdFamilySize`
+ * and `homeSquareFootage` are asked only of veterans (`computeRoute` injects
+ * both steps when `isVeteran`), autosaved like every other answer
+ * (`buildDraftPatchPayload`), and stored as integers
+ * (`shared/schema/lendingCore.ts:93-94`) — but they were missing from this
+ * object, so a veteran who resumed on another device was told "we loaded your
+ * saved progress" and then handed back the two steps they had already answered,
+ * blank, in the middle of an otherwise prefilled funnel.
+ *
+ * Exported for tests.
+ */
+export function draftToFormValues(
   draft: LoanApplication,
   current: PreApprovalFormData,
 ): PreApprovalFormData {
@@ -65,6 +83,14 @@ function draftToFormValues(
     isFirstTimeBuyer: !!draft.isFirstTimeBuyer,
     avoidsInterestFinancing: !!draft.avoidsInterestFinancing,
     propertyState: draft.propertyState || "",
+    // VA residual-income inputs (38 CFR 36.4340(e)). Integer columns, string
+    // form fields — the same widening `employmentYears` and `creditScore` do
+    // above. `|| ""` keeps a stored 0 out of the form, which is correct: the
+    // schema's floors are 1 person and 100 sq ft, so 0 is not an answer.
+    householdFamilySize: draft.householdFamilySize
+      ? String(draft.householdFamilySize)
+      : "",
+    homeSquareFootage: draft.homeSquareFootage ? String(draft.homeSquareFootage) : "",
     hasAdditionalIncome: sources.length > 0,
     incomeSources: sources,
   };
