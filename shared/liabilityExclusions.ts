@@ -49,12 +49,18 @@ export const OTHER_PARTY_RELATIONSHIPS = [
 
 export type OtherPartyRelationship = (typeof OTHER_PARTY_RELATIONSHIPS)[number]["value"];
 
+/**
+ * Every field optional on purpose: the predicate is read with full DB rows,
+ * with `Partial<UrlaLiability>` form rows, and with the decision path's
+ * narrow liability shape, and an absent answer must mean the same thing as a
+ * NULL one — "not answered".
+ */
 export interface PaidByOtherPartyFacts {
-  liabilityType: string | null | undefined;
-  paidByOtherParty: boolean | null | undefined;
-  otherPartyObligated: boolean | null | undefined;
-  otherPartyInterestedParty: boolean | null | undefined;
-  usesRentalIncomeFromProperty: boolean | null | undefined;
+  liabilityType?: string | null;
+  paidByOtherParty?: boolean | null;
+  otherPartyObligated?: boolean | null;
+  otherPartyInterestedParty?: boolean | null;
+  usesRentalIncomeFromProperty?: boolean | null;
 }
 
 export type PaidByOtherPartyIneligibleReason =

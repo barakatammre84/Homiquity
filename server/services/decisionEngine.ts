@@ -159,9 +159,7 @@ export function describeEngineGap(err: unknown): string[] {
  * simulator so the two can never quote different debt pictures.
  */
 export function sumOpenMonthlyLiabilities(
-  liabilities: Array<
-    { toBePaidOff: boolean | null; monthlyPayment: unknown } & Partial<PaidByOtherPartyFacts>
-  >,
+  liabilities: Array<{ toBePaidOff: boolean | null; monthlyPayment: unknown } & PaidByOtherPartyFacts>,
   fallbackMonthlyDebts: unknown,
 ): number {
   if (liabilities.length === 0) return safe(fallbackMonthlyDebts);

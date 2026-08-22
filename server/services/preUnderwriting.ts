@@ -613,8 +613,8 @@ export async function reconcileThirdPartyPaidDebtConditions(
   declaredLiabilities: DeclaredLiability[] | null | undefined,
 ): Promise<void> {
   const prefix = `${PAID_BY_OTHER_PARTY_CONDITION_RULE}:`;
-  const wanted = new Map(
-    excludableThirdPartyPaidDebts(declaredLiabilities).map((d) => [`${prefix}${d.id}`, d] as const),
+  const wanted = new Map<string, DeclaredLiability>(
+    excludableThirdPartyPaidDebts(declaredLiabilities).map((d) => [`${prefix}${d.id}`, d]),
   );
   const existing = await storage.getLoanConditionsByApplication(applicationId);
   for (const c of existing) {
