@@ -73,8 +73,23 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
     const rest = CI.slice(start + 1);
     const next = rest.slice(1).search(/\n {2}[\w-]+:\n/);
     const body = next === -1 ? rest : rest.slice(0, next + 1);
+    // An `if:` may be a single line OR a folded block scalar (`if: >-` followed
+    // by indented continuation lines). Reading only the first form returned the
+    // literal ">-", which does not match any assertion below — so the FIRST
+    // multi-line condition anyone wrote turned this whole file red for the wrong
+    // reason. (Red, at least: had the assertions been negative — `not.toMatch` —
+    // the same bug would have made them vacuously PASS instead, which is the
+    // version of this that ships a broken trigger.)
     const m = body.match(/^\s{4}if:\s*(.+)$/m);
-    return m?.[1] ?? "";
+    if (!m) return "";
+    if (!/^[>|][-+]?$/.test(m[1].trim())) return m[1];
+    const after = body.slice(body.indexOf(m[0]) + m[0].length);
+    const lines: string[] = [];
+    for (const line of after.split("\n").slice(1)) {
+      if (!/^\s{6,}\S/.test(line)) break;
+      lines.push(line.trim());
+    }
+    return lines.join(" ");
   };
 
   // PAUSED STATE, 2026-08-19. Development is local-only and the Railway production
@@ -113,6 +128,37 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
 
   it("gate runs only on pull_request", () => {
     expect(jobCondition("gate")).toMatch(/github\.event_name == 'pull_request'/);
+  });
+
+  // Cost control (KTLO-2), continuing #620. These two remove whole classes of
+  // run that could never have changed a verdict.
+  it("gate skips draft PRs — a draft cannot merge, so gating each push buys nothing", () => {
+    expect(jobCondition("gate")).toMatch(/github\.event\.pull_request\.draft == false/);
+  });
+
+  it("gate skips a TITLE-only edit, but never a body edit or a base retarget", () => {
+    const cond = jobCondition("gate");
+    expect(cond).toMatch(/github\.event\.action == 'edited'/);
+    // `edited` stays in `types` because guard:security reads the PR BODY from the
+    // event payload — a security review added after the fact MUST re-gate.
+    expect(cond, "a body edit must still re-gate — guard:security reads it").toMatch(
+      /!github\.event\.changes\.body/,
+    );
+    // A retarget also arrives as `edited`, and a new base is a real re-gate.
+    expect(cond, "a base retarget must still re-gate — it is a new base").toMatch(
+      /!github\.event\.changes\.base/,
+    );
+  });
+
+  it("verify-deploy probes the Railway origin, never www", () => {
+    // `www.homiquity.com` answers through Squarespace DNS, where a stale record,
+    // a redirect, or a cached edge response can answer for something other than
+    // the Railway service this workflow just deployed to. A false GREEN here is
+    // precisely the silent-stale-prod condition the job exists to catch.
+    expect(CI).toMatch(/curl [^\n]*homiquity-production\.up\.railway\.app\/api\/health/);
+    expect(CI, "a `www` probe would let the verifier read the wrong origin").not.toMatch(
+      /curl [^\n]*www\.homiquity\.com/,
+    );
   });
 });
 

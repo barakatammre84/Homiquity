@@ -109,7 +109,35 @@ jobs:
     # Recovery if it does deadlock: re-point the rule with the PATCH above, or turn
     # enforce_admins off temporarily (Settings → Branches). Both need repo admin.
     name: gate (typecheck · tests · schema guard)
-    if: github.event_name == 'pull_request'
+    # COST (KTLO-2), on top of #620. Two classes of run that could never have
+    # changed a verdict:
+    #
+    #   not a draft    — a draft cannot merge, so gating every push to one buys
+    #                    nothing a later run does not also buy. `ready_for_review`
+    #                    is already in `types`, so the first thing that happens
+    #                    when a draft becomes mergeable is a full gate.
+    #                    Honest sizing: ZERO of the 60 PRs opened 2026-08-18..20
+    #                    were drafts, so this saves nothing TODAY. It is here
+    #                    because this repo's own orphan-branch practice is to park
+    #                    a branch behind a draft PR rather than leave it bare —
+    #                    the moment that is followed at any volume, drafts become
+    #                    a standing invisible cost.
+    #
+    #   body actually  — `edited` is in `types` because guard:security reads the
+    #   changed          PR BODY from the event payload, so a security review
+    #                    added after the fact must re-gate (observed on #424).
+    #                    But `edited` also fires on a TITLE edit, and a title
+    #                    cannot change any guard's verdict. `changes.body` is
+    #                    present only when the body is what changed.
+    #                    `changes.base` is deliberately NOT skipped: a retarget
+    #                    arrives as `edited` and IS a real re-gate against a new
+    #                    base.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.draft == false
+      && !(github.event.action == 'edited'
+           && !github.event.changes.body
+           && !github.event.changes.base)
     # One in-flight gate per PR — a new push supersedes the old run instead of
     # racing it. Without this, every push to a branch started a fresh ~5-minute
     # run while the superseded one ran to completion for a commit nobody would
@@ -630,8 +658,17 @@ jobs:
           # costs nothing but the ability to wait out a >6-minute queue, which the
           # measured distribution has never contained. If a legitimately slow build
           # ever trips this, the recovery is unchanged and cheap: re-run the job.
+          # HOST: the Railway origin, never `www`. This job's entire question is
+          # "is prod serving THIS commit", and `www.homiquity.com` answers through
+          # Squarespace DNS — a stale record, a redirect, or a cached edge response
+          # can all make it answer for something other than the Railway service
+          # this workflow just deployed to. CLAUDE.md and the DNS runbook both
+          # state the rule: machine-to-machine uses `*.up.railway.app`; `www` is
+          # for humans. A deploy verifier reading the wrong origin is the one
+          # failure mode it cannot have, because a false GREEN here is exactly the
+          # silent-stale-prod condition the job exists to catch.
           for i in $(seq 1 18); do
-            got="$(curl -sf --max-time 10 https://www.homiquity.com/api/health \
+            got="$(curl -sf --max-time 10 https://homiquity-production.up.railway.app/api/health \
                    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit") or "")' \
                    2>/dev/null || true)"
             if [ "$got" = "$EXPECTED" ]; then
