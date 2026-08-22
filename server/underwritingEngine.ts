@@ -212,6 +212,26 @@ export interface UnderwritingInput {
    */
   loanPurpose?: string;
   /**
+   * Amortization type — `fixed` or `adjustable`. The URLA Section 4a form offers
+   * "Adjustable Rate (ARM)" and `loan_applications.amortization_type` stores it,
+   * so a borrower can declare an ARM today.
+   *
+   * B3-6-04 does NOT qualify an ARM at the note rate: an initial fixed period of
+   * five years qualifies at the greater of (note rate + first rate-change cap) or
+   * the fully indexed rate, and three years or less at the maximum rate that
+   * could apply during the first five years. `derivePricing` prices a 30-year
+   * fixed regardless, so an ARM would be qualified at its teaser rate —
+   * understating the payment and the DTI.
+   *
+   * The eight `arm_*` columns that would let us compute the correct rate
+   * (index, margin, initial/periodic/lifetime caps, adjustment frequency) exist
+   * on the table and are read by `mismoValidation` at delivery — but nothing
+   * writes them. So the qualifying rate is not merely unimplemented, it is
+   * uncomputable from captured data. Route to a human rather than qualify at the
+   * teaser rate.
+   */
+  amortizationType?: string;
+  /**
    * Property type and unit count as OBSERVED by an external source (e.g. the
    * address/AVM lookup), when available. Reconciled against the declared values
    * to surface a possible misrepresentation. Optional and additive: when absent,
@@ -386,6 +406,20 @@ export class ConsolidatedUnderwritingEngine {
       if (purpose !== "purchase" && purpose !== "") {
         reviewReasons.push(
           `Loan purpose "${purpose}" is not a purchase — refinance LTV ceilings come from the Fannie Mae Eligibility Matrix (B2-1.3-02 / B2-1.3-03), which this system does not yet encode. Manual review required.`,
+        );
+      }
+
+      // B3-6-04, Qualifying Payment Requirements: the qualifying rate is the note
+      // rate for FIXED-RATE mortgages only. An ARM qualifies at the greater of
+      // the note rate plus its first rate-change cap or the fully indexed rate
+      // (five-year initial period), or at the maximum rate reachable in the
+      // first five years (three years or less). We price a 30-year fixed, and
+      // the arm_* terms needed to compute the real figure are never captured —
+      // so the honest move is a human, not a teaser-rate approval.
+      const amortization = (input.amortizationType ?? "fixed").toLowerCase().trim();
+      if (amortization === "adjustable" || amortization === "arm") {
+        reviewReasons.push(
+          `Adjustable-rate loan: B3-6-04 requires qualifying at the greater of the note rate plus the first rate-change cap or the fully indexed rate, not the initial rate. The ARM terms needed to compute that (index, margin, caps) are not captured, so this file cannot be qualified automatically. Manual review required.`,
         );
       }
 

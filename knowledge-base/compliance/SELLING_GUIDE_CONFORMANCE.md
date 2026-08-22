@@ -237,6 +237,69 @@ Matrix, and a fabricated ceiling would be exactly the failure this whole pass ex
 prevent. Tightening a gate is the only direction a reading may move without its source in hand.
 Omitted purpose still defaults to `purchase`, so genuine purchase files are byte-identical.
 
+### C-9 — An ARM could be declared, qualified at its teaser rate, and never delivered
+
+Found by the capture-vs-consumption audit below, not by reading a section.
+
+**B3-6-04, Qualifying Payment Requirements.** The note rate is the qualifying rate for
+**fixed-rate mortgages only**. An ARM with a five-year initial fixed period qualifies at the
+**greater of** the note rate plus its first rate-change cap or the fully indexed rate; three
+years or less, at the maximum rate reachable in the first five years.
+
+The chain that made this live rather than theoretical:
+
+1. URLA Section 4a offers **"Adjustable Rate (ARM)"** (`AMORTIZATION_TYPE_OPTIONS`);
+2. `loan_applications.amortization_type` stores it, written by the URLA save path;
+3. `derivePricing` prices a 30-year fixed regardless, and the engine never read the column;
+4. `mismoValidation` then **demands** `arm_index_type`, `arm_margin` and `arm_initial_cap` at
+   delivery — columns nothing in the product writes.
+
+So an ARM borrower was qualified at the teaser rate *and* could not be delivered. Both halves
+were invisible: the first because the engine ignored a column, the second because the validator
+only fires much later.
+
+The engine now routes an adjustable file to human review, citing B3-6-04 and naming the missing
+capture. Deliberately no rate or cap is invented — the terms needed to compute the real figure
+are not captured, so this is uncomputable rather than merely unimplemented. Fixed-rate files are
+byte-identical.
+
+---
+
+## The capture-versus-consumption audit (2026-08-22)
+
+Five of the most serious findings on this page share one shape: **a value that exists in the
+capture or marketing surface and is invisible to the engine** — HOA dues (C-6), loan purpose
+(C-8), co-borrower credit (G-15), real estate owned (G-16), DPA seconds (G-21). That is a class,
+not a coincidence, so it was worth measuring rather than continuing to find instances by
+reading.
+
+**Method** (repeatable): enumerate the columns on `loan_applications`, enumerate every
+`app.<field>` / `application.<field>` reference across the decision and pricing path
+(`decisionEngine`, `underwritingEngine`, `loanEstimate`, `preUnderwriting`, `scenarioSimulator`,
+`income/orchestrator`, `underwriting`), and take the difference — excluding infrastructure
+columns (ids, timestamps, AUS/HMDA/TRID bookkeeping, derived ratios).
+
+**Result: 67 captured columns, 27 read by the decision path, 21 unread.** Triaged:
+
+| Unread columns | Verdict |
+|---|---|
+| `amortizationType` + the 8 `arm_*` terms | 🚨 **Defect — C-9.** The form offers ARM; the engine ignored it; delivery demands terms nothing writes. |
+| `totalPointsAndFees` | ✅ Sound. `mismoValidation` computes a lower bound from platform charges when it is absent and reports a **warning, never a pass** — a prior session already fixed the "missing ⇒ compliant" trap. |
+| `incomeVerified`, `assetsVerified`, `creditVerified` | ✅ Read by `services/verification.ts`; they feed the provenance system the engine *does* consume. |
+| `d1cAssetsRelief`, `d1cIncomeRelief`, `d1cEmploymentRelief` | ✅ Day 1 Certainty relief belongs to the AUS/autopilot lane, not the deterministic engine. |
+| `employmentYears`, `employerName` | ✅ Read elsewhere; the engine deliberately prefers the authoritative `urla_employment` rows. |
+| `propertyAddress`, `propertyCity`, `propertyZip` | ✅ `propertyState` is what pricing needs; the rest are not decision inputs. |
+| `avoidsInterestFinancing` | ⚠️ Expected — the Islamic-finance lane is founder-gated. Note it is also one of the three funnel answers the autosave path drops (see the capture-path findings). |
+
+One defect in twenty-one, and the rest explained. That is the useful outcome: the class is real
+but it is now **enumerated**, and this table is the thing to re-run after any schema change
+rather than rediscovering the shape a sixth time.
+
+**What this audit could not see**, and what would need its own pass: values captured on tables
+*other* than `loan_applications` — `urla_property_info` (which is how C-6 hid), `urla_liabilities`,
+`other_income_sources`, `real_estate_owned` — and values that exist only in marketing surfaces
+with no column at all, which is how G-21 (DPA seconds) hid.
+
 ---
 
 ## Open gaps — recorded, not silently assumed
@@ -496,6 +559,41 @@ text is now gitignored, so citing
 `docs/fannie-mae/selling-guide/selling-guide-text.txt` passes locally and **fails in CI**, where
 the fresh clone lacks it. Cite the tracked `section-index.tsv` (or this ledger) and name the
 section.
+
+### G-21 — 🚨 CLTV and HCLTV are never computed, and we actively market the thing that creates them
+
+**B2-1.2-02 (CLTV)** and **B2-1.2-03 (HCLTV)**. CLTV is the first mortgage plus the drawn
+portion of any HELOC plus the unpaid balance of all closed-end subordinate financing, over the
+**lesser of sales price or appraised value**. **B2-1.2-04, Subordinate Financing** governs when
+a subordinate lien is permitted at all.
+
+The engine gets the *basis* right — `Math.min(contractSalesPrice, appraisalValue)` — and then
+computes **only LTV**. `grep -i cltv` across `server/` and `shared/` returns nothing but the
+comments this pass added; there is no CLTV grid in `seedLendingGrids.ts` and no HCLTV anywhere.
+A file at 95% LTV and 105% CLTV clears the LTV ceiling and is never measured against a CLTV one.
+
+**What makes this live rather than theoretical: we promote the subordinate financing ourselves.**
+`server/seedData/illinoisDpa.ts` seeds four IHDA programs, surfaced to borrowers through
+articles and the assistant's `getDpaPrograms` tool, in the launch state:
+
+| Program | Assistance | Form |
+|---|---|---|
+| IHDAccess Home | 6% of price, to $15,000 | no-interest **second loan** |
+| IHDAccess Forgivable | 4% of price, to $6,000 | forgivable loan |
+| IHDAccess Deferred | 5% of price, to $7,500 | no-interest deferred loan |
+| IHDAccess Repayable | 10% of price, to $10,000 | zero-interest, **repaid monthly over 10 years** |
+
+Each is a subordinate lien on the subject property. `IHDAccess Repayable` additionally carries a
+**monthly payment**, which B3-6-03 puts inside PITIA (see G-10) and which no field records.
+
+`dpa_programs` is a marketing catalog: there is no link from an application to a program, no
+subordinate-lien amount, and no payment. So this is a **capture** gap rather than a
+miscalculation — we are not computing a known figure wrongly, we are blind to it. But we are
+blind to something we recommend, in the first state we are launching in.
+
+Note the sequencing trap: closing this needs the CLTV *ceiling*, and B2-1.3/B2-1.2 route
+maximum CLTV/HCLTV ratios to the **Eligibility Matrix** (G-14), which we do not hold. So the
+capture half is buildable now; the enforcement half is blocked on procurement, exactly like C-8.
 
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 

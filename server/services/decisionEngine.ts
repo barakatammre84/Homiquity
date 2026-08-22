@@ -420,6 +420,10 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // a non-purchase file to review instead of measuring it against a purchase
     // ceiling it was never entitled to.
     loanPurpose: app.loanPurpose ?? undefined,
+    // B3-6-04: an ARM is not qualified at its note rate. The URLA offers
+    // "Adjustable Rate (ARM)" and this column stores it, so the engine must see
+    // it rather than price every file as a 30-year fixed.
+    amortizationType: app.amortizationType ?? undefined,
     householdFamilySize: app.householdFamilySize ?? undefined,
     homeSquareFootage: app.homeSquareFootage ?? undefined,
   };
