@@ -6,10 +6,18 @@ the continuance rule. It is the authority behind `INCOME_SOURCE_RULES` in
 `server/pipelineEngine.ts`, and `tests/incomeSourceRequirements.test.ts` asserts that every
 requirement the engine emits carries a `guidelineRef` that appears verbatim in this file.
 
-**Source.** `docs/fannie-mae/selling-guide/` — the *Selling Guide* published **August 5, 2026**,
-extracted to page-marked text by `scripts/extract-selling-guide.py`. Every citation below is
-`section (effective date), p.N` where N is the PDF page in that corpus, so any claim here is
-re-checkable with `grep` and does not depend on a live fetch.
+**Source.** The *Selling Guide* published **August 5, 2026**, read as page-marked text. Every
+citation below is `section (effective date), p.N` where N is the PDF page in that corpus, so any
+claim here is re-checkable with `grep` rather than a live fetch that drifts silently.
+
+⚠️ **The corpus is not on `main` yet.** `docs/fannie-mae/selling-guide/`
+(`Selling-Guide_08-05-2026.pdf`, `selling-guide-text.txt`, `section-index.tsv`) lands with
+**PR #650, "Seat the Selling Guide as source of truth"**, which is open at the time of writing.
+Every page number here was read against that corpus on its branch. Until #650 merges, the page
+cites resolve only there; the **section numbers and effective dates stand on their own** and were
+independently corroborated against the live Guide the same day. If #650 is abandoned rather than
+merged, this file needs a different anchor — say so here rather than leaving a citation that
+points at nothing.
 
 Reproduction here is under the Guide's own grant of limited permission to reproduce parts of the
 publication to "mortgage finance professionals, strictly for their own use in originating
