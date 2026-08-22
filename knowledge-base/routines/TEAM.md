@@ -31,27 +31,48 @@ good each one is alone.
 
 ## 1. The seating chart
 
-Eight seats. **Four were already staffed** — the finding that produced this file is that the
-fleet's gaps and the hiring plan's gaps are the *same* gaps, and both are on the non-engineering
-side. We had built the builders and skipped the domain, the vendor edge, and the adversarial check.
+Eight seats **as designed** — but read the registration column: three are staffed, five are not.
+The finding that produced this file is that the fleet's gaps and the hiring plan's gaps are the
+*same* gaps, and both are on the non-engineering side. We had built the builders and skipped the
+domain, the vendor edge, and the adversarial check. Two days on, the builders are still the only
+seats that run — the same finding, a second time.
 
-**The eighth seat was added the same evening, from the other direction.** The Complex File Engine
-(CHARTER §6d) is a *builder*, but it was missing for the same structural reason the three above
-were: the qualification layer — can a messy borrower qualify at all — sat inside the Primary
-Engineer's company-wide lane, so no run was ever judged on it. It pairs with the Domain seat by
-design: when it reaches regulated math it may not implement, it asks the **Domain Oracle** for a
-cited verdict and posts a `WAITING` row rather than guessing (its rails C2/C3).
+⛔ **This chart drifted from the scheduler, and the drift is the exact failure the file exists to
+prevent.** Read live from `list_scheduled_tasks` on **2026-08-20**: of the eight seats below, **three
+are registered and five are not.** A seating chart that lists a routine nobody runs is §0's fossil
+wearing a team's clothes — so every row now carries its registration state, and the **Registered?**
+column is the only column here that is a fact about the scheduler rather than an intention.
 
-| Seat | Hiring-plan role | Routine | Cadence | Writes code? |
-|---|---|---|---|---|
-| **Domain** | Mortgage SME (§2.1) | **Domain Oracle** *(new)* | daily 08:20 | no |
-| **Integrations** | Mortgage-systems eng. (§2.2) | **Integration Readiness** *(new)* | daily 10:40 | no |
-| **Build — product** | Senior full-stack (§2.3) | Primary Engineer | daily 07:21 | yes |
-| **Build — backend** | Senior full-stack (§2.3) | Backend Data Engineer | daily 11:00 UTC | yes |
-| **Build — capture path** | Senior full-stack (§2.3) | Frontend Wiring Audit | daily 09:20 | yes |
-| **Build — qualification layer** | Senior full-stack (§2.3) | **Complex File Engine** *(new)* | daily 09:53 | yes |
-| **QA — find** | QA engineer (§2.4) | Deliverable QA Sweep | daily 15:05 | no |
-| **QA — prove** | QA engineer (§2.4) | **QA Mutation Verifier** *(new)* | daily 16:20 | throwaway only |
+Three different causes, none of them sloppiness:
+
+- **Domain Oracle, Integration Readiness and QA Mutation Verifier** were added 2026-08-18 and stated
+  plainly at the time as *"defined but not registered — registration is a founder action"* (CHARTER
+  §3). They have been correct-but-unstaffed ever since. This chart simply never said so.
+- **Complex File Engine** was registered, then **retired 2026-08-20T16:22:57Z** (CHARTER §3's
+  retirement list) on a finding — verified at the time — that its definition was not on
+  `origin/main`. That was true when checked and false **two minutes thirty seconds later**: PR #589
+  merged the definition at **16:25:27Z**. Nobody erred; the check and the merge raced. The subject
+  outlived the seat: the UAL qualification layer is now a standing priority segment of the
+  **Feature Completion Engine's** domain rotation, carrying its rails verbatim — it may not edit
+  `underwritingEngine.ts`, `decisionEngine.ts` or `ruleEngine.ts`, and may not change regulated
+  math at all.
+- **Backend Data Engineer** sits on the CCR fleet, where every trigger has read `enabled: false`
+  with zero recorded runs since 2026-08-18 (CHARTER §3a).
+
+**The rule this earns:** a seat is registered or it is a proposal, and the chart must say which.
+Re-read `list_scheduled_tasks` when you edit this table — the scheduler is the authority, this file
+is the map, and a map nobody re-measures is how five seats came to look staffed.
+
+| Seat | Hiring-plan role | Routine | Cadence | Writes code? | Registered? (read 2026-08-20) |
+|---|---|---|---|---|---|
+| **Domain** | Mortgage SME (§2.1) | Domain Oracle | daily 08:20 | no | ⛔ **no** — defined, never registered |
+| **Integrations** | Mortgage-systems eng. (§2.2) | Integration Readiness | daily 10:40 | no | ⛔ **no** — defined, never registered |
+| **Build — product** | Senior full-stack (§2.3) | Primary Engineer | daily 07:21 | yes | ✅ yes |
+| **Build — backend** | Senior full-stack (§2.3) | Backend Data Engineer | daily 11:00 UTC | yes | ⛔ **no** — CCR fleet, trigger `enabled: false` |
+| **Build — capture path** | Senior full-stack (§2.3) | Capture Path Engineer | daily 09:20 | yes | ✅ yes |
+| **Build — qualification layer** | Senior full-stack (§2.3) | ~~Complex File Engine~~ → **Feature Completion Engine** rotation | daily 12:34 | yes | ✅ yes — as a rotation segment, not its own seat |
+| **QA — find** | QA engineer (§2.4) | Deliverable QA Sweep | daily 15:05 | no | ✅ yes |
+| **QA — prove** | QA engineer (§2.4) | QA Mutation Verifier | daily 16:20 | throwaway only | ⛔ **no** — defined, never registered |
 
 **Supporting seats, unchanged:** Launch Gate (07:48) holds the `RELEASABLE` verdict · Lender
 Delivery Gate (12:31) judges the package · Compliance Watch (Tue 13:21) holds the licensing ladder
