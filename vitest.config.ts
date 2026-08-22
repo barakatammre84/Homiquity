@@ -289,6 +289,7 @@ export default defineConfig({
       "tests/mutationErrorHandling.test.ts",
       "tests/homiFileTruth.test.ts",
       "tests/homiReadinessDerivation.test.ts",
+      "tests/assistantIdentity.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
