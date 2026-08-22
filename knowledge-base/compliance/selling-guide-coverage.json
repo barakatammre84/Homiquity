@@ -64,7 +64,7 @@
     },
     "B3-2-01": {
       "status": "partial",
-      "evidence": "server/services/ausSubmission.ts submitToDU is a deterministic simulation. The Guide requires delivery data to match the final DU submission; server/mismo.ts:862 emits a hardcoded \"Approve\". FINDINGS F-051.",
+      "evidence": "The lender must ensure delivery data matches the final DU submission and that the casefile receives an eligible recommendation. The delivered recommendation is now honest — server/mismo.ts maps the recorded AUS value via mapAusRecommendation and OMITS the whole AUTOMATED_UNDERWRITINGS container when there is none (F-051 fixed in #545; the compile-time \"Approve\" literal is gone). Still partial because submitToDU is a deterministic simulation: there is no real casefile, so 'matches the final DU submission' cannot yet be satisfied end to end (blocked on F6).",
       "verified": "2026-08-21"
     },
     "B3-2-02": {
@@ -174,7 +174,7 @@
     },
     "A2-2-04": {
       "status": "partial",
-      "evidence": "The DU limited waiver's data-accuracy condition is the reason F-0818-11 was a warranty problem and not a cosmetic one. Still partial: F-051 remains open — server/mismo.ts:862 emits a hardcoded \"Approve\" rather than DU's actual recommendation, which B3-2-01 requires the delivered data to match.",
+      "evidence": "The DU limited waiver's data-accuracy condition is why F-0818-11 was a warranty problem and not a cosmetic one. Partial because the waiver presumes a real DU casefile and ours is simulated; AutomatedUnderwritingCaseIdentifier is deliberately not emitted rather than assert the simulator's sim-du-<sha1> as a real case id (F-068).",
       "verified": "2026-08-21"
     }
   }
