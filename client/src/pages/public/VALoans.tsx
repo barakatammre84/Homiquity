@@ -9,6 +9,8 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { VaBenefitArt } from "@/components/illustrations/VaBenefitArt";
+import { AdvocacyArt } from "@/components/illustrations/AdvocacyArt";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -127,13 +129,9 @@ export default function VALoans() {
                 </div>
               </div>
 
-              <FramedPhoto
-                src={lifestyleImages.vaLoans.src}
-                alt={lifestyleImages.vaLoans.alt}
-                testId="img-hero-va"
-                position="center 25%"
-                loading="eager"
+              <VaBenefitArt
                 className="mx-auto w-full max-w-lg lg:max-w-none"
+                data-testid="img-hero-valoans"
               />
             </div>
           </div>
@@ -186,9 +184,7 @@ export default function VALoans() {
           testId="section-va-earned"
           eyebrow="Built by a fellow veteran"
           title="The benefit you earned, put to work for your family"
-          image={lifestyleImages.landingHero.src}
-          imageAlt={lifestyleImages.landingHero.alt}
-          imagePosition="center 25%"
+          illustration={<AdvocacyArt />}
           reverse
           className="bg-muted"
         >

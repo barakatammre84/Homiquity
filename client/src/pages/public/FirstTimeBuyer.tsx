@@ -13,6 +13,8 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { FirstKeyArt } from "@/components/illustrations/FirstKeyArt";
+import { AdvocacyArt } from "@/components/illustrations/AdvocacyArt";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { loanSupportedByPayment } from "@shared/lib/amortization";
@@ -183,13 +185,9 @@ export default function FirstTimeBuyer() {
                 </div>
               </div>
 
-              <FramedPhoto
-                src={lifestyleImages.firstTimeBuyer.src}
-                alt={lifestyleImages.firstTimeBuyer.alt}
-                testId="img-hero-ftb"
-                position="center 30%"
-                loading="eager"
+              <FirstKeyArt
                 className="mx-auto w-full max-w-lg lg:max-w-none"
+                data-testid="img-hero-firsttimebuyer"
               />
             </div>
           </div>
@@ -333,9 +331,7 @@ export default function FirstTimeBuyer() {
           testId="section-ftb-guided"
           eyebrow="You're not on your own"
           title="New to all this? That's exactly who we built it for."
-          image={lifestyleImages.founderNote.src}
-          imageAlt={lifestyleImages.founderNote.alt}
-          imagePosition="center 30%"
+          illustration={<AdvocacyArt />}
           reverse
           className="bg-muted"
         >
