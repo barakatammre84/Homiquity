@@ -4,7 +4,7 @@
 (`FEATURE_MAP.md`), taken under the standing **above-conforming borrower** segment.
 **Gap:** the offers surface rendered *nothing at all* for the three statuses that mean "no live
 pricing, and here is why".
-**PR:** [#653](https://github.com/barakatammre84/Homiquity/pull/653) (ready — no §9 trigger).
+**PR:** [#657](https://github.com/barakatammre84/Homiquity/pull/657) (ready — no §9 trigger).
 **Open findings in `FINDINGS.md`:** 135 before · **135 after** — this run closed none; see §5.
 
 STATUS: OK — one completion gap shipped, mutation-proven, full gate green.

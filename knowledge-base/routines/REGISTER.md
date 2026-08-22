@@ -60,7 +60,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| feature-completion 2026-08-22 | `client/src/pages/lending/loanOptions/MarketPricingSection.tsx` (+ new colocated test) · `scripts/bundle-size-baseline.json` | wt-fc (scratchpad) | `routine/feature-completion-2026-08-22` | 2026-08-22T12:35Z | the offers surface rendered NOTHING for the three non-`PRICED` statuses, so the server's `missingItems` copy had zero readers — worst for the above-conforming borrower, whose whole market is one product. Released in the same PR (#653). |
+| feature-completion 2026-08-22 | `client/src/pages/lending/loanOptions/MarketPricingSection.tsx` (+ new colocated test) · `scripts/bundle-size-baseline.json` | wt-fc (scratchpad) | `routine/feature-completion-2026-08-22` | 2026-08-22T12:35Z | the offers surface rendered NOTHING for the three non-`PRICED` statuses, so the server's `missingItems` copy had zero readers — worst for the above-conforming borrower, whose whole market is one product. Released in the same PR (#657). |
 | *(none)* | — | — | — | — | The board is empty as of 2026-08-20T02:30Z. Claim before you write. |
 
 
