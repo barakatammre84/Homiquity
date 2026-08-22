@@ -13,6 +13,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { OffsetBlock } from "@/components/layout/OffsetBlock";
 import { FirstKeyArt } from "@/components/illustrations/FirstKeyArt";
 import { AdvocacyArt } from "@/components/illustrations/AdvocacyArt";
 import { formatCurrency } from "@/lib/formatters";
@@ -344,8 +345,8 @@ export default function FirstTimeBuyer() {
         </ImageTextSection>
 
         <section aria-labelledby="ftb-myths-heading" className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
-            <h2 id="ftb-myths-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
+          <OffsetBlock side="left" className="max-w-5xl" data-testid="offset-ftb-myths">
+            <h2 id="ftb-myths-heading" className="lg:text-left text-2xl font-semibold tracking-tight sm:text-3xl">
               The myths keeping renters renting
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-6">
@@ -361,13 +362,13 @@ export default function FirstTimeBuyer() {
                 </Card>
               ))}
             </div>
-          </div>
+          </OffsetBlock>
         </section>
 
         {/* How it works — three steps, all code-true */}
         <section aria-labelledby="ftb-how-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
-            <h2 id="ftb-how-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
+          <OffsetBlock side="right" className="max-w-5xl" data-testid="offset-ftb-how">
+            <h2 id="ftb-how-heading" className="lg:text-left text-2xl font-semibold tracking-tight sm:text-3xl">
               How it works
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-6">
@@ -383,7 +384,7 @@ export default function FirstTimeBuyer() {
                 </Card>
               ))}
             </div>
-          </div>
+          </OffsetBlock>
         </section>
 
         {/* FAQ — objection handling via progressive disclosure */}
