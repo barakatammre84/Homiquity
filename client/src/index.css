@@ -1,8 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Keep the JS theme config (Royal Blue Emerald ramp, semantic tokens, elevation
-   scale) as the source of truth rather than porting ~150 lines to CSS-first
+/* Keep the JS theme config (the palette ramp, semantic tokens, elevation scale)
+   as the source of truth rather than porting ~150 lines to CSS-first
    @theme. v4 loads it in compatibility mode. */
 @config "../../tailwind.config.ts";
 
@@ -29,15 +29,26 @@
   }
 }
 
-/* LIGHT MODE - "Royal Blue Emerald": stark-white system with vivid royal-blue
-   dark surfaces (2026-07-08 repaint of "Charcoal Emerald" — charcoal dark
-   surfaces swapped for royal blue; emerald kept as the action color).
-   Neutrals are the slate family: canvas #FFFFFF, data-section fill #F8FAFC,
-   hairlines #E2E8F0, micro-copy #64748B, type near-black slate #0F172A.
-   Dark surfaces (sidebar, hero gradients): royal blue. Conversion green:
-   emerald — #047857 (700) for solid fills so white text clears WCAG AA
-   (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for rings, #10B981
-   (500) reserved for status/success accents. */
+/* LIGHT MODE — "Mint & Flare": white ground, emerald-tinted green-black dark
+   surfaces, ONE mint tint, ONE orange flare. Rebuilt 2026-08-20 (3cba2dae) on
+   Monzo's STRUCTURE — three colours and a heavy face, executed precisely — with
+   deliberately different VALUES: a palette indistinguishable from a bank in the
+   same sector is trade dress, not homage.
+
+   🚨 This SUPERSEDES "Royal Blue Emerald" (2026-07-08). There is no royal blue
+   left in this system and the neutral ramp is no longer the slate family — every
+   neutral now carries the brand hue. If a doc, skill or agent file still says
+   "Royal Blue Emerald", it is stale; this block and the token values below win.
+
+   Neutrals (brand-tinted, NOT slate): canvas #FFFFFF, tint #EAF6F1, app ground
+   #F2F8F5, hairlines #E2E9E7, micro-copy #5A726C, type green-black #0B1E19.
+   Dark surfaces (sidebar, footer, hero gradients): green-black #17302A.
+   Conversion green: emerald — #047857 (700) for solid fills so white text clears
+   WCAG AA (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for rings, #10B981
+   (500) reserved for status/success accents.
+   Warm accent: `--flare` (orange, hue 24deg) — a FILL colour with hard contrast
+   limits. Read its token comment below before using it; the mistake it exists to
+   prevent is treating it as a text colour. */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
@@ -46,19 +57,21 @@
   --elevate-2: rgba(0,0,0, .06);
   /* Layer 0: Stark White canvas */
   --background: 0 0% 100%;
-  /* Primary typography: near-black slate #0F172A (cool blue undertone) */
+  /* Primary typography: green-black #0B1E19 — near-black carrying the brand hue
+     (was near-black slate #0F172A with a cool blue undertone) */
   --foreground: 165 45% 8%;
-  /* Slate-200 #E2E8F0 hairlines — soft separation, no harsh borders */
+  /* Hairlines #E2E9E7 — brand-tinted, soft separation, no harsh borders
+     (was slate-200 #E2E8F0) */
   --border: 160 14% 90%;
-  /* Layer 1: white cards separated by slate hairline */
+  /* Layer 1: white cards separated by the hairline above */
   --card: 0 0% 100%;
   --card-foreground: 165 45% 8%;
   --card-border: 160 14% 90%;
-  /* Sidebar: deep royal-blue navigation container (~#122A6B) */
+  /* Sidebar: green-black navigation container #17302A (was royal blue ~#122A6B) */
   --sidebar: 165 35% 14%;
   --sidebar-foreground: 210 40% 98%;
   --sidebar-border: 165 25% 24%;
-  /* Active nav item: light pill on royal blue */
+  /* Active nav item: light pill on the green-black sidebar */
   --sidebar-primary: 210 40% 98%;
   --sidebar-primary-foreground: 165 45% 8%;
   --sidebar-accent: 165 28% 22%;
@@ -71,14 +84,14 @@
      700-depth so white button text passes AA) */
   --primary: 163 94% 24%;
   --primary-foreground: 0 0% 100%;
-  /* Secondary surfaces: slate-100 chip */
+  /* Secondary surfaces: the mint tint #EAF6F1 (was a slate-100 chip) */
   --secondary: 155 40% 94%;
   --secondary-foreground: 165 45% 8%;
-  /* Data-section separation: Ultra-Light Gray #F8FAFC */
+  /* Data-section separation: mint #E2F4EC (was Ultra-Light Gray #F8FAFC) */
   --muted: 155 44% 92%;
   /* Secondary/micro-copy: green-grey per the 2026-08-18 overhaul direction —
      quiet text carries the brand hue (was blue-grey Muted Slate 215 24% 37%).
-     Verified ~5.8:1 on white and ~5.5:1 on the #F8FAFC panels (AA ≥4.5:1).
+     Verified ~5.8:1 on white and ~5.5:1 on the mint panels (AA ≥4.5:1).
      Still clearly recessive vs the near-black primary type (~16:1). */
   --muted-foreground: 165 12% 40%;
 
@@ -123,19 +136,33 @@
    * not a loophole to reuse for anything a person has to read.
    */
   --flare-ink: 24 90% 34%;
-  /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
-     --muted #F8FAFC) that white cards sit ON so their shadow-card reads.
-     Public/reading surfaces stay on the white --background. */
+  /* Layer 0-surface: pale mint app/dashboard ground #F2F8F5 that white cards sit
+     ON so their shadow-card reads. Public/reading surfaces stay on the white
+     --background.
+     ⚠️ This comment used to read "one hair deeper than --muted #F8FAFC". Both
+     halves broke in the 2026-08-20 rebuild: --muted is no longer #F8FAFC, and the
+     ORDER inverted — --surface is now LIGHTER than --muted (96% vs 92% L), not
+     deeper. Left as-is because the card-on-ground contrast still reads; flagged
+     so the next person changing either token knows the pair is no longer ordered
+     the way the original design intended. */
   --surface: 155 30% 96%;
   --surface-foreground: 165 45% 8%;
-  /* Accent: deep royal-blue chip — quieter than the emerald primary */
+  /* Accent: green-black chip — the same value as --sidebar, quieter than the
+     emerald primary (was a deep royal-blue chip) */
   --accent: 165 35% 14%;
   --accent-foreground: 0 0% 100%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  /* Input borders: slate-300, a step deeper than the card hairline */
+  /* Input borders: slate-300 #CBD5E1, a step deeper than the card hairline.
+     ⚠️ This comment is ACCURATE — and that is the problem. Every other neutral
+     moved to the brand hue in the 2026-08-20 rebuild (hue 155-165); this one is
+     still at hue 213, the last cool blue-grey in the system, and sits directly
+     against brand-tinted hairlines (#E2E9E7). Reads as a token the rebuild
+     missed rather than a decision. NOT changed here: this file's pass was
+     comments only, and moving it is a visible restyle of every input border.
+     Founder call. */
   --input: 213 27% 84%;
   /* Focus ring: emerald-600 #059669 (3.77:1 on white — passes UI 3:1) */
   --ring: 161 94% 30%;

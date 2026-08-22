@@ -43,10 +43,12 @@ Shadcn primitives).
 - **Data fetching**: never `fetch` directly in components — use the existing
   TanStack Query helpers (`queryClient`, `apiRequest` in `client/src/lib/`)
   so auth, errors, and cache invalidation stay consistent.
-- **Design language**: **Royal Blue Emerald** (2026-07-08 repaint of Charcoal
-  Emerald, which superseded Obsidian Indigo) — stark-white surfaces, neutral slate
-  ramp, near-black slate type, vivid royal-blue dark surfaces (sidebar, hero
-  gradients), emerald reserved for conversion actions; one dominant CTA per screen,
+- **Design language**: **"Mint & Flare"** (2026-08-20 rebuild `3cba2dae` on Monzo's
+  structure, superseding Royal Blue Emerald → Charcoal Emerald → Obsidian Indigo) —
+  white ground, **green-black dark surfaces** (sidebar, footer, hero gradients), ONE
+  mint tint, and neutrals that carry the brand hue rather than a slate ramp; emerald
+  reserved for conversion actions, and one orange `--flare` used as a **fill only**
+  (`--flare-ink` when it must be read); one dominant CTA per screen,
   progress steppers, collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
   design-token guard and the UI-standard ratchet — see
   [DESIGN_SYSTEM.md](../design/DESIGN_SYSTEM.md), the single binding standard

@@ -16,7 +16,7 @@ Review files for compliance with Web Interface Guidelines.
 > have nothing to do with Homiquity's hosting — the app runs on Railway. Don't "correct" them.
 > On conflict, Homiquity's own design rules win:
 > [`DESIGN_SYSTEM.md`](../../../knowledge-base/handbook/design/DESIGN_SYSTEM.md)
-> (Royal Blue Emerald tokens, the design-token guard, WCAG AA).
+> ("Mint & Flare" tokens, the design-token guard, WCAG AA).
 
 ## How It Works
 

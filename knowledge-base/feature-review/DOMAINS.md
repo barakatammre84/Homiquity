@@ -312,8 +312,8 @@ Runs over every surface from teams 1–12, on three axes:
 - **Uniformity**: design-system conformance (tokens in `client/src/index.css` /
   `tailwind.config.ts`; guard `scripts/design-token-guard.cjs` — anything it flags is a finding),
   consistent shadcn/ui usage, nav/shell coherence, spacing/type drift, responsive
-  (375px/tablet/desktop). The live design system is **Royal Blue Emerald** (2026-07-08 repaint,
-  #93). ~~Guard blind spot: 157 white/black literals bypass the regex~~ — fixed: the guard now
+  (375px/tablet/desktop). The live design system is **"Mint & Flare"** (2026-08-20 rebuild,
+  `3cba2dae` — superseded Royal Blue Emerald). ~~Guard blind spot: 157 white/black literals bypass the regex~~ — fixed: the guard now
   ratchets a `whiteBlackLiterals` metric (#112, baseline 97; ux-02 narrowed to the no-CI leg).
 - **Friction & psychology**: funnel drop-off, CTA clarity, **loading/empty/error states —
   ux-01, partially addressed** (QueryBoundary error+retry #93/#95 batch 1 + PageShell #131;
