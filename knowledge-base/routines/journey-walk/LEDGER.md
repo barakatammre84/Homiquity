@@ -8,14 +8,11 @@ Cross-run memory for the `client-journey-walk` seat (daily since 2026-08-19). On
 redundant, since the file it exists to add already landed). From the next run on, read `JOURNEYS.md`
 and treat the `SKILL.md` summaries as a convenience copy. Record which source each run used.
 
-> ⚠️ **Two definition copies are laptop-only and cannot ride a PR.**
-> `.claude/skills/journey-walk/SKILL.md` and `.claude/agents/journey-walker-*.md` are excluded in
-> **`.git/info/exclude`** (a local, uncommitted file — deliberate, so `git add -A` on an unrelated
-> branch cannot sweep them again as it did in `3636c3b7`). They land via **#607**. The 2026-08-20
-> account amendment below was applied to both **on this laptop**; **whoever lands #607 must carry
-> it**, or the merge will reinstate the `renter@test.com` instruction this ledger just retired.
-> `~/.claude/scheduled-tasks/client-journey-walk/SKILL.md` — the copy the scheduler actually
-> fires — is outside the repo entirely and was amended in place.
+> *(Resolved 2026-08-22: #607 merged on 2026-08-20 and the `.git/info/exclude` entries were removed;
+> the agents and skill are tracked on `main`. The 2026-08-20 account amendment that #607 merged
+> **without** was ported to `journey-walker-aspiring-owner.md`, `journey-walk/SKILL.md` W6 and
+> `feature-review/CHARTER.md` in the staff-journey PR. Staff desks have their own lane:
+> `knowledge-base/routines/staff-journey-walk/LEDGER.md`.)*
 
 ## Rotation state
 

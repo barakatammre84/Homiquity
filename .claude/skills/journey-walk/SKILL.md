@@ -12,10 +12,10 @@ description: Walk one client journey end to end in the real browser as that pers
 
 ## Why this skill exists
 
-The four `journey-walker-*` agents are durable subagents. Subagents are invisible: they do not
+The client `journey-walker-*` agents are durable subagents. Subagents are invisible: they do not
 appear in any list a person reads, they are only spawnable by an orchestrator who already knows
 their names, and **a new one is not registered until the session restarts**. A control nobody can
-find is not a control. This skill is the front door — one slash command, four journeys, no need to
+find is not a control. This skill is the front door — one slash command, every client journey, no need to
 remember an agent name.
 
 ## What a journey catches that nothing else does
@@ -73,9 +73,11 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
 - **W5 — Nothing enters the register unverified.** Every `J-<MMDD>-<NN>` goes through
   `finding-verifier` before `FINDINGS.md`, and anything flagged `compliance-risk: yes` also needs a
   `compliance-auditor` verdict. CHARTER §2 is not relaxed for journeys.
-- **W6 — Test data discipline.** `journey-walker-aspiring-owner` uses the shared seeded
-  `renter@test.com` and **must never apply** — applying promotes that seat permanently. The three
-  buyer walkers self-register `jw2+` / `jse+` / `jaf+<MMDD>@test.local`; **never `buyer@test.com`**,
+- **W6 — Test data discipline.** `journey-walker-aspiring-owner` signs up **fresh** as
+  `jr+<MMDD>@test.local` and **must never apply** — *(amended 2026-08-20: the seeded `renter@test.com`
+  seat is retired as the primary; its central surface keys on the account's own rows and the dev DB
+  had polluted it — see `JOURNEYS.md` §1 for the probe if you want the seeded seat anyway)*. The
+  buyer walkers self-register `jw2+` / `jse+` / `jaf+` / `jcd+<MMDD>@test.local`; **never `buyer@test.com`**,
   which is pinned to `active_buyer` and cannot cross the promotion seam. No destructive SQL, never
   `pnpm db:push`, never touch a row you did not create.
 - **W7 — You never fix.** This skill reports. Fixes are triaged into waves by the founder, or
@@ -84,7 +86,10 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
 ## Procedure
 
 1. **Pick the journey.** If the user named a persona, map it to a seat above. If they did not, pick
-   the one with the oldest `Last walked` date in the `JOURNEYS.md` ledger — and say which and why.
+   the next row in `knowledge-base/routines/journey-walk/LEDGER.md` — **strict rotation**, the one
+   selection rule this lane has (the ledger, not "oldest Last walked"; two rules diverge the first
+   time a run is `BLOCKED`) — and say which and why. Staff desks are a separate lane:
+   `/staff-journey-walk`.
 2. **Establish a server.** If nothing listens on 5001, start one; if something does, identify its
    checkout per W3 before trusting a single observation.
 3. **Spawn the seat** with the Agent tool, passing: the journey number, the base URL, and any
