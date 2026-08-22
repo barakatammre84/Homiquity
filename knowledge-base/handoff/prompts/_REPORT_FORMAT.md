@@ -40,6 +40,11 @@ HAND-BACK: <only for STOPPED: the line, the change it needs, who owns it>
 
 Rules for filling it:
 
+- **The promise is the last line of the final message.** Nothing follows it — no commentary, no
+  closing remark. The first acceptance run wrote the block, then two paragraphs of commentary,
+  and left the tag out; the Stop hook refused the exit and burned an iteration before the next
+  pass noticed. If you have something to say, say it *above* the block.
+
 - Every `T*` line is **copied** from the output file the tier wrote (`"$SCRATCH/t0.log"` …),
   never retyped from memory. If a tier did not run, the line says `not run` and why.
 - `collected == on-disk` is the T1 sanity check from `_RAILS.md` R14 — the node lane's

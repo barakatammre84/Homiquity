@@ -14,6 +14,8 @@ TARGET: <the module under test, e.g. shared/lib/<name>.ts — must NOT appear in
 WRITE:  tests/<name>.test.ts            (node lane)  — or —  client/src/<dir>/<Name>.test.tsx  (client lane)
         vitest.config.ts                 (node lane only: append ONE line at the END of `include`)
 NEVER:  any file outside WRITE; the module under test; any baseline; package.json
+        (exception inherited from _RAILS.md R5: the DESIGN_SYSTEM.md §0 table, regenerated only by
+        `pnpm guard:ui --write-table` when the guard asks — a colocated client test moves its denominator)
 PROOF:  the test runs (its file name appears in the lane output) and is green; for a regression
         test, also show it red against the bug's commit if one exists
 MAX_ITER: 6

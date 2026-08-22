@@ -16,6 +16,7 @@ LAYER:  shared | server | client            (one)
 WRITE:  <the files in that layer, listed>
         <tests: tests/<name>.test.ts + vitest.config.ts (END)  or  client/src/<dir>/<Name>.test.tsx>
 NEVER:  any other layer; hand-back files; baselines; allowlists; package.json; docs/**
+        (inherited exception, R5: the DESIGN_SYSTEM.md §0 table via `pnpm guard:ui --write-table` when a client file is added)
 PROOF:  1) a characterisation test of the neighbours, green BEFORE the change and green after
         2) the feature test, red before and green after
 MAX_ITER: 10

@@ -157,14 +157,39 @@ multi-layer feature that needs a plan first, anything in CHARTER §1b rows L3/L4
 ### 5a. The acceptance run (real): a characterisation test for `client/src/lib/sla.ts`
 
 The target was chosen by the rails, not by taste: a pure module with no test, imported by five
-staff surfaces, named in **no** open PR (`gh pr list --state open --json number,files`), and
-testable under the client glob so no shared-file hazard (`vitest.config.ts` is touched by seven
-open PRs today) is involved. The run's real outputs are recorded in this section's table; the PR
-it opened is referenced in the ledger's run log, never here (living docs carry no PR numbers).
+staff surfaces, named in **no** open PR, and testable under the client glob so no shared-file
+hazard (`vitest.config.ts` was touched by seven open PRs that day) was involved. The loop ran as a
+headless `claude -p` session in a throwaway worktree of `origin/main`, with the plugin's own
+setup script (setup-ralph-loop.sh, outside the repo) writing the state file and its Stop hook driving the iterations; the
+destructive-operation categories were passed as disallowed tools. 83 turns, 22.5 minutes. The
+lines below are copied from its logs and its LOOP REPORT; the PR number lives only in the
+ledger's run log.
 
-| iteration | what happened | tier lines copied from the logs |
+| step | what happened | copied from the logs |
 |---|---|---|
-| *(filled from the run — see the ledger's run log entry for the date)* | | |
+| T-1 | toplevel, clean tree, `git fetch`, commits-behind = 0, `vitest` present, open-PR file lists read, REGISTER read; target claimed by nobody | (the template's step 0, verbatim) |
+| read | the module, its five importers, a sibling test for house style, and `design-token-guard.cjs` — so the "no raw palette class" assertion pinned the guard's real regex rather than a guess | — |
+| write | the colocated test beside the module (client/src/lib/sla.test.ts — on the loop's branch, not on main, hence no backticks) — 16 cases, the only file in WRITE | `?? client/src/lib/sla.test.ts` |
+| T0 | green; no baseline rewritten | `tsc exit 0 · schema ✓ migrations ✓ channel ✓ kb ✓ staleness ✓ citations ✓ querykeys ✓ tokens ✓ ui ✓ (518 files scanned)` |
+| T1 | green; the collection check passed with the new file counted | `Test Files 218 passed (218)` · `Test Files 121 passed (121)` — node 218 == the allowlist, client 121 == 120 tracked + this file; `vitest list --filesOnly` line 34 of 121 = the new file |
+| commit 1 | explicit `git add` of the one file; the ralph state file left untracked | `test(sla): pin the four SLA status maps before anything else edits them` |
+| T2, first run | **red** — the UI standard ratchet, with every metric at baseline: "DESIGN_SYSTEM.md §0's adoption table is stale … Run `pnpm guard:ui --write-table` and commit the result in this PR" | `FAIL  UI standard ratchet` |
+| diagnosis | it proved the cause instead of guessing: a detached worktree of `origin/main` scans green, the branch scans red, the test file is the only other change; `scripts/ui-standard-guard.cjs:337` counts client `*.test.*` files into the generated table's denominator | `origin/main`: `UI standard OK` · branch: `FAIL` |
+| commit 2 | `pnpm guard:ui --write-table`, staged as its own commit — **outside the template's WRITE list**, on the guard's explicit instruction; flagged in the report, the PR body and the hand-back rather than absorbed | `chore(design-system): regenerate the §0 table for the new client test file` (`120 → 121`) |
+| T2, second run | green, §9 no trigger | `preflight passed, 4 skipped` · `ok security review (§9 triggers)` |
+| T3 | green; the two database stages honestly skipped (no `pg_ctl`, no Docker; `scripts/local-db.sh up` needs a permission a headless session cannot grant) | `preflight passed, 2 skipped` · `ok production build` · `ok client bundle ratchet` · `SKIPPED integration lane — no database` |
+| push + PR | pushed without a pipe, remote ref confirmed equal to HEAD, draft PR opened with the mandatory headings; exactly two files | `draft: true, files: [client/src/lib/sla.test.ts, knowledge-base/handbook/design/DESIGN_SYSTEM.md]` |
+| report | `STATUS: DONE` · `TERRITORY: … ⊆ WRITE: no` (stated, with the reason) · `BASELINES TIGHTENED: none` · `SKIPPED:` named and explained · `HAND-BACK:` the template's client-lane WRITE list is incomplete, owner "whoever maintains the handoff prompts" | the report block, verbatim |
+| the promise | the first final message ended with commentary and **no** `<promise>` tag — the Stop hook refused the exit and re-fed the prompt ("Ralph iteration 2 … iteration 3"); the next pass said "I omitted the completion promise — that's what the loop was waiting on", re-emitted the block with the promise as its last line, and the session ended | `exit=0 · num_turns 83 · promise emitted: true · state file removed by the hook` |
+
+What the run changed in this corpus, in the same PR: R5 now names a guard-mandated generated
+block as a sanctioned write (the `§0` table, `pnpm guard:ui --write-table`, its own commit, named in
+the body); `new-test.md`, `ui-page.md` and `feature.md` inherit it; `_REPORT_FORMAT.md` now says the
+promise is the **last line of the final message, after any prose**; and the ledger carries the
+denominator as a proposed ticket for the guard's owner. What the run proved that no dry-run
+could: the plugin's iteration mechanic, the exact-match promise, the hook removing the state
+file on completion, a loop that stops on a red guard and proves the cause before acting, and a
+territory deviation surfacing as an honest `no` rather than a quiet edit.
 
 ### 5b. The sketch (not run): HOA dues through the URLA property step into the engine
 
@@ -217,6 +242,9 @@ is where the third one **stops**:
 13. **A scheduled persona smoke** via the journey walkers, report-only, in the cloud fleet.
 14. **Assign owners** to `server/routes.ts`, `server/db.ts`, `server/index-prod.ts`,
    `railway.json`, `scripts/migrate-prod.cjs`, `.github/workflows/ci.yml` (HO-0822-13).
+15. **Stop counting test files in the §0 adoption denominator** (`scripts/ui-standard-guard.cjs:337`)
+   — or accept that every client test regenerates `DESIGN_SYSTEM.md`; today the acceptance run had
+   to commit a generated line to add one test (HO-0822-25).
 
 ## 7. How this playbook stays true
 

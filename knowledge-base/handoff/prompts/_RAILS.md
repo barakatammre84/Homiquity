@@ -43,7 +43,8 @@ Docs-only work needs no row.
 
 The template's `WRITE` list is the only place your diff may land. Before every commit:
 `git diff --name-only origin/main...HEAD` must be a subset of `WRITE`. Anything else is a
-territory breach → stop condition. Off-limits for every loop, always:
+territory breach → stop condition. One write every template inherits without listing it: a
+generated block a guard tells you to regenerate (R5). Off-limits for every loop, always:
 `docs/**` (authority corpus), `data/regulatory/**`, `CLAUDE.md`, `.claude/**`,
 `package.json`, `pnpm-lock.yaml`, `CTO_ROADMAP.md`, and the decision-path engines
 (`server/underwritingEngine.ts`, `server/services/decisionEngine.ts`,
@@ -69,6 +70,12 @@ territory breach → stop condition. Off-limits for every loop, always:
 - Never raise a baseline to go green (`scripts/*-baseline.json`). If a guard **tightened** a
   baseline because your change shrank a count (`design-token-guard`, `bundle-size-guard` write the
   file on a shrink), stage that file explicitly and say so in the PR body.
+- A **generated block** a guard asks you to regenerate is the same class as a tightened baseline.
+  When `pnpm guard:ui` prints "DESIGN_SYSTEM.md §0's adoption table is stale", run
+  `pnpm guard:ui --write-table`, stage `knowledge-base/handbook/design/DESIGN_SYSTEM.md` as its own
+  commit, and name it in the PR body. Any PR that adds a file under `client/src` — a colocated test
+  included — moves the table's denominator and hits this (the first acceptance run did). Never
+  hand-edit the block.
 - Never widen an allowlist (`UPDATABLE_COLUMNS`, `RESPONSE_BODY_LOG_ALLOWLIST`,
   `STAFF_SETTABLE_STATUSES`, the vitest include) without the reason in the PR body.
 - A guard answers only its own question. A red **scanning** guard that took more than ~45 s on a

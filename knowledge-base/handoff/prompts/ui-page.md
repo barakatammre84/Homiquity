@@ -12,6 +12,7 @@ WRITE:  client/src/pages/<persona>/<Name>.tsx  (or client/src/components/<dir>/<
         client/src/lib/queryClient.ts           (ONLY if a new key factory is needed — add, never rewrite)
         shared/seo/routeMeta.ts                 (public pages only: the entry that mirrors the page's SEOHead)
         client/src/<dir>/<Name>.test.tsx        (colocated; runs under the client glob)
+        knowledge-base/handbook/design/DESIGN_SYSTEM.md   (ONLY via `pnpm guard:ui --write-table`, when the guard asks — R5)
 NEVER:  raw palette classes (bg-blue-500 …), bg-white/text-white literals, direct lucide-react
         imports (use client/src/lib/icons.ts), min-h-screen outside PageShell, a hand-written
         queryFn, an interpolated queryKey, package.json, hand-back files
