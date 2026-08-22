@@ -55,10 +55,7 @@ the file.** Writing the failing test is fine when the test file itself is not on
 
 - **The Selling Guide is the policy authority, and it is local.** Edition 08-05-2026 is committed
   at `docs/fannie-mae/selling-guide/` — 423 citable sections. It controls over every job aid in
-  `docs/fannie-mae/`, and over anything in this repo. Reading it needs no tooling: find the page
-  with `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv`, then read the section
-  out of `docs/fannie-mae/selling-guide/selling-guide-text.txt`, where every page is prefixed
-  `[[PAGE n | <section>]]` so a plain grep for any phrase names the section that states it.
+  `docs/fannie-mae/`, and over anything in this repo. Reading it is one command: `section-index.tsv` is **tracked**, so `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv` locates any section with no setup. The full text is **gitignored** — this repo is public and the Guide is Fannie Mae's copyrighted work — so generate it once with `python3 scripts/extract-selling-guide.py` and then grep it freely (every page is prefixed `[[PAGE n | <section>]]`). If the script cannot find the PDF it says where it looked and **stops**; that is an honest gap, not a licence to answer from memory.
   **Never answer a Fannie policy question from memory when one grep settles it.**
 - **An id that does not resolve is a WRONG citation, not an old one.** The Guide renumbers between
   editions — 2026-03-04 moved self-employment income off B3-3.2/B3-3.4 — and a stale cite does not

@@ -13,7 +13,7 @@ you **implement** — you land the change, you run the gate, you open the PR. Yo
 **Yours to write:**
 
 - **Server** — `server/routes/agent-broker/`, `server/services/lenderMatchingEngine.ts`
-- **Client** — `client/src/pages/agent-broker/BrokerDashboard.tsx`, `client/src/pages/agent-broker/InviteGenerator.tsx`, `client/src/pages/agent-broker/inviteGenerator/`, `client/src/pages/agent-broker/AgentPipeline.tsx`, `client/src/pages/agent-broker/AgentDashboard.tsx`, `client/src/pages/agent-broker/AgentEdit.tsx`, `client/src/pages/agent-broker/AgentCoBranding.tsx`, `client/src/pages/agent-broker/PartnerServices.tsx`
+- **Client** — `client/src/pages/agent-broker/BrokerDashboard.tsx`, `client/src/pages/agent-broker/InviteGenerator.tsx`, `client/src/pages/agent-broker/inviteGenerator/`, `client/src/pages/agent-broker/AgentPipeline.tsx`, `client/src/pages/agent-broker/AgentDashboard.tsx`, `client/src/pages/agent-broker/AgentEdit.tsx`, `client/src/pages/agent-broker/AgentCoBranding.tsx`, `client/src/pages/agent-broker/PartnerServices.tsx`, `client/src/pages/agent-broker/ApplyInvite.tsx`
 - **Shared / schema** — `shared/businessChannel.ts`
 - **Tests** — `tests/businessChannel.test.ts`, `tests/inviteValidateAudit.test.ts`
 

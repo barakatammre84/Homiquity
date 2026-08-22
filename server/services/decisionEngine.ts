@@ -347,7 +347,41 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   let monthlyPiti: number;
   try {
     const projection = await computePaymentProjection(applicationId);
-    monthlyPiti = projection.estimatedMonthlyTotal;
+
+    // B3-6-03: owners' association and co-op dues belong inside the qualifying
+    // housing expense. On a condo, co-op, PUD or townhouse we cannot treat an
+    // uncaptured figure as zero — that qualifies the borrower on a housing
+    // expense we know to be incomplete, and understates the DTI by an unknown
+    // amount. A NULL is an honest gap; a fabricated zero is a falsified record.
+    if (projection.associationDuesUncaptured) {
+      return {
+        status: "NEEDS_MORE_INFO",
+        decision: null,
+        reasons: [],
+        missingItems: ["Monthly homeowners association (HOA) or co-op dues for the property"],
+        metrics: null,
+        resolvedPolicy: null,
+        ...base,
+      };
+    }
+
+    // B3-6-03: the DTI is built on the QUALIFYING housing expense, which
+    // includes association dues. estimatedMonthlyTotal deliberately excludes
+    // them to hold Loan Estimate parity — it is not the qualifying figure.
+    //
+    // Fail loudly on a missing figure rather than decisioning on it. An
+    // undefined PITI does not blow up downstream: it propagates into the DTI
+    // and reserve math and comes out as a plausible-looking decision with zero
+    // months of reserves — a decision computed on nothing, which is the exact
+    // silent-success shape this codebase keeps paying for. Deliberately NOT
+    // falling back to estimatedMonthlyTotal: that would quietly resurrect the
+    // dues-omission defect this field exists to fix.
+    if (typeof projection.qualifyingPitia !== "number" || !Number.isFinite(projection.qualifyingPitia)) {
+      throw new Error(
+        "CRITICAL DECISIONING ERROR: qualifying PITIA (B3-6-03) is unavailable — refusing to decision on an incomplete housing expense.",
+      );
+    }
+    monthlyPiti = projection.qualifyingPitia;
   } catch (err) {
     // A database/system fault must never masquerade as a borrower-info gap —
     // the underwriting catch below already rethrows faults; this catch must
@@ -381,6 +415,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
     // intake is the remaining piece to catch a consistent misstatement.
     propertyType: app.propertyType ?? undefined,
+    // B2-1.3-02 / B2-1.3-03: refinance LTV ceilings differ from purchase and
+    // live in the Eligibility Matrix. Passing the purpose lets the engine route
+    // a non-purchase file to review instead of measuring it against a purchase
+    // ceiling it was never entitled to.
+    loanPurpose: app.loanPurpose ?? undefined,
     householdFamilySize: app.householdFamilySize ?? undefined,
     homeSquareFootage: app.homeSquareFootage ?? undefined,
   };

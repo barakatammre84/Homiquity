@@ -49,6 +49,9 @@ vi.mock("../server/storage", () => ({
   storage: {
     getLoanApplication: vi.fn(async () => application),
     getLoanCostEntries: vi.fn(async () => []),
+    // B3-6-03: the projection reads subject-property association dues for the
+    // qualifying PITIA. Null = no URLA property row, a fresh intake's real shape.
+    getUrlaPropertyInfo: vi.fn(async () => null),
   },
 }));
 

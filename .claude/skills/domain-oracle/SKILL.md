@@ -59,11 +59,7 @@ is the only one that reads a rule and answers "is this true, and where does it s
 - **R1 — Invocation.** Run only on an explicit `/domain-oracle` or a scheduled-task prompt naming
   this routine. Never self-start from a passing mention of a guideline.
 - **R2 — Never from memory; start at the Selling Guide.** Every verdict cites a source you
-  actually opened this run. For Fannie policy that is the committed Guide, and reading it needs no
-  tooling: `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv` gives the page, then
-  read it out of `docs/fannie-mae/selling-guide/selling-guide-text.txt`, where every page is
-  prefixed `[[PAGE n | <section>]]` so a plain grep for any phrase names the section that states
-  it. Then the job aids in `docs/fannie-mae/` for MISMO/delivery mechanics, `docs/nmls/`,
+  actually opened this run. For Fannie policy that is the committed Guide: `section-index.tsv` is **tracked**, so `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv` locates any section with no setup. The full text is **gitignored** — this repo is public and the Guide is Fannie Mae's copyrighted work — so generate it once with `python3 scripts/extract-selling-guide.py` and then grep it freely (every page is prefixed `[[PAGE n | <section>]]`). If the script cannot find the PDF it says where it looked and **stops**; that is an honest gap, not a licence to answer from memory. Then the job aids in `docs/fannie-mae/` for MISMO/delivery mechanics, `docs/nmls/`,
   `docs/reg-z/`. **A remembered rule is not a citation.** Quote the locating detail so the next
   reader can check you. 🚨 **Use `grep -F` for any phrase containing `$`** — BSD grep returns zero
   matches on text that is verbatim present, which reads exactly like "the Guide does not say this."
@@ -142,8 +138,9 @@ repo is dirty in a way you did not cause — report what you saw and stop).
    placed there, switch to **edition** mode: regenerate via the committed extractor, diff
    `section-index.tsv` and the text, and report (a) sections whose text changed, (b) ids that
    disappeared — every one is a citation somewhere in this repo that is now wrong — and (c) the
-   `highlights.json` change list, which in a highlighted edition marks exactly what Fannie
-   revised. Re-open every conformance row citing a changed section. **Fannie publishes roughly
+   `revised-sections.tsv` change list, which is the set of sections Fannie revised in this
+   edition (derived from the source PDF's highlight annotations; titles and pages only, since the
+   annotated body text was quoted Guide prose). Re-open every conformance row citing a changed section. **Fannie publishes roughly
    monthly and there is no automated notification** (`CTO_ROADMAP` 1.8 — their page is
    bot-protected and email is the only channel), so this check is the only thing standing between
    us and quietly enforcing last quarter's policy.

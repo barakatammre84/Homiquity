@@ -55,7 +55,7 @@ doc-drift bug to fix):
   · [SAFE_MLO_COMPLIANCE_MAP.md](compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [COMPLIANCE_COUNSEL_REVIEW.md](compliance/COMPLIANCE_COUNSEL_REVIEW.md)
 - [LAUNCH_COUNSEL_PACKET.md](compliance/LAUNCH_COUNSEL_PACKET.md) — the four counsel asks that gate the go-live flip (sendable as-is)
 - [NTHLA_609G_SPEC.md](compliance/NTHLA_609G_SPEC.md) — FCRA §609(g) Notice to Home Loan Applicant: absent today, hard-blocking for F3, and the per-bureau data the credit-vendor contract must deliver
-- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, now committed at [`docs/fannie-mae/selling-guide/`](../docs/fannie-mae/selling-guide/) and greppable without tooling). Verified-conforming table, the five corrections landed 2026-08-20, and nine recorded gaps resolved conservatively rather than assumed
+- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, one command from greppable via `scripts/extract-selling-guide.py`; the copyrighted text is gitignored since the repo went public, the tracked `section-index.tsv` still locates any section). Verified-conforming table, the eight corrections landed 2026-08-20/22, and twenty recorded gaps resolved conservatively rather than assumed
 - [`compliance/SELLING_GUIDE_COVERAGE.md`](compliance/SELLING_GUIDE_COVERAGE.md) — generated standing map of all 423 Selling Guide sections against this codebase; run `pnpm coverage:sg` after editing `compliance/selling-guide-coverage.json`.
 - [security/threat_model.md](compliance/security/threat_model.md)
 
@@ -109,10 +109,12 @@ doc-drift bug to fix):
 The re-runnable QA teams (agents in `.claude/agents/`) that review every feature vs intended use.
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
+- [design-identity/ILLUSTRATION_BRIEF.md](design-identity/ILLUSTRATION_BRIEF.md) — what to commission for the animated scenes, and the mechanism that already exists.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
-- [JOURNEYS.md](feature-review/JOURNEYS.md) — the 4 client-journey charters walked in the browser.
+- [JOURNEYS.md](feature-review/JOURNEYS.md) — the client-journey charters walked in the browser.
+- [STAFF_JOURNEYS.md](feature-review/STAFF_JOURNEYS.md) — the 5 staff-desk charters: one file crossing many hands, walked as the seat and its counterpart.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
 The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**

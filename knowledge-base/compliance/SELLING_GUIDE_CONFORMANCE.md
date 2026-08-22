@@ -1,21 +1,35 @@
 # Selling Guide conformance ledger
 
-**Source of truth:** Fannie Mae *Selling Guide*, edition **08-05-2026**, committed at
-[`docs/fannie-mae/selling-guide/`](../../docs/fannie-mae/selling-guide/).
+**Source of truth:** Fannie Mae *Selling Guide*, edition **08-05-2026**.
+
+The Guide itself is **not committed** — this repository is public and the Guide is Fannie
+Mae's copyrighted work. One command makes it greppable on your machine:
+
+```bash
+python3 scripts/extract-selling-guide.py
+```
+
+If it cannot find the PDF it prints where it looked and **stops**. That is the correct
+outcome, and it matches CLAUDE.md: a missing source is an honest gap, never a licence to
+answer a Fannie policy question from memory.
 
 Per [CLAUDE.md](../../CLAUDE.md) the *Selling Guide* is the top of the Fannie document
 hierarchy — it **controls over every job aid** in `docs/fannie-mae/`, and over anything in
-this repo. Until 2026-08-20 that hierarchy was unenforceable in practice: the Guide itself
-was not in the repo, the online job aid returns `403`, and several sections carried blocked
-verdicts because there was nothing to check them against. It is now local and greppable.
+this repo. Until 2026-08-20 that hierarchy was unenforceable in practice: the Guide was not available
+at all, the online job aid returns `403`, and several sections carried blocked verdicts
+because there was nothing to check them against. It is now one command away, and the
+sections that carried those verdicts (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292) are present.
 
-## How to check a rule (no tooling required)
+## How to check a rule
+
+`section-index.tsv` is **tracked**, so finding the governing section needs nothing at all:
 
 ```bash
 grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv
 ```
 
-That gives the PDF page. Then read the section straight out of the committed text:
+That gives the PDF page. Then read the section out of the generated text
+(`selling-guide-text.txt`, gitignored — run the script above once if it is absent):
 
 ```bash
 awk '/\[\[PAGE 523 /,/\[\[PAGE 531 /' docs/fannie-mae/selling-guide/selling-guide-text.txt
@@ -32,9 +46,10 @@ mode for a source-of-truth document. `grep -cF` on the same phrase returns 1. Ex
 artifacts also wrap lines mid-sentence, so a long quotation may legitimately span two lines:
 grep a distinctive fragment, not a whole sentence.
 
-`highlights.json` carries the 175 highlight annotations from the source PDF. In this
-edition they mark the sections **revised in the 08-05-2026 release** — treat it as the
-change list, not as commentary.
+`revised-sections.tsv` is **tracked** and lists the **25 sections revised in the
+08-05-2026 release**, derived from the source PDF's 175 highlight annotations. Titles and
+page numbers only — the annotated body text is quoted Guide content and is deliberately not
+reproduced. Diff it against the next edition to scope a re-scrub.
 
 ## Standing rule
 
@@ -68,6 +83,8 @@ Checked against the 08-05-2026 text; code agrees. Re-verify on the next edition.
 | Rental section renumbering | B3-3.8-01 (was B3-3.1-08) | cited in `rental.ts` | current cite, renumbering tracked |
 | Reserves, second home | B3-4.1-01 | `requiredReserveMonths()` | 2 months |
 | Reserves, 2–4 unit primary / investment | B3-4.1-01 | `requiredReserveMonths()` | 6 months |
+| Qualifying rate, fixed-rate | B3-6-04 | `derivePricing` | note rate |
+| Association dues inside PITIA | B3-6-03 | `qualifyingPitia` | included (C-6) |
 
 Deliberate conservative overlays, already carried in
 [`data/regulatory/regulatory-ledger.json`](../../data/regulatory/regulatory-ledger.json)
@@ -150,6 +167,76 @@ deferred student loans and newly opened lines. A file pushed over the ceiling *p
 imputation would have been held there with no flag and no explanation: the same silent-success
 shape the fix was meant to remove. The cause list now includes it and the copy names it.
 
+### C-6 — Association dues were absent from the qualifying housing expense
+
+**B3-6-03, Monthly Housing Expense for the Subject Property.** PITIA is "the sum of the
+following": P&I; property, flood, and mortgage insurance; real estate taxes; ground rent;
+special assessments; **any owners' association dues**; any monthly co-op corporation fee; and
+any subordinate financing payments on the subject property. It is explicitly "the monthly
+housing expense used to calculate the debt-to-income (DTI) ratio."
+
+The decision path computed PITIA as **P&I + MI + escrow**, and `estimateMonthlyEscrow` is
+property tax plus homeowner's insurance only. Association dues were nowhere in it. Worse, they
+were nowhere they *could* be: `urla_property_info` had no column for them. The figure existed
+only on `loan_options.hoa_fees` — a display/offer row — and in the public calculators, which
+collect it from visitors and then drop it.
+
+So a condo borrower was decisioned with their dues omitted. At a routine **$300–800/month**
+that is a larger DTI understatement than C-1, in the same forbidden direction.
+
+Fixed across the capture path, not just the arithmetic:
+
+- `migrations/0057_subject_property_association_dues.sql` — expand-only, nullable, **no
+  DEFAULT**. Zero is a claim ("this property has no association"); defaulting every existing
+  row to it would fabricate the exact figure the column exists to stop assuming.
+- `computePaymentProjection` adds the dues to `estimatedMonthlyTotal` and reports them.
+- **A null on an association-bearing type gaps the file.** `decisionEngine` returns
+  `NEEDS_MORE_INFO` asking for the dues rather than qualifying on a housing expense it knows
+  is incomplete. `isAssociationBearingPropertyType` covers condo / co-op / PUD / townhouse and
+  the spelling variants intake actually produces — a detached SFR is left alone, where zero is
+  a plausible default and gapping every file would be noise rather than rigor.
+- The URLA property section captures it.
+
+Still missing from PITIA and recorded below rather than faked: flood insurance, ground rent,
+special assessments, and subordinate-financing payments (gap G-10).
+
+### C-7 — The engine would decision on an undefined housing expense
+
+Found by a fixture, not by design. Pointing `decisionEngine` at `qualifyingPitia` made an older
+persona mock return a projection without that field — and **nothing failed**. The `undefined`
+propagated through the DTI and reserve math and came out the far end as a decision reporting
+**zero months of reserves on a file holding $2.05M in assets**. A decision computed on nothing,
+rendered as a decision computed on something.
+
+That is the dominant defect shape in this codebase, reached from a new direction: not an
+operation that did not happen, but a number that was never there being spent anyway.
+
+The engine now throws when the qualifying PITIA is not a finite number. It deliberately does
+**not** fall back to `estimatedMonthlyTotal` — that is the figure which *excludes* association
+dues, so a fallback would quietly resurrect C-6 the moment any caller went quiet. Pinned by
+`tests/sellingGuideHousingExpense.test.ts`, which asserts the guard rather than the arithmetic,
+because the arithmetic is precisely what failed to notice.
+
+### C-8 — The engine never read the loan purpose, so cash-out files met purchase ceilings
+
+**B2-1.3-02 (Limited Cash-Out Refinance)** and **B2-1.3-03 (Cash-Out Refinance)**. Both route
+the maximum LTV, CLTV and HCLTV ratios to the **Eligibility Matrix** — a companion document
+this repo does not hold (see G-14).
+
+The funnel collects `loanPurpose`; it is driven by the `?type=` entry point
+(`client/src/pages/lending/preApproval/entryType.ts`, whose own comment says "`loanPurpose`
+drives program eligibility and pricing from there"), and the funnel branches its copy on
+`cash_out`. But `underwritingEngine.ts`, `decisionEngine.ts` and `loanEstimate.ts` contained
+**zero references to it**, and `CONVENTIONAL_MAX_LTV` is keyed on units × occupancy with no
+purpose dimension. A cash-out file was therefore measured against the *purchase* ceiling —
+95% for a one-unit primary — and approved well above the cash-out limit.
+
+Fixed by routing any non-purchase purpose to **human review**, citing both topics and naming
+the Matrix as the missing authority. Deliberately **no ratio is hardcoded**: we do not hold the
+Matrix, and a fabricated ceiling would be exactly the failure this whole pass exists to
+prevent. Tightening a gate is the only direction a reading may move without its source in hand.
+Omitted purpose still defaults to `purchase`, so genuine purchase files are byte-identical.
+
 ---
 
 ## Open gaps — recorded, not silently assumed
@@ -205,6 +292,210 @@ B3-4.1-01's six-month requirement also covers "a cash-out refinance transaction 
 ratio greater than 45%". `derivePreUnderwritingFlags` runs on the purchase intake — it carries
 a purchase price and a down payment and has no refinance shape — so that leg cannot fire. It
 is not wrong today; it becomes a gap the moment refinance files enter pre-underwriting.
+
+### G-11 — The disclosed Loan Estimate still omits association dues (Reg Z, not Selling Guide)
+
+C-6 added association dues to the **qualifying** PITIA (`qualifyingPitia`) and deliberately left
+`estimatedMonthlyTotal` — the figure that holds byte-parity with the Loan Estimate's
+`projectedPayments.years1Through5` — unchanged. They are two figures under two regimes:
+B3-6-03 governs what Fannie qualifies on and is verifiable against the committed Guide; what
+belongs on the **disclosed** projected-payments table is Reg Z §1026.37(c), and
+[`docs/reg-z/`](../../docs/reg-z/) still holds no captured source text.
+
+Per CLAUDE.md's Reg Z rail a reading there is **flagged, never asserted**, and may never be
+acted on unilaterally — changing a borrower disclosure on an unverifiable reading is precisely
+what the rail exists to prevent. So the disclosure is left as-is and the question is recorded
+here: whether §1026.37(c)(4)'s "Estimated Taxes, Insurance & Assessments" line should carry
+association dues, and how the escrowed/not-escrowed split is presented, needs the captured
+Reg Z text — i.e. the same procurement that unblocks the other eleven ledger entries.
+
+### G-12 — ARM qualifying rate is unimplemented, and an ARM product is already seeded
+
+**B3-6-04, Qualifying Payment Requirements.** The qualifying rate is the note rate only for
+fixed-rate mortgages. An ARM with a five-year initial fixed period must be qualified at the
+**greater of** the note rate plus the first rate-change cap, or the fully indexed rate; an ARM
+with a three-year-or-shorter initial period, at the maximum rate that could apply during the
+first five years.
+
+None of that exists — there is no `qualifyingRate`, no first-rate-change cap, and no fully
+indexed rate anywhere in the codebase. **Today this is not a live defect:** `derivePricing`
+prices only `conventional` / `fha` / `va` at a fixed 360-month term, so the note rate *is* the
+correct qualifying rate for everything it can produce.
+
+🚨 **But the trap is already loaded.** `server/seedMarketPricing.ts` seeds a *5/6 ARM
+(30-Year Term)* with `productType: "ARM"`, and the URLA offers `adjustable` as an amortization
+type. The moment anything routes a file to that product, every ARM borrower is qualified at the
+teaser rate — understating the payment and the DTI in the forbidden direction. Wiring ARM
+pricing **requires** B3-6-04 in the same change; do not treat the qualifying rate as a
+follow-up.
+
+### G-13 — Temporary buydowns must not be qualified at the bought-down rate (B3-6-04)
+
+"Loans subject to temporary interest rate buydowns must be qualified without consideration of
+the bought-down rate." Buydowns are not modeled in pricing, so we qualify at the note rate by
+default and conform by construction. The exposure is that Illinois DPA programs already in
+`server/seedData/illinoisDpa.ts` explicitly allow their funds to go toward "a mortgage rate
+buydown" — so the product can reach a bought-down borrower before the engine can represent one.
+Same rule as G-12: whoever models the buydown owes the qualifying-rate carve-out with it.
+
+### G-10 — Four PITIA components still absent (B3-6-03)
+
+B3-6-03 lists eight components; C-6 closed the association-dues one. Four remain unmodeled:
+
+- **flood insurance premiums** — nothing in the codebase models flood insurance as a payment
+  component (`floodCertFee` is a closing fee, and a CoreLogic flood adapter is seeded but
+  unused). Material in a SFHA, where premiums run into the thousands annually.
+- **ground rent** — leasehold estates are governed by B2-3-03, revised in this very release.
+- **special assessments** — common on condos with pending capital work, and the same B4-2.1-03
+  review that flags "unaddressed critical repairs" is the context they arise in.
+- **subordinate financing payments on the subject property** — `CLTV` exists on the
+  underwriting schema and `subordinateFinancingExists` on the delivery record, so the concept
+  is represented at delivery but not in the qualifying payment. A piggyback second's payment is
+  therefore outside PITIA.
+
+Each understates the housing expense where it applies. None is fabricated as zero today
+because none is captured at all; the honest fix is capture, as C-6 did for dues.
+
+### G-14 — 🚨 The Eligibility Matrix is absent, and the Guide defers to it **39 times**
+
+This bounds the whole exercise and is the most important thing on this page. The Selling Guide
+is the top of the hierarchy, but it is not self-contained: it routes numeric limits to the
+**Eligibility Matrix** in 39 places — maximum LTV/CLTV/HCLTV by transaction and occupancy,
+minimum credit scores for manual underwriting, minimum reserve requirements for manually
+underwritten loans (B3-4.1-01 says so explicitly), and the cash-out ceilings behind C-8.
+
+We do not hold it. It is not in `docs/fannie-mae/` and not in the founder's reference-documents
+folder. **A conformance verdict on any of those numbers is therefore unavailable, not merely
+unchecked** — and the honest response is a review route (as C-8 takes) rather than a plausible
+figure.
+
+Procurement item, same shape as `docs/reg-z/`: the fix is obtaining the document, not more
+analysis.
+
+### G-15 — Representative credit score ignores co-borrowers, while their income counts
+
+**B3-5.1-02, Representative Credit Score.** Step 2: one score per borrower — the **lower** of
+two, the **middle** of three. Step 3: with multiple borrowers, take the **lowest** applicable
+score across the group; a borrower with no score is excluded, not treated as zero.
+
+Step 2 is satisfied where scores are produced (the credit adapter sorts three and takes the
+middle, which also gets the Guide's tie examples right: 700/680/680 → 680, 700/700/680 → 700).
+
+**Step 3 cannot be satisfied at all.** `credit_score` is a single integer on
+`loan_applications`; no per-borrower score exists anywhere in the schema. Meanwhile
+`decisionEngine` aggregates **income across every `borrowerSequenceNumber`**, and sums
+liabilities across them too.
+
+So a co-borrower's income helps the DTI and their debts hurt it, but **their credit is
+invisible**. A 760 primary with a 600 co-borrower is priced and gated at 760 where Fannie
+requires 600 — clearing the 620 floor it should fail, and pricing several LLPA and PMI bands
+too cheaply. The asymmetry runs in the forbidden direction: we take the co-borrower's benefit
+without their risk.
+
+Closing it needs a per-borrower score column plus capture, and then `min()` across borrowers —
+the same shape as C-6. Not undertaken unilaterally; it is a schema and intake change, and the
+founder should choose when.
+
+*(Checked and sound while here: `CREDIT_SCORE_UNKNOWN_DEFAULT = 680` for a borrower who selects
+"not sure" is explicitly named, documented as a midpoint rather than a silent clamp, and stays
+`self_reported` provenance until a real pull replaces it — the decision carries `isVerified`
+off that provenance. That is a placeholder the system knows is a placeholder, not a fabricated
+score.)*
+
+### G-16 — 🚨 Real Estate Owned cannot be captured, yet is scored as "reviewed"
+
+The URLA form has **no Real Estate Owned section**. `SectionsPayload` / `UrlaSavePayload`
+(`client/src/pages/borrower/urla/types.ts`) carry personal info, employment, assets,
+liabilities, declarations, demographics, other income, subject property and loan details — and
+nothing for the borrower's *other* properties. The `real_estate_owned` table exists, is fully
+shaped for the job (`mortgage_balance` = UPB, `occupancy_type`, `will_be_sold`, `status`), is
+read by storage and batch loaders — and is written **only** by an internal API route
+(`server/routes/intelligence.ts:96`). No borrower-facing path populates it.
+
+Worse than merely absent: `scoreRealEstateOwned` (`server/services/mismoValidation.ts`) scores
+section 2c by asserting a single hardcoded field — **"Real estate ownership reviewed" = "yes"**
+— whenever `reo.length === 0`. A borrower who owns three rentals has no way to say so, and the
+completeness scorer then affirms the section was reviewed. **That is an unknown rendered as a
+pass**, the identical shape as the TRID `null → true` defect this codebase already fixed and
+documents at length in `services/loanEstimate.ts` (finding ux-30). An absence of data is not a
+clean review.
+
+### G-17 — Multiple-financed-property rules are unimplemented (B2-2-03, B3-4.1-01)
+
+Downstream of G-16, and fully specified in the Guide — no Eligibility Matrix needed:
+
+- **B2-2-03, Limits on the Number of Financed Properties.** Principal residence: no limit
+  (HomeReady: 2). Second home or investment: **DU maximum 10**. The count includes every
+  one-to-four-unit property the borrower is personally obligated on — *even where the housing
+  expense is excluded from DTI under B3-6-05* — counting a multi-unit property as one.
+- **B3-4.1-01, Calculation of Reserves for Multiple Financed Properties.** Additional reserves
+  on second home / investment subjects, as a percentage of the aggregate UPB of mortgages and
+  HELOCs on the borrower's *other* financed properties: **2%** for 1–4 financed properties,
+  **4%** for 5–6, **6%** for 7–10 (DU only). The aggregate excludes the subject property, the
+  principal residence, properties sold or pending sale, and accounts paid by closing. Not
+  cumulative across simultaneous applications, and not applicable to HomeReady.
+
+Neither is implemented: `decisionEngine`, `underwritingEngine` and `preUnderwriting` contain
+**zero references to `realEstateOwned`**. The reserve tiering added in C-4 is months-based and
+covers only occupancy and unit count; this is a separate dollar requirement stacked on top.
+
+Both are computable from columns that already exist — the blocker is capture (G-16), not
+authority. That makes this the **highest-readiness gap on this page**: unlike G-7/G-8/G-14 it
+needs no document we do not hold, and unlike G-15 it needs no new schema.
+
+Also blocked behind G-16: **B3-6-06, Qualifying Impact of Other Real Estate Owned** (how an
+existing property's PITIA counts) and the B3-6-05 rule that a mortgage the borrower is
+obligated on must enter the financed-property count regardless of who pays it.
+
+### G-18 — Non-taxable gross-up is now *authorised* but deliberately not applied (B3-3.1-01)
+
+**B3-3.1-01, Nontaxable Income:** where income is verified non-taxable and its tax-exempt
+status is likely to continue, the lender "should develop an 'adjusted gross income' … by adding
+an amount equivalent to **25%** of the nontaxable income" — or the actual tax a wage earner in
+a similar bracket would pay, if that exceeds 25%.
+
+`shared/incomeTypes.ts` carries `qualifyingAuthority: null` for all twenty Section 1e types, and
+its docstring gave the reason as "there is no Selling Guide income chapter in-repo". **That
+reason expired on 2026-08-20.** The rule is in hand.
+
+It is still not applied, for a different and better reason: **gross-up raises qualifying
+income, which loosens the DTI gate.** The standing rail lets a reading tighten a gate or remove
+a borrower charge — never loosen one. Applying it is a founder decision, not an agent's. The
+module docstring and the agency-wage note now say exactly that, so the next session does not
+re-derive the citation and quietly wire it in.
+
+### G-19 — Three-year continuance is unimplementable: no expiration date is captured (B3-3.1-01)
+
+**B3-3.1-01, Continuance of Income:** income with a defined expiration date, or dependent on
+depletion of an asset account or other limited benefit, must be documented to continue **at
+least three years from the note date**. Where an asset account is the sole or majority source
+of qualifying income, the lender must additionally assess repayment ability once it depletes.
+And where the lender is told the borrower is moving to a lower pay structure — pending
+retirement, a new job — **the lower amount must be used**.
+
+This one moves in the permitted direction (it removes income), but `other_income_sources`
+carries only `income_source` and `monthly_amount`. There is no expiration date, no benefit
+term, and no pending-change flag to test against, so every Section 1e source is counted at face
+value for an unbounded horizon. Alimony ending in eighteen months and a lifetime pension are
+indistinguishable to the engine.
+
+Capture gap, same shape as C-6 before it was fixed.
+
+### G-20 — Income paid in virtual currency is ineligible, and unrepresentable (B3-3.1-01)
+
+"Any income paid to or earned by the borrower in the form of virtual currency, such as
+cryptocurrencies, **is not eligible to be used to qualify for the loan**." Unlike the gross-up
+and continuance rules this is absolute, and it pairs with G-3 (debt *secured by* virtual
+currency must be *included* in the DTI). Neither is representable: the Section 1e catalog has no
+crypto type and the codebase models virtual currency nowhere. Not currently violable — and not
+currently enforceable either.
+
+🚨 **A trap the public-repo decision created, recorded here because it will bite whoever closes
+G-18 or G-19.** `tests/incomeTypes.test.ts` enforces citations with `fs.existsSync`. The Guide
+text is now gitignored, so citing
+`docs/fannie-mae/selling-guide/selling-guide-text.txt` passes locally and **fails in CI**, where
+the fresh clone lacks it. Cite the tracked `section-index.tsv` (or this ledger) and name the
+section.
 
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 
