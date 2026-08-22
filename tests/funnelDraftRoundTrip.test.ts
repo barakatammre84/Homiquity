@@ -25,6 +25,15 @@ vi.mock("../server/services/trid", () => ({
   tridHardStopError: vi.fn(() => null),
 }));
 
+// Load express and the registrar's module graph at module init, not inside
+// beforeAll: the cold load is the expensive part (storage, services), and under
+// a full parallel lane on a loaded box it blew the 60s hook timeout, which
+// vitest reports as six SKIPPED tests — a green-looking run that proved
+// nothing. Same fix as #664 for intakeNeverDenies. (vi.mock is hoisted, so the
+// static imports still see the stubs above.)
+import express from "express";
+import { registerStatusDecisionRoutes } from "../server/routes/lending/statusDecisions";
+
 describe("PATCH /api/loan-applications/:id — the funnel draft round trip keeps every answer", () => {
   const h = {
     applications: [] as Record<string, any>[],
@@ -44,9 +53,7 @@ describe("PATCH /api/loan-applications/:id — the funnel draft round trip keeps
   let server: import("node:http").Server;
   let base: string;
 
-  beforeAll(async () => {
-    const express = (await import("express")).default;
-    const { registerStatusDecisionRoutes } = await import("../server/routes/lending/statusDecisions");
+  beforeAll(() => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
