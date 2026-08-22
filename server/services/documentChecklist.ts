@@ -266,3 +266,54 @@ export function buildDocumentChecklist(input: {
 
   return { documents: items, stats };
 }
+
+/**
+ * The outstanding items, in the order a borrower should be asked for them.
+ *
+ * Deliberately a SEPARATE projection rather than a change to
+ * buildDocumentChecklist's own ordering: tests/documentChecklist.test.ts pins
+ * the builder's current order, and reordering it there would churn a suite that
+ * is testing something else.
+ *
+ * Rejected first — the borrower already acted, it bounced, and it is the
+ * cheapest thing they can put right. Then by gate: prior_to_approval blocks
+ * sooner than prior_to_docs, which blocks sooner than prior_to_funding.
+ */
+export function outstandingChecklistItems(items: ChecklistItemDto[]): ChecklistItemDto[] {
+  const gate: Record<string, number> = {
+    prior_to_approval: 0,
+    prior_to_docs: 1,
+    prior_to_funding: 2,
+  };
+  return items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.status === "needed" || item.status === "rejected")
+    .sort((a, b) => {
+      const rejected = Number(b.item.status === "rejected") - Number(a.item.status === "rejected");
+      if (rejected !== 0) return rejected;
+      const byGate = (gate[a.item.priority ?? ""] ?? 1) - (gate[b.item.priority ?? ""] ?? 1);
+      if (byGate !== 0) return byGate;
+      return a.index - b.index; // stable
+    })
+    .map(({ item }) => item);
+}
+
+/**
+ * A checklist item as something to say to a borrower.
+ *
+ * Condition titles are staff-voiced ("2-Year Tax Returns Required
+ * (Self-Employed)"), and the assistant renders `Upload your ${x}` around this —
+ * which previously produced "Upload your pay_stub" from a raw document slug.
+ * Strip the staff-facing suffix and fall back to the slug only if there is
+ * nothing better.
+ */
+export function borrowerAskLabel(item: ChecklistItemDto): string {
+  const label = (item.label ?? "").trim();
+  if (!label) return item.documentType.replace(/_/g, " ");
+  return (
+    label
+      .replace(/\s*\(.*\)\s*$/, "")     // trailing "(Self-Employed)"
+      .replace(/\s+required\s*$/i, "")  // trailing "Required"
+      .trim() || item.documentType.replace(/_/g, " ")
+  );
+}

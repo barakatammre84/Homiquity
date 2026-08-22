@@ -12,7 +12,7 @@ import { logAiInteraction } from "../aiInteractionLog";
 import { recalculateDecision } from "../decisionEngine";
 import { evaluateBrokerSubmissionReadiness } from "../brokerSubmissionReadiness";
 import {
-  getBorrowerProfileFromApplication,
+  loadBorrowerProfile,
   determineDocumentRequirements,
   generateConditionsFromRequirements,
 } from "../../pipelineEngine";
@@ -167,7 +167,7 @@ export async function runAutopilotForSection(params: {
     if (!(await isAutopilotEnabled(application.loanOfficerId))) return;
     if (!(await canGenerateFollowUps())) return;
 
-    const profile = getBorrowerProfileFromApplication(application);
+    const profile = await loadBorrowerProfile(application);
     const requirements = determineDocumentRequirements(profile);
     const created = await generateConditionsFromRequirements(applicationId, requirements);
 
