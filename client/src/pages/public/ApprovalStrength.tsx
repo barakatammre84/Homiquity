@@ -140,7 +140,7 @@ export default function ApprovalStrength() {
               homiquity
             </span>
           </Link>
-          <h1 className="text-3xl md:text-4xl font-bold mt-6 mb-3" data-testid="text-page-title">
+          <h1 className="font-display text-3xl md:text-4xl font-bold leading-none mt-6 mb-3" data-testid="text-page-title">
             How Strong Is Your Approval Case?
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">

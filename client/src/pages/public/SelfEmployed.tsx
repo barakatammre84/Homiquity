@@ -10,6 +10,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { AdvocacyArt } from "@/components/illustrations/AdvocacyArt";
 import { SelfEmployedDeskArt } from "@/components/illustrations/SelfEmployedDeskArt";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -208,9 +209,7 @@ export default function SelfEmployed() {
           testId="section-se-story"
           eyebrow="Built for complex income"
           title="Your tax return tells a story. We read the whole thing."
-          image={lifestyleImages.learning.src}
-          imageAlt={lifestyleImages.learning.alt}
-          imagePosition="center 30%"
+          illustration={<AdvocacyArt />}
           className="bg-muted"
         >
           <p>
