@@ -159,7 +159,7 @@ export default function FirstTimeBuyer() {
                   <Sparkles aria-hidden="true" className="h-4 w-4 text-primary" />
                   Made for first-time buyers
                 </div>
-                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-ftb-hero-title">
+                <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-ftb-hero-title">
                   Your first home is closer than you think.
                 </h1>
                 <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">

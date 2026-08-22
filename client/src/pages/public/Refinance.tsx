@@ -124,7 +124,7 @@ export default function Refinance() {
 
             <div className="mt-10 grid items-center gap-12 lg:mt-14 lg:grid-cols-2 lg:gap-16">
               <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-refi-hero-title">
+                <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-refi-hero-title">
                   Could refinancing lower your monthly payment?
                 </h1>
                 <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">

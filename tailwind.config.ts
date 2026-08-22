@@ -179,7 +179,7 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
-        display: ["var(--font-serif)"], /* hero/display headings (Source Serif 4) */
+        display: ["var(--font-display)"], /* hero/display headings (Bricolage Grotesque) */
         mono: ["var(--font-mono)"],
       },
       keyframes: {

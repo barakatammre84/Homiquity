@@ -116,7 +116,7 @@ export default function SelfEmployed() {
                   <UserCheck aria-hidden="true" className="h-4 w-4 text-primary" />
                   Humans read your file — not just software
                 </div>
-                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-se-hero-title">
+                <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-se-hero-title">
                   You built a business. It should count for you, not against you.
                 </h1>
                 <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
