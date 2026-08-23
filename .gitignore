@@ -37,3 +37,8 @@ mismo-*.xml
 # `vitest/config` resolves from and where `__dirname` has to point; removed in a
 # `finally`, so one appearing here means a run was killed mid-flight.
 .hq-test-collection-guard.*.mjs
+
+# The ralph-loop plugin's per-worktree state file (iteration count, the promise
+# phrase, the prompt). It is written into whichever checkout the loop runs in,
+# is meaningful only to that loop, and was one `git add .` from being committed.
+.claude/ralph-loop.local.md
