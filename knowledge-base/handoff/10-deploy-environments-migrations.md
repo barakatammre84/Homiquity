@@ -135,7 +135,7 @@ flowchart TD
 - **ROLLBACK §0 distinguishes "bad deploy" from "stale prod" in thirty seconds.**
   `knowledge-base/runbooks/ROLLBACK.md:20-39`: commit matches `origin/main` → roll back; commit is
   older or null → prod is stale and rolling back makes it worse.
-- **`verify-deploy` must poll the Railway origin, never `www`.** `.github/workflows/ci.yml:684-669`
+- **`verify-deploy` must poll the Railway origin, never `www`.** `.github/workflows/ci.yml:687-695`
   — Squarespace DNS, a redirect or a cached edge response "can all make it answer for something
   other than the Railway service"; pinned by `tests/ciTriggers.test.ts:153`. It is
   `continue-on-error: true` (`:635`) to break a deadlock with Railway's "Wait for CI" that otherwise

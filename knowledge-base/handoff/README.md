@@ -81,11 +81,17 @@ Three layers, weakest to strongest:
    detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run the commands,
    rewrite the generated block, log the run.
 
-**Refresh protocol (manual, until the skill lands):** fresh worktree of `origin/main` → run
-`pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:docs` → re-run the
-FACTS commands and each chapter's prove-it block → fix prose, add `HO-` rows, bump stamps only
-for files actually re-read → append a line to the ledger's run log → PR with
-`git add knowledge-base/handoff/...` explicitly.
+**Refresh protocol:** invoke the `handoff-refresh` skill, or do it by hand — fresh worktree of
+`origin/main` → `pnpm handoff:facts --check` and `--cite` to find drift mechanically, plus
+`git log <FACTS-stamp>..origin/main` to find the drift no tool can see (a count can be unchanged
+while the *reason* for it changed) → `pnpm handoff:facts --write` → fix the prose the numbers
+belong to → `pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:ui` →
+add `HO-` rows, bump stamps only for files actually re-read → append a line to the ledger's run
+log → PR with `git add knowledge-base/handoff/...` explicitly.
+
+**Two rows measure `HEAD`, not `main`** — F-31 (commits) and the SHA stamp — which is why
+`--write` refuses to run from a branch ahead of `origin/main`. And F-21 counts this corpus
+itself, so it rises the moment `handoff/` merges.
 
 ## What changes when you build
 
