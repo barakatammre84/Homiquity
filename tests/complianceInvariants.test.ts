@@ -129,6 +129,24 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
     expect(source).toMatch(/DEFERRED_STUDENT_LOAN_FACTOR\s*=\s*0\.01/);
   });
 
+  // B3-6-05, Debts Paid by Others (08/05/2026 edition): one shared predicate,
+  // read by every DTI path. Two implementations of a regulated exclusion is the
+  // drift the VA-residual case above already paid for once.
+  it("the Debts-Paid-by-Others rule cites B3-6-05 and is the single predicate every DTI path reads", () => {
+    const rule = read("shared/liabilityExclusions.ts");
+    expect(rule).toContain("B3-6-05");
+    expect(rule).toContain("Debts Paid by Others");
+    expect(rule).toContain("12 months");
+    for (const [file, symbol] of [
+      ["server/services/decisionEngine.ts", "isExcludedAsPaidByOtherParty"],
+      ["server/underwriting.ts", "assessPaidByOtherParty"],
+      ["server/mismo.ts", "isExcludedAsPaidByOtherParty"],
+      ["server/services/preUnderwriting.ts", "assessPaidByOtherParty"],
+    ] as const) {
+      expect(read(file), `${file} must read the shared B3-6-05 predicate`).toContain(symbol);
+    }
+  });
+
   it("the VA utility rate remains the statutory $0.14/sqft", () => {
     const source = read("server/services/underwritingNuance.ts");
     expect(source).toMatch(/VA_UTILITY_RATE_PER_SQFT\s*=\s*0\.14/);

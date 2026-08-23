@@ -246,3 +246,161 @@ describe("B3-4.1-01 Determining Required Minimum Reserves", () => {
     expect(flag!.reason).not.toContain("B3-4.1-01");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The vocabulary the URLA picker ACTUALLY writes. The "branch reachability"
+// block above tests "credit_card" / "Credit Card" / "revolving" — none of which
+// the picker emits: it stores its own label, "Revolving (Credit Card)", and the
+// previous normaliser turned that into `revolving_(credit_card)`, so the
+// revolving rule never fired for a real row while this file stayed green.
+// `liabilityKind` (shared/liabilityTypes.ts) is now the one classifier the
+// picker, the engine and the export read; these feed it the picker's list.
+// ---------------------------------------------------------------------------
+import { URLA_LIABILITY_TYPES } from "@shared/liabilityTypes";
+
+describe("B3-6-05 reachability with the picker's OWN labels", () => {
+  it("imputes 5% for a 'Revolving (Credit Card)' row with no minimum payment", () => {
+    const r = assessLiabilities([
+      liability({ liabilityType: "Revolving (Credit Card)", unpaidBalance: "2000", monthlyPayment: "0" }),
+    ]);
+    expect(r.totalMonthlyPayment).toBe(100);
+  });
+
+  it("imputes 1% for a 'Student Loan' row with no payment, and includes 'Installment (Auto Loan)' at its payment", () => {
+    expect(
+      assessLiabilities([liability({ liabilityType: "Student Loan", unpaidBalance: "40000", monthlyPayment: "0" })]).totalMonthlyPayment,
+    ).toBe(400);
+    expect(
+      assessLiabilities([liability({ liabilityType: "Installment (Auto Loan)", unpaidBalance: "15000", monthlyPayment: "420" })]).totalMonthlyPayment,
+    ).toBe(420);
+  });
+
+  it("a HELOC with no minimum payment is NOT imputed as revolving — it is secured by real estate", () => {
+    const r = assessLiabilities([liability({ liabilityType: "HELOC", unpaidBalance: "20000", monthlyPayment: "0" })]);
+    expect(r.totalMonthlyPayment).toBe(0);
+    expect(r.breakdown[0].reason).not.toContain("revolving");
+  });
+
+  it("every picker label classifies to something the engine has a branch for", () => {
+    for (const label of URLA_LIABILITY_TYPES) {
+      const r = assessLiabilities([liability({ liabilityType: label, unpaidBalance: "1000", monthlyPayment: "50" })]);
+      expect(r.breakdown[0].type, label).not.toContain("(");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B3-6-05 — "Debts Paid by Others" (revised in the 08/05/2026 edition).
+// "When a borrower is obligated on a non-mortgage debt - but is not the party
+// who is actually repaying the debt - the lender may exclude the monthly
+// payment from the borrower's recurring monthly obligations. This policy
+// applies whether or not the other party is obligated on the debt, but is not
+// applicable if the other party is an interested party to the subject
+// transaction (such as the seller or real estate agent)." ... "When a borrower
+// is obligated on a mortgage debt ... the lender may exclude the full monthly
+// housing expense (PITIA) ... if the party making the payments is obligated on
+// the mortgage debt, there are no delinquencies in the most recent 12 months,
+// and the borrower is not using rental income from the applicable property to
+// qualify." ... "the lender must obtain the most recent 12 months' canceled
+// checks (or bank statements) from the other party making the payments".
+// ---------------------------------------------------------------------------
+describe("B3-6-05 Debts Paid by Others — staff calculations engine", () => {
+  const paidByFamily = (over: Partial<UrlaLiability>) =>
+    liability({
+      liabilityType: "Student Loan",
+      unpaidBalance: "30000",
+      monthlyPayment: "350",
+      paidByOtherParty: true,
+      otherPartyRelationship: "family_member",
+      otherPartyInterestedParty: false,
+      ...over,
+    } as Partial<UrlaLiability>);
+
+  it("excludes a non-mortgage payment a third party makes, and says so in the breakdown", () => {
+    const r = assessLiabilities([paidByFamily({}), liability({ liabilityType: "Installment (Auto Loan)", monthlyPayment: "400" })]);
+    expect(r.totalMonthlyPayment).toBe(400);
+    expect(r.excludedDebts).toBe(350);
+    expect(r.breakdown[0]).toMatchObject({ included: false });
+    expect(r.breakdown[0].reason).toContain("Debts Paid by Others");
+  });
+
+  it("keeps the payment in when the payer is the seller or an agent", () => {
+    const r = assessLiabilities([paidByFamily({ otherPartyInterestedParty: true })]);
+    expect(r.totalMonthlyPayment).toBe(350);
+    expect(r.excludedDebts).toBe(0);
+  });
+
+  it("keeps the payment in until the borrower has answered the interested-party question", () => {
+    const r = assessLiabilities([paidByFamily({ otherPartyInterestedParty: null })]);
+    expect(r.totalMonthlyPayment).toBe(350);
+  });
+
+  it("mortgage debt: excluded only with the payer on the loan and no rental income from the property", () => {
+    const mortgage = (o: Partial<UrlaLiability>) =>
+      assessLiabilities([paidByFamily({ liabilityType: "Mortgage", monthlyPayment: "1900", unpaidBalance: "250000", ...o } as Partial<UrlaLiability>)]);
+    expect(mortgage({ otherPartyObligated: false, usesRentalIncomeFromProperty: false }).totalMonthlyPayment).toBe(1900);
+    expect(mortgage({ otherPartyObligated: true, usesRentalIncomeFromProperty: true }).totalMonthlyPayment).toBe(1900);
+    const ok = mortgage({ otherPartyObligated: true, usesRentalIncomeFromProperty: false });
+    expect(ok.totalMonthlyPayment).toBe(0);
+    expect(ok.excludedDebts).toBe(1900);
+    expect(ok.breakdown[0].reason).toContain("Housing expense paid by an obligated third party");
+  });
+
+  it("a paid-off-at-closing row is reported under B3-6-07, not B3-6-05 — the first rule wins", () => {
+    const r = assessLiabilities([paidByFamily({ toBePaidOff: true })]);
+    expect(r.breakdown[0].reason).toContain("B3-6-07");
+  });
+});
+
+describe("B3-6-05 Debts Paid by Others — the pre-underwriting flag names the checks to gather", () => {
+  const base = {
+    annualIncome: "90000",
+    purchasePrice: "400000",
+    downPayment: "80000",
+    employmentType: "employed",
+    verifiedAssetsTotal: 60000,
+  };
+  const declared = (over: Record<string, unknown>) => ({
+    id: "liab-1",
+    creditorName: "Navient",
+    liabilityType: "Student Loan",
+    monthlyPayment: "350",
+    paidByOtherParty: true,
+    otherPartyRelationship: "family_member",
+    otherPartyObligated: null,
+    otherPartyInterestedParty: false,
+    usesRentalIncomeFromProperty: null,
+    ...over,
+  });
+
+  it("raises THIRD_PARTY_PAID_DEBT with one document line per excluded debt", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...base,
+      declaredLiabilities: [declared({}), declared({ id: "liab-2", creditorName: "Ally Auto", liabilityType: "Installment (Auto Loan)", monthlyPayment: "420", otherPartyRelationship: "employer" })],
+    });
+    const flag = flags.find((f) => f.code === "THIRD_PARTY_PAID_DEBT");
+    expect(flag).toBeDefined();
+    expect(flag!.severity).toBe("warning");
+    expect(flag!.reason).toContain("Navient");
+    expect(flag!.reason).toContain("Ally Auto");
+    expect(flag!.reason).toContain("$770/month");
+    expect(flag!.reason).toContain("12 months");
+    expect(flag!.requiredDocs).toHaveLength(2);
+    expect(flag!.requiredDocs.every((d) => d.documentType === "third_party_payment_history")).toBe(true);
+    expect(flag!.requiredDocs[0].description).toContain("family member");
+    expect(flag!.requiredDocs[1].description).toContain("employer");
+    expect(flag!.metrics).toMatchObject({ thirdPartyPaidDebts: 2, monthlyExcluded: 770 });
+  });
+
+  it("raises nothing for a claim the rule rejects, and nothing when no claim is made", () => {
+    expect(
+      derivePreUnderwritingFlags({ ...base, declaredLiabilities: [declared({ otherPartyInterestedParty: true })] })
+        .some((f) => f.code === "THIRD_PARTY_PAID_DEBT"),
+    ).toBe(false);
+    expect(
+      derivePreUnderwritingFlags({ ...base, declaredLiabilities: [declared({ paidByOtherParty: false })] })
+        .some((f) => f.code === "THIRD_PARTY_PAID_DEBT"),
+    ).toBe(false);
+    expect(derivePreUnderwritingFlags({ ...base }).some((f) => f.code === "THIRD_PARTY_PAID_DEBT")).toBe(false);
+  });
+});

@@ -407,6 +407,13 @@
       "when": 1786147200003,
       "tag": "0057_subject_property_association_dues",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1786147200004,
+      "tag": "0058_liability_paid_by_other_party",
+      "breakpoints": true
     }
   ]
 }

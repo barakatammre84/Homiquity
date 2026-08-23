@@ -1,4 +1,5 @@
 import { AMORTIZATION_TYPES, PREFERRED_LOAN_TYPES } from "@shared/statusVocabularies";
+import { URLA_LIABILITY_TYPES } from "@shared/liabilityTypes";
 import type { AmortizationType, BorrowerDeclarations, EmploymentHistory, HmdaDemographics, LoanApplication, OtherIncomeSource, PreferredLoanType, UrlaAsset, UrlaLiability, UrlaLoanDetails, UrlaPersonalInfo, UrlaPropertyInfo } from "@shared/schema";
 import { OTHER_INCOME_LABELS } from "@shared/incomeTypes";
 // SSN and account numbers are WRITE-ONLY virtual fields: the server encrypts
@@ -166,11 +167,11 @@ export const ACCOUNT_TYPES = [
   "Cash Value of Life Insurance"
 ];
 
-export const LIABILITY_TYPES = [
-  "Revolving (Credit Card)", "Installment (Auto Loan)",
-  "Student Loan", "Mortgage", "HELOC",
-  "Alimony", "Child Support", "Other"
-];
+// The picker's labels moved to `shared/liabilityTypes.ts` so the server can
+// READ what this picker writes (the column is free text): the engine's
+// B3-6-05 branches were matching a vocabulary this list never produced.
+// Re-exported under the original name; the strings are byte-identical.
+export const LIABILITY_TYPES: readonly string[] = URLA_LIABILITY_TYPES;
 
 // Section 1e income sources. The list itself moved to `shared/incomeTypes.ts`
 // so the server can READ what this picker writes: the column behind it is a

@@ -259,6 +259,32 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
     expect(extractOffendingElements(result.errors)).toEqual([]);
     expect(result.valid).toBe(true);
   });
+
+  // B3-6-05, Debts Paid by Others → LiabilityExclusionIndicator (MISMO_3_0.xsd
+  // line 9748). Validated against the official schema, not just grepped for:
+  // the LIABILITY_DETAIL content model is an ordered sequence, so a correct
+  // element in the wrong position is a schema violation xmllint would catch.
+  it.skipIf(!xmllintInstalled)("a third-party-paid liability's exclusion indicator validates in schema order", () => {
+    const xml = generateMISMO34XML(
+      baseDto({
+        liabilities: [
+          {
+            liabilityType: "Student Loan",
+            creditorName: "Navient",
+            monthlyPayment: "350",
+            unpaidBalance: "30000",
+            paidByOtherParty: true,
+            otherPartyRelationship: "family_member",
+            otherPartyInterestedParty: false,
+          } as any,
+        ],
+      }),
+    );
+    expect(xml).toContain("<LiabilityExclusionIndicator>true</LiabilityExclusionIndicator>");
+    const result = validateMismoExport(xml);
+    expect(extractOffendingElements(result.errors)).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
 });
 
 describe("phone normalization (MISMONumericString \\d* facet)", () => {

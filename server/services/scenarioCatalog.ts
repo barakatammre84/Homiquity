@@ -230,4 +230,28 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     },
     engineRef: "server/services/preUnderwriting.ts + server/pipelineEngine.ts + client/src/funnel/preApprovalMachine.ts",
   },
+  {
+    scenarioId: "F-THIRD-PARTY-PAID-DEBT",
+    version: "1.0.0",
+    title: "Someone else pays that debt (B3-6-05, Debts Paid by Others)",
+    flagCode: "THIRD_PARTY_PAID_DEBT",
+    status: "implemented",
+    triggers: [
+      "urla_liabilities.paid_by_other_party = true and the borrower's answers satisfy shared/liabilityExclusions.ts: the payer is not an interested party; for a mortgage/HELOC, the payer is obligated and no rental income from that property is used",
+    ],
+    regulations: ["Fannie Mae Selling Guide B3-6-05, Debts Paid by Others (08/05/2026 edition)"],
+    riskImpact:
+      "The payment leaves the qualifying DTI the moment the answers qualify, as the Guide allows; without the 12-month third-party payment history the exclusion cannot be sustained at the lender, so the paperwork must travel with it.",
+    workflow: {
+      loanOfficerActions: [
+        "Clear the per-liability condition on 12 months of the payer's cancelled checks or bank statements showing no delinquency; if it cannot be documented, uncheck the claim so the payment returns to the ratio",
+      ],
+      borrowerActions: ["Provide 12 months of cancelled checks or bank statements from the person who makes the payments"],
+      automationEngineActions: [
+        "Exclude the payment from both DTI paths and declare it in the MISMO package (LiabilityExclusionIndicator)",
+        "Raise THIRD_PARTY_PAID_DEBT and reconcile one PRE_UW_THIRD_PARTY_PAID_DEBT:<liabilityId> condition per excluded debt — created, retired when withdrawn, never duplicated",
+      ],
+    },
+    engineRef: "shared/liabilityExclusions.ts assessPaidByOtherParty + server/services/preUnderwriting.ts reconcileThirdPartyPaidDebtConditions",
+  },
 ];

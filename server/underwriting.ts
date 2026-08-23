@@ -18,6 +18,8 @@ import { lookupResolver } from "./services/lookupResolver";
 import { computeAgencyWageIncome } from "./services/income/paths/agencyWage";
 import { computeSelfEmploymentPath } from "./services/income/paths/selfEmployment";
 import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
+import { liabilityKind, type LiabilityKind } from "@shared/liabilityTypes";
+import { assessPaidByOtherParty } from "@shared/liabilityExclusions";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -301,28 +303,21 @@ export const REVOLVING_MINIMUM_PAYMENT_FLOOR = 10;
 export const DEFERRED_STUDENT_LOAN_FACTOR = 0.01;
 
 /**
- * `urla_liabilities.liability_type` is a free varchar written from
- * LIABILITY_TYPES by the URLA form, but older rows and importers carry looser
- * spellings. Normalising here is what makes the guideline branches below
- * reachable at all — they previously tested for `"installment"` and `"lease"`,
- * neither of which is a value the form can emit.
- */
-function normalizeLiabilityType(raw: string | null | undefined): string {
-  const t = (raw ?? "other").toLowerCase().trim().replace(/[\s-]+/g, "_");
-  if (t === "installment" || t === "personal_loan" || t === "auto_loan") return "installment_loan";
-  if (t === "revolving" || t === "credit_card" || t === "charge_card") return "credit_card";
-  if (t === "student" || t === "student_loan") return "student_loan";
-  return t;
-}
-
-/**
+ * `urla_liabilities.liability_type` is a free varchar written from the URLA
+ * picker's LABELS ("Revolving (Credit Card)"), while older rows and importers
+ * carry snake_case spellings ("credit_card"). The classifier that reads both
+ * is `liabilityKind` in shared/liabilityTypes.ts — shared with the picker, the
+ * pre-underwriting flags and the MISMO export — because a local normaliser
+ * here once mapped only the snake_case half and the B3-6-05 revolving branch
+ * below was unreachable for every row the form actually writes.
+ *
  * B3-6-05 treats revolving charge accounts and unsecured lines of credit as
  * long-term debt: "credit cards, department store charge cards, and personal
- * lines of credit". HELOCs are deliberately excluded here — the same topic
- * routes equity lines secured by real estate into the housing expense instead.
+ * lines of credit". HELOCs are deliberately not revolving here — the same
+ * topic routes equity lines secured by real estate into the housing expense.
  */
-function isRevolvingType(type: string): boolean {
-  return type === "credit_card";
+function isRevolvingType(kind: LiabilityKind): boolean {
+  return kind === "revolving";
 }
 
 function toAmount(value: string | number | null | undefined): number {
@@ -341,7 +336,7 @@ export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssess
   for (const liability of liabilities) {
     const reportedPayment = toAmount(liability.monthlyPayment);
     const balance = toAmount(liability.unpaidBalance);
-    const type = normalizeLiabilityType(liability.liabilityType);
+    const type = liabilityKind(liability.liabilityType);
 
     // B3-6-07, Debts Paid Off At or Prior to Closing: a revolving balance paid
     // off at/prior to closing needs no payment in the DTI, and an installment
@@ -356,6 +351,27 @@ export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssess
         payment: reportedPayment,
         included: false,
         reason: "Paid off at or prior to closing (B3-6-07)",
+      });
+      continue;
+    }
+
+    // B3-6-05, Monthly Debt Obligations — Debts Paid by Others: a payment
+    // another party actually makes leaves the recurring obligations once the
+    // borrower's answers satisfy the rule (non-mortgage: payer not an
+    // interested party; mortgage-class: payer obligated, no rental income
+    // from the property). shared/liabilityExclusions.ts is the one predicate
+    // every DTI path reads. The Guide's 12-month cancelled-check history is
+    // raised as an auto-generated condition, not re-derived here.
+    const paidByOther = assessPaidByOtherParty(liability);
+    if (paidByOther.status === "excludable") {
+      result.excludedDebts += reportedPayment;
+      result.breakdown.push({
+        type,
+        payment: reportedPayment,
+        included: false,
+        reason: paidByOther.mortgageClass
+          ? "Housing expense paid by an obligated third party — excluded on a documented 12-month payment history (B3-6-05, Debts Paid by Others)"
+          : "Paid by a third party — excluded on a documented 12-month payment history (B3-6-05, Debts Paid by Others)",
       });
       continue;
     }

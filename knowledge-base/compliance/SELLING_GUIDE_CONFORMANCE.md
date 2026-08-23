@@ -126,6 +126,12 @@ Fixed by normalising the type before dispatch and hoisting the paid-off check ah
 type branch. This is the repo's standing silent-success class: an operation that does not
 happen while the surface says it did.
 
+**Amended 2026-08-22 (C-9):** the vocabulary named above is the *staff* `liabilities` table's
+enum (`shared/schema/underwritingFinancials.ts`). The URLA picker that feeds
+`urla_liabilities` — the rows `assessLiabilities` actually receives — writes its own labels
+(`"Revolving (Credit Card)"`), which the normaliser turned into `revolving_(credit_card)`. So
+the revolving branch C-1 added was still unreachable for every real row. See C-9.
+
 ### C-3 — Income seasoning cited the wrong topic
 
 `underwritingNuance.ts` cited **B3-3.2** for the length-of-self-employment rule. B3-3.2-01 is
@@ -357,6 +363,60 @@ at all**, which is how G-21 (the DPA second liens) hid. That needs a different t
 starting from what the product *promises* rather than from what it *stores*.
 
 ---
+
+### C-9 — The revolving imputation still could not fire for the picker's own labels
+
+**B3-6-05, Revolving Charge/Lines of Credit** (same quote as C-1). C-1's branch dispatched on
+a snake_case normaliser (`credit_card`), and C-2's test fed it `"credit_card"`, `"Credit Card"`
+and `"revolving"` — none of which the URLA picker emits. The picker stores
+`"Revolving (Credit Card)"` verbatim, and the normaliser produced `revolving_(credit_card)`, so
+`isRevolvingType` was false for every row the form writes. A second dead branch under a
+green test, found while stacking C-10 on this page.
+
+Fixed by moving the picker's list to `shared/liabilityTypes.ts` (`URLA_LIABILITY_TYPES`) —
+the same move `INCOME_SOURCES` made — with one classifier, `liabilityKind`, that reads the
+picker's labels *and* the staff enum, shared by the picker, both engines, the pre-underwriting
+flags and the MISMO export. `tests/sellingGuideMonthlyDebt.test.ts` now feeds the engine the
+picker's own list and asserts every label reaches a real branch.
+
+### C-10 — Debts paid by others were always counted against the borrower
+
+**B3-6-05, Debts Paid by Others** (revised in the 08/05/2026 edition). "When a borrower is
+obligated on a non-mortgage debt - but is not the party who is actually repaying the debt - the
+lender may exclude the monthly payment from the borrower's recurring monthly obligations. This
+policy applies whether or not the other party is obligated on the debt, but is not applicable if
+the other party is an interested party to the subject transaction (such as the seller or real
+estate agent)." For mortgage debt, the full PITIA "if the party making the payments is obligated
+on the mortgage debt, there are no delinquencies in the most recent 12 months, and the borrower
+is not using rental income from the applicable property to qualify." Either way, "the lender
+must obtain the most recent 12 months' canceled checks (or bank statements) from the other party
+making the payments that document a 12-month payment history with no delinquent payments."
+
+Nothing on `urla_liabilities` could carry the declaration, so every such payment sat in the
+DTI — a borrower whose parent pays their student loan was qualified on a ratio the Guide says
+they need not carry. Implemented end to end:
+
+- **Declaration** — five columns (migration 0058): the claim, the payer's relationship (never a
+  name), and the three facts the rule turns on. The URLA form asks exactly those questions and
+  shows, from the same predicate the engines read, whether the payment left the ratio and why
+  not if it did not.
+- **One rule** — `shared/liabilityExclusions.ts` (`assessPaidByOtherParty`), read by the instant
+  decision (`sumOpenMonthlyLiabilities`), the staff calculations engine (`assessLiabilities`),
+  the pre-underwriting flags and the MISMO export (`LiabilityExclusionIndicator`, verified in
+  `MISMO_3_0.xsd` line 9748). An unanswered question is a condition not yet met: the debt stays
+  in until the borrower answers. Guarded by `tests/complianceInvariants.test.ts`.
+- **Documentation** — the exclusion applies the moment the answers qualify, and the 12-month
+  history follows it as an auto-generated, per-liability `loan_condition`
+  (`PRE_UW_THIRD_PARTY_PAID_DEBT:<liabilityId>`, document type `third_party_payment_history`),
+  reconciled on every liability write: created when claimed, retired (`not_applicable`) when
+  withdrawn, re-opened if the claim returns, never duplicated, a cleared one left as history.
+  Staff verification of the history **is** that condition's clearing workflow — there is
+  deliberately no staff-only column on the liability row, because the liability routes
+  whitelist by table column and a borrower could set one on their own row.
+
+The product decision recorded with it: the borrower is qualified on the ratio the Guide entitles
+them to with the paperwork named, not held to a ratio it says they need not carry. The
+12-month no-delinquency fact is what the documentation proves, not a self-reported field.
 
 ## Open gaps — recorded, not silently assumed
 

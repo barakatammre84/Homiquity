@@ -387,7 +387,25 @@ export const urlaLiabilities = pgTable("urla_liabilities", {
   unpaidBalance: decimal("unpaid_balance", { precision: 12, scale: 2 }),
   monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }),
   toBePaidOff: boolean("to_be_paid_off").default(false),
-  
+
+  // B3-6-05, Debts Paid by Others — the borrower's declaration that another
+  // party makes the payments, plus the facts the exclusion turns on. The rule
+  // itself is shared/liabilityExclusions.ts. The 12-month payment-history
+  // documentation the Guide requires is an auto-generated loan_condition
+  // (PRE_UW_THIRD_PARTY_PAID_DEBT), so staff verification is that condition's
+  // own clearing workflow — deliberately NO staff-only column here, because
+  // the liability routes whitelist by table column and a borrower could set
+  // one on their own row.
+  paidByOtherParty: boolean("paid_by_other_party").default(false),
+  /** A relationship, never a name — see OTHER_PARTY_RELATIONSHIPS. */
+  otherPartyRelationship: varchar("other_party_relationship", { length: 60 }),
+  /** Mortgage-class only: the payer is also obligated on the loan. */
+  otherPartyObligated: boolean("other_party_obligated"),
+  /** The payer is an interested party to this purchase (seller, agent) — disqualifying. */
+  otherPartyInterestedParty: boolean("other_party_interested_party"),
+  /** Mortgage-class only: rental income from that property is used to qualify. */
+  usesRentalIncomeFromProperty: boolean("uses_rental_income_from_property"),
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
