@@ -222,6 +222,15 @@ export interface ScenarioFacts {
   scenario: ScenarioRequest;
   urlaOccupancyType: string | null;
   urlaNumberOfUnits: number | null;
+  /**
+   * Subject-property association/co-op dues, monthly — Selling Guide B3-6-03
+   * counts them inside the qualifying PITIA. Pre-loaded like the other URLA
+   * property facts so a what-if qualifies on the same housing expense the real
+   * decision does. Without it the simulator quoted a condo borrower a PITI
+   * (and a DTI) lower than their actual decision, which is the divergence this
+   * module's own MI comments exist to prevent.
+   */
+  urlaMonthlyAssociationDues: number | null;
   income: {
     evaluationId: string;
     primaryMonthlyQualifyingIncome: number;
@@ -432,7 +441,11 @@ export async function composeScenario(
       lenderCredits: facts.fthbLenderCredits,
     });
 
-    const piti = cents(offer.estimatedMonthlyPI + monthlyPMI + costs.monthlyEscrow);
+    // B3-6-03: association/co-op dues belong in the qualifying housing expense.
+    // This is the same figure the instant decision now qualifies on, so a
+    // what-if and a decision cannot disagree about a condo borrower's PITI.
+    const associationDues = facts.urlaMonthlyAssociationDues ?? 0;
+    const piti = cents(offer.estimatedMonthlyPI + monthlyPMI + costs.monthlyEscrow + associationDues);
 
     const cacheKey = Math.round(piti * 100);
     let qualification = qualCache.get(cacheKey);
@@ -671,6 +684,9 @@ export async function runScenario(
     loCompensationBps: application.loCompensationBps ?? null,
   };
 
+  // normalizeScenario takes the narrow Pick<> — occupancy and unit count only.
+  // Association dues are a PITIA input, not a normalization input, so they stay
+  // on the full ScenarioFacts below.
   const { scenario } = normalizeScenario({
     application: appFacts,
     scenario: request,
@@ -743,6 +759,8 @@ export async function runScenario(
     application: appFacts,
     scenario: request,
     urlaOccupancyType: propertyInfo?.occupancyType ?? null,
+    urlaMonthlyAssociationDues:
+      propertyInfo?.monthlyAssociationDues == null ? null : Number(propertyInfo.monthlyAssociationDues),
     urlaNumberOfUnits: propertyInfo?.numberOfUnits ?? null,
     income: {
       evaluationId: incomeRow.id,

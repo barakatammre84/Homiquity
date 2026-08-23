@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` added to the steward's lane).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -181,7 +181,8 @@ at thirteen that day; the *allocation* changed. Two seats have joined the table 
 (2026-08-22) — so count the rows, not this sentence. Before: two daily seats wrote code, three seats were
 registered against definitions that had never merged and no-opped every run, and four seats a week
 asked whether we could launch. After: **four daily build lanes**, a **daily** client journey walk,
-and the launch/procurement seats reduced to one weekly and one monthly.
+and the launch/procurement seats reduced to one weekly and one monthly. *(2026-08-23: the daily
+walk seat was reshaped again — see the Handoff Corpus Steward note below the table.)*
 
 | Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
 |---|---|---|---|---|---|
@@ -192,8 +193,8 @@ and the launch/procurement seats reduced to one weekly and one monthly.
 | 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
 | 13:40 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | one staff desk walked as the seat **and** its counterpart, own port 5003, torn down after |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
-| 17:06 | `5 17 * * *` | **Client Journey Walk** (`client-journey-walk`) | daily | no — trace + tickets | one persona walked end to end in a real browser |
-| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | one docs PR per tick at most + [`DA-…` ledger](../doc-accuracy/LEDGER.md); `handoff/FACTS.md` re-derived every tick; the corpus's fresh-hire teach-back every 14th tick |
+| 17:06 | `5 17 * * *` | **Handoff Corpus Steward** (`client-journey-walk`) | daily | no — `knowledge-base/handoff/**` docs only | corpus refresh PR + drift/aging report — definition `.claude/skills/handoff-refresh/SKILL.md`; seat reshaped 2026-08-23, **scheduler-prompt repoint pending** (replacement prompt in that file) |
+| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | one docs PR per tick at most + [`DA-…` ledger](../doc-accuracy/LEDGER.md); a read-only consistency check of `knowledge-base/handoff/` every tick (the 17:06 seat is its only writer) and the corpus's fresh-hire teach-back every 14th tick, reported to that seat |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
 | Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | organic-file delivery verdict + one field's write path cleared |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state compliance ladder + signature-ready drafts |
@@ -245,14 +246,29 @@ clients* — and it was the single most misallocated seat in the fleet: weekly, 
 inlines its four persona charters so it runs without `JOURNEYS.md`, and defers to that file
 automatically once #607 lands.
 
+**…and reshaped again 2026-08-23 into the Handoff Corpus Steward** (founder decision, in the
+session that verified the handoff corpus end to end). The daily 17:06 seat now keeps
+`knowledge-base/handoff/` — the onboarding/reverse-engineering corpus — in agreement with
+`origin/main` and **ages its `HO-` drift rows** instead of walking journeys; its definition is
+in-repo at `.claude/skills/handoff-refresh/SKILL.md`, which also carries the replacement
+scheduler prompt verbatim. The walk lost its cadence, not its rails: `/journey-walk`, the five
+`journey-walker-*` agents and `feature-review/JOURNEYS.md` stay available hand-invoked, and
+`knowledge-base/routines/journey-walk/LEDGER.md` holds the rotation (next = Journey 3) for
+whoever is next invoked. The laptop `taskId` stays `client-journey-walk` — renaming would discard
+run history and stored tool approvals; judge it by its description, not its slug, like the wiring
+audit below. **The scheduler-prompt repoint is a pending founder action** (§11: this file and the
+scheduler change together; the scheduler lives on the laptop, which a cloud session cannot
+reach).
+
 **Retiring a seat does not retire its rails.** Every prohibition a retired routine carried is
 reproduced verbatim in whatever absorbed its subject. A rail that survives only in an archived
 definition is a rail nobody reads.
 
-**Definitions exist in `.claude/skills/` that are NOT on this clock** — Domain Oracle,
-Integration Readiness, QA Mutation Verifier, App Walker, Workflow Prover, Algorithm Auditor, Complex
-File Engine and Move-Up Lane among them, plus the UI Conformance Sweep and Backend Data Engineer on
-the CCR side (§3a); Doc Accuracy left that side for this clock on 2026-08-20. **A definition on
+**Seven definitions exist in `.claude/skills/` that are NOT on this clock** — Domain Oracle,
+Integration Readiness, QA Mutation Verifier, App Walker, Workflow Prover, Algorithm Auditor, and
+(since 2026-08-23) the client `journey-walk` front door, plus
+the UI Conformance Sweep and Backend Data Engineer on the CCR side (§3a; Doc Accuracy left that side
+for this clock on 2026-08-20). **A definition on
 disk is not a routine** (§0). Do not read a `.claude/skills/*/SKILL.md` as evidence that something
 runs, and do not trust a count of them written here — read this table, `list_scheduled_tasks`, and
 `ls -d .claude/skills/*/`. Registration is a founder action.
@@ -338,9 +354,10 @@ Doc Accuracy now runs once daily at 19:33 on the local fleet (§3 — founder de
 the every-6-hours CCR cadence of 2026-08-18 was retired with the move). Every fresh session — human
 or routine — orients from the docs, so doc drift compounds into every other lane's errors; its
 ticks are diff-driven from its ledger's `last-swept SHA`, so an empty window is a cheap clean
-tick. Since 2026-08-23 every tick also re-derives the handoff corpus (`knowledge-base/handoff/`,
-`pnpm handoff:facts --check/--cite/--write`) and every fourteenth tick re-runs the corpus's
-fresh-hire teach-back. Its report lands in `reports/` like every routine's (§7 counts it; §9 format
+tick. Since 2026-08-23 every tick also runs a **read-only** consistency check of the handoff corpus
+(`pnpm handoff:facts --check/--cite`, never `--write` — `knowledge-base/handoff/**` has one writer,
+the 17:06 Handoff Corpus Steward) and every fourteenth tick re-runs the corpus's fresh-hire
+teach-back, reporting misses to that seat. Its report lands in `reports/` like every routine's (§7 counts it; §9 format
 binds it) and its proposed tickets go to Evening Triage like everyone's (§4).
 
 ---
@@ -374,11 +391,11 @@ The day is a pipeline, not a stack of independent jobs.
 15:00 QA Sweep ──► one domain + one workflow, adversarially verified → buildable
         │           tickets in FINDINGS.md
         ▼
-17:05 Client Journey Walk ──► one persona walked end to end in a real browser; the
-        │                      seams between surfaces, as a client experiences them
+17:05 Handoff Corpus Steward ──► the onboarding corpus re-proven against main; drift
+        │                         rows opened, resolved and aged (⛔ when a lane sits on one)
         ▼
 19:30 Doc Accuracy ──► the knowledge-base steward: living docs vs the code since the
-        │               last-swept SHA; the handoff corpus re-derived; one docs-only PR
+        │               last-swept SHA; the handoff corpus checked, never written; one docs-only PR
         ▼
 21:00 Evening Triage ──► reads all of the above, dedupes into ONE backlog,
                           updates CTO_ROADMAP.md, writes the founder's list
@@ -400,8 +417,9 @@ the routine named — never silently ignored, and never treated as "nothing happ
 Engineer runs before the day's Trunk Health, so its upstreams are yesterday's reports and the most
 recent verdict; it cites them, never re-derives them.
 
-**The chain now closes a loop it never had.** Four lanes build during the day; the QA Sweep and the
-Client Journey Walk look at what exists each afternoon and hand back *buildable tickets*; Evening
+**The chain now closes a loop it never had.** Four lanes build during the day; the QA Sweep looks
+at what exists each afternoon and hands back *buildable tickets* (the Client Journey Walk did too
+while it held the 17:06 seat; hand-invoked walks still do); Evening
 Triage dedupes them into one queue that the next morning's lanes draw from. Before 2026-08-19 the
 fleet's discovery capacity far exceeded its build capacity — 129 open findings against two daily
 build seats — so findings accumulated and the backlog was indistinguishable from a product that
@@ -530,7 +548,8 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | QA Sweep | nothing | — (findings only; fixes go to a build lane or a human) |
 | Workflow Completion Engine | the **one seam** it fixes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/workflow-completion/**` and its report (L1/L2 per §1b) | more than one seam per run; any file under an active REGISTER claim or in an open PR; the `URLA_FORM_REFACTOR_TRAP.md` prohibitions; §9-tripping diffs as *ready* PRs (draft + human-written review only) |
 | Feature Completion Engine | the **one domain** it takes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/feature-completion/**` and its report (L1/L2 per §1b) | the underwriting/decision/rule engines (it may surface and route them, never edit them); regulated math without a same-commit ledger citation; the deferred lender persona UI/API (founder-gated); any file under an active REGISTER claim or in an open PR |
-| Client Journey Walk | `knowledge-base/routines/journey-walk/**`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
+| Client Journey Walk *(hand-invoked since 2026-08-23; was the daily 17:06 seat)* | `knowledge-base/routines/journey-walk/**`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
+| Handoff Corpus Steward *(the 17:06 seat since 2026-08-23)* | `knowledge-base/handoff/**`, its own report, and the `guard:ui` §0 table only when that guard demands it | every code path; **every sibling doc** — drift there becomes an `HO-` row, never a fix (that rule is what keeps the corpus a reader, not an authority); this file; its own `SKILL.md`; peer cross-run memory |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
 | Vendor & Platform Risk (was Vendor & Procurement) | nothing | `.env`, Railway config, anything outbound |
 | Compliance Watch | `knowledge-base/compliance-watch/**` + its own report file | every code path; `docs/**` (read-only reference); anything outbound — it drafts, only the founder files or sends |
@@ -538,7 +557,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | UI Conformance Sweep | `client/src/**` for **visual conformance only**, plus `knowledge-base/ui-conformance/**` and its report | `client/src/components/ui/**` (vendored primitives); any file in an open PR or carrying an open `refactor-radar/LEDGER.md` row; form state, Zod schemas and payload shapes (§14); the `URLA_FORM_REFACTOR_TRAP.md` prohibitions |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
 | Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
-| Doc Accuracy | living `.md` docs: `knowledge-base/**` (minus the peer registers at right) + root `README.md` + its own `knowledge-base/doc-accuracy/**`; `knowledge-base/handoff/**` under that corpus's own rails (`FACTS.md` by its generator only; `HO-` rows closed, never deleted; stamps only after a full re-read); ⛔-flagged per its rail D11: `CLAUDE.md` pointers, this file's §2/§3 factual rows, `.claude/skills\|agents/**` pointers, archive moves | every code path; `docs/**`; `data/regulatory/**`; `CTO_ROADMAP.md` (Triage's); dated `logs/`/`reports/`/`archive/` bodies (top banners only); peer cross-run memory (`financial-audit/LEDGER.md`, `refactor-radar/LEDGER.md`, `primary-engineer/LEDGER.md`, `compliance-watch/STATE_LADDER.md`, `feature-review/FINDINGS.md`); rule semantics anywhere (propose-only); its own `SKILL.md`; a handoff chapter's existence, lesson or answer key (authoring — founder) |
+| Doc Accuracy | living `.md` docs: `knowledge-base/**` (minus the peer registers at right) + root `README.md` + its own `knowledge-base/doc-accuracy/**`; ⛔-flagged per its rail D11: `CLAUDE.md` pointers, this file's §2/§3 factual rows, `.claude/skills\|agents/**` pointers, archive moves | every code path; `docs/**`; `data/regulatory/**`; `CTO_ROADMAP.md` (Triage's); dated `logs/`/`reports/`/`archive/` bodies (top banners only); peer cross-run memory (`financial-audit/LEDGER.md`, `refactor-radar/LEDGER.md`, `primary-engineer/LEDGER.md`, `compliance-watch/STATE_LADDER.md`, `feature-review/FINDINGS.md`); **`knowledge-base/handoff/**`** (the Handoff Corpus Steward's lane since 2026-08-23 — drift flows the other way, as that seat's `HO-` rows into Doc Accuracy's queue); rule semantics anywhere (propose-only); its own `SKILL.md` |
 
 ### 6a. The design-system propagation sweep — who owns it
 

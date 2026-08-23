@@ -1,0 +1,31 @@
+-- Subject-property monthly association dues — Fannie Mae Selling Guide B3-6-03,
+-- Monthly Housing Expense for the Subject Property (12/16/2020).
+--
+-- B3-6-03 defines the qualifying housing expense (PITIA) as the sum of P&I;
+-- property, flood and mortgage insurance; real estate taxes; ground rent;
+-- special assessments; "any owners' association dues"; any monthly co-op
+-- corporation fee; and any subordinate financing payments on the subject
+-- property. It is the amount used to calculate the DTI ratio.
+--
+-- The decision path computed PITIA as P&I + MI + escrow, where escrow is
+-- property tax + homeowner's insurance only (services/loanCosts.ts
+-- estimateMonthlyEscrow). Association dues were nowhere in it, and
+-- urla_property_info had no column to hold them: the value existed only on
+-- loan_options.hoa_fees (a display/offer row) and in the public calculators.
+--
+-- So a condo or PUD borrower was decisioned with their association dues
+-- omitted from the housing expense. At a routine $300-800/month that understates
+-- the DTI by more than the revolving-payment defect fixed alongside it, and in
+-- the same forbidden direction: it approves files the ratio would decline.
+--
+-- Expand-only and idempotent:
+--   * ADD COLUMN, nullable, no DEFAULT / NOT NULL / CHECK — catalog-only, no
+--     table rewrite, and no existing row can violate it.
+--   * Deliberately NOT defaulted to 0. Zero is a claim ("this property has no
+--     association"), and asserting it for every existing row would fabricate
+--     the very figure this column exists to stop assuming. NULL is the honest
+--     "not captured", and the decision path treats NULL on an association-bearing
+--     property type as a gap to fill, not as zero.
+
+ALTER TABLE "urla_property_info"
+  ADD COLUMN IF NOT EXISTS "monthly_association_dues" numeric(10, 2);

@@ -8,8 +8,9 @@ description: Use ONLY when the user explicitly invokes /doc-accuracy or explicit
 **Cadence:** daily, 19:30 local (scheduled task `doc-accuracy-daily`, cron `30 19 * * *`, fires
 ~19:33) — after the 17:05 Client Journey Walk, before the 21:00 Evening Triage that reads its report.
 **Writes code:** never — living `.md` only (D5); one docs-only PR per tick at most.
-**Produces:** one report + the `DA-…` ledger; the handoff corpus re-derived every tick (Phase 1.4);
-a fresh-hire teach-back every fourteenth tick (Phase 1.5).
+**Produces:** one report + the `DA-…` ledger; a read-only consistency check of the handoff corpus
+every tick (Phase 1.4) and its fresh-hire teach-back every fourteenth tick (Phase 1.5) — both
+reported to the 17:06 Handoff Corpus Steward, which is that corpus's only writer.
 **Contract:** [`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) wins over this
 file on any conflict — say so in the report rather than following the stale copy.
 
@@ -22,10 +23,11 @@ in its `REQUIRED` list re-verified on time) and the [2026-08-18 knowledge-file a
 §2b.1 showed exactly what they cannot see: a doc can be green on both while telling readers to run
 commands that no longer exist. **This routine owns the gap: semantic currency.** It verifies docs
 against the code, corrects what drifted, banners what history overtook, proposes pruning for what
-died, and learns which docs drift and why so the drift stops recurring. Since 2026-08-23 it is
-also the steward of the Feynman onboarding corpus, [`knowledge-base/handoff/`](../../../knowledge-base/handoff/README.md)
-— numbers by generator, every claim with a `path:line` — a corpus built to be re-derived, which
-is exactly what a daily tick is for.
+died, and learns which docs drift and why so the drift stops recurring. Since 2026-08-23 it also
+reads the Feynman onboarding corpus, [`knowledge-base/handoff/`](../../../knowledge-base/handoff/README.md),
+every tick — numbers by generator, every claim with a `path:line`, so a check is two commands —
+but never writes it: that corpus has one writer, the 17:06 Handoff Corpus Steward (CHARTER §3,
+§6), and this routine is its second pair of eyes and its teach-back, not a second pen.
 
 **One tick a day, at 19:30 local** — founder decision 2026-08-20, recorded in the scheduled task
 `doc-accuracy-daily` and in CHARTER §3. The 6-hourly CCR cadence the routine was founded with on
@@ -53,12 +55,12 @@ D5. **PR-only and docs-only.** Never merge, never enable auto-merge, never push 
     force-push a shared branch. The diff may contain `.md` files ONLY — verify with
     `git diff --stat` before opening the PR; a guard-script or code improvement is a proposed
     ticket, never your edit. `git add` explicit paths only. **Never hand-type a count:** a number
-    that has a generator is written by the generator (`pnpm handoff:facts --write`,
-    `pnpm guard:ui --write-table`) or pasted from the command that produced it. The one generated
-    block you may commit outside your own ledger is the `guard:ui` §0 table in
-    `knowledge-base/handbook/design/DESIGN_SYSTEM.md` (an `.md`, so still inside this rail) — only
-    when trunk's copy is red on a clean `origin/main` worktree, only via `--write-table`, in its
-    own commit. Never `pnpm handoff:facts --write --force`.
+    that has a generator is written by the generator (`pnpm guard:ui --write-table`) or pasted
+    from the command that produced it. The one generated block you may commit outside your own
+    ledger is the `guard:ui` §0 table in `knowledge-base/handbook/design/DESIGN_SYSTEM.md` (an
+    `.md`, so still inside this rail) — only when trunk's copy is red on a clean `origin/main`
+    worktree, only via `--write-table`, in its own commit. Never `pnpm handoff:facts --write`:
+    `FACTS.md` has one writer and it is not you.
 D6. **Every claim is dated and evidence-bearing.** Before touching a standing claim, date it:
     `git log -S '<symbol>' -- <path>`, then read the code (CHARTER §1 — a claim in a doc is a
     claim about the day it was written). Re-run every negative grep you are about to act on
@@ -86,14 +88,13 @@ D10. OFF LIMITS to autonomous edits (propose instead): every code path; `docs/**
     `primary-engineer/LEDGER.md`, `compliance-watch/STATE_LADDER.md`,
     `feature-review/FINDINGS.md` — stale rows there are proposed tickets for their owners;
     `.claude/skills/doc-accuracy/SKILL.md` (this file — **no self-amendment, ever**; it changes
-    only by the founder's hand in an interactive session, as on 2026-08-23). **The handoff corpus,
-    `knowledge-base/handoff/**`, is in-lane under its own rails** (its README §"How this corpus
-    stays true" and its ledger header win on conflict): `FACTS.md` by `--write` only; `HO-` rows
-    consumed and closed, never deleted; a `Freshness` / `Verified against` stamp bumped only on a
-    file you re-read in full; chapter and key prose only where a number, path or `path:line`
-    moved. **Out of lane there:** adding or removing a chapter, rewriting a chapter's lesson or
-    analogy, authoring answer-key rows, and any rule text under `handoff/prompts/` — that is
-    authoring, and authoring is the founder's (the corpus's own rule; no seat grades its own work).
+    only by the founder's hand in an interactive session, as on 2026-08-23); **and
+    `knowledge-base/handoff/**` entirely** — since 2026-08-23 that corpus has one writer, the 17:06
+    Handoff Corpus Steward (CHARTER §3, §6: one writer per truth). Drift you find there is a
+    proposed `HO-` row in your report, addressed to that seat; drift it finds in the sibling docs
+    arrives as `HO-` rows whose lane names you, and those are your queue. A chapter's existence,
+    lesson, analogy, question set and the answer key are the founder's even for that seat — never
+    propose to "fix" those, propose the question.
 D11. ⛔-FLAGGED lane (edit rides in the PR, but each instance is individually listed under a
     `⛔ Founder review` heading in the PR body AND the report): `CLAUDE.md` mechanical pointers;
     `routines/CHARTER.md` §2 standing-facts / §3 clock factual rows; pointer fixes in
@@ -138,8 +139,10 @@ cause — report exactly what you saw and stop.
      the `DA-…` register, the drift-source scoreboard, the rotation cursor, and `last-swept SHA`.
    - [`knowledge-base/handoff/LEDGER.md`](../../../knowledge-base/handoff/LEDGER.md): the **last
      row of its run log** (from→to SHA of the last refresh; the date of the last teach-back) and
-     every `HO-` row whose lane names this routine; then the stamp at the top of
-     [`handoff/FACTS.md`](../../../knowledge-base/handoff/FACTS.md) (`Verified against … @ <sha>`).
+     every `HO-` row whose lane names this routine; the stamp at the top of
+     [`handoff/FACTS.md`](../../../knowledge-base/handoff/FACTS.md) (`Verified against … @ <sha>`);
+     and today's `knowledge-base/routines/reports/<YYYY-MM-DD>-handoff-steward.md` if the 17:06
+     seat has run (a missing upstream report is a `WARN` naming the seat — CHARTER §4).
    - The newest `knowledge-base/routines/reports/*-doc-accuracy.md`, and the newest
      evening-triage report (what Triage already knows or landed).
    - `git log --oneline <last-swept SHA>..origin/main` — the tick's diff window.
@@ -152,18 +155,17 @@ cause — report exactly what you saw and stop.
    (assist ladder, don't race); `knowledge-base/README.md` is a known shared-file hazard —
    conflicts resolve **additively, both entries in date order** (REGISTER §hazards). If another
    session's open PR already fixes a doc you found stale, that finding is `done`-by-them: cite
-   the PR, don't duplicate. Also
-   `gh pr list --state open --json number,files --jq '.[] | select(.files[].path | startswith("knowledge-base/handoff")) | .number'`
-   — an open PR already touching `handoff/` makes 1.4 detection-only this tick: cite it, never
-   race it.
+   the PR, don't duplicate. An open PR from the 17:06 seat (branch `routine/handoff-steward-*`,
+   or any PR touching `knowledge-base/handoff/**`) is cited in the report as the corpus's pending
+   state — never raced, never duplicated.
 5. **Ledger reconciliation:** each `in-pr` row → check its PR: MERGED → `done` (+PR#/date);
    CLOSED-unmerged → `escalated: closed unmerged — ask founder`. Each `open` row → re-date its
    claim per D6 before carrying it forward: the fix may have landed since (the charter's own §1
    worked example — a finding recorded the same day its fix merged, asserted for a week).
-   **`HO-` rows are reconciled here too:** a row whose claim no longer holds on `origin/main` →
-   `done` + the merged PR/SHA, whatever its lane (the corpus never closes its own rows — you do);
-   a row whose lane is this routine and still holds → a `DA-` finding this tick, both ids cited;
-   a row for another owner → carried, re-dated, proposed in the report. Never delete a row.
+   **`HO-` rows are read here too** (never edited — that ledger is the 17:06 seat's): a row whose
+   lane names this routine and still holds → a `DA-` finding this tick, both ids cited; a row whose
+   fix you can see merged on `origin/main` → its closure proposed to the steward in the report with
+   the PR/SHA; a row for another owner → carried, re-dated, proposed.
 6. Apply D4. Decide the tick's mode (see Modes).
 
 ## Phase 1 — Detect (diff first, then the mechanical sweeps, then one deep slice, then the corpus)
@@ -202,32 +204,24 @@ evidence per D6.
    (the agent returns findings, never fixes; its evidence rules bind you too). Date every
    standing claim in the slice per D6. Advance the cursor in the ledger in the same PR.
    **Cluster 14 (`knowledge-base/handoff/`) is audited by 1.5, not by the reviewer agent.**
-4. **Handoff corpus refresh — every tick.** The protocol's home is `handoff/README.md`
-   §"How this corpus stays true"; it wins over this summary. Run it **before your first commit,
-   while `HEAD == origin/main`** — `--write` refuses a branch ahead of `main` because F-31 and the
-   stamp measure `HEAD`. Extending an existing branch? Derive in a throwaway worktree and copy:
-   `git worktree add "$TMP/hq-facts-main" origin/main && (cd "$TMP/hq-facts-main" && node scripts/handoff-facts.cjs --write) && cp "$TMP/hq-facts-main/knowledge-base/handoff/FACTS.md" knowledge-base/handoff/FACTS.md && git worktree remove "$TMP/hq-facts-main"`.
+4. **Handoff corpus consistency check — every tick, read-only.** The corpus's writer is the 17:06
+   Handoff Corpus Steward (`.claude/skills/handoff-refresh/SKILL.md`; CHARTER §3, §6); you are the
+   check that it ran and that what it left agrees with `origin/main` two hours later. Run, in the
+   worktree, and paste the output lines into the report's `handoff:` line:
 
        pnpm handoff:facts --check    # rows · checkable · not-comparable; DISAGREES rows; STAMP line
        pnpm handoff:facts --cite     # every `path:line` in handoff/** resolves, lands inside its file, and (where a symbol is named) still points at it
-       STAMP=$(grep -m1 -oE 'Verified against\*\* `origin/main` @ \*\*[0-9a-f]+' knowledge-base/handoff/FACTS.md | grep -oE '[0-9a-f]+$')
-       git diff --stat "$STAMP"..origin/main -- . ':!knowledge-base/handoff'
-       git log --format='%h %s' "$STAMP"..origin/main   # read every subject: which chapter asserts something about it?
+       ls knowledge-base/routines/reports/$(date +%F)-handoff-steward.md   # did the 17:06 seat run today?
 
-   What counts as drift, and what each becomes: **(a)** a `DISAGREES` row → `pnpm handoff:facts
-   --write`, then `grep -rn "<old value>" knowledge-base/handoff/*.md` and rewrite the sentence the
-   number belongs to, same commit — prose first, numbers second ("the job is off" becoming "the job
-   runs but cannot fail the build" is a different chapter, not a different digit). **(b)** a
-   `--cite` failure → re-point the citation by the symbol named beside it; never drop it. **(c)** a
-   `STAMP` mismatch with no row moved → read the `git log` subjects; for any that touch a chapter's
-   subject, read that diff against the chapter and fix what it made false; `--write` then
-   re-stamps `FACTS.md`, and you bump a chapter's `Verified against` / `Freshness` only if you
-   re-read that chapter in full. **(d)** the seven not-machine-comparable rows `--check` names are
-   re-read by hand on the cluster-14 tick only. **(e)** F-18 / F-21 / F-31 are self-referential:
-   `--write` on `main` records `main`'s values, which is correct — never pre-write the value your
-   own PR will produce (your report is a `knowledge-base` `.md`, so F-21 moves by one every tick
-   that lands; write it, do not narrate it). In `observe` mode the two checks run and their counts
-   are reported; nothing is written. Every write lands in the same PR as its ledger row (3.1b).
+   What each outcome becomes — and none of them is an edit under `knowledge-base/handoff/**`:
+   **(a)** both green and today's steward report present → one line, `handoff: clean`. **(b)** red
+   and the steward's report explains it (its own `--check` named the same rows, or its PR is open)
+   → cite the report/PR, no finding. **(c)** red and unexplained → a `DA-` finding, class `drift`,
+   lane *17:06 steward*, carrying the exact `DISAGREES` / `--cite` lines as a proposed `HO-` row;
+   `WARN`. **(d)** the steward's report missing → `WARN` naming the seat (CHARTER §4's missing
+   upstream report) and the two outputs pasted so Evening Triage sees the corpus's state without a
+   second run. Never `--write`, never a stamp, never a chapter edit: the fix is that seat's next
+   tick, or a hand `/handoff-refresh` if the founder wants it sooner.
 5. **Teach-back verification — every fourteenth tick** (the tick whose rotation slice is cluster
    14), **or any tick 21+ days after the last teach-back in the handoff run log.** This was the
    corpus's acceptance test (96/100 at authoring) and the one check that reads meaning: can a
@@ -251,10 +245,12 @@ evidence per D6.
    `UNKEYED`, unscored, with a standing proposal that the founder author the row (the grader never
    writes its own key). **Score = HITs / keyed questions, as a percentage: ≥ 95 → `OK`;
    85–94 → `WARN`; < 85 → `FAIL`** (the corpus has stopped teaching — a ⛔ item for Evening
-   Triage). Every PARTIAL and MISS is a `DA-…` finding, class `gap`, lane by cause: the chapter's
-   claim moved with the code → fix under 1.4 this tick; the key's citation is the stale one →
-   remap it (in-lane); the chapter never carried the answer, confirmed by grep → propose to the
-   founder (authoring). Record score, ids and friction notes in both run logs (3.1b).
+   Triage). Every PARTIAL and MISS is a `DA-…` finding, class `gap`, and every one is a
+   **proposal** — the corpus is not yours to edit: the chapter's claim moved with the code, or the
+   key's citation is the stale one → a proposed `HO-` row for the 17:06 seat, with the `sed -n`
+   evidence; the chapter never carried the answer, confirmed by grep → propose the question to the
+   founder (authoring). Record score, ids and friction notes in the report's `handoff:` line and
+   the `DA-` ledger; the steward copies the score into the corpus's run log.
 
 ## Phase 2 — Fix (mode `sweep+fix` only; one PR; smallest reviewable diff)
 
@@ -263,21 +259,18 @@ Lane assignment is per-finding, decided by D7/D8/D10/D11:
 - **Fix now (the default lane):** factual drift in `knowledge-base/**` living docs (minus D10's
   peer registers) and root `README.md`; dead pointers; index lines; supersession/correction
   banners on dated docs; verified freshness bumps.
-- **Fix now, handoff corpus (D10's in-lane list):** `FACTS.md` by its generator; `HO-` statuses
-  and the run log; chapter and key prose where a number, path or `path:line` moved; stamps after
-  a full re-read; the `guard:ui` §0 table by `--write-table` when `pnpm guard:ui` is red on a
-  clean `origin/main` worktree (a stale table on trunk blocks every push in the repo —
+- **Fix now, one generated block:** the `guard:ui` §0 table by `--write-table` when `pnpm guard:ui`
+  is red on a clean `origin/main` worktree (a stale table on trunk blocks every push in the repo —
   `handoff/LEDGER.md` HO-0822-26).
 - **Fix + ⛔-flag (D11):** each instance individually justified in the PR body.
 - **Propose only:** everything D8/D10 reserves — exact before/after wording in the report's
-  proposed tickets, for Evening Triage or the founder; a handoff chapter's existence, lesson,
-  analogy or question set; answer-key rows; rule text in `handoff/prompts/`. When unsure which
+  proposed tickets, for Evening Triage or the founder; and **everything under
+  `knowledge-base/handoff/**`**, as proposed `HO-` rows for the 17:06 seat. When unsure which
   lane, the safer lane wins; when unsure which *side* is wrong (D7), no edit at all.
 
 Verify loop before opening the PR (max 5 attempts): `pnpm guard:kb` → `pnpm guard:staleness` →
-`pnpm guard:citations` → `pnpm guard:docs` → `pnpm guard:ui` → (when 1.4 wrote anything)
-`pnpm handoff:facts --check && pnpm handoff:facts --cite` green in the worktree →
-`git diff --stat` proves md-only (D5) → every relative link you added or moved resolves from its
+`pnpm guard:citations` → `pnpm guard:docs` → `pnpm guard:ui` →
+`git diff --stat` proves md-only (D5) and touches nothing under `knowledge-base/handoff/` → every relative link you added or moved resolves from its
 own directory (TEAM_PRACTICES §7 — links are relative to the linking file). Branch
 `routine/doc-accuracy-<YYYY-MM-DD>`; if today's branch already has an open PR, extend it — never
 open a second for the same day (LESSONS 2026-08-17).
@@ -287,11 +280,9 @@ open a second for the same day (LESSONS 2026-08-17).
 1. **Ledger updated in the SAME PR as the fixes it describes** (memory that travels separately
    from the work goes stale): finding rows with status; `last-swept SHA` advanced to the
    `origin/main` tip you swept; rotation cursor advanced; run-log line appended.
-   1b. **The handoff ledger travels the same way:** if 1.4 or 1.5 wrote or scored anything,
-   append one row to `knowledge-base/handoff/LEDGER.md`'s run log in the same PR —
-   `date | from SHA → to SHA | chapters touched, or "teach-back NN%" | doc-accuracy tick | PR`
-   — and put the PR number nowhere else in that corpus. Stamps follow the re-read rule, never the
-   calendar; `FACTS.md`'s SHA line is the generator's, never typed.
+   1b. **Nothing of yours lands in `knowledge-base/handoff/`:** the `--check`/`--cite` outputs, the
+   teach-back score and every proposed `HO-` row go into the report's `handoff:` line, addressed to
+   the 17:06 seat; it records them in the corpus's run log on its next tick.
 2. **The learning loop is the point, not a nicety:**
    - Tally each finding into the ledger's **drift-source scoreboard** (drift class × doc).
    - A class recurring ≥3 times earns a **structural prevention proposal**: a new mechanical
@@ -317,13 +308,15 @@ open a second for the same day (LESSONS 2026-08-17).
 ## Status rules
 
 `OK` = every phase ran in the stated mode; every finding carries `file:line` or command output;
-`pnpm handoff:facts --check` and `--cite` are green at the swept tip (or written green in this
-PR); the teach-back, when due, scored ≥ 95 %; or a clean tick that found nothing and said so.
+`pnpm handoff:facts --check` and `--cite` are green at the swept tip, or red for a reason the
+17:06 seat's report already carries; the teach-back, when due, scored ≥ 95 %; or a clean tick
+that found nothing and said so.
 `WARN` = `observe` mode (name the open PRs and the drift counts left unwritten); a missing
-upstream report; a `regression-suspect` filed; `--check`/`--cite` drift detected but not written
-this tick; the teach-back skipped or 85–94 %; a window not swept in full. `FAIL` = a rail crossed
-(a non-`.md` path in the diff, a hand-typed count, a stamp bumped without a re-read, a chapter
-added or removed, a `--write --force`, a push to `main`), a tick that could not run, or a
+upstream report (the 17:06 steward's included); a `regression-suspect` filed; `--check`/`--cite`
+drift the steward's report does not explain; the teach-back skipped or 85–94 %; a window not swept
+in full. `FAIL` = a rail crossed (a non-`.md` path in the diff, any path under
+`knowledge-base/handoff/`, a hand-typed count, a stamp bumped without a re-read, a push to
+`main`), a tick that could not run, or a
 teach-back below 85 % — each with the exact thing and the rollback. The designed steady state is
 a short clean tick most days; a quiet ledger is not a stalled routine.
 
@@ -341,11 +334,10 @@ a short clean tick most days; a quiet ledger is not a stalled routine.
 - **Fix the code the docs revealed.** A `regression-suspect` is handed to the feature-review /
   Primary Engineer lanes with evidence — the steward that "fixes" reality to match its ledger
   has inverted its job.
-- **Author the handoff corpus.** It keeps the corpus *true* — numbers by generator, citations
-  landing, `HO-` rows consumed — and never adds or removes a chapter, rewrites a lesson, or
-  writes an answer-key row (the founder's pen; no seat grades its own work).
-- **Hand-type a count or force a stamp.** `--write` from `main` or the pasted output, never a
-  retyped digit; never `pnpm handoff:facts --write --force`; never a `Freshness` or
-  `Verified against` date on a file it did not re-read in full.
+- **Edit the handoff corpus — at all.** One writer per truth: the 17:06 Handoff Corpus Steward
+  writes `knowledge-base/handoff/**`; this routine checks it, teaches from it, and proposes. Two
+  seats writing one corpus is the two-truths hazard CHARTER §3a records.
+- **Hand-type a count or bump a stamp.** A number is pasted from the command that produced it,
+  never retyped; never a `Freshness` date on a file it did not re-read in full.
 - **Install or run the app.** No `pnpm install`, no dev server, no test suite — the guards it
   needs are dependency-free and CI runs the rest.
