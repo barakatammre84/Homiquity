@@ -93,7 +93,7 @@ flowchart TD
 - **`<Gated>` is the pre-license redirect.** `client/src/App.tsx:238-239`; used on 24 route
   sites; `client/src/lib/prelaunch.ts:17-19` `PRELAUNCH_GATED = VITE_PRELAUNCH_GATED === "true" || (PROD && VITE_PRELAUNCH_GATED !== "false")`
   — gated by default in a production build.
-- **Ten gates, one source.** `client/src/lib/routeGates.ts:32-109`: `borrower`, `staff`,
+- **Ten gates, one source.** `client/src/lib/routeGates.ts:33-109`: `borrower`, `staff`,
   `internalStaff`, `underwriterOps`, `disclosure`, `marketData`, `loTeam`, `cpaPortal`,
   `partnerHub` (a deliberate literal — `cpa` removed on RESPA §8(a) grounds, `:90-105`),
   `adminOnly`. Header `:29-31`: "Client gates are a UX affordance, never the security boundary."
@@ -178,21 +178,24 @@ flowchart TD
   6 gated. `tests/seoPrerender.test.ts` pins the bot-prerender regex and the middleware's four
   guards — not the mirror.
 - **Client tests.** `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l`
-  → `120` (90 `.tsx`, 30 `.ts`); `vitest.client.config.ts:37` is a **glob** "so a colocated
-  `*.test.tsx` can never be silently stranded" (`:11-13`); `happy-dom` (`:18`); the `@assets`
-  alias exists because without it a component test reports "0 tests" rather than a failure
-  (`:44-47`). Every lane is `--config`-explicit (`package.json:15-19`) — a bare `vitest run <file>`
-  resolves no client config.
+  → `123` (91 `.tsx`, 32 `.ts`); `vitest.client.config.ts:37` is a **glob** (`:11-13`) — which
+  protects against a colocated file being *forgotten*, not against the crawl being *truncated*: a
+  `readdir` that fails under load reads as an empty directory and the lane exits 0 short (chapter
+  07; `CICD.md` said "can never be stranded" and was corrected in 2026-08-23's collection-guard
+  change, which is now what `pnpm test` runs). `happy-dom` (`:18`); the `@assets` alias exists
+  because without it a component test reports "0 tests" rather than a failure (`:44-47`). Every
+  vitest lane is `--config`-explicit (`package.json:16-19`; `:15` `pnpm test` is the collection guard
+  that runs both) — a bare `vitest run <file>` resolves no client config.
 - **Bundle.** `tests/clientSchemaImports.test.ts:7-17` — types only from `@shared/schema`, never
   values ("the browser bundle shipped 174 table definitions with their column names … No data was
   exposed; the map of the database was"); `scripts/bundle-size-guard.cjs` gates the eager entry
-  graph in raw bytes against `scripts/bundle-size-baseline.json` `{eagerRawBytes: 525144}`; lazy
+  graph in raw bytes against `scripts/bundle-size-baseline.json` `{eagerRawBytes: 526640}`; lazy
   chunks are reported, never gated.
 - **Accessibility substrate.** `DESIGN_SYSTEM.md:424` §11 (SkipLink first focusable, `<main
   id="main" tabIndex={-1}>`, `FormMessage role="alert"`, visible labels, ≥ 44 px targets — drifted to
   233 before `subMinTouchTarget` ratcheted it, `:432-441`); the four-question gate `:532`
   (provenance · explanation · agreement · honesty). `grep -rho 'data-testid="[^"]*"' client/src | wc -l`
-  → `2206` (1,970 distinct) — the substrate the happy-dom lane drives.
+  → `2223` (1,984 distinct, `| sort -u | wc -l`) — the substrate the happy-dom lane drives.
 - **Two error boundaries at two altitudes.** `client/src/main.tsx:10` (root, backstops the
   providers) and `client/src/App.tsx:626` (inner — a failed lazy chunk is contained so the Toaster
   and providers stay mounted).
@@ -217,11 +220,11 @@ grep -n "staleTime\|refetchOnWindowFocus\|refetchInterval\|retry:" client/src/li
 grep -rin csrf client/src | wc -l
 # → 0 @ 12d7cbec
 grep -n '"guard:querykeys"' package.json
-# → 37: three scripts chained @ 12d7cbec
+# → 38: three scripts chained @ 6377727e
 cat scripts/design-token-baseline.json ; cat scripts/ui-standard-baseline.json ; cat scripts/bundle-size-baseline.json
-# → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 525144 @ 12d7cbec
+# → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 526640 @ 6377727e
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
-# → 120 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 12d7cbec
+# → 123 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 6377727e
 grep -rl "zodResolver" client/src | wc -l ; grep -rl "SEOHead" client/src/pages | wc -l
 # → 7 / 43 @ 12d7cbec
 awk '/^export const STATIC_ROUTE_META/,/^};/' shared/seo/routeMeta.ts | grep -cE '^  "/'
@@ -229,7 +232,7 @@ awk '/^export const STATIC_ROUTE_META/,/^};/' shared/seo/routeMeta.ts | grep -cE
 wc -l client/src/pages/borrower/URLAForm.tsx ; ls client/src/pages/borrower/urla/ | wc -l
 # → 857 / 12 @ 12d7cbec
 grep -rho 'data-testid="[^"]*"' client/src | wc -l
-# → 2206 @ 12d7cbec
+# → 2223 @ 6377727e
 ```
 
 ## Where this breaks

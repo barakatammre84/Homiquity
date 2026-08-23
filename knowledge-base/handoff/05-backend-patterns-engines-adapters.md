@@ -105,7 +105,7 @@ flowchart TD
 - **The decision engine.** `server/services/decisionEngine.ts` (514 lines): `runInstantDecision`
   `:283`, `recalculateDecision` `:449` (append-only, never throws into the caller),
   `getDecisionHistory` `:507`; most callers reach it by dynamic `await import` (`routes/borrower/urla.ts:196,645`,
-  `routes/lending/statusDecisions.ts:366`, `routes/underwriting/decisions.ts:23,45`).
+  `routes/lending/statusDecisions.ts:386`, `routes/underwriting/decisions.ts:23,45`).
 - **The rule DSL.** `server/services/ruleEngine.ts:137` `executeRules` — one export, one
   production caller (`server/routes/underwriting-rules.ts:7`).
 - **Policy-as-data.** `server/services/lookupResolver.ts:120` `resolveMatrixValue` **throws** on a

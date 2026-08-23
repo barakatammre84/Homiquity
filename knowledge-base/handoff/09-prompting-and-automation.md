@@ -37,7 +37,7 @@ flowchart TD
   S["session starts in a worktree"] --> CM["CLAUDE.md - 240 lines - always-on rules + the 4 router skills"]
   CM --> PICK{"what kind of work?"}
   PICK -- "domain work" --> ROUTER["router skill - api-routes / ui-components / mortgage-calculations / seo-content - auto-loads"]
-  PICK -- "explicit slash command" --> ROUTINE["routine skill - 17 of 23 say NEVER auto-load - R1: STOP if loaded without invocation"]
+  PICK -- "explicit slash command" --> ROUTINE["routine skill - 19 of 25 say NEVER auto-load - R1: STOP if loaded without invocation"]
   PICK -- "area-scoped implementation" --> OWNER["hq-*-owner agent - 41 - yours-to-write / hand-back / not-yours"]
   PICK -- "review or walk" --> REVIEW["6 reviewers + 10 journey walkers - findings only, never fixes"]
   ROUTER --> RAILS
@@ -170,7 +170,7 @@ cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
 wc -l CLAUDE.md .claude/agents/_OWNER_RAILS.md knowledge-base/routines/CHARTER.md | tail -4
 # → 240 / 114 / 855 / 1209 total @ 12d7cbec
 ls -d .claude/skills/*/ | wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l
-# → 23 / 17 @ 12d7cbec
+# → 25 / 19 @ 6377727e
 comm -13 <(grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | sort) <(ls .claude/skills/*/SKILL.md | sort) | sed 's|.claude/skills/||;s|/SKILL.md||' | tr '\n' ' '
 # → api-routes journey-walk mortgage-calculations seo-content staff-journey-walk ui-components @ 12d7cbec
 wc -l .claude/skills/*/SKILL.md | sort -n | sed -n '1,4p;23,25p'

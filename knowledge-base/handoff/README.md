@@ -147,7 +147,7 @@ citation · CHARTER §1b rows L3 and L4.
 |---|---|---|
 | 1 | `main` requires **zero** status checks, and `enforce_admins: true` binds admins to an empty list. A green gate is advisory. | FACTS F-44; chapter 07 |
 | 2 | A merge is a deploy, and a **failed** Railway build leaves the previous container serving — so the site stays up and every check stays green while prod goes stale. Only `/api/health`'s `commit` proves a ship. | chapter 10 |
-| 3 | `pnpm test` runs a hand-maintained **allowlist**. An unlisted node test is silently never run — one is stranded on `main` today — and the lane can collect fewer files than exist and still exit 0. | FACTS F-13, F-39; chapter 07 |
+| 3 | The node lane is still a hand-maintained **allowlist** (`vitest.config.ts`), but `pnpm test` is now `scripts/test-collection-guard.cjs`: it enumerates the disk itself, fails any lane that collected fewer files than exist, and fails on any test file no lane includes — naming the files, with no baseline to bump. The one stranded test was listed on 2026-08-23. `pnpm test:raw` is the old unguarded pair. | FACTS F-13, F-39; chapter 07 |
 | 4 | Adding a colocated client test reddens `guard:ui` until you run `pnpm guard:ui --write-table`, because the generated table's denominator counts test files. This has already merged red to `main` once. | LEDGER HO-0822-25, HO-0822-26 |
 | 5 | The dominant defect class here is an operation that **does not happen while the UI says it did** — a 200 for a write that was silently dropped. Chapter 04's draft round-trip is the worked example, and its fix did not close the class. | chapter 04 |
 
