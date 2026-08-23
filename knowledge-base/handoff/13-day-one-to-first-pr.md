@@ -162,7 +162,7 @@ that is why the rule lives in writing, and why the log of who plated what is nev
    does each part.
 4. Which two lines must every PR body carry per the definition of done, and what does silence
    mean for the second?
-5. You add `tests/foo.test.ts`, run `pnpm test`, and it passes without ever running your file.
+5. You add a new test file under `tests/`, run `pnpm test`, and it passes without ever running it.
    What do you conclude, and why is the answer different than it was before 2026-08-23?
 
 Answers: [TEACHBACK_KEY.md §13](TEACHBACK_KEY.md).

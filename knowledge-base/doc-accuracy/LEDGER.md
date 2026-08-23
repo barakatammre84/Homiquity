@@ -13,10 +13,12 @@ and are never reused. Statuses: `open` → `in-pr` → `done`, or `refuted` / `e
 Every tick also re-derives `knowledge-base/handoff/` (SKILL Phase 1.4) and every fourteenth tick
 re-runs the corpus's fresh-hire teach-back (Phase 1.5) — cluster 14 below.
 
-**`last-swept SHA:`** `e3655d7` *(origin/main tip at the routine's founding, 2026-08-18. The
-founding session itself swept `56cf00a..e3655d7` — three docs-only peer-register/audit commits,
-`git diff --stat` confirmed zero non-md paths, and the Step-2 landing #557 was reconciled into
-the rows below the same session.)*
+**`last-swept SHA:`** `6377727e` *(advanced 2026-08-23 by the founder-directed session that
+executed the first full sweep: diff-driven over the founding backlog `e3655d7..6377727e`
+(122 commits) plus the mechanical sweeps over the all-markdown universe — dead paths, pnpm-script
+existence, retired terms with the exclusion table honored, freshness via `guard:docs`. No
+rotation deep slice ran (recorded; the cursor is untouched). The founding note: the routine was
+seeded at `e3655d7` on 2026-08-18 and no scheduled tick ever advanced this line before today.)*
 
 ---
 
@@ -47,6 +49,15 @@ on** (the audit's Step-2 staging or another session's PR may land any of them fi
 | DA-0823-13 | claim-fixed-still-asserted | open — handed to #647's rebase | #647 (`routine/doc-accuracy-2026-08-20`) asserts in its README ground-rules paragraph and CHARTER §7 "Deploy proof" hunk that `verify-deploy` is `if: false` and `migrate-prod` is dispatch-only. | Re-armed by #669 `76c96751` on 2026-08-22: `sed -n '574p;647p;663p' .github/workflows/ci.yml` at that SHA (FACTS F-43). #647 is CONFLICTING; the founder asked for it to be rebased and re-dated rather than closed — DA-0820-09 closes as `done (#669)` in that rebase. |
 | DA-0823-14 | drift | open — first tick's Phase 1.4 | `#670` `fd4a22c5` merged 2026-08-23: `pnpm test` is now `scripts/test-collection-guard.cjs`; the corpus's T1 rail, chapter 07/12 status boxes, `README.md:147`, `LEDGER.md` HO-0822-09/-23/U6 and FACTS F-13/F-36/F-39 described the pre-merge state. | #670's own commit message ends "POST-MERGE TO-DO: run `/handoff-refresh`" — the refresh was a human to-do, which is the gap this amendment closes. PR #699 (`docs/handoff-refresh-0823`) is the mechanical refresh; what it leaves (the `_RAILS.md` T1 row, `README.md:147`, template lines) is the first tick's 1.4 queue or the founder-directed docs PR's. |
 | DA-0823-15 | gap | open — proposed ticket (code) | No file under `knowledge-base/handoff/` is in `scripts/doc-freshness-guard.cjs`'s `REQUIRED` list, so the corpus's 28 `Freshness:` lines are unenforced; `FACTS.md` (14-day interval) lapses 2026-09-05 with nothing to notice. | `grep -c handoff scripts/doc-freshness-guard.cjs` → 0 at `6377727e`. Guards are code (D10): ticket for `hq-ci-guards-owner` — add `handoff/README.md` and `handoff/FACTS.md` to `REQUIRED`; a tooling PR (`chore/harness-tiers-0823`) carries it. |
+| DA-0823-16 | founder-restructure (⛔ headline) | in-pr ⛔ | The three living charters rewritten into the Feynman teaching shape (founder decisions 4/5 of this session): routines `CHARTER.md` (885 → 1,112 lines, §0–§11 → §1–§21 + crosswalk appendix), `feature-review/CHARTER.md` (additive-complete; rules 1–9 identity kept), `sop/SOP-000-manual-charter.md` (renumbered; one factual fix — it was never in the freshness guard's `REQUIRED` list). Semantics preserved: a normalized line-diff of the old routines charter against the new found **10 lines changed beyond renumbering, every one a deliberate disambiguation** (TEAM_PRACTICES §9 / DESIGN_SYSTEM §12–§14 spelled out). | This branch, commits `5161620e` + `e25349cd`. Citation re-anchoring: 85 living citing files swept in three reviewed passes; 31 dated-history citers untouched (crosswalk serves them); the feature-review walkers' "CHARTER rule N" refs detected as their own charter's and reverted. |
+| DA-0823-17 | machine-path (new class) | done | Every prove-it block in the handoff corpus opened with a founder-machine absolute path — 17 sites across 15 files — so the corpus's first command failed for any other team member, defeating its stated onboarding purpose. All neutralized to `git rev-parse --show-toplevel`. | `grep -rn "/Users/" knowledge-base/handoff/` → 0 living hits at `f1bd1a65`. Prevention proposed (see scoreboard). |
+| DA-0823-18 | drift | done ⛔-adjacent | Root `README.md` and `DEVELOPER_PLAYBOOK.md` §5 step 9 claimed direct pushes to `main` are "rejected"/"blocked by branch protection"; measured protection is 0 required checks / no required review (FACTS F-44, 2026-08-22). Both now carry the honest state #694 established for the app-guide. The re-arm decision itself is the founder's standing ⛔. | This branch, commit `26885d9b`; `LOCAL_DEV.md`'s "CI still gates the PR" given the same honesty. |
+| DA-0823-19 | drift | done | `runbooks/CICD.md` said `verify-deploy` "fails the run" and both deploy runbooks pointed it at `www`; the step is `continue-on-error: true` by design and polls the Railway origin (`ci.yml:706`, pinned by `tests/ciTriggers.test.ts:153`). HO-0822-14's two residual sub-claims, closed. | commit `26885d9b`. |
+| DA-0823-20 | fossil (banner) | done | `app-guide/05-data-flow.md` describes the pre-chokepoint flow (HO-0822-16: "a rewrite, not a patch"). Dated stale-map banner added pointing at handoff 04 and app-guide 02/03; the rewrite stays a proposed ticket for the chapter's owner. | commit `26885d9b`. |
+| DA-0823-21 | drift ⛔ | done ⛔ | `CLAUDE.md`'s lending-routes row named two sub-registrar directories as though they were the set; four exist with an `index.ts` (FACTS F-06; HO-0822-03). D11 pointer lane. | commit `26885d9b`. |
+| DA-0823-22 | gap | done (founder-authored) | The corpus had a reading path for a new hire but no doing path. Chapter `13-day-one-to-first-pr.md` authored (full Feynman skeleton, machine-neutral proofs, the honest protection state); `TEACHBACK_KEY.md` §13 added; §§11/12 keys arrived via the founder's parallel day-1/scaffold branch, absorbed. Closes DA-0823-11. | commits `2239f567`…`f1bd1a65`; `pnpm guard:kb` green at 230 docs. |
+| DA-0823-23 | gap | done ⛔-install | The seat's prompt existed only in the founder's scheduler — unauditable from any other machine (charter preamble). `knowledge-base/doc-accuracy/SEAT_PROMPT.md` created as the auditable copy, recording the 2026-08-23 founder decisions (all-markdown charge; corpus as flagship; charter receipts). ⛔ the scheduler paste is the founder's §15 half. | commit `176c59fd`; KB-indexed. |
+| DA-0823-24 | sweep-result | done | First full sweep, clean: retired-term hits are all sanctioned history/banners; every `pnpm <script>` named as an instruction in living docs exists (28 raw hits reviewed — all negations or history); `guard:docs` 8/8 in window; the one regression the sweep caught was this session's own SEAT_PROMPT tripping the old-name ratchet — rephrased before commit (3/3 at baseline). | This report's evidence section. |
 
 ## Drift-source scoreboard (the learning loop)
 
@@ -63,7 +74,9 @@ failed loop (SKILL Phase 3.2).
 | claim-fixed-still-asserted | 2 | research, routines (#647's deploy claims) | not yet |
 | contradiction | 3 | `.claude/skills`, routines/CHARTER, routines/LESSONS | **yes (2026-08-23):** the cadence was restated in nine living-doc sites and drifted in seven within three days of the founder changing it. Prevention is structural, not vigilance: a scheduling fact is stated **once** (CHARTER §8's row) and every other site points at it — this amendment does that, and the skill's contract header now cites the row instead of restating the clock. |
 | drift | 8 | `.claude/skills`, doc-accuracy, KB-README, handoff (README, 11), scheduler prompt, handoff (post-#670) | at 8 from one cause (a re-seated routine): same prevention as above; the handoff rows are the steward's own Phase 1.4 from now on |
-| gap | 3 | routines/TEAM, handoff (answer key), scripts (freshness opt-in) | the freshness opt-in is the proposed ticket (DA-0823-15); the key rows are founder authoring |
+| gap | 5 | routines/TEAM, handoff (answer key → closed -22, doing-path → closed -22, seat prompt → closed -23), scripts (freshness opt-in) | the freshness opt-in ticket now has a carrier (`chore/harness-tiers-0823`, code lane) |
+| machine-path | 1 (17 sites, one class) | handoff corpus | **yes (2026-08-23):** new mechanical sweep row proposed — no living doc states an absolute machine path as an instruction; derive with `git rev-parse --show-toplevel` (charter §7's Repo row, a fact about the founder's machine, is the one exemption) |
+| founder-restructure | 1 | the three living charters | n/a — founder decision, not drift; the crosswalk + re-anchor sweep are the prevention for the citation class it created |
 
 Classes: `path-moved` · `command-renamed` · `retired-term` · `transient-state` ·
 `claim-fixed-still-asserted` · `freshness-lapsed` · `contradiction` · `index/dead-link` ·
@@ -71,7 +84,7 @@ Classes: `path-moved` · `command-renamed` · `retired-term` · `transient-state
 
 ## Rotation cursor
 
-**Next slice: 1.** One deep slice **every tick** (SKILL Phase 1.3). Fourteen clusters ⇒ full cycle
+**Next slice: 1** *(unchanged — the 2026-08-23 founder session ran the sweeps and the corpus lane but no rotation deep slice; the first scheduled tick starts the cycle).* One deep slice **every tick** (SKILL Phase 1.3). Fourteen clusters ⇒ full cycle
 = fourteen ticks (one tick a day at 19:33). The "slice done today" marker is retired — there is
 one tick a day.
 
@@ -108,3 +121,4 @@ one tick a day.
 |---|---|---|---|---|---|
 | 2026-08-18 | founding (not a tick) | `56cf00a..e3655d7` (3 docs-only commits, merged in-session) | 4 seeded from the knowledge-file audit → 2 closed by #557 landing mid-session (DA-0818-01, -04), 2 carried open (-02 narrowed, -03 re-verified) | founding branch `claude/md-docs-accuracy-routine-2x0850` | — |
 | 2026-08-23 | founder amendment (not a tick) | — (`last-swept SHA` untouched; no sweep — two routine PRs were open, #647 and #658, so a tick would have been `observe`) | 15 recorded (DA-0823-01…15): 10 fixed in this PR (one ⛔ CHARTER), 1 fixed in the scheduler, 4 open/proposed (-11 founder authoring, -13 #647's rebase, -14 first tick's 1.4, -15 code ticket) | `docs/doc-accuracy-daily-steward` | #700 |
+| 2026-08-23 | founder-directed session (sweep executed; not a scheduled tick) | `e3655d7..6377727e` (122 commits — the founding backlog) + the corpus lane at the tip | 9 new (DA-0823-16…24): 7 done in this branch, -16 in-pr ⛔ (the charter restructure), -24 the clean sweep record; DA-0823-11 closed by -22; DA-0823-14 executed (the first 1.4 queue); DA-0823-13/-15 carried (—13 is #647's rebase; -15's carrier `chore/harness-tiers-0823` awaits review). Absorbed rather than raced: #699, #700, and `docs/handoff-day1-and-scaffold-0823`. `last-swept SHA` advanced. | branch `claude/homiquity-doc-accuracy-iv8ijz` | this report |
