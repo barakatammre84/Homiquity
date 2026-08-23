@@ -113,6 +113,19 @@ flowchart TD
   is the non-throwing twin "for NON-DECISION display surfaces only … The deterministic decision
   engine never uses this path" (`:219-223`). Cache keyed by matrix + dims + **day** (`:126-127`),
   coherence via a DB `MAX(updated_at)` stamp read on every resolve by default (`:104-107`, `:242`).
+- **The decision-path contract, in one sentence.** A decision-path module — the eight files in
+  `DECISION_PATH_MODULES`, `tests/complianceInvariants.test.ts:34-43` — **is a pure function of its
+  inputs and the policy snapshot: no AI import (enforced, `:55-64` greps each for the six
+  `AI_IMPORT_PATTERNS` at `:46-53`), no vendor call outside its adapter, no `Math.random`, no
+  `tryResolveMatrixValue`, and every threshold through `resolveMatrixValue`, which throws on a
+  missing matrix or an out-of-interval cell (`server/services/lookupResolver.ts:120`, `:273-276`,
+  `:323-326`) rather than defaulting; the resolved policy is stored beside the decision so it can be
+  reconstructed after a matrix edit (`shared/schema/decisions.ts:42-46` `resolvedPolicy`,
+  `policyFingerprint`).** Clocks are the stated exception: four of the eight read `Date.now()` or
+  `new Date()` (below) — for employment tenure at `server/underwriting.ts:146`, stamps and
+  expiries elsewhere — and only the AI-import half of this sentence is enforced by a test (LEDGER
+  HO-0822-U8: nothing forbids `tryResolveMatrixValue` in these files; today nothing outside
+  `lookupResolver.ts` calls it either, `grep -rln tryResolveMatrixValue tests/ server/`).
 - **The seeded matrices.** `server/scripts/seedLendingGrids.ts:43-51` — 8 scalars each labelled
   with its ledger id (`CONVENTIONAL_DTI_CAP` 43.0 *platform-conv-dti-cap-43*, `CONVENTIONAL_STRETCH_DTI`
   50.0 *fnma-b3-6-02-du-max-dti*, `CONVENTIONAL_LTV_CAP` 95.0, `CONVENTIONAL_FICO_FLOOR` 620
@@ -206,6 +219,15 @@ grep -rln "anthropic" server --include='*.ts' | wc -l
 # → 7 @ 12d7cbec
 grep -c "cron:" .github/workflows/cron-jobs.yml ; grep -n -A1 'server.registerTool(' server/mcp/index.ts | grep -c 'name\|"'
 # → 7 cron rows ; 3 MCP tools @ 12d7cbec
+for f in $(sed -n '35,42p' tests/complianceInvariants.test.ts | tr -d ' ",'); do printf '%s random=%s try=%s clock=%s\n' $f $(grep -c 'Math.random' $f) $(grep -c tryResolveMatrixValue $f) $(grep -cE 'Date.now\(\)|new Date\(' $f); done
+# → server/services/underwritingNuance.ts random=0 try=0 clock=0
+#   server/services/preUnderwriting.ts random=0 try=0 clock=1
+#   server/services/decisionEngine.ts random=0 try=0 clock=0
+#   server/services/loanAnalysis.ts random=0 try=0 clock=2
+#   server/services/ausSubmission.ts random=0 try=0 clock=3
+#   server/pricing.ts random=0 try=0 clock=0
+#   server/underwriting.ts random=0 try=0 clock=1
+#   server/underwritingEngine.ts random=0 try=0 clock=0   @ 6377727e
 ```
 
 ## Where this breaks
@@ -237,6 +259,7 @@ grep -c "cron:" .github/workflows/cron-jobs.yml ; grep -n -A1 'server.registerTo
 | Are the 52 service files that import neither `db` nor `storage` pure, or do they reach the DB through a sibling? | `grep -rn "from \"../../db\"" server/services` plus a read. |
 | Is `MCP_AGENT_REGISTRY` populated in any deployed environment? | Railway Variables (founder-only). |
 | How many of the 558 registrations are the same path+verb registered twice? | A dedupe over `(method, path)` pairs. |
+| Can a clock read change a decision? Four decision-path modules read the clock (prove-it above); `server/underwriting.ts:146` turns `Date.now()` into employment months, so the same file run on two days could cross a tenure threshold with no input change. Is that intended, and is the evaluation date stored with the decision? | Read the four sites against `shared/schema/decisions.ts:42-46`; a characterisation test that runs the engine twice with a mocked clock. `hq-underwriting-owner`. |
 
 ## Analogy
 

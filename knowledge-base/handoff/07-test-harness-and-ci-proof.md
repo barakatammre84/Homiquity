@@ -138,7 +138,7 @@ flowchart TD
   is what makes the machine swap, and CI runs them on every PR regardless" (`:118-121`). **What this
   changes for you:** a push now costs ~25 s instead of ~2 min, and a broken test reaches CI before it
   reaches you — so T1 is a step you run deliberately, not one the hook runs for you. The tooling
-  probe is back to **warn-only** (`:61-84`: an uninstalled checkout prints `pre-push gate SKIPPED`
+  probe is back to **warn-only** (`:61-83`: an uninstalled checkout prints `pre-push gate SKIPPED`
   and exits 0; it *blocked* between 2026-08-19 and 2026-08-22 while CI was dead, `:69-72`) and it
   looks for `tsc`, not `vitest` (`:73`) — so a fresh worktree pushes with nothing checked, and the
   PR's gate is the first thing that runs. It names its own blind spots (`:146-150`): no unit suite
@@ -255,7 +255,7 @@ sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' te
 | `guard:ui` / `guard:tokens` are text scans — no layout engine; `unprefixedMultiColGrid` is a proxy for "breaks at 320 px". | `ci.yml:328-329`; `scripts/browser-probe.cjs:9-11` | Only `browser-probe.cjs`, which nothing runs automatically. |
 | 63 of 238 node tests are source greps — "passes on wrong logic and breaks on renames" (F-014). | `hq-underwriting-owner.md:105` | Acknowledged, not caught. |
 | Pre-push and preflight run a strict subset of the gate (no citations; 1 of 3 query-key scripts). | `pre-push:117`; `preflight.sh:94` vs `package.json:38` | CI — now that it runs again. |
-| The pre-push tooling probe is warn-only and looks for `tsc`, not `vitest`: an uninstalled worktree prints `pre-push gate SKIPPED` and pushes with nothing checked at all — the shape that put PR #608 up with zero checks in August, now sanctioned because CI is back. | `.githooks/pre-push:61-84` | No test; `scripts/hooks-installed-guard.cjs` (preflight's first step) checks only that the hook is *armed*. |
+| The pre-push tooling probe is warn-only and looks for `tsc`, not `vitest`: an uninstalled worktree prints `pre-push gate SKIPPED` and pushes with nothing checked at all — the shape that put PR #608 up with zero checks in August, now sanctioned because CI is back. | `.githooks/pre-push:61-83` | No test; `scripts/hooks-installed-guard.cjs` (preflight's first step) checks only that the hook is *armed*. |
 | Stale counts inside the harness: `cronSchedules.test.ts:63` "six" (7); `pre-push:26,103,109` "nine guards" / "9 guards" (8); `pre-push:150` and `preflight.sh:7` "sixteen" / "all 16" (18); `checkup.sh:2-9` lists 8 categories for 18 checks. | as cited | `doc-staleness-guard` scans `.md` vocabulary, not counts in scripts. LEDGER HO-0822-20. |
 
 ## What we do not know

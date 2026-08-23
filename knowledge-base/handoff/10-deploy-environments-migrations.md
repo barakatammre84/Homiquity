@@ -111,12 +111,55 @@ flowchart TD
   `db:push` and `db:generate` are blocked in `package.json:26,29`.
 - **A copy-pasted journal `when` makes prod silently skip a migration.** `DB_MIGRATIONS.md:145-150`;
   mechanism `scripts/migrate-prod.cjs:71,81`. Green job, missing DDL.
-- **Environment shape.** `.env.example` has 9 uncommented keys and 65 documented keys
-  (`grep -cE '^[A-Z][A-Z0-9_]*=' .env.example` → `9`). The three secrets production refuses to boot
-  without, by name only: `SESSION_SECRET` (≥ 32 chars), `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`
-  (`.env.example:14-32`), plus `DATABASE_URL`. `SESSION_SECRET` is mandatory in dev too and fails
-  *silently* there — the boot guard is production-only, so the dev server starts and every login
-  500s (`.env.example:18-21`).
+- **Environment variables, in three tiers — every list derived, not typed.** `.env.example` has
+  9 uncommented keys (`grep -cE '^[A-Z_]+=' .env.example` → `9`) and documents 65
+  (`grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u | wc -l`
+  → `65`); the code reads 65 names directly
+  (`grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u | wc -l`
+  → `65`) — the same number by coincidence, not the same set. `comm -13` of the two sorted lists
+  (read but **undocumented**, 10): `FREDDIE_LPA_API_KEY INTAKE_PAUSED RAILWAY_GIT_COMMIT_SHA
+  RAILWAY_REPLICA_REGION RATE_LIMIT_RELAXED SEED_LO_ID SENDGRID_API_KEY1 SENTRY_RELEASE
+  TRUST_PROXY_HOPS UWM_EASE_CLIENT_ID` — three of them are operator switches a new hire needs
+  (`INTAKE_PAUSED` is the kill switch, `RATE_LIMIT_RELAXED` is what the integration lane runs
+  under, `TRUST_PROXY_HOPS` decides whether the secure cookie ever reaches a browser) and
+  `SENDGRID_API_KEY1` is a fallback name read at `server/services/emailService.ts:5` that nothing
+  documents (LEDGER HO-0823-03). `comm -23` (documented but **not read directly**, 10):
+  `CREDIT_ENCRYPTION_KEY_V2 GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET LINKEDIN_CLIENT_ID
+  LINKEDIN_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_API_KEY_SECRET TWILIO_API_KEY_SID
+  TWILIO_PHONE_NUMBER VITE_PRELAUNCH_GATED` — four are read dynamically (`CREDIT_ENCRYPTION_KEY_V${v}`
+  at `server/services/encryptionService.ts:72`; the social `*_CLIENT_ID`/`*_CLIENT_SECRET` through
+  `process.env[config.clientIdEnv]` at `server/socialAuth.ts:211,276-277`), one through
+  `import.meta.env` (`VITE_PRELAUNCH_GATED`, `client/src/lib/prelaunch.ts:17-19`), and the four
+  Twilio *sender* keys are read by nothing — only `TWILIO_AUTH_TOKEN`, `TWILIO_WEBHOOK_URL` and
+  `TWILIO_STATUS_CALLBACK_URL` are (`grep -rhoE 'process\.env\.TWILIO[A-Z_]*' server | sort -u`),
+  which is the inbound-only picture LEDGER HO-0822-U3 describes.
+  - **Tier 1 — production refuses to boot without them** (four): `DATABASE_URL` (`server/db.ts:11-15`,
+    throws in every environment); `SESSION_SECRET` ≥ 32 chars (`server/integrations/auth/session.ts:19-26`,
+    production only — in dev the server starts and "every login 500s with `secret option required
+    for sessions`", `.env.example:18-21`); `CREDIT_ENCRYPTION_KEY` + `PII_HASH_SALT`
+    (`assertEncryptionConfig`, `server/services/encryptionService.ts:197-215`, production only — dev
+    falls back to a key derived from `SESSION_SECRET || "default-dev-key"`, `:61-65`).
+  - **Tier 2 — what `scripts/dev-up.sh` writes for you** (eight, `scripts/dev-up.sh:139-150`):
+    `DATABASE_URL NODE_ENV PORT SESSION_SECRET PII_HASH_SALT CREDIT_ENCRYPTION_KEY DEV_TEST_PASSWORD
+    EXTRACTION_SIMULATE` — the Tier-1 four generated with `crypto.randomBytes`, plus the dev login
+    password and the switch that keeps document extraction simulated.
+  - **Tier 3 — optional, grouped by `.env.example`'s own section headers** (`grep -nE '^# --- '
+    .env.example`): Key rotation & Cloud KMS (`:34`: `CREDIT_ENCRYPTION_KEY_V2 ENCRYPTION_ACTIVE_KEY_ID
+    PII_KMS_KEY_NAME PII_KMS_WRAPPED_DEKS`) · AI (`:50`, `:149`, `:156`: `ANTHROPIC_API_KEY
+    EXTRACTION_SIMULATE AI_INTEGRATIONS_ANTHROPIC_API_KEY`) · Local dev conveniences (`:56`:
+    `APP_BASE_URL DEV_TEST_PASSWORD NODE_ENV PORT`) · Credit vendor (`:67`: `CREDIT_VENDOR_API_KEY
+    CREDIT_VENDOR_MODE`) · Private beta gate (`:96`: `BETA_ACCESS_CODE`) · CSP (`:104`: `CSP_ENFORCE`)
+    · Pre-license launch gate (`:110`: `PRELAUNCH_GATED VITE_PRELAUNCH_GATED`) · Scheduled jobs
+    (`:127`: `CRON_SECRET`, uncommented) · Object storage (`:138`: `GCS_SERVICE_ACCOUNT_KEY
+    PRIVATE_OBJECT_DIR PUBLIC_OBJECT_SEARCH_PATHS`) · Webhooks (`:160`: `PLAID_WEBHOOK_SECRET`) ·
+    Twilio / SMS (`:166`, seven keys) · Vendor integrations (`:220`: `CRS_API_KEY FANNIE_DU_API_KEY
+    GOOGLE_MAPS_API_KEY HOUSECANARY_API_KEY ISOFTPULL_API_KEY PLAID_CLIENT_ID PLAID_ENV PLAID_SECRET
+    RAPIDAPI_KEY`) · Email (`:231`: `FROM_EMAIL FROM_NAME SENDGRID_API_KEY SMTP_HOST SMTP_PASS
+    SMTP_PORT SMTP_USER`) · Social login (`:246`, eight keys) · Error monitoring (`:269`:
+    `SENTRY_DSN`) · AI risk brief (`:274`: `RISK_BRIEF_DISABLED`) · Misc tuning (`:279`:
+    `AUS_TIMEOUT_MS LOOKUP_MATRIX_STAMP_WINDOW_MS MCP_VENDOR_TIMEOUT_MS PRICING_MARGIN_BASE_BPS
+    PUBLIC_BASE_URL`). `TEAM_PRACTICES.md` §5 says a new env var lands in `.env.example` **and**
+    `CICD.md`; the ten undocumented names above are the measure of how well that has held.
 - **The driver split.** `server/db.ts:23-24` `useLocalPg = USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url)`
   → node-postgres (`:30-33`) else Neon serverless over WebSocket (`:35-37`); both cast to one type so
   hundreds of `db.select()` call sites never see a union.
@@ -171,8 +214,12 @@ sed -n '83,88p' scripts/migrate-prod.cjs
 # → if (DRY_RUN) { console.log(`pending  ${entry.tag}`); continue; }   ← a dry run executes nothing @ 12d7cbec
 grep -c 'when' scripts/migration-ledger-guard.cjs
 # → 1   (one mention, in a comment — the guard does not check duplicate `when` values) @ 12d7cbec
-grep -cE '^[A-Z][A-Z0-9_]*=' .env.example ; grep -oE '^#? ?[A-Z][A-Z0-9_]{2,}=' .env.example | tr -d '#= ' | sort -u | wc -l
-# → 9 / 65 @ 12d7cbec
+grep -cE '^[A-Z_]+=' .env.example ; grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u | wc -l ; grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u | wc -l
+# → 9 / 65 / 65 @ 6377727e
+comm -13 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u) <(grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u) | tr '\n' ' '
+# → FREDDIE_LPA_API_KEY INTAKE_PAUSED RAILWAY_GIT_COMMIT_SHA RAILWAY_REPLICA_REGION RATE_LIMIT_RELAXED SEED_LO_ID SENDGRID_API_KEY1 SENTRY_RELEASE TRUST_PROXY_HOPS UWM_EASE_CLIENT_ID   (read, undocumented — 10) @ 6377727e
+comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u) <(grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u) | tr '\n' ' '
+# → CREDIT_ENCRYPTION_KEY_V2 GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET LINKEDIN_CLIENT_ID LINKEDIN_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_API_KEY_SECRET TWILIO_API_KEY_SID TWILIO_PHONE_NUMBER VITE_PRELAUNCH_GATED   (documented, not read directly — 10) @ 6377727e
 sed -n '23,24p' server/db.ts
 # → const useLocalPg = process.env.USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url); @ 12d7cbec
 sed -n '38,39p' scripts/preflight.sh ; grep -nF 'PORT="${PORT:-5001}"' scripts/dev-up.sh   # -F: BSD grep mis-parses the $ inside the pattern
