@@ -162,7 +162,7 @@ node scripts/selling-guide-session-hook.cjs
 
 The Guide is the building code, and this repo refuses to let it be a book on a shelf. It is
 a **vendored dependency with a lockfile**: the edition is version-pinned by hash, built from
-source on every machine, integrity-checked on every merge, `npm audit`-ed every morning by
+source on every machine, integrity-checked on every merge, re-audited every morning by
 the steward, and imported by explicit reference — every Guide-governed function names the
 section it implements the way an import names its module. Upgrading the dependency (a new
 edition) is a deliberate, human-reviewed version bump with a changelog diff
