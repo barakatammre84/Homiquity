@@ -68,7 +68,7 @@ The tiers as a funnel — each one narrower than the last, and the three places 
 flowchart TD
   Tm1["T-1 standing - fresh and unclaimed - git rev-list, gh pr list, REGISTER.md"]
   T0["T0 static - tsc, node --check, nine guards - types and ratchets"]
-  T1["T1 unit - pnpm test is the collection floor - 221 node files, 123 client files, named on a shortfall"]
+  T1["T1 unit - pnpm test is the collection floor - 230 node files, 124 client files, named on a shortfall"]
   T2["T2 pnpm preflight --fast - T0 + T1 + pnpm audit + the section-9 guard as CI computes it"]
   T3["T3 pnpm preflight - build, bundle ratchet, prod-mode boot on 3999, integration lane on 4000"]
   T4["T4 browser - PORT=5002 pnpm dev in the worktree, browser-probe.cjs at 320, 768, 1280"]
