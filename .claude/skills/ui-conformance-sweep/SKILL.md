@@ -54,6 +54,35 @@ hand-roll their own geometry.
   those are vendored shadcn primitives and changing one restyles the whole app from underneath
   every other surface. Server, shared, schema and tests-as-behaviour are out of lane entirely.
 
+- **R2a — Tenant white-label: semantic tokens are the mechanism, literals are the breakage.**
+  **193 of the 281 non-test pages are authed** (borrower 56, staff 48, lending 27, admin 23,
+  agent-broker 26, homeowner 8, realtor-engine 4, profile 1) and every one of them renders
+  inside `BrandingProvider`, which writes the tenant's own **values** for `--primary`,
+  `--sidebar`, `--ring`, `--accent` and their foregrounds
+  ([`brand/BrandingProvider.tsx:140-156`](../../../client/src/components/brand/BrandingProvider.tsx))
+  onto an inline-styled `display: contents` wrapper (`:197`), from which they cascade to
+  everything beneath.
+
+  So the intuition to distrust is *"colour is risky on authed pages, restyle structure only"* —
+  it is **backwards**. A semantic class resolves to whatever that tenant's value is, which is
+  the white-label feature working. **Converting a literal to a semantic token is what makes
+  white-label work**, and it is the direction `guard:tokens` already ratchets (0 raw palette
+  classes, ≤97 bare white/black).
+
+  What actually breaks a tenant is the opposite:
+  - **A hex or palette literal** (`bg-emerald-600`, `#047756`, `text-[#0B1E19]`) — it ignores the
+    override, so one tenant silently gets another's brand. Convert these on sight, authed or not.
+  - **Redefining the value** of `--primary`, `--accent`, `--sidebar` or `--ring` for an authed
+    surface — in `index.css`, a `style=`, or a Tailwind arbitrary value. Those four belong to the
+    tenant; you may *use* them anywhere and must **never** *set* them.
+
+  Everything else — type, spacing, motion, radius, elevation, `PageShell` adoption, the icon
+  registry — is unconstrained on every surface. **Colour is in scope everywhere; only those four
+  token definitions are not.**
+
+  Prove it on the first authed target of any run: render under a tenant brand and confirm
+  `--primary` still resolves to the tenant's value rather than a literal you introduced.
+
 - **R3 — Non-overlap with Refactor Radar, and with everyone else.** Radar's R6 forbids visual and
   copy changes; you do *only* visual changes and **never** UI/logic separation — the two lanes
   are complements, and touching the other's is how two PRs collide on one file. Before choosing a
