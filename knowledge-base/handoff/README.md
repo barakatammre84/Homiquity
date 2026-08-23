@@ -1,7 +1,8 @@
 # Handoff — the Feynman onboarding corpus for Homiquity
 
 > **Freshness:** last verified 2026-08-22 · review every 60 days
-> Verified against `origin/main` @ 12d7cbec (every chapter carries its own stamp).
+> The corpus-wide stamp is the one in [FACTS.md](FACTS.md) (rewritten by the generator, never
+> typed); every chapter carries its own `Verified against` line, bumped only after a full re-read.
 
 This directory teaches the product to a full-stack engineer who has never seen it, and hands it
 over to a team that will keep it running. It is a **layer over** the existing documentation, not
@@ -75,11 +76,13 @@ Three layers, weakest to strongest:
 2. **Command-derived facts.** A refresh re-runs every command in [FACTS.md](FACTS.md) and every
    chapter's prove-it block at the new `origin/main` tip, and re-stamps the SHA. A number that
    changed is a prose edit plus, if another doc carried the old number, a ledger row.
-3. **A steward.** The doc-accuracy routine sweeps `knowledge-base/**` every six hours for dead
-   pointers and renamed paths and may consume `HO-` rows as its own findings. A hand-invoked
-   refresh skill (a follow-up to this corpus, in a separate PR) automates layer 2 end to end:
-   detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run the commands,
-   rewrite the generated block, log the run.
+3. **A steward.** The doc-accuracy routine (`.claude/skills/doc-accuracy/SKILL.md`, daily at
+   19:30 — `../routines/CHARTER.md` §3) runs the refresh protocol below as its Phase 1.4 on every
+   tick, consumes `HO-` rows as its own findings and closes them when their fix is on
+   `origin/main`, and re-runs the fresh-hire teach-back every fourteenth tick. The hand-invoked
+   `handoff-refresh` skill (`.claude/skills/handoff-refresh/SKILL.md`) is the same protocol for a
+   human between ticks: detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run
+   the commands, rewrite the generated block, log the run.
 
 **Refresh protocol:** invoke the `handoff-refresh` skill, or do it by hand — fresh worktree of
 `origin/main` → `pnpm handoff:facts --check` and `--cite` to find drift mechanically, plus
