@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 export default function ResetPassword() {
   const [, navigate] = useLocation();
@@ -50,9 +51,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/">
-            <span className="text-2xl font-bold tracking-tight text-primary cursor-pointer" data-testid="text-brand-logo">
-              homiquity
-            </span>
+            <Logo size="lg" tone="brand" data-testid="text-brand-logo" />
           </Link>
         </div>
 

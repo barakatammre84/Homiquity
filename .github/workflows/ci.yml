@@ -33,10 +33,17 @@ name: CI
 #         gh api repos/<owner>/<repo>/rules/branches/main --jq 'length'   # → 0
 #     Check BOTH: classic protection and rulesets are separate mechanisms, and a
 #     requirement living in one shows as empty in the other.
+#     Still [] on 2026-08-22, re-measured with the two commands above.
 #     This was REMOVED DELIBERATELY (2026-08-19) so work could continue through the
 #     GitHub Actions billing failure — a required check that cannot run blocks every
 #     PR in the repo. It is not an oversight; restore it when Actions is paying again,
-#     together with the `migrate-prod` / `verify-deploy` restores at :505 and :580.
+#     together with the `migrate-prod` / `verify-deploy` restores below.
+#     ▶️ Two of those three are DONE as of 2026-08-22: `migrate-prod` and `verify-deploy`
+#     are re-armed in this PR (Actions is billing again — runs execute rather than dying
+#     in ~2s). Branch protection is the REMAINING one and is deliberately NOT changed
+#     here: it is a repo-settings change, not a code change, so it needs the founder's
+#     hand rather than a merge. Until it lands, `gate` is advisory — a red PR can still
+#     be merged by anyone, and the pre-push hook is the only gate that actually bites.
 #     ⚠️ `enforce_admins` is still ON, which reads reassuring and means nothing while
 #     the required-check list is empty: it binds admins to zero checks.
 #     This comment previously read "✅ CONFIGURED 2026-07-17: gate required". That was
@@ -109,7 +116,35 @@ jobs:
     # Recovery if it does deadlock: re-point the rule with the PATCH above, or turn
     # enforce_admins off temporarily (Settings → Branches). Both need repo admin.
     name: gate (typecheck · tests · schema guard)
-    if: github.event_name == 'pull_request'
+    # COST (KTLO-2), on top of #620. Two classes of run that could never have
+    # changed a verdict:
+    #
+    #   not a draft    — a draft cannot merge, so gating every push to one buys
+    #                    nothing a later run does not also buy. `ready_for_review`
+    #                    is already in `types`, so the first thing that happens
+    #                    when a draft becomes mergeable is a full gate.
+    #                    Honest sizing: ZERO of the 60 PRs opened 2026-08-18..20
+    #                    were drafts, so this saves nothing TODAY. It is here
+    #                    because this repo's own orphan-branch practice is to park
+    #                    a branch behind a draft PR rather than leave it bare —
+    #                    the moment that is followed at any volume, drafts become
+    #                    a standing invisible cost.
+    #
+    #   body actually  — `edited` is in `types` because guard:security reads the
+    #   changed          PR BODY from the event payload, so a security review
+    #                    added after the fact must re-gate (observed on #424).
+    #                    But `edited` also fires on a TITLE edit, and a title
+    #                    cannot change any guard's verdict. `changes.body` is
+    #                    present only when the body is what changed.
+    #                    `changes.base` is deliberately NOT skipped: a retarget
+    #                    arrives as `edited` and IS a real re-gate against a new
+    #                    base.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.draft == false
+      && !(github.event.action == 'edited'
+           && !github.event.changes.body
+           && !github.event.changes.base)
     # One in-flight gate per PR — a new push supersedes the old run instead of
     # racing it. Without this, every push to a branch started a fresh ~5-minute
     # run while the superseded one ran to completion for a commit nobody would
@@ -227,6 +262,15 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: pnpm check
       - name: Unit tests
+        # `pnpm test` is scripts/test-collection-guard.cjs — both unit lanes plus a
+        # COLLECTED-COUNT FLOOR. Vitest globs test files through tinyglobby -> fdir,
+        # which defaults to suppressErrors and reports a directory whose readdir
+        # FAILED as an empty one. Under load that silently shortened three runs
+        # (111/118, 214/215, 113/119), each exiting 0. The floor compares what
+        # vitest reports collecting against what is on disk and fails on a
+        # shortfall; it also fails on a test file no lane's include matches, which
+        # never runs at all. (Job `name:` above deliberately unchanged — it is the
+        # verbatim required-check string.)
         if: steps.scope.outputs.code == 'true'
         run: pnpm test
       - name: Dependency vulnerabilities (prod deps, high+)
@@ -504,25 +548,39 @@ jobs:
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
-    # ⏸️ PAUSED 2026-08-19 — founder direction: development is local-only until the app
-    # is fully built and debugged, and the Railway production service is being taken down.
-    # There is no prod app to migrate for, so this no longer fires on a merge to `main`.
+    # ▶️ RESUMED 2026-08-22, after the pause's premise turned out to be false and cost a
+    # 35-minute total authentication outage in production.
     #
-    # What this costs, stated plainly so nobody rediscovers it the hard way: migrations
-    # merged from now on are NOT applied anywhere. The journal in `migrations/meta/` will
-    # run ahead of the production database for as long as this stays paused, and the gap
-    # is however many migrations land in the meantime.
+    # THE PAUSE, AND WHY IT ENDED. On 2026-08-19 this was paused on founder direction:
+    # development was going local-only and "the Railway production service is being taken
+    # down", so there was said to be no prod app to migrate for. The takedown never
+    # happened. Railway kept auto-deploying every merge to `main`, the site stayed public,
+    # and the journal ran ahead of the database exactly as the pause note predicted —
+    # while nothing in CI was able to say so.
     #
-    # TO RESUME when you go back to Railway — do these together, in one PR:
-    #   1. restore this line to:  github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    #   2. restore `verify-deploy`'s `if:` below,
-    #   3. FIRST run this workflow manually with dry_run=true and read the pending list —
-    #      it will be long, and a green dry-run never executes the SQL (it reconciles the
-    #      journal only), so it is not evidence the DDL will succeed,
-    #   4. re-check any contract migration in that list against real prod data before
-    #      the first apply.
-    # Manual dispatch still works throughout, so the dry-run in step 3 needs no code change.
-    if: github.event_name == 'workflow_dispatch'
+    # It came due on 2026-08-22. PR #609 merged migration 0057 (users.last_failed_login_at).
+    # This job did not fire, so the column was never created, while the deployed code
+    # selects it on EVERY query against `users`. Login, signup and password reset each
+    # returned 500 — `error: column "last_failed_login_at" does not exist`, in the Railway
+    # deploy logs — until the migration was applied by manual dispatch (run 32592906537).
+    #
+    # 🚨 THE CHECK THAT DID NOT SAVE US, so nobody reaches for it next time: `verify-deploy`
+    # below would have stayed GREEN throughout. It asserts prod serves the merged COMMIT,
+    # and prod did serve it. The process was alive and the code current; only the schema
+    # underneath was wrong. A commit check cannot see a missing column.
+    #
+    # Steps 3 and 4 of the original resume plan were honoured: dry_run=true was run first
+    # (run 32591800451) and listed exactly one pending migration, 0057, which is additive
+    # (`ADD COLUMN IF NOT EXISTS`, nullable) and therefore carries no contract-migration
+    # data risk. A green dry-run still never executes SQL — it reconciles the journal only.
+    #
+    # ⚠️ IF THE RAILWAY TAKEDOWN IS STILL THE PLAN, this is the wrong half of the fix:
+    # revert it and complete the takedown — or at minimum disable Railway's auto-deploy
+    # from `main` — instead. What must not continue is the state this incident happened in:
+    # a live, public, auto-deploying production whose migrations nothing applies. Either
+    # prod is real and gets its migrations, or it is gone and stops receiving deploys. It
+    # cannot be both.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Never run two migrations against prod at once; don't cancel one in flight.
     concurrency:
@@ -580,17 +638,22 @@ jobs:
   # ---------------------------------------------------------------------------
   verify-deploy:
     name: verify-deploy (prod is serving this commit)
-    # ⏸️ PAUSED 2026-08-19 — same founder direction as `migrate-prod` above. This job polls
-    # production's /api/health for the merged commit; with the Railway service down there is
-    # nothing to poll, so it would fail on every merge to `main` and teach everyone to ignore
-    # a red check — which is the precise habit that let prod sit eight commits stale in the
-    # first place. Better paused loudly than red permanently.
+    # ▶️ RESUMED 2026-08-22 alongside `migrate-prod`. Its own note said to restore it BEFORE
+    # the first Railway deploy, not after; Railway has been deploying every merge throughout
+    # the pause, so this restore is overdue rather than early.
     #
-    # 🚨 RESTORE THIS BEFORE THE FIRST RAILWAY DEPLOY, not after. The failure it catches is
-    # invisible without it: a failed Railway build leaves the PREVIOUS container serving, so
-    # the site stays up, /api/health answers 200, and every other check stays green while the
-    # code you merged is not running. Restore to:  github.event_name == 'push'
-    if: false
+    # 🚨 KNOW EXACTLY WHAT THIS CATCHES, AND WHAT IT CANNOT. It catches the stale-container
+    # failure: a failed Railway build leaves the PREVIOUS container serving, so the site
+    # stays up, /api/health answers 200, and every other check stays green while the code
+    # you merged is not running.
+    #
+    # It does NOT catch a schema mismatch, and on 2026-08-22 that distinction was the whole
+    # incident: prod served the correct commit with a missing column while every login
+    # 500'd, and this job would have been green for all 35 minutes. Matching commits prove
+    # the right CODE is running, never that the DATABASE underneath it agrees. Do not cite
+    # a green verify-deploy as evidence that a deploy is healthy — that is the same
+    # unearned-success shape as reading /api/health's 200 as proof a migration applied.
+    if: github.event_name == 'push'
     # 🚨 MUST NOT BLOCK THE WORKFLOW. This job and Railway's "Wait for CI"
     # setting are mutually recursive: Wait for CI holds the deploy until every
     # GitHub workflow for the commit succeeds, while this job waits for that
@@ -630,8 +693,17 @@ jobs:
           # costs nothing but the ability to wait out a >6-minute queue, which the
           # measured distribution has never contained. If a legitimately slow build
           # ever trips this, the recovery is unchanged and cheap: re-run the job.
+          # HOST: the Railway origin, never `www`. This job's entire question is
+          # "is prod serving THIS commit", and `www.homiquity.com` answers through
+          # Squarespace DNS — a stale record, a redirect, or a cached edge response
+          # can all make it answer for something other than the Railway service
+          # this workflow just deployed to. CLAUDE.md and the DNS runbook both
+          # state the rule: machine-to-machine uses `*.up.railway.app`; `www` is
+          # for humans. A deploy verifier reading the wrong origin is the one
+          # failure mode it cannot have, because a false GREEN here is exactly the
+          # silent-stale-prod condition the job exists to catch.
           for i in $(seq 1 18); do
-            got="$(curl -sf --max-time 10 https://www.homiquity.com/api/health \
+            got="$(curl -sf --max-time 10 https://homiquity-production.up.railway.app/api/health \
                    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit") or "")' \
                    2>/dev/null || true)"
             if [ "$got" = "$EXPECTED" ]; then

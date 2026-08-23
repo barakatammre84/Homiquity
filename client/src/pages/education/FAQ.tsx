@@ -91,13 +91,13 @@ export default function FAQ() {
           ]),
         ]}
       />
-      <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
+      <div className="bg-muted p-6 sm:p-8 lg:p-12">
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
             <HelpCircle className="h-4 w-4" />
             Frequently Asked Questions
           </div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+          <h1 className="font-display text-3xl font-bold leading-none tracking-tight sm:text-4xl lg:text-5xl">
             How Can We Help You?
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">

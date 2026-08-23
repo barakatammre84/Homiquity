@@ -9,7 +9,7 @@ import * as React from "react";
  * raw palette classes in components).
  *
  * Phase 2 ships this component INERT: with no `brand` it renders children
- * untouched (default Homiquity / Royal Blue Emerald). Phase 4 mounts it on
+ * untouched (default Homiquity / "Mint & Flare"). Phase 4 mounts it on
  * `PrivateLayout` and resolves the session's tenant (compliance-gated). Public
  * layouts never mount it.
  *

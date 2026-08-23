@@ -40,13 +40,14 @@ doc-drift bug to fix):
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
   - [12 — The UI ↔ Backend API Contract](handbook/app-guide/12-api-contract.md) — who owns a payload shape, the three wire states (absent / value / `null`), the error shape, and how a shape changes without dropping a borrower's answer.
 - [design/DESIGN_SYSTEM.md](handbook/design/DESIGN_SYSTEM.md) — **the single binding design standard**
-  (Royal Blue Emerald). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
+  ("Mint & Flare"). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
   elevation, the icon registry, `<Logo>`/white-label, empty states, the **capture-flow standard**
   (progressive disclosure · tunnel vision · mobile invariants), the **four-question gate**
   (provenance · explanation · agreement · honesty), and the adoption checklist. §0 is a *measured*
   adoption table — no `⏳`, every row carries a number and the command that produces it
   (`pnpm guard:ui`). Merged 2026-08-18 from `design_guidelines.md` + `visual-consistency-standard.md`,
   both now in [archive/design/](archive/design/).
+- [handoff/](handoff/) — the **Feynman onboarding & handoff corpus** for a full-stack team: each chapter explains one subsystem plainly, then proves every claim with a read-only command, names where it breaks, and ends in a teach-back. Layered on the app-guide (which wins on any conflict; the code wins over both); counts are command-derived in `handoff/FACTS.md`, drift found in other docs is logged in `handoff/LEDGER.md` rather than hand-patched; `handoff/prompts/` holds the loop rails and templates for building through Claude without breaking the harness.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
@@ -108,10 +109,12 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [design-identity/ILLUSTRATION_BRIEF.md](design-identity/ILLUSTRATION_BRIEF.md) — what to commission for the animated scenes, and the mechanism that already exists.
+- [design-identity/LEDGER.md](design-identity/LEDGER.md) — Design Identity Engine cross-run memory: what each run raised, what it proved it on, and the directions it refused.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
-- [JOURNEYS.md](feature-review/JOURNEYS.md) — the 4 client-journey charters walked in the browser.
+- [JOURNEYS.md](feature-review/JOURNEYS.md) — the client-journey charters walked in the browser.
+- [STAFF_JOURNEYS.md](feature-review/STAFF_JOURNEYS.md) — the 5 staff-desk charters: one file crossing many hands, walked as the seat and its counterpart.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
 The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**

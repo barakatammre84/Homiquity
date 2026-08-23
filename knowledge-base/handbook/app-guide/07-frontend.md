@@ -2,16 +2,19 @@
 
 ## Stack
 
-React 18 + TypeScript, built by **Vite**. Routing is **Wouter** (a tiny
+React 19 + TypeScript, built by **Vite**. Routing is **Wouter** (a tiny
 react-router alternative — `<Route path>` components, `useLocation`,
 `navigate`). Server state is **TanStack Query** (all API reads/writes go
 through `queryClient`); forms are **react-hook-form + Zod** (sharing the same
 schemas the server validates with, from `shared/`). UI is **Shadcn/ui** on
-Radix primitives + Tailwind, with light/dark themes (`next-themes`).
+Radix primitives + Tailwind. 🚨 **There is no theme switcher** — `next-themes`
+is not a dependency, and although `tailwind.config.ts` sets `darkMode: ["class"]`
+nothing under `client/src` ever applies the class, so the `.dark` block is dead
+code. Dark mode is decided UNSUPPORTED; do not "fix" a dark-mode bug.
 
 Entry chain: `client/index.html` → `client/src/main.tsx` →
-[`client/src/App.tsx`](../../../client/src/App.tsx) (~420 lines: providers, layout,
-and every route — 160+ `<Route>`s).
+[`client/src/App.tsx`](../../../client/src/App.tsx) (635 lines: providers, layout,
+and every route — 121 `<Route>`s).
 
 ## Page map (`client/src/pages/`)
 
@@ -43,10 +46,12 @@ Shadcn primitives).
 - **Data fetching**: never `fetch` directly in components — use the existing
   TanStack Query helpers (`queryClient`, `apiRequest` in `client/src/lib/`)
   so auth, errors, and cache invalidation stay consistent.
-- **Design language**: **Royal Blue Emerald** (2026-07-08 repaint of Charcoal
-  Emerald, which superseded Obsidian Indigo) — stark-white surfaces, neutral slate
-  ramp, near-black slate type, vivid royal-blue dark surfaces (sidebar, hero
-  gradients), emerald reserved for conversion actions; one dominant CTA per screen,
+- **Design language**: **"Mint & Flare"** (2026-08-20 rebuild `3cba2dae` on Monzo's
+  structure, superseding Royal Blue Emerald → Charcoal Emerald → Obsidian Indigo) —
+  white ground, **green-black dark surfaces** (sidebar, footer, hero gradients), ONE
+  mint tint, and neutrals that carry the brand hue rather than a slate ramp; emerald
+  reserved for conversion actions, and one orange `--flare` used as a **fill only**
+  (`--flare-ink` when it must be read); one dominant CTA per screen,
   progress steppers, collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
   design-token guard and the UI-standard ratchet — see
   [DESIGN_SYSTEM.md](../design/DESIGN_SYSTEM.md), the single binding standard

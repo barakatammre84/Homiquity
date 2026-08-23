@@ -318,9 +318,13 @@ The required `gate` check runs these on every PR (same commands locally):
 
 ```bash
 pnpm check                             # typecheck
-pnpm test                              # node unit suite (vitest.config.ts include list)
-                                       #   + client component suite (vitest.client.config.ts,
-                                       #   happy-dom, glob: client/src/**/*.test.{ts,tsx})
+pnpm test                              # BOTH unit lanes, behind the collected-count floor
+                                       #   (scripts/test-collection-guard.cjs): node suite
+                                       #   (vitest.config.ts include list) + client component
+                                       #   suite (vitest.client.config.ts, happy-dom, glob:
+                                       #   client/src/**/*.test.{ts,tsx}), then a check that
+                                       #   vitest actually RAN every file on disk
+pnpm test:raw                          # the same two lanes, unguarded — debugging only
 pnpm audit --prod --audit-level=high   # blocking prod-dependency scan (high+)
 pnpm guard:schema                      # schema ↔ migration drift guard
 pnpm guard:tokens                      # design-token ratchet (raw palette / bare white-black
@@ -357,10 +361,37 @@ gate's disposable Postgres exists for that boot probe only; it is not an
 integration environment, and no integration test is pointed at it.) If a
 change is only exercised by an integration test, run it by hand against a live
 worktree server and record that in the PR
-([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5). A **server/logic** test
-file added to neither the unit nor the integration config's include list is
-silently never run; **client component tests** (`client/src/**/*.test.{ts,tsx}`)
-are glob-included by `vitest.client.config.ts` and cannot be stranded.
+([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5).
+
+### A test that does not run still reports success
+
+Two ways a file goes unrun while the gate stays green. Both are now gated by
+`pnpm test` via [`scripts/test-collection-guard.cjs`](../../scripts/test-collection-guard.cjs);
+neither was before 2026-08-22.
+
+**Permanently** — a **server/logic** test file listed in neither the unit nor the
+integration config's include list is never run at all. `tests/maintenanceMode.test.ts`
+sat that way from the commit that introduced it until 2026-08-22: the INTAKE_PAUSED
+kill switch, the control that stops all new business, with five assertions that had
+never once executed. The guard's orphan floor is **zero** and needs no baseline.
+
+**Intermittently** — and this is the one that reads as impossible. It was written
+here that client component tests "are glob-included and cannot be stranded". They
+can. Vitest discovers files through `tinyglobby` → `fdir`, which defaults to
+`suppressErrors: true` and hands the caller `entries = []` for a directory whose
+`readdir` FAILED — so an unreadable directory is indistinguishable from an empty
+one. Three times on 2026-08-20/21, under load (load average 25–50, ~46 MB free,
+dozens of concurrent `vitest` processes against a `kern.maxfiles` of 30720),
+`pnpm test` collected **111 of 118**, then **214 of 215**, then **113 of 119**
+files — and exited **0** each time. Injecting one `EMFILE` into a single `readdir`
+under `client/src` reproduces it exactly: 118 files become 82, the glob resolves
+normally, and nothing is logged. A glob protects against a file being *forgotten*,
+not against the crawl being *truncated*.
+
+So the floor compares what vitest reports collecting against what is on disk, and
+fails on any shortfall. Its own enumeration uses plain `fs.readdirSync` with **no
+error suppression**, on purpose: a guard that counted with the same fragile glob
+would shrink alongside the bug and pass.
 
 ## Production change ledger
 

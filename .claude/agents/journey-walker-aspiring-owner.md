@@ -60,12 +60,14 @@ surfaces: what carries, what is promised, what runs out.
 - **Compliance humility.** Do not rule from memory on any rate or payment figure you are shown
   (Reg Z trigger terms), TRID timing, FCRA consent ordering, ECOA denial tone, or ESIGN consent
   design. Flag `compliance-risk: yes (<regime>)` and note it needs a `compliance-auditor` verdict.
-- **ACCOUNT — the seat is shared, and you must never cross the line.** Log in via `/test-login` as
-  `renter@test.com` at `DEV_TEST_PASSWORD` (`server/auth.ts:362`). **You must never submit an
-  application.** Submitting promotes this shared seat to `active_buyer`
-  (`server/routes/lending/applications.ts:134`) and takes the sandbox away from the next run. The
-  role self-heals on the next `/test-login` (`server/auth.ts:381`); **the application row it created
-  does not.** Assert the role is `aspiring_owner` at the start *and* at the end of your walk.
+- **ACCOUNT — take a FRESH SIGNUP, not the seeded seat.** Sign up as `jr+<MMDD>@test.local` through
+  the real `/signup` form. Starts `aspiring_owner` and **must still be `aspiring_owner` at the end** —
+  assert both, and assert `applicationCount === 0`. **You must never submit an application.**
+  *(Amended 2026-08-20 — `JOURNEYS.md` §1 has the full account: the seeded `renter@test.com` seat
+  cannot be trusted to show `RenterHome`, because the incubator gate keys on the account's own
+  rows (`Dashboard.tsx:238-244`) and the dev DB had accumulated a `processing` application on it.
+  If you want the seeded seat anyway for its accumulated state, probe `GET /api/loan-applications`
+  first — `[]` ⇒ `RenterHome` renders, non-empty ⇒ it will not — and say which you used.)*
 
 ## Walk procedure
 
@@ -124,7 +126,7 @@ Return (as your final message) a structured walk — no prose preamble:
 ```
 JOURNEY: 1. Aspiring owner — renter, sandbox, never applies
 SERVER: <base url> (health: ok/fail · checkout: <path> · started: <time> · prelaunch: open/gated)
-ACCOUNT: renter@test.com (role at start: <r> → role at end: <r>) — both MUST be aspiring_owner
+ACCOUNT: <jr+<MMDD>@test.local | renter@test.com (probe result: [] / non-empty)> (role at start: <r> → role at end: <r>) — both MUST be aspiring_owner · applicationCount at end: 0
 ROUTE:
 - <n>. <surface> → intent: <what I was doing> → shown: <what I saw> → next offered: <the step> → OK / DEAD-END / BLOCKED
 SEAMS:

@@ -1,0 +1,69 @@
+{
+  "$comment": [
+    "Declarative brand-asset manifest. `pnpm brand:assets` regenerates every output",
+    "from the two committed masters; `pnpm brand:assets --check` fails CI if any",
+    "output has drifted from its master.",
+    "",
+    "WHY ONLY TWO MASTERS. The founder supplied 21 PNGs: four distinct artworks in up",
+    "to three colours each. Pixel-diffing the alpha channels (ink-bbox normalised to",
+    "256^2) showed the orange, white and navy files of a given design are 0.0%",
+    "different in SHAPE — they are one artwork recoloured. So colour is derivable and",
+    "only the two artworks are source. Committing all 21 would be committing the same",
+    "two shapes ten times, and would let the colours drift apart.",
+    "",
+    "THE TWO ARTWORKS ARE NOT REDUNDANT — they are a large/small pair:",
+    "  primary  outlined stem and legs (visible slots) + chart columns. Dies below ~48px.",
+    "  compact  solid stem and legs, no slots. Still legible at 16px.",
+    "Favicons therefore come from `compact`, not from `primary`."
+  ],
+
+  "$sources_comment": [
+    "Masters live in attached_assets/ — the repo's source-art convention (aliased @assets,",
+    "and NOT the Vite publicDir). They deliberately do NOT sit in client/public/brand/:",
+    "everything under client/public is copied verbatim into dist/public and served, so a",
+    "master parked there would deploy the 1600px source art to every visitor and expose it",
+    "at a guessable URL. Only generated outputs belong in client/public."
+  ],
+  "sources": {
+    "primary": "attached_assets/brand/master-primary.png",
+    "compact": "attached_assets/brand/master-compact.png"
+  },
+
+  "tints": {
+    "$comment": "Brand orange is sampled from the supplied artwork, not chosen. Dark is the palette's green-black — the supplied dark variants were #0F172A/#1A202C, a cool navy left over from the retired royal-blue palette, which clashes with hue-165 chrome.",
+    "flare": "#FF5E00",
+    "white": "#FFFFFF",
+    "greenBlack": "#0B1E19"
+  },
+
+  "outputs": [
+    { "file": "brand/mark.png", "source": "primary", "size": 512, "tint": "flare" },
+    { "file": "brand/mark-white.png", "source": "primary", "size": 512, "tint": "white" },
+    { "file": "brand/mark-dark.png", "source": "primary", "size": 512, "tint": "greenBlack" },
+    { "file": "brand/mark-compact.png", "source": "compact", "size": 512, "tint": "flare" },
+    { "file": "brand/mark-compact-white.png", "source": "compact", "size": 512, "tint": "white" },
+    { "file": "brand/mark-email.png", "source": "primary", "size": 192, "tint": "flare" },
+
+    {
+      "$comment": "favicon.png keeps its name on purpose. tests/seoPrerender.test.ts uses '/favicon.png' as its representative dotted path when proving the bot-prerender middleware does not swallow file requests; renaming it would quietly weaken that test's fixture. Its CONTENTS were an unrelated orange three-squares placeholder until 2026-08-22.",
+      "file": "favicon.png",
+      "source": "compact",
+      "size": 128,
+      "tint": "flare"
+    },
+    { "file": "favicon-32.png", "source": "compact", "size": 32, "tint": "flare" },
+    { "file": "favicon-96.png", "source": "compact", "size": 96, "tint": "flare" },
+    { "file": "icon-192.png", "source": "compact", "size": 192, "tint": "flare" },
+    { "file": "icon-512.png", "source": "compact", "size": 512, "tint": "flare" },
+
+    {
+      "$comment": "iOS composites transparency onto BLACK and applies a rounded-corner mask, so this one is flattened onto white and inset.",
+      "file": "apple-touch-icon.png",
+      "source": "compact",
+      "size": 180,
+      "tint": "flare",
+      "background": "#FFFFFF",
+      "pad": 0.14
+    }
+  ]
+}

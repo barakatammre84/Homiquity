@@ -1,5 +1,25 @@
 {
+  "$comment": "Last-seen state for scripts/regulatory-watch.cjs. Committed, so the observation history is itself auditable. `sources` is machine-written. `acknowledgedBlocked` is HUMAN-authored and preserved across runs: it is the ratchet. A blocked source listed there is a known procurement gap and downgrades to a WARN in scripts/regulatory-freshness.cjs; a source that goes blocked WITHOUT an entry here turns `pnpm checkup` RED. That asymmetry is the point — a permanently-red gate is one people learn to skip, but a NEW coverage regression must be impossible to sit on. Removing an entry here is how you re-arm a source once it is fixed.",
+  "acknowledgedBlocked": {
+    "fannie-selling-guide-announcements": {
+      "since": "2026-08-20",
+      "reason": "HTTP 403 bot wall; has never once succeeded",
+      "procurement": "Fannie Mae Selling Guide email notifications (REGULATORY_MONITORING.md Tier 3)"
+    },
+    "fha-mortgagee-letters": {
+      "since": "2026-08-20",
+      "reason": "HTTP 403 bot wall on the whole hud.gov domain, including its RSS; regressed from working on 2026-07-04",
+      "procurement": "FHA INFO announcement emails (Tier 3)"
+    },
+    "freddie-guide-bulletins": {
+      "since": "2026-08-20",
+      "reason": "HTTP 200 but the page is an Oracle RightNow SPA shell — bulletins are JS-rendered and absent from the body; sf.freddiemac.com alternatives return a soft 404",
+      "procurement": "Freddie Mac Guide bulletin emails (Tier 3)"
+    }
+  },
   "federalRegisterSeen": [
+    "2026-13939",
+    "2026-13834",
     "2026-11851",
     "2026-10356",
     "2026-08494",
@@ -12,9 +32,44 @@
     "C1-2025-19864"
   ],
   "pageHashes": {
-    "freddie-guide-bulletins": "7f3fa393c43e61c9",
-    "fha-mortgagee-letters": "f5d2c480f8189e8c",
-    "va-circulars": "e08fe54a23bb0d3d"
+    "va-circulars": "fc0c3ef399415ef6"
   },
-  "lastRun": "2026-07-04T07:12:30.608Z"
+  "lastRun": "2026-08-20T19:49:04.578Z",
+  "sources": {
+    "federal-register": {
+      "status": "ok",
+      "lastAttempt": "2026-08-20T19:49:04.578Z",
+      "lastSuccess": "2026-08-20T19:49:04.578Z",
+      "consecutiveFailures": 0,
+      "lastError": null
+    },
+    "fannie-selling-guide-announcements": {
+      "status": "unreachable",
+      "lastAttempt": "2026-08-20T19:49:04.578Z",
+      "lastSuccess": null,
+      "consecutiveFailures": 1,
+      "lastError": "HTTP 403"
+    },
+    "freddie-guide-bulletins": {
+      "status": "unusable",
+      "lastAttempt": "2026-08-20T19:49:04.578Z",
+      "lastSuccess": null,
+      "consecutiveFailures": 1,
+      "lastError": "fetched 10 chars but /bulletin\\s+\\d{4}-\\d{1,2}/i did not match"
+    },
+    "fha-mortgagee-letters": {
+      "status": "unreachable",
+      "lastAttempt": "2026-08-20T19:49:04.578Z",
+      "lastSuccess": null,
+      "consecutiveFailures": 1,
+      "lastError": "HTTP 403"
+    },
+    "va-circulars": {
+      "status": "ok",
+      "lastAttempt": "2026-08-20T19:49:04.578Z",
+      "lastSuccess": "2026-08-20T19:49:04.578Z",
+      "consecutiveFailures": 0,
+      "lastError": null
+    }
+  }
 }

@@ -3,6 +3,7 @@ import { Phone, Mail } from "lucide-react";
 import { COMPANY_IDENTITY, companyNmlsDisplay, contactPhoneTel } from "@shared/companyIdentity";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { Logo } from "@/components/brand/Logo";
 
 export function Footer() {
   // Deep Ink container in both modes (bg-primary would invert badly in dark
@@ -14,7 +15,7 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div>
             <Link href="/" className="touch-target flex items-center gap-2">
-              <span className="text-xl font-bold tracking-tight text-sidebar-foreground">homiquity</span>
+              <Logo size="md" tone="onDark" data-testid="logo-footer" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
               Clarity for every stage of homeownership. Pre-approval, property search, and AI guidance from Homi — all in one place.

@@ -59,7 +59,7 @@ Two axes of authority:
 | [CTO_ROADMAP.md](CTO_ROADMAP.md) | **The work queue.** The ordered §0–§5 queue. Updated in the same commit that completes an item. |
 | [CLAUDE.md](CLAUDE.md) | Non-negotiable session rules: compliance-first doctrine, architecture ground rules, DB rules. |
 | [handbook/DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md) | The deep engineering map — layers, engines, conventions. |
-| [handbook/app-guide/](knowledge-base/handbook/app-guide/) | The 11-chapter subsystem handbook. Start at [01-start-here](knowledge-base/handbook/app-guide/01-start-here.md). |
+| [handbook/app-guide/](knowledge-base/handbook/app-guide/) | The 12-chapter subsystem handbook. Start at [01-start-here](knowledge-base/handbook/app-guide/01-start-here.md). |
 | [governance/ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) | The fact/assumption register: what is simulated, pending, or verified-when. |
 
 ### Tier 2 — Doctrine (decisions; change deliberately, never casually)
