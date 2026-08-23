@@ -1,7 +1,7 @@
 # FACTS — every count the corpus uses, derived by command
 
 > **Freshness:** last verified 2026-08-22 · review every 14 days
-> **Verified against** `origin/main` @ **12d7cbec** (full `12d7cbec518568e6dcb0ef20933760c65876166f`).
+> **Verified against** `origin/main` @ **75387cb9** (full `75387cb90eb4bb3691438299e7a8ab797dd13b6a`).
 
 The chapters cite rows here by id (`F-07`). Every value below was produced by running the
 command in the same row, in a clean worktree of the stamped commit, with the output pasted —
@@ -30,7 +30,7 @@ and returns nothing — a false "the file changed").
 
 <!-- BEGIN GENERATED — do not hand-edit; re-derive with the recipe below and paste -->
 
-| id | fact | command (run from the worktree root) | value @ 12d7cbec |
+| id | fact | command (run from the worktree root) | value @ 75387cb9 |
 |---|---|---|---|
 | F-01 | Drizzle tables | `grep -c "pgTable(" shared/schema/*.ts \| awk -F: '{s+=$2} END{print s}'` | 188 |
 | F-02 | schema files | `ls shared/schema/*.ts \| wc -l` | 34 |
@@ -49,10 +49,10 @@ and returns nothing — a false "the file changed").
 | F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 122 |
 | F-16 | guards in the CI gate | `grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml \| sort -u` | bundle channel citations kb migrations querykeys schema security staleness tokens ui (11; `guard:docs` deliberately absent) |
 | F-17 | pre-push steps · preflight steps · checkup checks | `grep -c '^step ' .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh` | 9 · 18 · 18 (was 10 — `e49aab6d`/#660 made the unit lanes opt-in behind `PREPUSH_TESTS=1`) |
-| F-18 | skills · of which anti-autoload | `ls -d .claude/skills/*/ \| wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` | 23 · 17 |
+| F-18 | skills · of which anti-autoload | `ls -d .claude/skills/*/ \| wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` | 24 · 18 |
 | F-19 | agents · of which owners | `ls .claude/agents/*.md \| wc -l ; ls .claude/agents/hq-*-owner.md \| wc -l` | 58 · 41 |
 | F-20 | app-guide chapters | `ls knowledge-base/handbook/app-guide/*.md \| wc -l` | 12 |
-| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 200 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
+| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 201 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
 | F-22 | client routes · lazy routes | `grep -c "<Route" client/src/App.tsx ; grep -c "lazy(" client/src/App.tsx` | 121 · 113 |
 | F-23 | coach model calls per turn · coach tools | `grep -n "MAX_MODEL_CALLS_PER_TURN\s*=" server/services/coachingClient.ts ; grep -c 'name: "' server/services/coachTools.ts` | 4 · 8 |
 | F-24 | server files mentioning Anthropic · SDK import lines | `grep -rln "anthropic" server --include='*.ts' \| wc -l ; grep -rn "@anthropic-ai/sdk" server --include='*.ts' \| wc -l` | 7 · 5 (none in `DECISION_PATH_MODULES`) |
@@ -62,7 +62,7 @@ and returns nothing — a false "the file changed").
 | F-28 | encrypted-at-rest column sites | `grep -rn "_encrypted" shared/schema/*.ts \| wc -l` | 8 (+ `credit_pulls.encryptedRawResponse`, named differently) |
 | F-29 | production cron sweeps | `grep -c "cron:" .github/workflows/cron-jobs.yml` | 7 |
 | F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 81,487 · shared 22,979 · client/src 107,118 · tests 45,962 |
-| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,081 — `HEAD`, so run it on `main`; on a branch it counts the branch |
+| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,082 — `HEAD`, so run it on `main`; on a branch it counts the branch |
 | F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
 | F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 63 |

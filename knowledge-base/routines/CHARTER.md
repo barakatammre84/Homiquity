@@ -568,6 +568,36 @@ FCRA pull gate, or a `complianceInvariants` test to make something pass — **a
 
 ---
 
+### 6a-ii. Raising the design standard — who owns it, and why it is a SECOND routine
+
+§6a assigns *propagation*. It does not assign *invention*, and the two are different jobs with
+different failure modes — which is why §6a explicitly forbids the sweep from
+`client/src/components/ui/**`. That carve-out was empty territory until 2026-08-22.
+
+- **The [Design Identity Engine](../../.claude/skills/design-identity-engine/SKILL.md) owns it.**
+  Territory: `components/ui/**`, `index.css`, `tailwind.config.ts`, `components/motion/**`,
+  `components/illustrations/**`, `components/layout/**`, `lib/icons.ts`, `client/index.html`
+  (font links). Cross-run memory is
+  [`design-identity/LEDGER.md`](../design-identity/LEDGER.md).
+- **One invents, one spreads, neither edits the other's files.** The Conformance Sweep is judged
+  on `guard:ui` falling; this routine is judged on one identity decision landed and *proved on a
+  surface*. A raised standard with no adopter is the same preference §6a already named.
+- **Read the ledger's `Refused` column before proposing anything.** Most of this routine's cost is
+  spent discovering that a reference site's answer is wrong for a broker, and that finding is
+  worth more than the change it prevented. Re-adopting a refused direction under a new wording is
+  the specific waste this column exists to stop.
+- **Bundle bytes: move them rather than raise the baseline.** Raise it only when the bytes buy
+  something that renders, and say so in the PR. Precedent both ways on 2026-08-22: 44 bytes taken
+  for a layout primitive rendering on three pages, 106 bytes declined for pre-wiring a component
+  to artwork that did not exist.
+- **Founder calls this routine may not make for itself:** licensing a display face, commissioning
+  illustration, relaxing any AA or WCAG rail, or extending identity work into the authed app's
+  tenant-brandable tokens (`--primary`/`--accent`/`--sidebar`/`--ring`).
+
+The same "off limits to every routine, always" list in §6a applies here in full, unchanged.
+
+---
+
 ### 6b. Backend data integrity — who owns it
 
 §6a's lesson generalizes: **a standard nobody is assigned to propagate is a preference, and a
