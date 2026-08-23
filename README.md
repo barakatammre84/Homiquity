@@ -105,9 +105,13 @@ history. Never act on these.
 
 ## Repository ground rules (summary — full rules in CLAUDE.md)
 
-- `main` is production and protected: every merge builds and deploys on Railway (`railway.json`).
-  Land work via short-lived PR branches through the required `gate` check — direct pushes are
-  rejected. A green check is not proof the merge shipped: a failed Railway build leaves the previous
+- `main` is production: every merge builds and deploys on Railway (`railway.json`).
+  Land work via short-lived PR branches with the `gate` check green — direct pushes are barred by
+  doctrine. 🚨 **Verified 2026-08-22–23: protection exists but blocks almost nothing** —
+  `enforce_admins: true` over **0 required status checks, no required review, no push
+  restriction** (FACTS F-44), so a direct push is *not* platform-rejected and a red `gate` cannot
+  hold a merge; re-arming the required check is a founder action. A green check is not proof the
+  merge shipped: a failed Railway build leaves the previous
   container serving, so only the `commit` field of `/api/health` (polled by CI's `verify-deploy`
   job) proves prod is on your code. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
 - `client/` and `server/` never import from each other; both import from `shared/`.

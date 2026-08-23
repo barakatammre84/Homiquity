@@ -308,7 +308,8 @@ once, that is what made it swap. Ordered fail-fastest-first: `tsc` is ~25 s and
 catches the common break.
 
 A checkout with no `node_modules` (every fresh worktree) gets a loud warning and
-the push proceeds — CI still gates the PR. Between 2026-08-19 and 2026-08-22,
+the push proceeds — CI still runs the `gate` on the PR, though nothing *requires* it before a
+merge while `main` has zero required status checks (FACTS F-44; re-arming is a founder action). Between 2026-08-19 and 2026-08-22,
 while Actions was billing-blocked and nothing stood behind this hook, it blocked
 those pushes instead; that special case ended with the public flip.
 

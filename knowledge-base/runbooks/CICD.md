@@ -63,11 +63,15 @@ the production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY`
 — no prod DB password is stored in GitHub; full flow and its limits (a manual
 `dry_run` reconciles the journal only, it never executes migration SQL) in
 [DB_MIGRATIONS.md](./DB_MIGRATIONS.md). A third job, **`verify-deploy`**, then
-polls `https://www.homiquity.com/api/health` until its `commit` field equals the
-pushed SHA and **fails the run** if it never does — the automated form of the
-post-deploy check below, added after the 2026-08-06 stale-prod incident. It is
-not a required check (it runs on push, after the merge), so a red `verify-deploy`
-is a page-the-founder signal, not a merge blocker. ⚠️ The required-check string is matched
+polls `https://homiquity-production.up.railway.app/api/health` (the Railway
+origin — pinned by `tests/ciTriggers.test.ts`; never `www`) until its `commit`
+field equals the pushed SHA — the automated form of the post-deploy check below,
+added after the 2026-08-06 stale-prod incident. ⚠️ **It reddens without failing
+anything**: the step is `continue-on-error: true` *by design* (it and Railway's
+"Wait for CI" are mutually recursive — making it blocking produced a permanent
+silent deploy freeze), so the workflow concludes SUCCESS even when prod never
+advanced. Read the job's own conclusion, or poll `/api/health` yourself; a red
+`verify-deploy` is a page-the-founder signal, not a merge blocker. ⚠️ The required-check string is matched
 **verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
 never rename the job without re-pointing branch protection in the same change
 (procedure in the workflow's comments).

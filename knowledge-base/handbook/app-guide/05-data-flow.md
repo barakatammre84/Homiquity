@@ -1,5 +1,14 @@
 # 05 — Data Flow: A Loan's Journey
 
+> ⚠️ **Stale as a map since ~2026-08 — read the handoff chapter instead (banner added
+> 2026-08-23).** This chapter describes an earlier, assistant-fed flow and names none of the
+> current chokepoints (`finalizeIntake`, `updatePipelineStage`, `decision_snapshots`,
+> `lender_submissions`, adverse actions, TRID) — handoff ledger HO-0822-16 rates it a rewrite,
+> not a patch, and the rewrite is a proposed ticket for this chapter's owner. Until it lands:
+> the walked, proof-carrying journey is
+> [handoff 04 — Data flow: a loan's journey](../handoff/04-data-flow-loan-journey.md), and the
+> architecture around it is [02](02-architecture.md)/[03](03-database.md), which are current.
+
 This is the critical path — understand this and the rest of the codebase is
 just supporting detail.
 
