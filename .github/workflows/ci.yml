@@ -572,7 +572,14 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
         run: |
           set -uo pipefail
-          pnpm db:seed
+          # GRIDS BEFORE CONTENT, and both are required — scripts/local-db.sh says why, and the
+          # first CI run of this step proved it: `db:seed` alone left FANNIE_LLPA unseeded, the
+          # content seed logged "CRITICAL COMPLIANCE ERROR: Required matrix configuration
+          # [FANNIE_LLPA]", and all ten pricing/underwriting endpoints answered 500 because
+          # resolveMatrixValue throws rather than guessing. Nothing in package.json calls
+          # seedLendingGrids, which is exactly why a fresh database cannot price a loan.
+          ./node_modules/.bin/tsx server/scripts/seedLendingGrids.ts
+          DEV_TEST_PASSWORD=test1234 pnpm db:seed
           NODE_ENV=development PORT=4000 RATE_LIMIT_RELAXED=true \
           DEV_TEST_PASSWORD=test1234 \
           SESSION_SECRET="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
