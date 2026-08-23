@@ -1,7 +1,7 @@
 # 00 — Product, roles and the map
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 01 — Start Here](../handbook/app-guide/01-start-here.md) (it wins on conflict; the code wins over both; disagreements go to [LEDGER.md](LEDGER.md); counts are re-derived from [FACTS.md](FACTS.md)).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 01 — Start Here](../handbook/app-guide/01-start-here.md) (it wins on conflict; the code wins over both; disagreements go to [LEDGER.md](LEDGER.md); counts are re-derived from [FACTS.md](FACTS.md)).
 
 ## The mental model
 
@@ -104,10 +104,10 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
 - **The app-guide has 12 chapters.** `ls knowledge-base/handbook/app-guide/*.md | wc -l` → `12`.
   (The root `README.md:62` says "11-chapter" — LEDGER HO-0822-07.)
 - **Stack versions.** `package.json:7` `"node": "24"` · `:87` `drizzle-orm ^0.45.2` · `:89`
-  `express ^5.2.1` · `:102` `react ^19.2.8` · `:111` `zod ^4.4.3` · `:136` `tailwindcss ^4.3.3` ·
-  `:140` `vite ^7.3.6` · `:141` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
-  → `39a42bfc 2026-08-04 …bump react… (#301)`), while two app-guide chapters still say React 18
-  (LEDGER HO-0822-06).
+  `:93` `express ^5.2.1` · `:106` `react ^19.2.8` · `:115` `zod ^4.4.3` · `:140` `tailwindcss ^4.3.3` ·
+  `:144` `vite ^7.3.6` · `:145` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
+  → `39a42bfc 2026-08-04 …bump react… (#301)`), and the two app-guide chapters that still said
+  React 18 were fixed by `3d047ce9` (#694) on 2026-08-23 (LEDGER HO-0822-06, closed).
 - **Two package scripts are fuses, not commands.** `package.json:26` `db:generate` and `:29`
   `db:push` both begin `echo 'BLOCKED: …' && exit 1` — generate has snapshot drift; push drops
   columns owned by other branches on the shared dev DB, and prod is migrate-only (chapter 10).
@@ -116,25 +116,25 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -cE '^export const (STAFF|CLIENT|PARTNER|INTERNAL_STAFF)_ROLES' shared/roles.ts
-# → 4 @ 12d7cbec
+# → 4 @ 6377727e
 grep -n 'export const ALL_ROLES' shared/roles.ts
-# → 42:export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES, ...PARTNER_ROLES] as const; @ 12d7cbec
+# → 42:export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES, ...PARTNER_ROLES] as const; @ 6377727e
 grep -n 'default("aspiring_owner")' shared/schema/core.ts
-# → 55:  role: varchar("role", { length: 50 }).default("aspiring_owner").notNull(), // See ALL_ROLES constant @ 12d7cbec
+# → 55:  role: varchar("role", { length: 50 }).default("aspiring_owner").notNull(), // See ALL_ROLES constant @ 6377727e
 grep -rn 'updateUserRole(' server --include='*.ts' | grep -v 'async updateUserRole' | wc -l
-# → 4   (applications.ts promotion · admin.ts · staff-invites.ts redeem · auth.ts dev test-login) @ 12d7cbec
+# → 4   (applications.ts promotion · admin.ts · staff-invites.ts redeem · auth.ts dev test-login) @ 6377727e
 grep -cE '^\| [0-9]+ \| \[' knowledge-base/handbook/FEATURE_MAP.md ; ls .claude/agents/hq-*-owner.md | wc -l
-# → 41 / 41 @ 12d7cbec
+# → 41 / 41 @ 6377727e
 ls -1 knowledge-base/handbook/app-guide/*.md | wc -l
-# → 12 @ 12d7cbec
+# → 12 @ 6377727e
 grep -n '^### Tier' README.md
-# → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 12d7cbec
+# → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 6377727e
 grep -rn "React 18" knowledge-base/handbook/app-guide/ ; grep -n '"react":' package.json
-# → app-guide/07-frontend.md:5 and 01-start-here.md:22 say React 18; package.json:105 "react": "^19.2.8" @ 12d7cbec
+# → (no hits — #694 fixed both chapters on 2026-08-23); package.json:106 "react": "^19.2.8" @ 6377727e
 wc -l PRODUCT_SPINE.md
-# → 8 @ 12d7cbec
+# → 8 @ 6377727e
 ```
 
 ## Where this breaks
@@ -143,8 +143,8 @@ wc -l PRODUCT_SPINE.md
 |---|---|---|
 | `isStaffRole()` includes `broker` and `lender`; `isInternalStaffRole()` does not. Using the wrong predicate on an object-level check hands an external partner every borrower record. | `shared/roles.ts:102` vs `:110`; rationale `:77-79` | Partially — `tests/adminPredicate.test.ts` guards only the `isAdmin` predicate; nothing greps a new call site for the wrong pair. Chapter 02 names the storage predicate to use instead. |
 | Adding a self-registerable role to `STAFF_ROLES` opens every `isStaffRole()`-gated endpoint. | `shared/roles.ts:10-13`, `:31-35` | Nothing automated — the protection is the comment. |
-| Two app-guide chapters say React 18; the tree has shipped React 19 since 2026-08-04. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:105` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06. |
-| The two indexes disagree on the chapter count (root README 11, KB README 12, disk 12). | `README.md:62` vs `knowledge-base/README.md:36` | Nothing — `guard:kb` checks that files are indexed, not that counts are right. LEDGER HO-0822-07. |
+| Two app-guide chapters said React 18 while the tree had shipped React 19 since 2026-08-04. **Resolved by #694, 2026-08-23** — but the class stands: no guard compares a prose version to the manifest (`guard:docs` checks dates, `guard:citations` checks paths). LEDGER HO-0822-06, closed. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:106` | Nothing automated — the trap will recur on the next major bump. |
+| The two indexes disagreed on the chapter count (root README said 11; KB README and disk said 12). **Resolved by #694, 2026-08-23** (LEDGER HO-0822-07, closed) — the class stands: `guard:kb` checks that files are indexed, not that counts are right. | `README.md:62` vs `knowledge-base/README.md:36` | Nothing automated. |
 | `FEATURE_MAP.md` "Last reviewed" is a *domain* review date, not an area walk; 23 of 41 areas have never been reviewed. | `FEATURE_MAP.md:754-757`, `:769-771` | The file warns about itself; the record is `knowledge-base/routines/feature-coverage/LEDGER.md`. |
 | Two rival taxonomies: 41 feature areas vs 13 review domains in `knowledge-base/feature-review/DOMAINS.md`. | `FEATURE_MAP.md:702-704` | Nothing — reconciliation is manual, by design ("when the two disagree, one of them is wrong"). |
 
@@ -176,7 +176,7 @@ Answer each with a `path:line`; the key is in [TEACHBACK_KEY.md](TEACHBACK_KEY.m
 4. `CTO_ROADMAP.md` and `L1_VISION_AND_SCOPE.md` disagree. Which wins, and on what question?
 5. You need to change the pricing engine. Which agent do you invoke, and what will it refuse to do?
 6. Why does `PRODUCT_SPINE.md` still exist if it is empty?
-7. The app-guide says React 18. Is that true, and what does the repo's own rule say to do about it?
+7. On 2026-08-22 the app-guide said React 18. What was actually true, and what does the repo's own rule say to do about a claim like that?
 8. What is the one thing that decides whether you may write a file today — and is it ownership?
 
 ## Go deeper

@@ -1,7 +1,7 @@
 # Teach-back answer key
 
 > **Freshness:** last verified 2026-08-23 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec. Do not open this until you have tried the
+> **Verified against** `origin/main` @ 6377727e. Do not open this until you have tried the
 > questions in each chapter. Every answer cites `path:line`; when a line has moved, the symbol
 > named next to it is what you grep for.
 
@@ -13,7 +13,7 @@
 4. Different questions. L1 decides *scope* by precedence (`knowledge-base/README.md:14-17`); `CTO_ROADMAP.md` is the *work queue*, a Tier-1 live source (`README.md:59`). On a fact, the code wins over both (`knowledge-base/README.md:14`).
 5. `hq-pricing-owner` (`knowledge-base/handbook/FEATURE_MAP.md:35`, area 3). It implements and opens a PR but never merges (`FEATURE_MAP.md:14`; `.claude/agents/_OWNER_RAILS.md:13`), and hands back rather than editing an off-limits file (`FEATURE_MAP.md:19-23`).
 6. Link resolution only. `PRODUCT_SPINE.md:7-8` — "This stub remains only so existing links resolve … do not add new content here"; its content moved to L1 (`knowledge-base/README.md:7-8`).
-7. No. `package.json:105` is `"react": "^19.2.8"` (bumped 2026-08-04, `39a42bfc`). `app-guide/01-start-here.md:22` and `07-frontend.md:5` are doc-drift bugs, and the rule (`knowledge-base/README.md:14`) says the code wins and the doc is the bug — LEDGER HO-0822-06.
+7. It said React 18 and the truth was React 19 — `package.json:106` is `"react": "^19.2.8"` (bumped 2026-08-04, `39a42bfc`). The rule (`knowledge-base/README.md:14`): the code wins and the doc is the bug; both chapters were fixed by #694 on 2026-08-23 — LEDGER HO-0822-06, closed.
 8. Not ownership — the claim register. `knowledge-base/routines/REGISTER.md` decides who may write a file today; `FEATURE_MAP.md:742-744` — "A file in another session's open PR is claimed no matter who owns it. The claim outranks ownership."
 
 ## 01 — Architecture and the request lifecycle

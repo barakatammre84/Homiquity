@@ -1,15 +1,15 @@
 # 10 — Deploy, environments and migrations
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 10 — Deploy & Operations](../handbook/app-guide/10-deploy-ops.md) plus the runbooks `../runbooks/CICD.md`, `../runbooks/DB_MIGRATIONS.md`, `../runbooks/ROLLBACK.md` (they win on conflict; the code wins over both — and on the one fact that matters most this month, all four are silent; see *Where this breaks*).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 10 — Deploy & Operations](../handbook/app-guide/10-deploy-ops.md) plus the runbooks `../runbooks/CICD.md`, `../runbooks/DB_MIGRATIONS.md`, `../runbooks/ROLLBACK.md` (they win on conflict; the code wins over both — and on the one fact that matters most this month, all four are silent; see *Where this breaks*).
 
-> **Dated status box (re-verify on every refresh — these change):** at 12d7cbec both deploy jobs
+> **Dated status box (re-verify on every refresh — these change):** at `6377727e` both deploy jobs
 > are **live again**. `migrate-prod` runs on push and dispatch (`.github/workflows/ci.yml:583`);
-> `verify-deploy` runs on push (`:647`). They had been paused on 2026-08-19/20 on the premise that
+> `verify-deploy` runs on push (`:656`). They had been paused on 2026-08-19/20 on the premise that
 > the Railway service "was being taken down" — a premise that silently expired while the pause held,
 > and `76c96751` (#669) re-armed both on 2026-08-22 with the finding that "the migration journal ran
 > ahead of the production database exactly as the pause note predicted". **Two things did not
-> change:** `verify-deploy` is `continue-on-error: true` by design (`:663` — it and Railway's "Wait
+> change:** `verify-deploy` is `continue-on-error: true` by design (`:672` — it and Railway's "Wait
 > for CI" would otherwise deadlock into a permanent silent deploy freeze, observed live 2026-08-06),
 > and `main` still has **no required status checks** (`:30-41`). So the deploy check calls out a
 > stale prod, and nothing makes anyone answer. Production answered live during this survey with
@@ -149,36 +149,36 @@ flowchart TD
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 curl -s -m 10 https://homiquity-production.up.railway.app/api/health
 # → {"status":"ok","timestamp":"…","commit":"12d7cbecd420bbf3361f63b06a3a019398dabc55","email":{"configured":true,"providers":["sendgrid"]}} @ 12d7cbec
 git rev-parse origin/main
-# → 12d7cbecd420bbf3361f63b06a3a019398dabc55   (equal to the commit above ⇒ prod is CURRENT) @ 12d7cbec
+# → 6377727ea064fdb46b1a97470bf62b7ff504894d — whether prod matches could not be re-probed on 2026-08-23 (the session's proxy blocks the host); prod was CURRENT at `12d7cbec` when last probed, 2026-08-22
 grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml
-# → 87: push (a trigger key, not a job) / 100: gate / 533: migrate-prod / 609: verify-deploy @ 12d7cbec
+# → 94: push (a trigger key, not a job) / 107: gate / 549: migrate-prod / 639: verify-deploy @ 6377727e
 sed -n '553p;621p' .github/workflows/ci.yml
 # → if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-#   if: github.event_name == 'push'   ·   continue-on-error: true @ 663   @ 12d7cbec
+#   if: github.event_name == 'push'   ·   continue-on-error: true @ 672   @ 6377727e
 git log --format="%h %ad %s" --date=short -1 76c96751
 # → 76c96751 2026-08-22 ci: re-arm migrate-prod and verify-deploy — the pause outlived its premise (#669)
-# → (no matches — the runbooks do not record the pause) @ 12d7cbec
+# → (no matches — the runbooks do not record the pause) @ 6377727e
 gh api repos/barakatammre84/Homiquity/branches/main/protection --jq '{contexts: .required_status_checks.contexts, strict: .required_status_checks.strict}'
 # → {"contexts":[],"strict":false} @ 2026-08-22
 ls migrations/*.sql | wc -l ; python3 -c "import json;print(len(json.load(open('migrations/meta/_journal.json'))['entries']))" ; ls -1 migrations/*.sql | tail -1
-# → 58 / 58 / migrations/0057_login_lockout_last_failed_at.sql @ 12d7cbec
+# → 58 / 58 / migrations/0057_login_lockout_last_failed_at.sql @ 6377727e
 sed -n '83,88p' scripts/migrate-prod.cjs
-# → if (DRY_RUN) { console.log(`pending  ${entry.tag}`); continue; }   ← a dry run executes nothing @ 12d7cbec
+# → if (DRY_RUN) { console.log(`pending  ${entry.tag}`); continue; }   ← a dry run executes nothing @ 6377727e
 grep -c 'when' scripts/migration-ledger-guard.cjs
-# → 1   (one mention, in a comment — the guard does not check duplicate `when` values) @ 12d7cbec
+# → 1   (one mention, in a comment — the guard does not check duplicate `when` values) @ 6377727e
 grep -cE '^[A-Z][A-Z0-9_]*=' .env.example ; grep -oE '^#? ?[A-Z][A-Z0-9_]{2,}=' .env.example | tr -d '#= ' | sort -u | wc -l
-# → 9 / 65 @ 12d7cbec
+# → 9 / 65 @ 6377727e
 sed -n '23,24p' server/db.ts
-# → const useLocalPg = process.env.USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url); @ 12d7cbec
-sed -n '37,38p' scripts/preflight.sh ; grep -nF 'PORT="${PORT:-5001}"' scripts/dev-up.sh   # -F: BSD grep mis-parses the $ inside the pattern
-# → BOOT_PORT 3999 / INT_PORT 4000 / 27:PORT="${PORT:-5001}" @ 12d7cbec
+# → const useLocalPg = process.env.USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url); @ 6377727e
+sed -n '38,39p' scripts/preflight.sh ; grep -nF 'PORT="${PORT:-5001}"' scripts/dev-up.sh   # -F: BSD grep mis-parses the $ inside the pattern
+# → BOOT_PORT 3999 / INT_PORT 4000 / 27:PORT="${PORT:-5001}" @ 6377727e
 git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/workflows/ci.yml
 # → the pause going in, and 76c96751 taking it back out two days later
-# → e762743b 2026-08-20 chore: pause the prod deploy pipeline — local-only development @ 12d7cbec
+# → e762743b 2026-08-20 chore: pause the prod deploy pipeline — local-only development @ 6377727e
 ```
 
 ## Where this breaks

@@ -1,10 +1,11 @@
 # 07 — Test harness and the CI proof hierarchy
 
 > **Freshness:** last verified 2026-08-23 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** `../runbooks/CICD.md` §Checks, `../governance/TEAM_PRACTICES.md` §5 and `vitest.config.ts`'s own header (they win on conflict; the code wins over both).
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** `../runbooks/CICD.md` §Checks, `../governance/TEAM_PRACTICES.md` §5 and `vitest.config.ts`'s own header (they win on conflict; the code wins over both).
 
-> **Dated status box (re-verify on every refresh):** at 12d7cbec `main` requires **no** status
-> checks (`gh api …/branches/main/protection` → `contexts: []`, rulesets `0`); `migrate-prod` and
+> **Dated status box (re-verify on every refresh):** at `6377727e` `main` requires **no** status
+> checks (measured 2026-08-22: `gh api …/branches/main/protection` → `contexts: []`, rulesets `0`;
+> `gh` was unavailable in the 2026-08-23 refresh sandbox — re-measure where it exists); `migrate-prod` and
 > `verify-deploy` were **re-armed on 2026-08-22** by `76c96751` (#669) after a two-day pause, but
 > `verify-deploy` carries `continue-on-error: true` on purpose, so it reddens without failing the
 > workflow (chapter 10); the test-collection guard **merged 2026-08-23** (`fd4a22c5`, #670) and
@@ -110,7 +111,7 @@ flowchart TD
 - **The harness helpers are thin by design.** `tests/setup.ts` exports `BASE_URL`, `apiGet`,
   `apiPost`, `apiPatch`, `apiDelete`, `fetchPage` — no app factory, no DB fixture, no shared login.
 - **The gate job.** `.github/workflows/ci.yml:118` `name: gate (typecheck · tests · schema guard)`
-  (`hexdump` shows `c2 b7` = U+00B7; rename procedure at `:101-110`); triggers `:47-94` —
+  (`od -tx1` shows `c2 b7` = U+00B7; rename procedure at `:101-110`); triggers `:47-94` —
   `pull_request` with **no `branches:` filter** (a filter once gave stacked PRs zero check-runs while
   reporting `CLEAN`, `:51-62`), `types: [opened, synchronize, reopened, edited, ready_for_review]`
   (`edited` because `guard:security` reads the PR body from the event payload, `:78-82`),
@@ -198,35 +199,35 @@ flowchart TD
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -cE '^\s*"tests/' vitest.config.ts ; grep -cE '^\s*"tests/' vitest.integration.config.ts ; git ls-files 'tests/*.test.ts' | wc -l
-# → 221 / 18 / 239 @ fd4a22c5
+# → 221 / 18 / 239 @ 6377727e
 comm -23 <(git ls-files 'tests/*.test.ts'|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts|tr -d '"'|sort -u)
-# → (empty — zero stranded, and `pnpm test` now fails if that changes) @ fd4a22c5
+# → (empty — zero stranded, and `pnpm test` now fails if that changes) @ 6377727e
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
-# → 123 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 23b256a5
+# → 123 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 6377727e
 grep -c '^step ' .githooks/pre-push ; grep -c PREPUSH_TESTS .githooks/pre-push
-# → 9 / 4   (the hook stopped running the unit lanes by default — #660) @ 12d7cbec
+# → 9 / 4   (the hook stopped running the unit lanes by default — #660) @ 6377727e
 grep -lE 'readFileSync\(' tests/*.test.ts | wc -l ; grep -c '^describe(' tests/complianceInvariants.test.ts
-# → 63 / 16 @ 12d7cbec
-sed -n '111p' .github/workflows/ci.yml | hexdump -C | sed -n '2p'
-# → … 6b 20 c2 b7 20 74 65 73 …   (c2 b7 = U+00B7 in the required-check name) @ 12d7cbec
+# → 63 / 16 @ 6377727e
+sed -n '111p' .github/workflows/ci.yml | od -An -tx1 | sed -n '2p'
+# → 20 74 68 65 20 6e 65 77 20 63 68 65 63 6b 20 6e … — re-run with `| grep -o 'c2 b7'` to see the U+00B7 in the required-check name @ 6377727e
 sed -n '182,531p' .github/workflows/ci.yml | grep -c '^      - name:'
-# → 18 @ 12d7cbec
+# → 18 @ 6377727e
 grep -c '^step ' .githooks/pre-push ; grep -c PREPUSH .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh
-# → 10 / 0 / 18 / 18 @ 12d7cbec
+# → 9 / 4 / 18 / 18 @ 6377727e
 grep -n "citation" scripts/preflight.sh .githooks/pre-push | wc -l ; grep -n "query-key" .githooks/pre-push scripts/preflight.sh | grep -c "query-key-guard.cjs"
-# → 0 / 2   (no citation guard locally; one of three query-key scripts) @ 12d7cbec
+# → 0 / 2   (no citation guard locally; one of three query-key scripts) @ 6377727e
 ls scripts/*-guard.cjs | wc -l ; ls scripts/*baseline*.json | wc -l
-# → 14 / 7 @ 12d7cbec
+# → 15 / 7 @ 6377727e
 gh api repos/barakatammre84/Homiquity/branches/main/protection --jq '{contexts: .required_status_checks.contexts, strict: .required_status_checks.strict}' ; gh api repos/barakatammre84/Homiquity/rules/branches/main --jq 'length'
 # → {"contexts":[],"strict":false} / 0 @ 2026-08-22
-sed -n '574p;647p;663p' .github/workflows/ci.yml
+sed -n '583p;656p;672p' .github/workflows/ci.yml
 # → if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 #   if: github.event_name == 'push'
-#   continue-on-error: true                                    @ 12d7cbec
+#   continue-on-error: true                                    @ 6377727e
 sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' tests/cronSchedules.test.ts | grep -c '^\s*\['
-# → "schedules exactly these six sweeps…" / 7 @ 12d7cbec
+# → "schedules exactly these six sweeps…" / 7 @ 6377727e
 ```
 
 ## Where this breaks
@@ -252,7 +253,7 @@ sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' te
 
 | Question | What resolves it |
 |---|---|
-| Was the gate green on 12d7cbec? This chapter is about configuration and structure. | Measured on 2026-08-22 in chapter 12 §1, at the then-current `12d7cbec`: T0–T3 green plus the corpus, 218/218 and 120/120 files collected, the two database stages SKIPPED. The four commits since add one node test and two client tests; the run has not been repeated. |
+| Was the gate green on `6377727e`? This chapter is about configuration and structure. | Measured on 2026-08-22 in chapter 12 §1, at the then-current `12d7cbec`: T0–T3 green plus the corpus, 218/218 and 120/120 files collected, the two database stages SKIPPED. The four commits since add one node test and two client tests; the run has not been repeated. |
 | ~~Would `tests/maintenanceMode.test.ts` pass if it were listed?~~ | **Answered 2026-08-23:** yes — 5 tests, listed in `fd4a22c5` (#670) and green in that PR's gate. |
 | ~~Does #670 still apply cleanly now that #660 has rewritten the hook's test step?~~ | **Answered 2026-08-23:** no, it needed a rebase, and it got one — #670 took #660's `PREPUSH_TESTS` conditional verbatim rather than restoring the unconditional step, and rewrote its own "while CI is down this hook is the only gate" rationale, which #660 had falsified. Merged `fd4a22c5`. |
 | Does `enforce_admins: true` with an empty context list have any effect at all? | The `ci.yml` comment asserts it does not; untested. |

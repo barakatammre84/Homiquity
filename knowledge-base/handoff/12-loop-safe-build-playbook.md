@@ -1,7 +1,7 @@
 # 12 — The loop-safe build playbook
 
 > **Freshness:** last verified 2026-08-23 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec. The rails this chapter summarises live in
+> **Verified against** `origin/main` @ 6377727e. The rails this chapter summarises live in
 > [prompts/_RAILS.md](prompts/_RAILS.md) (read, not copied — edit them there); the report shape
 > in [prompts/_REPORT_FORMAT.md](prompts/_REPORT_FORMAT.md); the eight fill-in templates and the
 > invocation recipe in [prompts/](prompts/). Every tier runtime below was **measured** on the

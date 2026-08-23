@@ -1,7 +1,7 @@
 # 03 — Data model and schema
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 03 — Database & Schema](../handbook/app-guide/03-database.md) (it wins on conflict; the code wins over both — and its table/file counts are stale, LEDGER HO-0822-01).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 03 — Database & Schema](../handbook/app-guide/03-database.md) (it wins on conflict; the code wins over both — and its table/file counts are stale, LEDGER HO-0822-01).
 
 ## The mental model
 
@@ -150,31 +150,31 @@ erDiagram
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -c "pgTable(" shared/schema/*.ts | awk -F: '{s+=$2} END{print s}' ; ls shared/schema/*.ts | wc -l ; wc -l shared/schema/*.ts | tail -1
-# → 188 / 34 / 10669 total @ 12d7cbec
+# → 188 / 34 / 10669 total @ 6377727e
 grep -o "pgEnum(" shared/schema/*.ts | wc -l ; grep -rn "pgEnum(" shared/schema/*.ts
-# → 1 / shared/schema/lookup.ts:24:export const lifecycleStatusEnum = pgEnum("policy_lifecycle_status", [ @ 12d7cbec
+# → 1 / shared/schema/lookup.ts:24:export const lifecycleStatusEnum = pgEnum("policy_lifecycle_status", [ @ 6377727e
 wc -l shared/schema.ts ; grep -c "pgTable(" shared/schema/lending.ts shared/schema/underwriting.ts
-# → 23 / lending.ts:0 underwriting.ts:0 @ 12d7cbec
+# → 23 / lending.ts:0 underwriting.ts:0 @ 6377727e
 grep -rn "references(() => loanApplications.id)" shared/schema/*.ts | wc -l ; grep -rn "references(() => users.id)" shared/schema/*.ts | wc -l
-# → 91 / 130 @ 12d7cbec
+# → 91 / 130 @ 6377727e
 grep -n "urla_personal_info_app_seq_idx" shared/schema/lendingUrla.ts ; grep -n "loan_delivery_data_application_idx" shared/schema/delivery.ts
-# → 97 / 100 @ 12d7cbec
+# → 97 / 100 @ 6377727e
 grep -rn "_encrypted" shared/schema/*.ts | wc -l
-# → 8 @ 12d7cbec
+# → 8 @ 6377727e
 grep -rn "createInsertSchema(" shared server | wc -l ; grep -rn "z.enum(" shared/schema | wc -l
-# → 177 / 22 @ 12d7cbec
+# → 177 / 22 @ 6377727e
 grep -rln "\.transaction(" server | wc -l ; grep -rn "inArray(" server --include='*.ts' | wc -l
-# → 6 / 56 @ 12d7cbec
+# → 6 / 56 @ 6377727e
 cat server/storage/index.ts | grep -n "extends\|IStorage"
-# → 16:export class DatabaseStorage extends LeasesStorage {} / 21:export type IStorage = DatabaseStorage; @ 12d7cbec
+# → 16:export class DatabaseStorage extends LeasesStorage {} / 21:export type IStorage = DatabaseStorage; @ 6377727e
 ls migrations/*.sql | wc -l ; grep -c '"tag"' migrations/meta/_journal.json
-# → 58 / 58 @ 12d7cbec
+# → 58 / 58 @ 6377727e
 grep -n "db:push\|db:generate" package.json
-# → 25 (BLOCKED: drizzle-kit generate has snapshot drift…) / 29 (BLOCKED: db:push drops columns owned by other branches…) @ 12d7cbec
+# → 26 (BLOCKED: drizzle-kit generate has snapshot drift…) / 30 (BLOCKED: db:push drops columns owned by other branches…) @ 6377727e
 grep -rn "174" shared/loanApplicationStatus.ts shared/statusVocabularies.ts
-# → loanApplicationStatus.ts:9 and statusVocabularies.ts:8 — the stale "174 Drizzle table" comments @ 12d7cbec
+# → loanApplicationStatus.ts:9 and statusVocabularies.ts:8 — the stale "174 Drizzle table" comments @ 6377727e
 ```
 
 ## Where this breaks

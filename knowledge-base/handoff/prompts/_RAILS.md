@@ -1,7 +1,7 @@
 # Loop rails — read this first, and again at the top of every iteration
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> Verified against `origin/main` @ 12d7cbec. One rails file, **read not copied** — the same shape as
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> Verified against `origin/main` @ 6377727e. One rails file, **read not copied** — the same shape as
 > `.claude/agents/_OWNER_RAILS.md`. Every template in this directory points here instead of
 > restating these rules, so a rail changes in exactly one place.
 
@@ -153,7 +153,7 @@ A clean iteration says so in one line and does not invent work.
 |---|---|---|---|
 | T-1 | `git fetch origin && git rev-list --count HEAD..origin/main`; `gh pr list --state open --json number,files`; read `knowledge-base/routines/REGISTER.md` | fresh, unclaimed | code |
 | T0 | `pnpm check`; `for f in scripts/*.cjs; do node --check "$f" \|\| exit 1; done`; `pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:querykeys && pnpm guard:tokens && pnpm guard:ui` | types; guard scripts parse; ratchets not regressed | runtime; classNames built by `cn()`/templates (guards read literal strings) |
-| T1 | `pnpm test > "$SCRATCH/t1.log" 2>&1` then read the two `Test Files` lines; node count must equal `grep -cE '^\s*"tests/' vitest.config.ts`; client count must equal `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | in-process logic, source-text invariants, happy-dom components | HTTP, DB, layout; a stranded or truncated collection (the reason for the two equalities) |
+| T1 | `pnpm test > "$SCRATCH/t1.log" 2>&1` then read the two `Test Files` lines; node count must equal `grep -cE '^\s*"tests/' vitest.config.ts`; client count must equal `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` — since #670 (2026-08-23) `pnpm test` enforces this floor itself via `scripts/test-collection-guard.cjs`; the manual comparison stays as the fallback | in-process logic, source-text invariants, happy-dom components | HTTP, DB, layout; a stranded or truncated collection (the reason for the two equalities) |
 | T2 | `pnpm preflight --fast` (needs ≥1 commit on the branch or §9 reports SKIPPED) | T0 + T1 + `pnpm audit --prod` + the §9 guard as CI computes it | build, boot, integration — all SKIPPED |
 | T3 | `bash scripts/local-db.sh up` if no Postgres; `pnpm preflight` | build + `guard:bundle` + prod-mode boot on 3999 + the integration lane on 4000 | prod data; anything outside the integration include list |
 | T4 | `PORT=5002 pnpm dev` in the worktree; `node scripts/browser-probe.cjs --url http://localhost:5002/<route> --width 320`; journey-walker agents (findings only) | real render and wiring | contrast, full a11y; agents are snapshotted at session start |

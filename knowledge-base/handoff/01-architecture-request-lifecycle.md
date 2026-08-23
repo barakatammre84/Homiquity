@@ -1,7 +1,7 @@
 # 01 — Architecture and the request lifecycle
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 02 — Architecture](../handbook/app-guide/02-architecture.md) (it wins on conflict; the code wins over both — and on this chapter the code has moved past it in five places, listed under *Where this breaks*).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 02 — Architecture](../handbook/app-guide/02-architecture.md) (it wins on conflict; the code wins over both — and on this chapter the code has moved past it in five places, listed under *Where this breaks*).
 
 ## The mental model
 
@@ -144,29 +144,29 @@ flowchart TD
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -c "app.use(" server/app.ts
-# → 39 @ 12d7cbec
+# → 39 @ 6377727e
 grep -cE '^const [a-zA-Z]+Limiter = rateLimit\(' server/app.ts ; grep -c "rateLimit(" server/app.ts
-# → 9 named, 11 mounts @ 12d7cbec
+# → 9 named, 11 mounts @ 6377727e
 grep -cE "^\s*(await )?register[A-Za-z]+Routes\(app" server/routes.ts ; grep -n "await register" server/routes.ts
-# → 40 ; 115:  await registerTaskEngineRoutes(app, storage); @ 12d7cbec
+# → 40 ; 115:  await registerTaskEngineRoutes(app, storage); @ 6377727e
 ls -d server/routes/*/ ; ls server/routes/*/index.ts | wc -l
-# → admin/ agent-broker/ borrower/ lending/ underwriting/ ; 4 @ 12d7cbec
+# → admin/ agent-broker/ borrower/ lending/ underwriting/ ; 4 @ 6377727e
 sed -n '481,485p' server/app.ts
-# → RESPONSE_BODY_LOG_ALLOWLIST = [ /^\/api\/health$/, /^\/api\/track$/, /^\/api\/csp-report$/ ] @ 12d7cbec
+# → RESPONSE_BODY_LOG_ALLOWLIST = [ /^\/api\/health$/, /^\/api\/track$/, /^\/api\/csp-report$/ ] @ 6377727e
 sed -n '150,153p' server/routes.ts
-# → app.all("/api/*splat", …) → 404 { error: "Not found" } @ 12d7cbec
+# → app.all("/api/*splat", …) → 404 { error: "Not found" } @ 6377727e
 tail -1 server/spaCatchAll.ts
-# → export const SPA_CATCH_ALL_PATTERN = "/{*splat}"; @ 12d7cbec
+# → export const SPA_CATCH_ALL_PATTERN = "/{*splat}"; @ 6377727e
 grep -rn 'load-env' server/*.ts
-# → server/index-dev.ts:1 only @ 12d7cbec
+# → server/index-dev.ts:1 only @ 6377727e
 grep -n 'healthcheckPath' railway.json
-# → 9:    "healthcheckPath": "/api/health", @ 12d7cbec
+# → 9:    "healthcheckPath": "/api/health", @ 6377727e
 find server -name '*.ts' | wc -l ; find server -name '*.ts' -exec cat {} + | wc -l
-# → 291 ; 81467 @ 12d7cbec
+# → 291 ; 81487 @ 6377727e
 grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l
-# → 579 @ 12d7cbec
+# → 579 @ 6377727e
 ```
 
 ## Where this breaks

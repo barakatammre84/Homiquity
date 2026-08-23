@@ -1,7 +1,7 @@
 # 06 — Frontend patterns
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 07 — Frontend](../handbook/app-guide/07-frontend.md), [app-guide 12 — API contract](../handbook/app-guide/12-api-contract.md) and `../handbook/design/DESIGN_SYSTEM.md` (they win on conflict; the code wins over both — app-guide 07's version, size and page-count claims are stale, LEDGER HO-0822-06/19).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 07 — Frontend](../handbook/app-guide/07-frontend.md), [app-guide 12 — API contract](../handbook/app-guide/12-api-contract.md) and `../handbook/design/DESIGN_SYSTEM.md` (they win on conflict; the code wins over both — app-guide 07's version, size and page-count claims are stale, LEDGER HO-0822-06/19).
 
 ## The mental model
 
@@ -201,35 +201,35 @@ flowchart TD
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -c "<Route" client/src/App.tsx ; grep -c "lazy(" client/src/App.tsx ; wc -l client/src/App.tsx
-# → 121 / 113 / 635 @ 12d7cbec
+# → 121 / 113 / 635 @ 6377727e
 sed -n '300p' client/src/App.tsx
-# → {/* Must precede /learn/:slug — Switch takes the first match */} @ 12d7cbec
+# → {/* Must precede /learn/:slug — Switch takes the first match */} @ 6377727e
 grep -oE "^  [a-zA-Z]+:" client/src/lib/routeGates.ts | wc -l
-# → 10 @ 12d7cbec
+# → 10 @ 6377727e
 sed -n '17,19p' client/src/lib/prelaunch.ts
-# → PRELAUNCH_GATED = VITE_PRELAUNCH_GATED === "true" || (PROD && VITE_PRELAUNCH_GATED !== "false") @ 12d7cbec
+# → PRELAUNCH_GATED = VITE_PRELAUNCH_GATED === "true" || (PROD && VITE_PRELAUNCH_GATED !== "false") @ 6377727e
 grep -nE '^export const [a-zA-Z]+Keys' client/src/lib/queryClient.ts | wc -l ; wc -l client/src/lib/queryClient.ts
-# → 17 / 539 @ 12d7cbec
+# → 17 / 539 @ 6377727e
 grep -n "staleTime\|refetchOnWindowFocus\|refetchInterval\|retry:" client/src/lib/queryClient.ts | tail -5
-# → 530 refetchInterval false / 531 refetchOnWindowFocus true / 532 staleTime 5 min / 533 retry false / 536 retry false @ 12d7cbec
+# → 530 refetchInterval false / 531 refetchOnWindowFocus true / 532 staleTime 5 min / 533 retry false / 536 retry false @ 6377727e
 grep -rin csrf client/src | wc -l
-# → 0 @ 12d7cbec
+# → 0 @ 6377727e
 grep -n '"guard:querykeys"' package.json
-# → 37: three scripts chained @ 12d7cbec
+# → 37: three scripts chained @ 6377727e
 cat scripts/design-token-baseline.json ; cat scripts/ui-standard-baseline.json ; cat scripts/bundle-size-baseline.json
-# → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 525144 @ 12d7cbec
+# → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 526640 @ 6377727e
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
-# → 120 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 12d7cbec
+# → 123 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 6377727e
 grep -rl "zodResolver" client/src | wc -l ; grep -rl "SEOHead" client/src/pages | wc -l
-# → 7 / 43 @ 12d7cbec
+# → 7 / 43 @ 6377727e
 awk '/^export const STATIC_ROUTE_META/,/^};/' shared/seo/routeMeta.ts | grep -cE '^  "/'
-# → 31 @ 12d7cbec
+# → 31 @ 6377727e
 wc -l client/src/pages/borrower/URLAForm.tsx ; ls client/src/pages/borrower/urla/ | wc -l
-# → 857 / 12 @ 12d7cbec
+# → 857 / 12 @ 6377727e
 grep -rho 'data-testid="[^"]*"' client/src | wc -l
-# → 2206 @ 12d7cbec
+# → 2223 @ 6377727e
 ```
 
 ## Where this breaks
@@ -257,7 +257,7 @@ grep -rho 'data-testid="[^"]*"' client/src | wc -l
 
 | Question | What resolves it |
 |---|---|
-| Do the guards currently pass on 12d7cbec? Only committed baselines are quoted here — the token/bundle guards write files on a shrink, so they were not run. | `pnpm guard:tokens && pnpm guard:ui` then `git status` (stage any tightened baseline); `pnpm build && pnpm guard:bundle`. |
+| Do the guards currently pass on `6377727e`? Only committed baselines are quoted here — the token/bundle guards write files on a shrink, so they were not run. | `pnpm guard:tokens && pnpm guard:ui` then `git status` (stage any tightened baseline); `pnpm build && pnpm guard:bundle`. |
 | Is dark mode reachable at all? `tailwind.config.ts:4` is `darkMode: ["class"]` and `index.css:265` defines `.dark {}`, but `next-themes` is not in `package.json` and nothing under `client/src` toggles the class. | `grep -rn "classList.*dark\|ThemeProvider\|useTheme" client/src`; the design owner. |
 | Are there undocumented route-order dependencies beyond `:300` (e.g. `/redeem-invite` vs `/redeem-invite/:code` at `:260-261`)? | A read of adjacent `<Route>` pairs. |
 | Do the 7 remaining raw `fetch(` sites equal the `ALLOWED_RAW_FETCH` map exactly? | `tests/apiRequestConvergence.test.ts:25` vs the grep. |
@@ -286,10 +286,10 @@ ratchet straps over the cargo: they only tighten.
 
 ## Go deeper
 
-- [app-guide 07](../handbook/app-guide/07-frontend.md) — with measured drift at 12d7cbec: `:3`
-  "React 18" (19.2.8); `:12-13` "~420 lines … 160+ routes" (635 / 121); `:9` lists `next-themes`
-  (absent); the page-map table at `:16-37` is stale across the board; `:56-58` and `:75` quote
-  adoption figures the generated table in `DESIGN_SYSTEM.md:42` has since replaced. Still accurate:
+- [app-guide 07](../handbook/app-guide/07-frontend.md) — its headline drift (React 18, the
+  `next-themes` listing, the stale line/route figures) was fixed by #694 on 2026-08-23; still open
+  at `6377727e`: the page-map table is stale across the board, and it quotes adoption figures the
+  generated table in `DESIGN_SYSTEM.md:42` has since replaced. Still accurate:
   the alias table, the `dist/public` static story, the `VITE_*` build-time warning.
   [app-guide 12](../handbook/app-guide/12-api-contract.md) — `:27` client ownership, `:52-64` the
   error shape and the 401 latch, `:77-79` "Query keys are the client's half of the contract."

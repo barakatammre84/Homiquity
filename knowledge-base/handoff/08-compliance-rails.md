@@ -1,7 +1,7 @@
 # 08 — Compliance rails (how compliance is enforced by code shape)
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** `../L2_COMPLIANCE_AND_LOGIC.md` (the L2 overlay that overrides any feature), `CLAUDE.md` §Compliance first / §NMLS / §Reg Z, `../governance/TEAM_PRACTICES.md` §9, `../compliance/UNDERWRITING_SCENARIOS.md` (they win on conflict; the code wins over both; **nothing in this chapter is a compliance reading — readings come only from captured sources in `docs/`**).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** `../L2_COMPLIANCE_AND_LOGIC.md` (the L2 overlay that overrides any feature), `CLAUDE.md` §Compliance first / §NMLS / §Reg Z, `../governance/TEAM_PRACTICES.md` §9, `../compliance/UNDERWRITING_SCENARIOS.md` (they win on conflict; the code wins over both; **nothing in this chapter is a compliance reading — readings come only from captured sources in `docs/`**).
 
 ## The mental model
 
@@ -212,33 +212,33 @@ flowchart TD
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -c "^| \*\*I" knowledge-base/L2_COMPLIANCE_AND_LOGIC.md
-# → 10 @ 12d7cbec
+# → 10 @ 6377727e
 grep -c "^describe(" tests/complianceInvariants.test.ts ; grep -c "  it(" tests/complianceInvariants.test.ts ; sed -n '16p' tests/complianceInvariants.test.ts
-# → 16 / 54 / " * If one of these fails, treat it as a compliance incident, not a flaky test." @ 12d7cbec
+# → 16 / 54 / " * If one of these fails, treat it as a compliance incident, not a flaky test." @ 6377727e
 grep -lE 'readFileSync\(' tests/*.test.ts | wc -l
-# → 63 @ 12d7cbec
+# → 63 @ 6377727e
 grep -rn "aes-256-gcm" server --include='*.ts'
-# → server/services/encryptionService.ts:3:const ALGORITHM = "aes-256-gcm"; @ 12d7cbec
+# → server/services/encryptionService.ts:3:const ALGORITHM = "aes-256-gcm"; @ 6377727e
 grep -n "AUDIT_HASH_V1 = \|AUDIT_HASH_V2_SEQUENCED = \|AUDIT_HASH_VERSION_CURRENT = " server/services/encryptionService.ts
-# → 298 / 299 / 300 @ 12d7cbec
+# → 298 / 299 / 300 @ 6377727e
 grep -rn "logAudit(" server | wc -l ; grep -rn "logCreditAction(" server | wc -l
-# → 138 / 16 @ 12d7cbec
+# → 138 / 16 @ 6377727e
 grep -rn "_encrypted" shared/schema/*.ts | wc -l
-# → 8 @ 12d7cbec
+# → 8 @ 6377727e
 grep -rn "@anthropic-ai/sdk" server --include='*.ts' | wc -l ; grep -rln "anthropic" server --include='*.ts' | wc -l
-# → 5 / 7   (none in DECISION_PATH_MODULES) @ 12d7cbec
+# → 5 / 7   (none in DECISION_PATH_MODULES) @ 6377727e
 python3 -c "import json;e=json.load(open('data/regulatory/regulatory-ledger.json'))['entries'];print(len(e));print(len([x for x in e if 'block' in (x.get('notes','') or '').lower()]))"
-# → 59 / 9 @ 12d7cbec
+# → 59 / 9 @ 6377727e
 grep -n "assertEncryptionConfig\|initEncryption(" server/routes.ts
-# → 47 (import) / 95 / 99 @ 12d7cbec
+# → 47 (import) / 95 / 99 @ 6377727e
 grep -rn "requireConsent(" server --include='*.ts' | wc -l
-# → 3   (doc comment, definition, the single mount at server/routes/underwriting/delivery.ts:81) @ 12d7cbec
+# → 3   (doc comment, definition, the single mount at server/routes/underwriting/delivery.ts:81) @ 6377727e
 grep -rn 'CREDIT_VENDOR_MODE' server/services/creditPulls.ts | wc -l
-# → 9 @ 12d7cbec
+# → 9 @ 6377727e
 grep -n "^- \*\*" knowledge-base/governance/TEAM_PRACTICES.md | awk -F: '$1>=299 && $1<=360' | wc -l
-# → 12   (the §9 trigger categories) @ 12d7cbec
+# → 12   (the §9 trigger categories) @ 6377727e
 ```
 
 ## Where this breaks

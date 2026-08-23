@@ -1,7 +1,7 @@
 # 11 — Patterns and repetition
 
 > **Freshness:** last verified 2026-08-23 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec. This chapter is analysis, not doctrine: the
+> **Verified against** `origin/main` @ 6377727e. This chapter is analysis, not doctrine: the
 > patterns are what the code and the prompt corpus *actually do*, each with the command that
 > counted it. Where a pattern contradicts a written rule, the LEDGER row is cited — the rule's
 > owner decides which side is right.
@@ -12,7 +12,7 @@ must obey because of it, and (e) the known exceptions. A number without its comm
 a claim without `file:line` is not a finding. Reproduce with:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)" && git fetch origin && git rev-parse --short HEAD   # any clean checkout of origin/main → 12d7cbec
+cd "$(git rev-parse --show-toplevel)" && git fetch origin && git rev-parse --short HEAD   # any clean checkout of origin/main → 6377727e
 ```
 
 ## A. The most consistent application-logic patterns
@@ -38,8 +38,8 @@ hand-mirrors `<SEOHead>` props in 43 pages and says so three times (`:7-10`, `:3
 **What.** Anything that admits input enumerates what is allowed. **Why.** The response-body
 logger was a denylist and silently missed new PII routes — `/api/urla/*` responses carry SSNs
 (`server/app.ts:475-480`, "do not revert to one"). **Evidence.** `grep -rn "UPDATABLE_COLUMNS\|RESPONSE_BODY_LOG_ALLOWLIST\|STAFF_SETTABLE_STATUSES" server --include='*.ts' | wc -l`
-→ 9 references across three allow-lists; the node test lane is an explicit allowlist of 218 files
-(`vitest.config.ts:30-300`, FACTS F-13); `pickTableFields` whitelists URLA bodies to their table's
+→ 9 references across three allow-lists; the node test lane is an explicit allowlist of 221 files
+(`vitest.config.ts`, FACTS F-13); `pickTableFields` whitelists URLA bodies to their table's
 columns before any write (`server/routes/borrower/urla.ts:455`). **Loop rule.** Never widen an
 allow-list without naming why in the PR body; a value that needs to pass belongs in the list, not
 in a bypass. **Exceptions.** The allowlist's own failure mode — a stranded entry — is pattern D3.
@@ -186,7 +186,7 @@ for the loop rails in chapter 12, and most already are.
 | B6 | **Evidence rule**: no `file:line` = not a finding; a number a human retypes will be wrong; never quote a negative grep without re-running it. | `CHARTER.md:758-813`; `LESSONS.md:38` | R13; every LOOP REPORT line is copied from an output file. |
 | B7 | **Findings → adversarial verifier → fix waves; reviewers never fix.** | `grep -l "never fix" .claude/agents/*.md \| wc -l` → 15; `finding-verifier.md:3` | A loop that finds a defect outside its territory reports it; it does not fix it. |
 | B8 | **Date-qualified ids, unique without coordination.** | `CHARTER.md:491-499` (six `F-20`s) | `HO-<MMDD>-<NN>` in this corpus; the loop log uses the same shape. |
-| B9 | **The ⛔ founder lane and L1–L4.** | `CHARTER.md:120-147`; `_OWNER_RAILS.md:13` | R9/R12: never merge, never push main; a TEAM_PRACTICES §9 trigger trips ⇒ draft PR + ⛔. |
+| B9 | **The ⛔ founder lane and L1–L4.** | `CHARTER.md:246-274`; `_OWNER_RAILS.md:13` | R9/R12: never merge, never push main; a TEAM_PRACTICES §9 trigger trips ⇒ draft PR + ⛔. |
 | B10 | **Attempt cap 5; a diff cap; one PR per run.** | `grep -rn "attempt" .claude/skills/*/SKILL.md \| grep -ci "max\|cap"` → 5 skills, all at 5; `refactor-radar:8,45,47` | R10. |
 | B11 | **Tighten, never loosen**: a lesson or a correction may move toward a compliance rail, never away. | `LESSONS.md:17-20`; `doc-accuracy/SKILL.md:73` D8 | R5, R8, R12. |
 | B12 | **Drift vs regression** (doc-accuracy D7): a doc stating an invariant the code violates may be reporting a regression — do not edit the doc to match. | `doc-accuracy/SKILL.md:67-72` | `prompts/doc-update.md` step 1. |

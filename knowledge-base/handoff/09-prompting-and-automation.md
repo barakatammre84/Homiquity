@@ -1,7 +1,7 @@
 # 09 — Prompting and automation: the second codebase
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** `CLAUDE.md`, `../routines/CHARTER.md`, `.claude/agents/_OWNER_RAILS.md` and the four router skills (they win on conflict; the code — here, the prose that Claude executes — wins over any description of it, including this one).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** `CLAUDE.md`, `../routines/CHARTER.md`, `.claude/agents/_OWNER_RAILS.md` and the four router skills (they win on conflict; the code — here, the prose that Claude executes — wins over any description of it, including this one).
 
 ## The mental model
 
@@ -23,7 +23,7 @@ mean different things: the *doc* ladder (vision → compliance → specs, chapte
 about the second. The 41 `hq-*-owner` agents each own a file list and inherit one shared
 rails file, `.claude/agents/_OWNER_RAILS.md`, which is *read, not copied* — so a rail changes in one
 place and there is nothing to drift. Anything autonomous is bound by `knowledge-base/routines/CHARTER.md`,
-an 855-line contract with a decision-authority matrix (L1 acts, L2 acts then flags, L3 a human
+an 1,112-line contract (Feynman-restructured 2026-08-23, crosswalk at its end) with a decision-authority matrix (L1 acts, L2 acts then flags, L3 a human
 signs, L4 human-only), a claim register that keeps four daily build lanes off the same file, and
 honesty rails that are each a post-mortem in one sentence. The prose is then gated like code —
 `guard:kb`, `guard:staleness` and `guard:citations` run inside the CI gate, `guard:docs` runs
@@ -37,14 +37,14 @@ flowchart TD
   S["session starts in a worktree"] --> CM["CLAUDE.md - 240 lines - always-on rules + the 4 router skills"]
   CM --> PICK{"what kind of work?"}
   PICK -- "domain work" --> ROUTER["router skill - api-routes / ui-components / mortgage-calculations / seo-content - auto-loads"]
-  PICK -- "explicit slash command" --> ROUTINE["routine skill - 17 of 23 say NEVER auto-load - R1: STOP if loaded without invocation"]
+  PICK -- "explicit slash command" --> ROUTINE["routine skill - 19 of 25 say NEVER auto-load - R1: STOP if loaded without invocation"]
   PICK -- "area-scoped implementation" --> OWNER["hq-*-owner agent - 41 - yours-to-write / hand-back / not-yours"]
   PICK -- "review or walk" --> REVIEW["6 reviewers + 10 journey walkers - findings only, never fixes"]
   ROUTER --> RAILS
   ROUTINE --> RAILS
   OWNER --> RAILS
   REVIEW --> RAILS
-  RAILS["_OWNER_RAILS.md - 114 lines - read not copied - authority is CHARTER 5, 6, 8, 10"] --> CHARTER["CHARTER.md - 855 lines - 1b authority L1-L4 - 5 claim register - 6 territory - 10 honesty rails"]
+  RAILS["_OWNER_RAILS.md - 114 lines - read not copied - authority is CHARTER 9, 10, 12, 14"] --> CHARTER["CHARTER.md - 1112 lines - 6 authority L1-L4 - 9 claim register - 10 territory - 14 honesty rails"]
   CHARTER --> REG{"REGISTER.md - claimed?"}
   REG -- "claimed under 24h" --> ASSIST["assist ladder - fix red CI, verify, comment - an idle tick is a FAILED tick"]
   REG -- free --> CLAIM["add a row, push the branch"]
@@ -100,7 +100,7 @@ flowchart TD
   "what this routine deliberately does not do" section. The sharpest rail in the corpus is
   doc-accuracy D7 (`:50-55`): a doc stating an invariant the code violates may be a regression —
   "editing the doc to match broken code launders the regression."
-- **The charter.** `knowledge-base/routines/CHARTER.md` — 855 lines, 14 H2s. §6 (`:120-147`):
+- **The charter.** `knowledge-base/routines/CHARTER.md` — 1,112 lines, 22 H2s. §6 (`:246-274`):
   L1 decides and acts · L2 acts then flags (expand-only migrations, any §9-tripping diff as a draft
   PR) · L3 prepares, a human signs (merging — "a merge to `main` is a production deploy" — contract
   migrations, filings, money, production variables, launch go/no-go) · L4 human-only; "A rail the
@@ -166,33 +166,33 @@ flowchart TD
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 wc -l CLAUDE.md .claude/agents/_OWNER_RAILS.md knowledge-base/routines/CHARTER.md | tail -4
-# → 240 / 114 / 855 / 1209 total @ 12d7cbec
+# → 243 / 114 / 1112 / 1469 total @ 6377727e
 ls -d .claude/skills/*/ | wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l
-# → 23 / 17 @ 12d7cbec
+# → 25 / 19 @ 6377727e
 comm -13 <(grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | sort) <(ls .claude/skills/*/SKILL.md | sort) | sed 's|.claude/skills/||;s|/SKILL.md||' | tr '\n' ' '
-# → api-routes journey-walk mortgage-calculations seo-content staff-journey-walk ui-components @ 12d7cbec
+# → api-routes journey-walk mortgage-calculations seo-content staff-journey-walk ui-components @ 6377727e
 wc -l .claude/skills/*/SKILL.md | sort -n | sed -n '1,4p;23,25p'
-# → 26 api-routes / 26 seo-content / 28 mortgage-calculations / 33 ui-components … 277 backend-data-engineer / 277 refactor-radar / 3258 total @ 12d7cbec
+# → 26 api-routes / 26 seo-content / 28 mortgage-calculations / 34 ui-components … 277 refactor-radar / 347 doc-accuracy / 3611 total @ 6377727e
 ls .claude/agents/*.md | wc -l ; ls .claude/agents/hq-*-owner.md | wc -l ; grep -l "never fix\|never fixes" .claude/agents/*.md | wc -l
-# → 58 / 41 / 15 @ 12d7cbec
+# → 58 / 41 / 15 @ 6377727e
 grep -cE '^## ' knowledge-base/routines/CHARTER.md ; grep -c "" knowledge-base/routines/LESSONS.md
-# → 14 / 42 @ 12d7cbec
+# → 22 / 44 @ 6377727e
 grep -nE '"guard:(kb|docs|staleness|citations)"' package.json
-# → 36 docs / 40 kb / 41 staleness / 42 citations @ 12d7cbec
+# → 36 docs / 40 kb / 41 staleness / 42 citations @ 6377727e
 grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml | sort -u | tr '\n' ' '
-# → bundle channel citations kb migrations querykeys schema security staleness tokens ui   (no guard:docs) @ 12d7cbec
+# → bundle channel citations kb migrations querykeys schema security staleness tokens ui   (no guard:docs) @ 6377727e
 grep -n 'cron:' .github/workflows/doc-freshness.yml
-# → 26:    - cron: "0 9 * * 1" @ 12d7cbec
+# → 26:    - cron: "0 9 * * 1" @ 6377727e
 cat scripts/citation-baseline.json scripts/doc-staleness-baseline.json | tr -d '\n '
-# → {"unresolvedCitations":29,"updated":"2026-08-22"}{"kbPathRefs":8,"npmCommandRefs":5,"launchSprintRefs":7,"oldRepoRefs":3,"deadHostRefs":1,"updated":"2026-08-20"} @ 12d7cbec
+# → {"unresolvedCitations":29,"updated":"2026-08-22"}{"kbPathRefs":8,"npmCommandRefs":5,"launchSprintRefs":7,"oldRepoRefs":3,"deadHostRefs":1,"updated":"2026-08-20"} @ 6377727e
 git cat-file -e HEAD:.claude/settings.json 2>&1 ; git branch -a --contains 69de42ae
-# → fatal: path '.claude/settings.json' does not exist in 'HEAD' / remotes/origin/claude/routines-code-quality-review-snqxol @ 12d7cbec
+# → fatal: path '.claude/settings.json' does not exist in 'HEAD' / remotes/origin/claude/routines-code-quality-review-snqxol @ 6377727e
 cat .mcp.json | tr -d '\n ' ; grep -c 'cron:' .github/workflows/cron-jobs.yml
-# → {"mcpServers":{"homiquity":{"command":"npx","args":["tsx","server/mcp/index.ts"]}}} / 7 @ 12d7cbec
+# → {"mcpServers":{"homiquity":{"command":"npx","args":["tsx","server/mcp/index.ts"]}}} / 7 @ 6377727e
 grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .claude/skills/*/SKILL.md | grep -ci "max\|cap"
-# → 7 / 5 @ 12d7cbec
+# → 7 / 5 @ 6377727e
 ```
 
 ## Where this breaks

@@ -1,7 +1,7 @@
 # 04 — Data flow: a loan's journey
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 05 — Data Flow: A Loan's Journey](../handbook/app-guide/05-data-flow.md) (it wins on conflict; the code wins over both — and this chapter's hop table is where the code has moved furthest from it, LEDGER HO-0822-16).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 05 — Data Flow: A Loan's Journey](../handbook/app-guide/05-data-flow.md) (it wins on conflict; the code wins over both — and this chapter's hop table is where the code has moved furthest from it, LEDGER HO-0822-16).
 
 ## The mental model
 
@@ -84,7 +84,7 @@ flowchart TD
 
 **Who may write `status`.** `grep -rn "updatePipelineStage(" server --include='*.ts' | wc -l` → `5`
 (the definition + four callers: `borrower/dealTeam.ts:143` withdraw, `lending/applications.ts:103`
-submit, `lending/statusDecisions.ts:240` staff PATCH, `underwriting/pipeline.ts:382` advance).
+submit, `lending/statusDecisions.ts:260` staff PATCH, `underwriting/pipeline.ts:382` advance).
 `tests/statusVocabulary.test.ts:243-259` scans every server file for a direct `status:` write and
 allows exactly four files: `server/pipelineEngine.ts`, `server/services/loanAnalysis.ts`
 ("the one other sanctioned writer"), `scripts/migrate-status-vocabulary.ts`, `server/seed.ts`.
@@ -93,29 +93,29 @@ allows exactly four files: `server/pipelineEngine.ts`, `server/services/loanAnal
 
 ```bash
 cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
-# → 12d7cbec @ 12d7cbec
+# → 6377727e @ 6377727e
 grep -rn "updatePipelineStage(" server --include='*.ts'
-# → pipelineEngine.ts:594 (def) · borrower/dealTeam.ts:143 · lending/applications.ts:103 · lending/statusDecisions.ts:240 · underwriting/pipeline.ts:382 @ 12d7cbec
+# → pipelineEngine.ts:594 (def) · borrower/dealTeam.ts:143 · lending/applications.ts:103 · lending/statusDecisions.ts:260 · underwriting/pipeline.ts:382 @ 6377727e
 grep -rn 'status: "' server/services/loanAnalysis.ts
-# → :436 "analyzing" · :514 "unread" · :531 "unread" (notifications) · :588 "submitted" (failure reset) @ 12d7cbec
+# → :436 "analyzing" · :514 "unread" · :531 "unread" (notifications) · :588 "submitted" (failure reset) @ 6377727e
 sed -n '254,259p' tests/statusVocabulary.test.ts
-# → const ALLOWED = new Set(["server/pipelineEngine.ts", "server/services/loanAnalysis.ts", "scripts/migrate-status-vocabulary.ts", "server/seed.ts"]) @ 12d7cbec
+# → const ALLOWED = new Set(["server/pipelineEngine.ts", "server/services/loanAnalysis.ts", "scripts/migrate-status-vocabulary.ts", "server/seed.ts"]) @ 6377727e
 grep -n "STORAGE_KEY =" client/src/lib/calculatorPrefill.ts ; grep -rn "PREAPPROVAL_AUTOSAVE_KEY =" client/src
-# → 23:const STORAGE_KEY = "calculatorPrefill"; / pendingAttribution.ts:14 "homiquity_preapproval_draft" @ 12d7cbec
+# → 23:const STORAGE_KEY = "calculatorPrefill"; / pendingAttribution.ts:14 "homiquity_preapproval_draft" @ 6377727e
 awk '/export const CANONICAL_ORDER/,/^\];/' client/src/funnel/preApprovalMachine.ts | grep -c '^  "'
-# → 17 @ 12d7cbec
+# → 17 @ 6377727e
 sed -n '78,84p' server/routes/lending/statusDecisions.ts
-# → UPDATABLE_COLUMNS = [annualIncome, monthlyDebts, creditScore, employmentType, employmentYears, propertyType, purchasePrice, downPayment, loanPurpose, isVeteran, isFirstTimeBuyer, propertyState, employerName, propertyAddress, propertyCity, propertyZip, incomeSources, householdFamilySize, homeSquareFootage, avoidsInterestFinancing] @ 12d7cbec
+# → UPDATABLE_COLUMNS = [annualIncome, monthlyDebts, creditScore, employmentType, employmentYears, propertyType, purchasePrice, downPayment, loanPurpose, isVeteran, isFirstTimeBuyer, propertyState, employerName, propertyAddress, propertyCity, propertyZip, incomeSources, householdFamilySize, homeSquareFootage, avoidsInterestFinancing] @ 6377727e
 grep -n "DEBOUNCE_MS =" client/src/pages/lending/preApproval/useServerDraftAutosave.ts
-# → 28:const DEBOUNCE_MS = 2500; @ 12d7cbec
+# → 28:const DEBOUNCE_MS = 2500; @ 6377727e
 sed -n '26,29p' server/services/creditPulls.ts
-# → function creditVendorIsSimulated() { return !process.env.CREDIT_VENDOR_API_KEY; } @ 12d7cbec
+# → function creditVendorIsSimulated() { return !process.env.CREDIT_VENDOR_API_KEY; } @ 6377727e
 grep -rn "recalculateDecision(" server --include='*.ts' | wc -l
-# → 11 @ 12d7cbec
+# → 11 @ 6377727e
 grep -n "simulated: boolean" shared/schema/delivery.ts
-# → 132:    simulated: boolean("simulated").notNull().default(true), @ 12d7cbec
+# → 132:    simulated: boolean("simulated").notNull().default(true), @ 6377727e
 grep -n "finalizeIntake\|pipelineEngine\|updatePipelineStage\|decision_snapshots\|lender_submissions\|adverse" knowledge-base/handbook/app-guide/05-data-flow.md | wc -l
-# → 0   (the app-guide chapter names none of the current chokepoints) @ 12d7cbec
+# → 0   (the app-guide chapter names none of the current chokepoints) @ 6377727e
 ```
 
 ## Where this breaks
