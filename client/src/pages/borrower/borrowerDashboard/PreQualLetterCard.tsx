@@ -1,18 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
+import { formatDate } from "@/lib/formatters";
+import {
+  selectBorrowerLetterState,
+  canDownloadLetter,
+  canRequestLetter,
+  describeUnusableLetter,
+  type LetterStatusResponse,
+} from "@/lib/letterStatus";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2 } from "lucide-react";
 
 /** Pre-qualification letter card (extracted from Dashboard.tsx): generate on
- * first use, then download the PDF. Owns its status query and mutation. */
+ * first use, then download the PDF. Owns its status query and mutation.
+ *
+ * What it may say about the letter comes from the one shared selector
+ * (lib/letterStatus.ts) — this card used to read `hasLetter` alone, so an
+ * expired letter still read "ready to download" with no path to a fresh one. */
 export function PreQualLetterCard({ applicationId }: { applicationId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
+  const statusQuery = useQuery<LetterStatusResponse & { estimatedAmount?: string }>({
     queryKey: loanApplicationKeys.prequalStatus(applicationId),
   });
 
@@ -39,7 +51,9 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
     }
   };
 
-  const hasLetter = statusQuery.data?.hasLetter;
+  const letterState = selectBorrowerLetterState(statusQuery.data, statusQuery.isError);
+  const unusable = describeUnusableLetter(letterState, formatDate);
+  const canDownload = canDownloadLetter(letterState);
 
   return (
     <Card className="hover-elevate" data-testid="card-prequal-letter">
@@ -53,19 +67,23 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
               <p className="font-medium text-sm" data-testid="text-prequal-title">
                 Pre-Qualification Letter
               </p>
-              <p className="text-xs text-muted-foreground">
-                {hasLetter
-                  ? "Your letter is ready to download"
-                  : "Get a preliminary qualification letter"}
+              <p className="text-xs text-muted-foreground" data-testid="text-prequal-subtitle">
+                {unusable
+                  ?? (canDownload
+                    ? letterState.kind === "current" && letterState.expiresOn
+                      ? `Ready to download · valid through ${formatDate(letterState.expiresOn)}`
+                      : "Your letter is ready to download"
+                    : "Get a preliminary qualification letter")}
               </p>
             </div>
           </div>
-          {hasLetter ? (
+          {canDownload && (
             <Button onClick={handleDownload} variant="outline" size="sm" className="touch-target gap-2" data-testid="button-download-prequal-dash">
               <Download className="h-4 w-4" />
               Download
             </Button>
-          ) : (
+          )}
+          {canRequestLetter(letterState) && (
             <Button
               onClick={() => generateMutation.mutate()}
               disabled={generateMutation.isPending}
@@ -79,7 +97,11 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
               ) : (
                 <FileText className="h-4 w-4" />
               )}
-              {generateMutation.isPending ? "Generating..." : "Generate"}
+              {generateMutation.isPending
+                ? "Generating..."
+                : letterState.kind === "expired"
+                  ? "Get an updated letter"
+                  : "Generate"}
             </Button>
           )}
         </div>

@@ -4,7 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import {
+  selectBorrowerLetterState,
+  canDownloadLetter,
+  canRequestLetter,
+  describeUnusableLetter,
+  type LetterStatusResponse,
+} from "@/lib/letterStatus";
 import { useToast } from "@/hooks/use-toast";
 
 import { CardLabel } from "./CardLabel";
@@ -29,12 +36,17 @@ interface PreApprovedCardProps {
  *
  * The reference's "Edit pre-approval letter" is a staff-only action (no borrower
  * edit route) and is intentionally omitted.
+ *
+ * What the button may offer comes from the one shared selector
+ * (lib/letterStatus.ts), not from `hasLetter`: an expired letter offers a fresh
+ * one, and a letter the loan team withdrew offers neither a download nor a
+ * re-mint.
  */
 export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprovedCardProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
+  const statusQuery = useQuery<LetterStatusResponse & { estimatedAmount?: string }>({
     queryKey: loanApplicationKeys.prequalStatus(applicationId),
   });
 
@@ -66,7 +78,10 @@ export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprov
     }
   };
 
-  const hasLetter = statusQuery.data?.hasLetter;
+  const letterState = selectBorrowerLetterState(statusQuery.data, statusQuery.isError);
+  const unusable = describeUnusableLetter(letterState, formatDate);
+  const canDownload = canDownloadLetter(letterState);
+  const canRequest = canRequestLetter(letterState);
   const busy = generateMutation.isPending;
 
   return (
@@ -83,26 +98,35 @@ export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprov
           Your pre-approved loan amount
           {validUntil ? ` · valid until ${validUntil}` : ""}
         </p>
-        <Button
-          onClick={() => (hasLetter ? handleDownload() : generateMutation.mutate())}
-          disabled={busy}
-          variant="outline"
-          className="mt-4 w-full"
-          data-testid="button-view-preapproval-letter"
-        >
-          {busy ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : hasLetter ? (
-            <Download className="mr-2 h-4 w-4" />
-          ) : (
-            <FileText className="mr-2 h-4 w-4" />
-          )}
-          {busy
-            ? "Preparing…"
-            : hasLetter
-            ? "Download pre-qualification letter"
-            : "View pre-qualification letter"}
-        </Button>
+        {unusable && (
+          <p className="mt-3 text-xs text-muted-foreground" data-testid="text-letter-unusable">
+            {unusable}
+          </p>
+        )}
+        {(canDownload || canRequest) && (
+          <Button
+            onClick={() => (canDownload ? handleDownload() : generateMutation.mutate())}
+            disabled={busy}
+            variant="outline"
+            className="mt-4 w-full"
+            data-testid="button-view-preapproval-letter"
+          >
+            {busy ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : canDownload ? (
+              <Download className="mr-2 h-4 w-4" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4" />
+            )}
+            {busy
+              ? "Preparing…"
+              : canDownload
+                ? "Download pre-qualification letter"
+                : letterState.kind === "expired"
+                  ? "Get an updated pre-qualification letter"
+                  : "View pre-qualification letter"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

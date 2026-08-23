@@ -4,6 +4,14 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
+import { formatDate } from "@/lib/formatters";
+import {
+  selectBorrowerLetterState,
+  canDownloadLetter,
+  canRequestLetter,
+  describeUnusableLetter,
+  type LetterStatusResponse,
+} from "@/lib/letterStatus";
 import { PREQUAL_ELIGIBLE_STATUSES } from "@shared/letters";
 
 // Pre-qual and pre-approval letters are the same interaction — check whether a
@@ -22,6 +30,8 @@ type LetterKind = {
   generatedToastDescription: (letterNumber: string) => string;
   errorToastDescription: string;
   generateLabel: string;
+  /** Label when a letter already existed but has expired — this is a reissue, not a first issue. */
+  reissueLabel: string;
   downloadLabel: string;
   generateVariant?: "outline";
   generateTestId: string;
@@ -42,6 +52,7 @@ const LETTER_KINDS = {
     generatedToastDescription: (n) => `Pre-qualification letter #${n} is ready.`,
     errorToastDescription: "Failed to generate pre-qualification letter.",
     generateLabel: "Get Pre-Qualification Letter",
+    reissueLabel: "Get an Updated Pre-Qualification Letter",
     downloadLabel: "Download Pre-Qualification Letter",
     generateVariant: "outline",
     generateTestId: "button-generate-prequal",
@@ -57,6 +68,7 @@ const LETTER_KINDS = {
     generatedToastDescription: (n) => `Pre-approval letter #${n} is ready.`,
     errorToastDescription: "Failed to generate letter. Please try again.",
     generateLabel: "Generate Pre-Approval Letter",
+    reissueLabel: "Get an Updated Pre-Approval Letter",
     downloadLabel: "Download Pre-Approval Letter",
     generateTestId: "button-generate-letter",
     downloadTestId: "button-download-letter",
@@ -76,7 +88,7 @@ export function LoanLetterButton({
   const spec: LetterKind = LETTER_KINDS[kind];
   const { toast } = useToast();
 
-  const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string }>({
+  const statusQuery = useQuery<LetterStatusResponse>({
     queryKey: spec.statusQueryKey(applicationId),
   });
 
@@ -108,11 +120,20 @@ export function LoanLetterButton({
 
   if (!spec.isEligible(status)) return null;
 
-  const hasLetter = statusQuery.data?.hasLetter;
+  // One selector, shared with the two dashboard letter cards: an expired or
+  // revoked letter may never render as "ready to download", and a revoked one
+  // may never be re-minted by the borrower (lib/letterStatus.ts).
+  const letterState = selectBorrowerLetterState(statusQuery.data, statusQuery.isError);
+  const unusable = describeUnusableLetter(letterState, formatDate);
 
   return (
     <>
-      {!hasLetter && (
+      {unusable && (
+        <p className="text-sm text-muted-foreground" data-testid="text-letter-unusable">
+          {unusable}
+        </p>
+      )}
+      {canRequestLetter(letterState) && (
         <Button
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
@@ -125,10 +146,14 @@ export function LoanLetterButton({
           ) : (
             <FileText className="h-4 w-4" />
           )}
-          {generateMutation.isPending ? "Generating..." : spec.generateLabel}
+          {generateMutation.isPending
+            ? "Generating..."
+            : letterState.kind === "expired"
+              ? spec.reissueLabel
+              : spec.generateLabel}
         </Button>
       )}
-      {hasLetter && (
+      {canDownloadLetter(letterState) && (
         <Button onClick={handleDownload} variant="outline" className="gap-2" data-testid={spec.downloadTestId}>
           <Download className="h-4 w-4" />
           {spec.downloadLabel}
