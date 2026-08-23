@@ -26,14 +26,23 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
 
 ## Local inventory
 
-### Selling Guide (`selling-guide/`, added 2026-08-20; un-committed 2026-08-22)
+### Selling Guide (`selling-guide/`, added 2026-08-20; un-committed 2026-08-22; full corpus 2026-08-23)
 
-**Tracked** (factual metadata — titles and page numbers, no Guide prose):
+**The full organized corpus — front door: [`selling-guide/README.md`](selling-guide/README.md).**
+`python3 scripts/extract-selling-guide.py` regenerates everything locally in seconds, and in
+a fresh clone it needs **no setup and no network**: the PDF recovers from this repo's own git
+history, SHA-256-verified. If every path fails it **says so and stops** — a missing source is
+an honest gap, never a licence to answer from memory.
+
+**Tracked** (the fact layer — titles, page numbers, dates, structure; no Guide prose):
 
 - `section-index.tsv` — all 554 TOC entries mapped to PDF page. This is how you find a
   section: `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv`.
 - `revised-sections.tsv` — the 25 sections revised in the 08-05-2026 edition, derived from
   the PDF's highlight annotations. Diff this against the next edition to scope a re-scrub.
+- `toc.json` — the same structure machine-readable (id, title, effective date, page range,
+  breadcrumb, per-section file path); `INDEX.md` — the Guide as a browsable linked tree;
+  `manifest.json` — corpus identity (PDF SHA-256, recovery blob, counts).
 
 **Gitignored** (the copyrighted work itself — regenerate, never commit):
 
@@ -42,11 +51,10 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
   plain `grep -n` names the governing section. No tooling needed to read it once generated.
   ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an anchor and reports
   zero matches on text that is verbatim present. Lines wrap mid-sentence; grep a fragment.
-
-Generate both with `python3 scripts/extract-selling-guide.py`. It looks at
-`$SELLING_GUIDE_PDF`, then the gitignored path above, then the founder's reference-documents
-folder — and if none exists it **says so and stops**, which is the correct outcome: a missing
-source is an honest gap, never a licence to answer from memory.
+- `extracted/sections/<ID>.txt` — one file per section (423), heading-anchored, with pages,
+  breadcrumb and revised-flag in the header; `python3 scripts/extract-selling-guide.py
+  --section B3-6-05` prints one. 🚨 Tables flatten in text extraction — verify any
+  threshold, matrix cell or limit against the PDF page (details in the front door README).
 
 Our findings from scrubbing the code against it — including which rules were checked and
 found **conforming** — live in

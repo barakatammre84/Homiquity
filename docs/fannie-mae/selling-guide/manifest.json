@@ -1,0 +1,36 @@
+{
+ "_": "Identity of the Selling Guide corpus. The sha256 pins the exact edition; git_blob/git_commit is where the PDF is recoverable from this repo's own history with no network (scripts/extract-selling-guide.py does this automatically). Facts only — no Guide content.",
+ "edition": "08-05-2026",
+ "source_pdf": {
+  "filename": "Selling-Guide_08-05-2026.pdf",
+  "sha256": "9b3fd0e850736142868d6801e2ef7b7674f1e0a26e2cf633db537773ac28e239",
+  "bytes": 3606598,
+  "git_blob": "c984148cc8300ce6821687b6af6b0e637cafc461",
+  "git_commit": "978ec3839a69d15058c819d17cf19697cd7cd2dd"
+ },
+ "pdf": {
+  "pages": 1185,
+  "toc_entries": 554,
+  "highlight_annotations": 175
+ },
+ "structure": {
+  "leaf_sections": 423,
+  "group_nodes": 129,
+  "front_matter_nodes": 2
+ },
+ "tracked": [
+  "README.md",
+  "INDEX.md",
+  "section-index.tsv",
+  "revised-sections.tsv",
+  "toc.json",
+  "manifest.json"
+ ],
+ "generated_gitignored": [
+  "Selling-Guide_08-05-2026.pdf",
+  "selling-guide-text.txt",
+  "extracted/"
+ ],
+ "regenerate": "python3 scripts/extract-selling-guide.py",
+ "format_version": 2
+}
