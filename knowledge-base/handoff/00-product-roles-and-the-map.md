@@ -57,7 +57,7 @@ flowchart TD
 
 ## The facts, with receipts
 
-Every claim: `path:line` · the symbol there · the command that shows it (outputs at 12d7cbec).
+Every claim: `path:line` · the symbol there · the command that shows it (outputs at 6377727e).
 
 - **The product is a brokerage, not a lender.** `README.md:3` — "An AI-native mortgage
   **brokerage** platform: borrower intake (digital 1003), document collection, deterministic

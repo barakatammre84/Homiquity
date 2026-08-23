@@ -260,7 +260,7 @@ grep -rho 'data-testid="[^"]*"' client/src | wc -l
 
 | Question | What resolves it |
 |---|---|
-| Do the guards currently pass on 12d7cbec? Only committed baselines are quoted here — the token/bundle guards write files on a shrink, so they were not run. | `pnpm guard:tokens && pnpm guard:ui` then `git status` (stage any tightened baseline); `pnpm build && pnpm guard:bundle`. |
+| Do the guards currently pass on `6377727e`? Only committed baselines are quoted here — the token/bundle guards write files on a shrink, so they were not run. | `pnpm guard:tokens && pnpm guard:ui` then `git status` (stage any tightened baseline); `pnpm build && pnpm guard:bundle`. |
 | Is dark mode reachable at all? `tailwind.config.ts:4` is `darkMode: ["class"]` and `index.css:265` defines `.dark {}`, but `next-themes` is not in `package.json` and nothing under `client/src` toggles the class. | `grep -rn "classList.*dark\|ThemeProvider\|useTheme" client/src`; the design owner. |
 | Are there undocumented route-order dependencies beyond `:300` (e.g. `/redeem-invite` vs `/redeem-invite/:code` at `:260-261`)? | A read of adjacent `<Route>` pairs. |
 | Do the 7 remaining raw `fetch(` sites equal the `ALLOWED_RAW_FETCH` map exactly? | `tests/apiRequestConvergence.test.ts:25` vs the grep. |
@@ -289,9 +289,9 @@ ratchet straps over the cargo: they only tighten.
 
 ## Go deeper
 
-- [app-guide 07](../handbook/app-guide/07-frontend.md) — with measured drift at 12d7cbec: `:3`
-  "React 18" (19.2.8); `:12-13` "~420 lines … 160+ routes" (635 / 121); `:9` lists `next-themes`
-  (absent); the page-map table at `:16-37` is stale across the board; `:56-58` and `:75` quote
+- [app-guide 07](../handbook/app-guide/07-frontend.md) — its headline drift (React 18, the
+  `next-themes` listing, the stale line/route figures) was fixed by #694 on 2026-08-23; still open
+  at `6377727e`: the page-map table is stale across the board, and `:56-58` / `:75` quote
   adoption figures the generated table in `DESIGN_SYSTEM.md:42` has since replaced. Still accurate:
   the alias table, the `dist/public` static story, the `VITE_*` build-time warning.
   [app-guide 12](../handbook/app-guide/12-api-contract.md) — `:27` client ownership, `:52-64` the
