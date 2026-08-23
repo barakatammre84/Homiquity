@@ -16,11 +16,17 @@ LO cockpit. Open `FINDINGS.md` rows: **unchanged** — this gap was not in the r
    path id, which was otherwise the cleaner model. A one-line test asserting the two arrays are
    equal would close it; it belongs to whoever owns `shared/situationProfile.ts`, not to a
    feature-completion tick.
-3. **`CF-0818-02` is still open and is procurement, not code.** `capital_gains_present` is
-   classified (`server/services/situationClassifier.ts:180-185`) and reconciled
-   (`server/services/taxReconciliation.ts:271`) and **no path computes capital-gains income**;
-   `docs/fannie-mae/` holds no B3-3.1-09. A borrower whose income is materially capital gains
-   qualifies down no path and is told nothing about why. Citable document first, then a path.
+3. **`CF-0818-02` is still open — and it is NOT what the standing note says it is.**
+   `capital_gains_present` is classified (`server/services/situationClassifier.ts:180-185`) and
+   reconciled (`server/services/taxReconciliation.ts:271`) and **no path computes capital-gains
+   income**, so a borrower whose income is materially capital gains qualifies down no path and is
+   told nothing about why. That much holds. But the note carried in cross-session memory named a
+   section in the B3-3.1 range as the document to procure, and **the committed edition contains no
+   such id** — that range stops at -04. The governing section is **B3-3.4-05, Capital Gains Income
+   (03/04/2026)**, already named at `docs/fannie-mae/selling-guide/section-index.tsv:151`. So the
+   blocker is not procurement of an unknown document; it is that only the *index* is on `main` —
+   the section bodies are in open
+   [PR #708](https://github.com/barakatammre84/Homiquity/pull/708). Retarget the ticket.
 
 ## Summary
 
@@ -158,6 +164,24 @@ detectTriggers(12 changed files, 605 changed lines) → []      (§9 does not fi
 the citation line beside it, and pushed `arbitraryTypeScale` 151 → 152. The ratchet only goes down,
 so it became `text-xs`. Recorded because "I copied the neighbouring line" is how a ratchet erodes.
 
+**The §10 Selling Guide authority guard failed the first push, correctly, and on this report.** The
+first version of ⛔3 above repeated a B3-3.1-range section id from cross-session memory; the guard
+rejected it because no such id is in the committed edition's index, which stops at -04. The id is a
+plausible-looking neighbour of a real *historical* one — B3-3.1-08, which renumbered to B3-3.8-01,
+the very citation this PR relies on elsewhere — which is how a fabricated cite survives a read-through.
+It is the guard's stated purpose — *"an
+unknown id is a WRONG citation, not merely an old one"* — working on a citation that had been
+asserted in memory for five days and would otherwise have been copied forward again. Neither
+`pnpm preflight` nor the local guard list reaches it: it needs `CHANGED_FILES_FILE` /
+`CHANGED_LINES_FILE`, so it only ever runs in CI unless invoked by hand:
+
+```
+CHANGED_FILES_FILE=… CHANGED_LINES_FILE=… pnpm guard:authority
+```
+
+Worth adding to the routine's local gate list — a guard that only fires in CI costs a full cycle
+every time it catches something.
+
 ### What was not verified
 
 **No browser verification.** The AVAILABLE state needs approved-grade status **and** decision-grade
@@ -183,11 +207,14 @@ its own contract is the failure `CHARTER` §0 is about.
    `shared/situationProfile.ts:31` declare the same five ids independently. Identical today. A
    test asserting equality is one line and would have made adding a sixth path id safe, which is
    the option this PR had to decline.
-2. **`CF-0818-02` — capital-gains income is classified but computable down no path.** Procurement
-   of a citable B3-3.1-09 into `docs/fannie-mae/` first. Until then, consider whether a borrower
-   whose file carries `capital_gains_present` should be *told* that source is not yet countable,
-   rather than seeing a qualifying total that quietly omits it — that is the "silently qualify
-   down no path" case this seat exists to find.
+2. **`CF-0818-02` — capital-gains income is classified but computable down no path, and the
+   ticket's own citation was wrong.** Governing section is **B3-3.4-05, Capital Gains Income
+   (03/04/2026)** (`docs/fannie-mae/selling-guide/section-index.tsv:151`), not the B3-3.1-range id
+   the standing note claimed — that id is absent from the committed edition. Gated on the section
+   bodies landing (PR #708), not on procurement. Until then, consider whether a borrower whose file
+   carries `capital_gains_present` should be *told* that source is not yet countable, rather than
+   seeing a qualifying total that quietly omits it — that is the "silently qualify down no path"
+   case this seat exists to find.
 3. **Backfill or re-evaluate old income evaluations for complex files.** A file with a rental split
    or subject unit rent that was evaluated before this PR now shows "breakdown unavailable" until
    its next evaluation. Re-evaluation happens on any income change or decision recalculation, so
