@@ -37,3 +37,7 @@ mismo-*.xml
 # `vitest/config` resolves from and where `__dirname` has to point; removed in a
 # `finally`, so one appearing here means a run was killed mid-flight.
 .hq-test-collection-guard.*.mjs
+# The ralph-loop state file. Written by the plugin's setup script (outside the repo)
+# and rewritten on every iteration, so it is per-run scratch and never shared state.
+# The acceptance run in handoff ch.12 had to remember to leave it untracked by hand.
+.claude/ralph-loop.local.md
