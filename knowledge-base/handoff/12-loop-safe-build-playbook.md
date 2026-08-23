@@ -172,7 +172,7 @@ destructive-operation categories were passed as disallowed tools. 83 turns, 22.5
 lines below are copied from its logs and its LOOP REPORT; the PR number lives only in the
 ledger's run log. **The counts in this table are the run's, not today's** — it executed at
 `074899e3`, when the allowlist held 218 entries and 120 client tests were tracked; four commits
-have landed since (219 / 122). Do not read them as current facts; read them as what the harness
+have landed since (219 / 123). Do not read them as current facts; read them as what the harness
 printed on the day, which is the point of recording a run at all.
 
 | step | what happened | copied from the logs |
