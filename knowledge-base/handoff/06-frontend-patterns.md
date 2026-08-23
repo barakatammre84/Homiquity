@@ -129,7 +129,7 @@ flowchart TD
   (`:417` — "a confident, frozen 'we're reviewing your file' to a borrower forever"),
   `borrowerGraphKeys` (`:439` — a path that does not exist), `calculatorResultKeys` (`:270-279` —
   has no reader; kept as the canonical shape).
-- **Three guards, three questions.** `package.json:42` `guard:querykeys` runs
+- **Three guards, three questions.** `package.json:44` `guard:querykeys` runs
   `scripts/query-key-guard.cjs` (no interpolated template-string key under `client/src`, `:15`),
   `scripts/query-key-reachability.cjs` (every invalidate/remove/refetch/reset key must element-wise
   prefix-match a fetched key, `:35-37`; cross-file misses are warnings, `:71-72`; sibling omission
