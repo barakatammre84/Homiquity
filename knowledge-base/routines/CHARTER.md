@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane). **§2 and §3/§3a were also re-verified 2026-08-20 by `/doc-accuracy`** (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe). **§3a, §6 and §6's always-off-limits list amended 2026-08-23 to register the Selling Guide Steward** (daily 05:30 UTC, CCR; the Guide fact layer and its watch state get their single writer — founder-approved plan of the same day; the CCR trigger is registered in the session that sees the corpus PR merge, per §11).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane). **§2 and §3/§3a were also re-verified 2026-08-20 by `/doc-accuracy`** (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe). **§3a, §6 and §6's always-off-limits list amended 2026-08-23 to register the Selling Guide Steward** (daily 05:30 UTC, CCR; the Guide fact layer and its watch state get their single writer — founder-approved plan of the same day; the CCR trigger is registered in the session that sees the corpus PR merge, per §11). **§1, §1a and §6 amended 2026-08-23 by the founder — the development-first directive** (nothing blocks development except the tech itself; the Selling Guide named the golden handbook for every seat and the base of the roadmap; the lender-persona build gate lifted; two counsel exceptions retained by name — see §1a).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -41,9 +41,14 @@ that checkable.
 Every routine ranks every finding, ticket, and PR by these, in this order. They are the product,
 not a lens on it.
 
-> **A. Does it deliver a clean, complete, valid mortgage package to the lender?**
+> **A. Does it deliver a clean, complete, valid mortgage package to the lender — conforming
+> to the Fannie Mae *Selling Guide*, cited by section?**
 > Does an *organic* borrower file — not the demo seed — reach a wholesale lender with valid
-> ULDD/UCD/URLA/MISMO, no invented field names, and every delivery edit satisfied?
+> ULDD/UCD/URLA/MISMO, no invented field names, every delivery edit satisfied, and the policy
+> content conforming to the *Selling Guide* (edition 08-05-2026; B1–B7 are the product backlog
+> per [SELLING_GUIDE_COVERAGE.md](../compliance/SELLING_GUIDE_COVERAGE.md), and gaps are
+> ledgered, never assumed away, in
+> [SELLING_GUIDE_CONFORMANCE.md](../compliance/SELLING_GUIDE_CONFORMANCE.md))?
 >
 > **B. Is the borrower and partner experience best-in-class?**
 > Lowest friction, highest capture quality, design-system-conformant, WCAG AA. A borrower who
@@ -79,7 +84,7 @@ a single closed row. Green delivery suites hide it because **the fixture is the 
 
 ---
 
-## 1a. The mission, and why launch is no longer the ranking input
+## 1a. The mission, why launch is no longer the ranking input, and what is
 
 Homiquity is an **online end-to-end mortgage brokerage**.
 
@@ -114,6 +119,43 @@ changed is that no *engineering* seat is ranked by it.
 **Nothing in this directive relaxes a rail.** §6 write territory, §9 security triggers, the
 compliance gates, the citation requirement for regulated math, and the L3/L4 rows of §1b are
 untouched. A directive that raises the quality bar cannot be read as lowering a safety one.
+
+> ### ⛔ Founder directive, 2026-08-23 — development-first, and the golden handbook
+>
+> **Nothing blocks development of the app except the tech itself fully functioning.** The only
+> legitimate blockers on build work are technical: a red trunk, a failing gate, a correctness
+> rail. **Outside business activity — licensing, contracts, counsel, procurement, GTM, go-live —
+> has nothing to do with what we build.** It stays real founder work at its existing cadence, in
+> a parallel lane (`CTO_ROADMAP.md` §1), and it **never ranks, pauses, or gates an engineering
+> item**. A contract or credential flips a simulation live at its adapter seam; it never gates
+> building the sim-first seam itself.
+>
+> **The Fannie Mae *Selling Guide* is the golden handbook for every executive seat.** It dictates
+> the decisions of every role in this suite, and it is the base of the roadmap: the coverage map
+> says *have we looked* ([SELLING_GUIDE_COVERAGE.md](../compliance/SELLING_GUIDE_COVERAGE.md)),
+> the conformance ledger says *what did we find*
+> ([SELLING_GUIDE_CONFORMANCE.md](../compliance/SELLING_GUIDE_CONFORMANCE.md)), and
+> `CTO_ROADMAP.md` says *what we will do* — its build queue is keyed to the Guide's own parts,
+> B1–B7 the product backlog (A3-3-01: Homiquity is a third-party originator, and the wholesale
+> lender underwrites our files to this book).
+>
+> **The target is the three-party deliverable**: a fully functional, real-time loan-producing
+> system that delivers the final end product to the client (the borrower), the broker, and the
+> wholesale lender. Guide conformance plus the three parties served is the standing ranking
+> input; the client-quality tiebreak above still resolves whatever remains equal after it.
+
+**Two founder-retained exceptions, named so this directive cannot be read past them.** The
+referral-commission payout path (`CTO_ROADMAP.md` 3.7 / §1.10 — its Reg Z / RESPA posture is
+unanswered) and the UAL halal lane (UAL P7 — two founder calls plus the spec-§5 counsel review)
+remain **do-not-build pending counsel**, by the founder's explicit 2026-08-23 choice. They are the
+only build prohibitions that survive this directive.
+
+**Nothing in this directive relaxes a rail, either.** The correctness of the built tech is part
+of "the tech fully functioning": the §10 Selling Guide citation gate (`pnpm guard:authority`),
+no-invented-MISMO-names, the deterministic engines, the PII vault and audit log, the
+conservative-direction rule, the migration gates, §9 security review, the runtime pre-launch gate
+on soliciting surfaces, and the L3/L4 rows of §1b all stand. A directive that removes business
+gates from building cannot be read as loosening a safety gate on what is built.
 
 ---
 
@@ -544,14 +586,14 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 
 | Routine | May edit | Never edits |
 |---|---|---|
-| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Capture Path Engineer claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
+| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Capture Path Engineer claim; files with open `refactor-radar/LEDGER.md` rows; §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
 | Trunk Health (was Launch Gate) | nothing | — (report + proposed tickets only) |
 | Capture Path Engineer (was Wiring Audit) | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
 | Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b); **dependency-bump triage per §6c — verdicts only, never the manifest** | `client/**` — not one line; `package.json`/`pnpm-lock.yaml` (§6c is verify-only); the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
 | Lender Package Gate | small, safe, isolated fixes only | the underwriting/decision engines; anything larger than a single isolated fix — it hands those to the Feature Completion Engine |
 | QA Sweep | nothing | — (findings only; fixes go to a build lane or a human) |
 | Workflow Completion Engine | the **one seam** it fixes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/workflow-completion/**` and its report (L1/L2 per §1b) | more than one seam per run; any file under an active REGISTER claim or in an open PR; the `URLA_FORM_REFACTOR_TRAP.md` prohibitions; §9-tripping diffs as *ready* PRs (draft + human-written review only) |
-| Feature Completion Engine | the **one domain** it takes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/feature-completion/**` and its report (L1/L2 per §1b) | the underwriting/decision/rule engines (it may surface and route them, never edit them); regulated math without a same-commit ledger citation; the deferred lender persona UI/API (founder-gated); any file under an active REGISTER claim or in an open PR |
+| Feature Completion Engine | the **one domain** it takes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/feature-completion/**` and its report (L1/L2 per §1b) | the underwriting/decision/rule engines (it may surface and route them, never edit them); regulated math without a same-commit ledger citation; any file under an active REGISTER claim or in an open PR |
 | Client Journey Walk *(hand-invoked since 2026-08-23; was the daily 17:06 seat)* | `knowledge-base/routines/journey-walk/**`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
 | Handoff Corpus Steward *(the 17:06 seat since 2026-08-23)* | `knowledge-base/handoff/**`, its own report, and the `guard:ui` §0 table only when that guard demands it | every code path; **every sibling doc** — drift there becomes an `HO-` row, never a fix (that rule is what keeps the corpus a reader, not an authority); this file; its own `SKILL.md`; peer cross-run memory |
 | Selling Guide Steward *(daily 05:30 UTC, CCR — registered 2026-08-23)* | the Guide's tracked fact layer under `docs/fannie-mae/selling-guide/**` (regenerated by the extractor, never hand-edited) + `data/regulatory/selling-guide-watch-*.json` + its own report — **the two path sets below the line were off-limits to every seat until this row; this steward is their single writer** (draft PRs only) | every code path including `scripts/**` and the extractor's pinned constants (edition cutover is ⛔ founder runbook); the regulatory seat's `regulatory-ledger.json` / `regulatory-watch-*.json`; `knowledge-base/handoff/**` (the Handoff Corpus Steward's lane, ch. 13 included); `selling-guide-coverage.json` (section judgement lives with reviewing seats); `acknowledgedBlocked` entries (proposes ⛔, human commits); this file; its own `SKILL.md` |
