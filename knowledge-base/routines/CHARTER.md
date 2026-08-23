@@ -196,6 +196,7 @@ walk seat was reshaped again — see the Handoff Corpus Steward note below the t
 | Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | organic-file delivery verdict + one field's write path cleared |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state compliance ladder + signature-ready drafts |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
+| Sat 15:30 | `30 15 * * 6` | **UI Conformance Sweep** (`ui-conformance-sweep`) | weekly | yes — `client/src/**` visual only | one conformance PR + a `UC-…` ledger row, or a stated clean tick |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
 | 1st 09:35 | `35 9 1 * *` | **Vendor & Platform Risk** (`vendor-procurement`) | monthly | no | platform floor + vendor lead-time watch |
 
@@ -326,12 +327,13 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 | Wed 13:00 | `0 13 * * 3` | Weekly UX audit vs Better standard | weekly | no — report only | top-issues report |
 | 1st 13:00 | `0 13 1 * *` | Monthly financial-architecture audit | monthly | via [`/financial-audit`](../../.claude/skills/financial-audit/SKILL.md) rails | ledgered `F-…` findings |
 | 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
-| 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
 | hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
 | 03:40 / 09:40 / 15:40 / 21:40 | `40 3,9,15,21 * * *` | **Doc Accuracy** (`doc-accuracy`) | every 6 h | yes — living `.md` only (§6) | ≤1 docs PR/day + [`DA-…` ledger](../doc-accuracy/LEDGER.md) |
 
-**Three of these cite a skill that is not on `origin/main` yet** — Doc Accuracy, the UI
-conformance sweep and the Backend Data Engineer each name a founding PR that has not merged. All
+**Two of these cite a skill that is not on `origin/main` yet** — Doc Accuracy and the Backend
+Data Engineer each name a founding PR that has not merged. (The UI conformance sweep was the
+third; its skill is on `main`, and it moved to the local fleet — §3, Sat 15:30 — because this
+CCR seat produced **zero reports** in its entire life.) All
 three are written to say exactly that and stop, which is the correct shape for a routine whose
 dependency has not landed; it is still a standing debt, because a routine that cannot act is not a
 control (§0). **Two of them write code** (the other seven are report-, issue- or PR-lane only), so

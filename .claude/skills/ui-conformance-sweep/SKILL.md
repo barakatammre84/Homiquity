@@ -5,7 +5,11 @@ description: Use ONLY when the user explicitly invokes /ui-conformance-sweep or 
 
 # UI Conformance Sweep — the routine that makes the design standard true
 
-**Cadence:** daily, 16:25 UTC (CCR fleet — see CHARTER §3's second-fleet table).
+**Cadence:** **Saturdays 15:30 local** (local fleet — CHARTER §3). Moved off the CCR fleet
+2026-08-23: that seat ran daily on paper and produced **zero reports in its entire life**,
+because the CCR fleet does not fire here. Saturday is the only day carrying no other weekly
+seat, and 15:30 clears every daily seat by 90 minutes — CHARTER §3: two routines writing code
+in the same ten minutes is how a peer's refactor gets clobbered.
 **Writes code:** yes — `client/src/**`, visual conformance only.
 **Produces:** **one** conformance PR + one report. A clean tick produces neither and says so.
 **Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
