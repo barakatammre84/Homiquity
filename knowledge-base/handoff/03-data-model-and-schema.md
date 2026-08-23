@@ -134,7 +134,7 @@ erDiagram
   `USE_LOCAL_PG=true`), Neon serverless otherwise; `drizzle.config.ts:9-10` points at the barrel and
   `./migrations`.
 - **Migrations.** `ls migrations/*.sql | wc -l` → `58` (`0000`…`0057`); `grep -c '"tag"' migrations/meta/_journal.json`
-  → `58`; journal entry shape `{idx, version:"7", when, tag, breakpoints:true}`. `package.json:25,29`
+  → `58`; journal entry shape `{idx, version:"7", when, tag, breakpoints:true}`. `package.json:26,29`
   block `db:generate` and `db:push` with an explaining `echo … && exit 1`.
   `scripts/schema-migration-guard.cjs:5-18` exists because of the 2026-07-13 outage and runs schema
   → migrations only; `scripts/migration-ledger-guard.cjs:18-24` runs six hard checks.
