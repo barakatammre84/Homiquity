@@ -289,5 +289,5 @@ and nowhere else.
 [prompts/_RAILS.md](prompts/_RAILS.md) · [prompts/_REPORT_FORMAT.md](prompts/_REPORT_FORMAT.md) ·
 [prompts/INVOKE.md](prompts/INVOKE.md) · chapter 07 (what each lane proves) · chapter 09 (the
 rails' ancestry) · chapter 11 (the patterns the rails compress) · `knowledge-base/governance/TEAM_PRACTICES.md`
-§9 (the definition of done every template's PR body must satisfy) · `knowledge-base/routines/CHARTER.md`
+§5 (the definition of done every template's PR body must satisfy) · `knowledge-base/routines/CHARTER.md`
 §6 (what a loop may decide alone).

@@ -40,8 +40,10 @@ source, then simplify again. Each chapter is built in that order and you can rea
 [00 Product, roles and the map](00-product-roles-and-the-map.md) →
 [01 Architecture and the request lifecycle](01-architecture-request-lifecycle.md) →
 [02 Authentication and authorization](02-auth-and-authorization.md) →
-[07 Test harness and the CI proof hierarchy](07-test-harness-and-ci-proof.md).
-Then run `bash scripts/dev-up.sh` from the repo root and the Day-1 teach-backs.
+[07 Test harness and the CI proof hierarchy](07-test-harness-and-ci-proof.md) →
+[13 Day one to first PR](13-day-one-to-first-pr.md).
+Then walk chapter 13's eight steps for real — `bash scripts/dev-up.sh` through your first
+squash merge — and close with the Day-1 teach-backs.
 
 **Week 1 — how does a loan move through it?**
 [03 Data model and schema](03-data-model-and-schema.md) →

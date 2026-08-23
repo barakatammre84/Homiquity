@@ -125,3 +125,30 @@
 6. `ci.yml:19-23` — a second copy of a credential breaks CI on every rotation and is one more thing to leak; the URI is minted from `NEON_API_KEY` and piped into `migrate-prod`'s env by command substitution (`:588`), never echoed.
 7. 5001 local (`.env.example:59`, `scripts/dev-up.sh:27`), 5002+ worktrees (`LOCAL_DEV.md:187`), 3999 boot / 4000 integration in preflight (`scripts/preflight.sh:37-38`), 5433 for `scripts/local-db.sh`. 5000 is skipped because macOS AirPlay squats on it and answers 403 (`LOCAL_DEV.md:186-187`); `server/app.ts:657` still defaults to 5000.
 8. Neon's serverless WebSocket driver; `server/db.ts:23-24` picks node-postgres only for `USE_LOCAL_PG=true` or a `localhost`/`127.0.0.1` URL (`:30-37`), both cast to one type so the call sites never see a union.
+
+## 11 — Patterns and repetition
+
+1. `RESPONSE_BODY_LOG_ALLOWLIST` (`server/app.ts:481`), `UPDATABLE_COLUMNS` (`server/routes/lending/statusDecisions.ts:78`), and the node test lane's include array (`vitest.config.ts`). The incident: the response-body logger was a **denylist** and would have logged SSNs on `/api/urla/*` — `server/app.ts:475-480` now says "do not revert to one" (pattern A2).
+2. A6 — one writer per state machine. `tests/statusVocabulary.test.ts:254-259` allow-lists the four files that may write `loan_applications.status`, so the sanctioned bypass (`finalizeIntake`, `server/services/loanAnalysis.ts`) is *named* rather than forbidden — a new writer fails the test instead of slipping in.
+3. Because both hand-maintained copies it replaced drifted and each cost something: the 733-line `IStorage` interface (now derived — `server/storage/index.ts:21`) and the design-system adoption table (generated after the hand-typed one drifted 57% → 82% unread). `FACTS.md` in this corpus is the third instance (A1).
+4. A ratchet fails only on regression past a committed baseline; a hard zero fails on any occurrence. The citation guard ratchets (`scripts/citation-baseline.json` → 29) because 29 pre-existing unresolved references would keep a hard zero red forever — the ratchet lets the number only fall (A10).
+5. Read-not-copied shared rails: `prompts/_RAILS.md` is read by every loop exactly as `.claude/agents/_OWNER_RAILS.md` is read by every owner agent (`_OWNER_RAILS.md:7`). It prevents N copied rulebooks disagreeing — the two-truths failure the routines charter §1 documents.
+6. That the house's work is overwhelmingly *keeping behaviour true* rather than adding surface — so a loop is scoped as one small verified correction (characterisation test first), and a cross-boundary feature is several loops, not one (`prompts/feature.md`; §C's history table).
+
+## 12 — The loop-safe build playbook
+
+1. Because a loop that can only say "done" lies when it is stuck. `<promise>LOOP TERMINAL</promise>` is true for `STATUS: DONE` **or** `STOPPED(<reason>)` (`prompts/_REPORT_FORMAT.md`) — *terminal* means "another iteration will not help", which lets a blocked loop stop honestly instead of burning `MAX_ITER` pretending.
+2. It stops and reports the shortfall: 214 collected of 215 on disk is the silent-under-collection failure. Since #670 (`fd4a22c5`) `pnpm test` **is** `scripts/test-collection-guard.cjs` and fails the run itself; R14's manual comparison stays as the fallback. A loop never re-runs until green.
+3. `STOPPED(hand-back)`. `server/services/lookupResolver.ts` feeds the deterministic decision path — the engines are off limits to every routine and loop (routines charter §10); a loop may surface and route the fix, never write it.
+4. T2 (`pnpm preflight --fast`) and T3 (full `pnpm preflight` with the prod-mode boot and the integration lane). Nothing runs them on a schedule; a human runs them before merging and pastes the output into the PR body.
+5. It commits the tightened baseline in the same PR (the ratchet pattern — routines charter §10a: "the tightened baseline is committed in the same PR"). It must never loosen or re-raise a baseline to get green — a ratchet only goes down.
+6. `prompts/new-test.md` — the zero-risk loop: one characterisation test plus one config line exercises the whole harness (worktree, install, lanes, gate, PR contract) while guaranteeing no behaviour change; `prompts/INVOKE.md` names it the first loop to run on unfamiliar ground.
+
+## 13 — Day one to first PR
+
+1. The worktree has no `node_modules`, so imports resolve upward into the primary checkout and `tsc` reports phantom errors in files you never touched (`../routines/LESSONS.md`). Fix: `pnpm install --frozen-lockfile` **inside the worktree**, re-run after every rebase.
+2. `bash scripts/dev-up.sh`, port 5001 (`scripts/dev-up.sh:27`). Its `/api/health` answers `commit: null` — the local-dev signature; only a deployed container reports a commit.
+3. A human squash merge — your own, per TEAM_PRACTICES §6 (no required reviews). Nothing platform-side stands there: `main` requires zero status checks (FACTS F-44), so the gate's green is evidence you choose to require, and the merge itself is the production deploy (chapter 10 owns what follows).
+4. Pasted verification evidence, and the doc-sync line — `docs updated: <files>` or `no doc update required`. Silence is **not** a doc-sync statement (TEAM_PRACTICES §5).
+5. Before 2026-08-23 you would conclude the file matched no lane and was silently never run — the stranded-test trap. Since #670, `pnpm test` fails on any collection shortfall, so a green run means your file **was** collected; if it genuinely did not run, you are on a pre-#670 checkout or something bypassed the floor — check `git log --oneline -1 -- scripts/test-collection-guard.cjs` before anything else.
+
