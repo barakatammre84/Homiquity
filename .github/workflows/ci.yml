@@ -454,6 +454,61 @@ jobs:
           CHANGED_FILES_FILE="$RUNNER_TEMP/sg_changed_files.txt" \
           CHANGED_LINES_FILE="$RUNNER_TEMP/sg_changed_lines.diff" \
             pnpm guard:authority
+      - name: Selling Guide corpus coherence
+        # The corpus fact layer (section-index.tsv, toc.json, links.json,
+        # manifest.json, INDEX.md) is ONE derivation from one PDF; this proves the
+        # files agree with each other and with the extractor's pinned identity.
+        # Node-only, <1s, INERT until the corpus lands on the branch. DELIBERATELY
+        # NOT behind the scope step: `^docs/` classifies as inert there, so a
+        # corpus-only PR is exactly the one this must run on —
+        # tests/ciTriggers.test.ts pins that property. (Job `name:` above
+        # deliberately unchanged — verbatim required-check string.)
+        run: pnpm guard:corpus
+      - name: Selling Guide coverage map current
+        # SELLING_GUIDE_COVERAGE.md is rendered from selling-guide-coverage.json +
+        # section-index.tsv; a stale render was previously ungated — guard:coverage
+        # existed in package.json wired into NOTHING, so the 423-row map could
+        # silently drift from its status file. INERT-safe by design; not
+        # scope-gated for the same reason as the step above.
+        run: pnpm guard:coverage
+      - name: Restore pip cache (extraction proof)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # Keyed on the extractor source, which carries PYMUPDF_PINNED — a pin
+          # bump changes the hash and misses the cache, which is the correct
+          # (merely slower) behaviour.
+          key: pip-pymupdf-${{ hashFiles('scripts/extract-selling-guide.py') }}
+      - name: Selling Guide extraction proof (recover → extract → verify)
+        # The full proof the two cheap guards cannot give: recover the PDF from
+        # this repo's own git history (fetch-depth: 0 above makes the blob
+        # reachable), re-extract, and verify the tracked fact layer is exactly what
+        # the PDF yields. The pymupdf version is DERIVED from the extractor's
+        # PYMUPDF_PINNED constant, never restated here — a floating version would
+        # red this gate for every open PR the day upstream changes text
+        # extraction, so version bumps are deliberate PRs that regenerate the
+        # fact layer. venv because ubuntu-latest's system python is externally
+        # managed (PEP 668); pip retries ×3 because a PyPI flake is a re-run,
+        # never a continue-on-error — this is the gate. Writes only gitignored
+        # files into the work tree. NOT scope-gated, same reason as above.
+        # (Job `name:` above deliberately unchanged.)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f scripts/extract-selling-guide.py ]; then
+            echo "INERT — extractor not on this merge ref"; exit 0
+          fi
+          PIN="$(sed -n 's/^PYMUPDF_PINNED = "\(.*\)"$/\1/p' scripts/extract-selling-guide.py)"
+          if [ -z "$PIN" ]; then
+            echo "cannot derive PYMUPDF_PINNED from the extractor — fix the anchor, do not hard-code"; exit 1
+          fi
+          python3 -m venv "$RUNNER_TEMP/sg-venv"
+          for i in 1 2 3; do
+            if "$RUNNER_TEMP/sg-venv/bin/pip" -q install "pymupdf==$PIN"; then break; fi
+            if [ "$i" = 3 ]; then echo "pip install pymupdf==$PIN failed after 3 attempts"; exit 1; fi
+            sleep $((i * 10))
+          done
+          "$RUNNER_TEMP/sg-venv/bin/python" scripts/extract-selling-guide.py --check
       - name: Query-key convergence guard
         if: steps.scope.outputs.code == 'true'
         # TWO checks, both behind this one script. `invalidateQueries` is the only
