@@ -108,7 +108,7 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
   `:151` `vite ^7.3.6` · `:152` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
   → `39a42bfc 2026-08-04 …bump react… (#301)`), while two app-guide chapters said React 18
   until the handbook fix of 2026-08-23 (LEDGER HO-0822-06, done).
-- **Two package scripts are fuses, not commands.** `package.json:30` `db:generate` and `:34`
+- **Two package scripts are fuses, not commands.** `package.json:32` `db:generate` and `:36`
   `db:push` both begin `echo 'BLOCKED: …' && exit 1` — generate has snapshot drift; push drops
   columns owned by other branches on the shared dev DB, and prod is migrate-only (chapter 10).
 

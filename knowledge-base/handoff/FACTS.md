@@ -23,8 +23,9 @@ confident lie, and the next `--check` after the merge catches it in seconds. (Th
 of the `guard:ui` §0 rule, and for a good reason — that table is a *gate* that fails the build, so
 it must move with its PR; this file is a *record*, so it must follow `main`.)
 
-**37 of the 44 rows are machine-checkable** — the other 7 print prose rather than an integer, and
-`--check` names them rather than passing them silently (F-04, F-06, F-16, F-23, F-30, F-39, F-43).
+**40 of the 48 rows are machine-checkable** — the other 8 print prose rather than an integer, and
+`--check` names them rather than passing them silently (F-04, F-06, F-16, F-23, F-30, F-39, F-43,
+F-44).
 The "re-derive by hand" recipe at the bottom is what the generator automates, and remains the
 fallback if it is ever deleted — nothing depends on it.
 
@@ -54,13 +55,13 @@ and returns nothing — a false "the file changed").
 | F-12 | `.transaction(` call sites | `grep -rn "\.transaction(" server --include='*.ts' \| wc -l` | 6 |
 | F-13 | node-lane allowlist · test files on disk | `grep -cE '^\s*"tests/' vitest.config.ts ; git ls-files 'tests/*.test.ts' \| wc -l` | 230 · 248 |
 | F-14 | integration-lane includes | `grep -cE '^\s*"tests/' vitest.integration.config.ts` | 18 |
-| F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 124 |
+| F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 125 |
 | F-16 | guards in the CI gate | `grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml \| sort -u` | bundle channel citations kb migrations querykeys schema security staleness tokens ui (11; `guard:docs` deliberately absent) |
 | F-17 | pre-push steps · preflight steps · checkup checks | `grep -c '^step ' .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh` | 14 · 24 · 21 (was 10 — `e49aab6d`/#660 made the unit lanes opt-in behind `PREPUSH_TESTS=1`; +the Selling Guide corpus/coverage/watch lines, 2026-08-23) |
 | F-18 | skills · of which anti-autoload | `ls -d .claude/skills/*/ \| wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` | 26 · 20 |
 | F-19 | agents · of which owners | `ls .claude/agents/*.md \| wc -l ; ls .claude/agents/hq-*-owner.md \| wc -l` | 58 · 41 |
 | F-20 | app-guide chapters | `ls knowledge-base/handbook/app-guide/*.md \| wc -l` | 12 |
-| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 233 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
+| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 237 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
 | F-22 | client routes · lazy routes | `grep -c "<Route" client/src/App.tsx ; grep -c "lazy(" client/src/App.tsx` | 121 · 113 |
 | F-23 | coach model calls per turn · coach tools | `grep -n "MAX_MODEL_CALLS_PER_TURN\s*=" server/services/coachingClient.ts ; grep -c 'name: "' server/services/coachTools.ts` | 4 · 8 |
 | F-24 | server files mentioning Anthropic · SDK import lines | `grep -rln "anthropic" server --include='*.ts' \| wc -l ; grep -rn "@anthropic-ai/sdk" server --include='*.ts' \| wc -l` | 7 · 5 (none in `DECISION_PATH_MODULES`) |
@@ -83,7 +84,7 @@ and returns nothing — a false "the file changed").
 | F-41 | regulatory-ledger entries · still carrying a blocked-network note | `python3 -c "import json;e=json.load(open('data/regulatory/regulatory-ledger.json'))['entries'];print(len(e), len([x for x in e if 'block' in (x.get('notes','') or '').lower()]))"` | 59 · 9 |
 | F-42 | `complianceInvariants` describes · its | `grep -c "^describe(" tests/complianceInvariants.test.ts ; grep -c "  it(" tests/complianceInvariants.test.ts` | 16 · 55 |
 | F-43 | the two deploy-job conditions, and the one that cannot fail | `sed -n '736p;809p;825p' .github/workflows/ci.yml` | `if: … == 'push' \|\| … == 'workflow_dispatch'` · `if: … == 'push'` · `continue-on-error: true` — both re-armed by `76c96751` (#669) after a 2026-08-19/20 pause; `verify-deploy` reddens without failing the workflow, by design |
-| F-44 | required status checks on `main` | `gh api repos/barakatammre84/Homiquity/branches/main/protection --jq '.required_status_checks.contexts\|length'` | 0 (measured 2026-08-22, not a property of the commit) |
+| F-44 | `main` protected · ruleset rules | `gh api repos/barakatammre84/Homiquity/branches/main --jq .protected ; gh api repos/barakatammre84/Homiquity/rules/branches/main --jq 'length'` | true · 0 — classic branch protection, not a ruleset (measured 2026-08-23; a repo setting, not a property of the commit). ⚠️ **The contexts list is unreadable from a session:** `…/branches/main/protection` answers `403 "Resource not accessible by integration"` to a non-admin token, which is how this row was wrong in both directions (asserted enforcement through the 08-19 removal, then asserted `0` into the day it was re-armed). Enforcement is proved by BEHAVIOUR: merging #708/#647 returned `405 Required status check "gate (typecheck · tests · schema guard)" is expected`, and #647 merged only once brought current with `main`, so `strict` is on too. |
 | F-45 | Selling Guide leaf sections · TOC entries | `cut -f3 docs/fannie-mae/selling-guide/section-index.tsv \| grep -Ec '^[A-E][0-9]?(-[0-9]+(\.[0-9]+)?)*-[0-9]{2}, ' ; tail -n +2 docs/fannie-mae/selling-guide/section-index.tsv \| wc -l` | 423 · 554 |
 | F-46 | Guide link inventory: unique URLs · probeable ok · xref edges | `python3 -c "import json;s=json.load(open('docs/fannie-mae/selling-guide/links.json'))['summary'];print(s['unique_urls'],s['ok_urls'],s['xref_edges'])"` | 319 · 295 · 989 |
 | F-47 | Selling Guide gate steps in ci.yml (authority guard + corpus coherence + coverage map + extraction proof — all always-run) | `grep -cE '^      - name: Selling Guide' .github/workflows/ci.yml` | 4 |

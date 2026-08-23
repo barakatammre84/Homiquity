@@ -27,29 +27,29 @@ name: CI
 #   • Repo variable NEON_PROJECT_ID — ONLY if the key can see more than one Neon
 #     project (the script fails with the list of ids when it's ambiguous).
 #   • Branch protection on `main` requiring the "gate" check (makes the gate binding).
-#     🚨 NOT CONFIGURED AS OF 2026-08-20 — `main` requires NOTHING. Measured, not assumed:
-#         gh api repos/<owner>/<repo>/branches/main/protection \
-#           --jq '.required_status_checks.contexts'      # → []
-#         gh api repos/<owner>/<repo>/rules/branches/main --jq 'length'   # → 0
-#     Check BOTH: classic protection and rulesets are separate mechanisms, and a
-#     requirement living in one shows as empty in the other.
-#     Still [] on 2026-08-22, re-measured with the two commands above.
-#     This was REMOVED DELIBERATELY (2026-08-19) so work could continue through the
-#     GitHub Actions billing failure — a required check that cannot run blocks every
-#     PR in the repo. It is not an oversight; restore it when Actions is paying again,
-#     together with the `migrate-prod` / `verify-deploy` restores below.
-#     ▶️ Two of those three are DONE as of 2026-08-22: `migrate-prod` and `verify-deploy`
-#     are re-armed in this PR (Actions is billing again — runs execute rather than dying
-#     in ~2s). Branch protection is the REMAINING one and is deliberately NOT changed
-#     here: it is a repo-settings change, not a code change, so it needs the founder's
-#     hand rather than a merge. Until it lands, `gate` is advisory — a red PR can still
-#     be merged by anyone, and the pre-push hook is the only gate that actually bites.
-#     ⚠️ `enforce_admins` is still ON, which reads reassuring and means nothing while
-#     the required-check list is empty: it binds admins to zero checks.
-#     This comment previously read "✅ CONFIGURED 2026-07-17: gate required". That was
-#     true when written and false by 2026-08-19, and a stale ✅ on a security control is
-#     exactly the defect this file names 27 lines below — the thing an auditor reads
-#     instead of running the command. Re-measure before trusting either state.
+#     ✅ LIVE AGAIN as of 2026-08-23 — and this comment has now been wrong in BOTH
+#     directions, which is the actual lesson. It read "✅ CONFIGURED 2026-07-17" through
+#     the weeks after protection was removed (2026-08-19, deliberately, so work could
+#     continue through the Actions billing failure), and then read "🚨 NOT CONFIGURED —
+#     `gate` is advisory" after it came back. A status line about a security control is
+#     a claim about the day it was written, never a property of the repo.
+#     Measured 2026-08-23 by BEHAVIOUR, which is the part that cannot go stale quietly:
+#         gh api repos/<owner>/<repo>/branches/main --jq .protected          # → true
+#         gh api repos/<owner>/<repo>/rules/branches/main --jq 'length'      # → 0
+#           …so this is CLASSIC branch protection, not a ruleset. Check both: a
+#           requirement living in one shows as empty in the other.
+#       and the two observations that actually prove enforcement:
+#         • merging #708/#647 through the API returned, verbatim:
+#             405 Required status check "gate (typecheck · tests · schema guard)" is expected
+#         • #647 went `behind` when `main` moved and merged only once brought current,
+#           so `strict: true` (branch must be up to date) is on as well.
+#     ⚠️ `…/branches/main/protection` returns 403 "Resource not accessible by
+#     integration" to any non-admin token, so a session CANNOT read the contexts list —
+#     which is precisely how the stale claims above survived on both sides. Probe the
+#     behaviour, not the settings endpoint: open a PR and read what the merge refuses.
+#     Consequence for anyone editing this file: `gate` is BINDING now. Renaming the job
+#     deadlocks every open PR (see the DO-NOT-RENAME warning on the job below), and a red
+#     PR can no longer be merged by anyone — the pre-push hook is no longer the only gate.
 
 on:
   pull_request:
