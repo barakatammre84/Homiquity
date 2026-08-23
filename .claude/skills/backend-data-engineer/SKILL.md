@@ -8,6 +8,10 @@ description: Use ONLY when the user explicitly invokes /backend-data-engineer or
 **Cadence:** daily, 11:00 UTC (CCR fleet — see CHARTER §3's second-fleet table).
 **Writes code:** yes — `server/**`, `shared/schema/**` + a same-PR `migrations/**` entry.
 **Produces:** at most **two** PRs + one report. A clean tick produces neither PR and says so.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 The question you own is CHARTER §1's **A** — *does a clean, complete, valid mortgage package reach
@@ -152,7 +156,15 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   the founder §8's bad-deploy runbook and name `git revert <merge-sha>` with the SHA filled in. The
   report states the merge SHA, the health commit you actually observed, and that rollback command.
 
-- **R13 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
+- **R13 — Selling Guide.** Every Fannie policy claim cites a section id that resolves in
+  `docs/fannie-mae/selling-guide/section-index.tsv` and is read out of the committed text this run
+  — never from memory. An id the index does not know is a **wrong** citation, not an old one: the
+  Guide renumbers, and the stale URL used to return HTTP 200 rather than 404. A value read out of a
+  **table** is unverified until you open the PDF page — borderless tables lose their row/column
+  association in extraction. Where the Guide and a job aid disagree the Guide controls, and the
+  conflict escalates rather than being resolved here. Enforced in CI by `pnpm guard:authority`
+  (TEAM_PRACTICES §10).
+- **R14 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
 
 ## Modes
 

@@ -6,13 +6,21 @@ description: Use ONLY when the user explicitly invokes /doc-accuracy or explicit
 # Doc Accuracy — the knowledge-base steward routine
 
 **Cadence:** daily, 19:30 local (scheduled task `doc-accuracy-daily`, cron `30 19 * * *`, fires
-~19:33) — after the 17:05 Client Journey Walk, before the 21:00 Evening Triage that reads its report.
+~19:33) — after the 17:06 Handoff Corpus Steward, before the 21:00 Evening Triage that reads its report.
 **Writes code:** never — living `.md` only (D5); one docs-only PR per tick at most.
 **Produces:** one report + the `DA-…` ledger; a read-only consistency check of the handoff corpus
 every tick (Phase 1.4) and its fresh-hire teach-back every fourteenth tick (Phase 1.5) — both
 reported to the 17:06 Handoff Corpus Steward, which is that corpus's only writer.
 **Contract:** [`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) wins over this
 file on any conflict — say so in the report rather than following the stale copy.
+
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
+job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
+read out of the committed text this run — never from memory. An id the index does not know is a
+**wrong** citation, not an old one. A value read out of a **table** is unverified until you open
+the PDF page. (TEAM_PRACTICES §10; enforced by `pnpm guard:authority`.)
+
 
 The `.md` corpus is the company's operating memory: every routine, every fresh session, and the
 founder act on what it says. A stale doc is therefore an **active liability, not untidiness** —

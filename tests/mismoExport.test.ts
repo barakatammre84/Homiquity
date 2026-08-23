@@ -276,6 +276,49 @@ describe("AutomatedUnderwritingRecommendationDescription — reports the real AU
 });
 
 // ---------------------------------------------------------------------------
+// F-053 — LoanAmortizationType was the compile-time literal "Fixed".
+//
+// The rate sheet seeds a real 5/6 ARM (server/seedMarketPricing.ts) and the borrower's URLA
+// captures the choice (server/routes/borrower/urla.ts), so an adjustable file was delivered to
+// the wholesale lender as fixed-rate. B2-1.4 governs amortization types; A3-4-02 requires
+// delivery data to be "complete and accurate"; A2-2-07 makes an inaccuracy a life-of-loan
+// representation. Same defect class as F-051 in this file: a stored value replaced by a constant.
+//
+// Enumeration verified against docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd.
+// ---------------------------------------------------------------------------
+describe("LoanAmortizationType (F-053)", () => {
+  it("emits AdjustableRate for an adjustable loan — the defect, reintroduced", () => {
+    const xml = generateMISMO34XML(
+      baseDto({ application: { amortizationType: "adjustable" } as any }),
+    );
+    expect(xml).toContain("<LoanAmortizationType>AdjustableRate</LoanAmortizationType>");
+    expect(xml).not.toContain("<LoanAmortizationType>Fixed</LoanAmortizationType>");
+  });
+
+  it("accepts the rate-sheet spelling too — products are seeded as ARM, applications as adjustable", () => {
+    const xml = generateMISMO34XML(baseDto({ application: { amortizationType: "ARM" } as any }));
+    expect(xml).toContain("<LoanAmortizationType>AdjustableRate</LoanAmortizationType>");
+  });
+
+  it("emits Fixed for a fixed loan", () => {
+    const xml = generateMISMO34XML(baseDto({ application: { amortizationType: "fixed" } as any }));
+    expect(xml).toContain("<LoanAmortizationType>Fixed</LoanAmortizationType>");
+  });
+
+  it("falls back to Fixed only when the field is unset", () => {
+    // Asserting the platform default is not the bug; overriding a KNOWN adjustable value was.
+    const xml = generateMISMO34XML(baseDto({ application: { amortizationType: null } as any }));
+    expect(xml).toContain("<LoanAmortizationType>Fixed</LoanAmortizationType>");
+  });
+
+  it("fails loud on an unmapped value rather than emitting a plausible one", () => {
+    expect(() =>
+      generateMISMO34XML(baseDto({ application: { amortizationType: "balloon" } as any })),
+    ).toThrow(/unmapped amortization type/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // B3-6-05, Debts Paid by Others → LiabilityExclusionIndicator. MISMO_3_0.xsd
 // line 9748: "Indicates whether the liability is to be excluded from inclusion
 // in calculations associated with processing the loan." The package must tell

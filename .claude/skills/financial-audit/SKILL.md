@@ -5,6 +5,13 @@ description: Use ONLY when the user explicitly invokes /financial-audit or expli
 
 # Financial Audit — recurring capital-structure & money-path routine
 
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
+job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
+read out of the committed text this run — never from memory. An id the index does not know is a
+**wrong** citation, not an old one. A value read out of a **table** is unverified until you open
+the PDF page. (TEAM_PRACTICES §10; enforced by `pnpm guard:authority`.)
+
 Audits the financial wiring of the business **as implemented in code**: capital flow,
 risk/liability, unit economics, balance sheet. One run = at most ONE reviewable PR,
 never merged by you. Every merge to `main` auto-deploys to production; the human

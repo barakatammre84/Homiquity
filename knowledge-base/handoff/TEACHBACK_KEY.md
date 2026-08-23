@@ -111,8 +111,8 @@
 3. You do not edit it: `hq-auth-owner.md:22` — "`server/auth.ts` — core auth. Off limits to every owner and a §9 trigger"; write the failing test where allowed, describe the exact change, and hand it back (`:18-20`, block at `:114-121`). `FEATURE_MAP.md:741` — "An owner refusing to edit is the control working."
 4. No — `CHARTER.md:448` "Ending a tick idle because peers were busy is a FAILED tick". Work the assist ladder (`:434-446`): fix a red PR, verify an unverified one, supply a missing test or ledger row as a comment, then new work. A claim under 24 h is live (`REGISTER.md:36-38`).
 5. No. Merging is L3 — "a merge to `main` is a production deploy" (`CHARTER.md:129`); `_OWNER_RAILS.md:13-15` — an `--auto` armed now fires when Actions recovers, "a deploy nobody watched"; and green is not shipped (`:92`).
-6. No, and the repo says so twice: `CHARTER.md:772` "A guard only answers its own question. Green guards are not a clean bill of health"; `doc-accuracy/SKILL.md:23-24` — "a doc can be green on both while telling readers to run commands that no longer exist."
-7. Only if the code's state is intended: `doc-accuracy/SKILL.md:69-74` D7 — file `regression-suspect` and do not touch the doc; "editing the doc to match broken code launders the regression". And the steward may not fix the code either (`:202-203`).
+6. No, and the repo says so twice: `CHARTER.md:772` "A guard only answers its own question. Green guards are not a clean bill of health"; `doc-accuracy/SKILL.md:31-32` — "a doc can be green on both while telling readers to run commands that no longer exist."
+7. Only if the code's state is intended: `doc-accuracy/SKILL.md:77-82` D7 — file `regression-suspect` and do not touch the doc; "editing the doc to match broken code launders the regression". And the steward may not fix the code either (`:202-203`).
 8. Date-qualified ids — `CHARTER.md:491-492` `F-<MMDD>-<NN>`, "Never a bare next-free integer"; `:494-499` nine audits that could not see each other minted six different `F-20`s. This corpus uses `HO-<MMDD>-<NN>`.
 
 ## 10 — Deploy, environments and migrations
