@@ -580,6 +580,70 @@ jobs:
             exit 1
           fi
 
+      - name: Integration lane (HTTP, against the built bundle)
+        if: steps.scope.outputs.code == 'true'
+        # The 18-file HTTP suite has never run in CI — only `pnpm preflight` ran it, so it
+        # gated nothing and its findings arrived only when someone ran preflight by hand
+        # (HO-0822-U2). It is the only lane exercising real routing, auth, CSRF and the
+        # Postgres lookup matrices end to end; the unit lanes are hermetic by design.
+        #
+        # DEVELOPMENT mode, deliberately. The suite authenticates through /api/test-login,
+        # which hard-404s under NODE_ENV=production, and some files omit the Origin the
+        # production CSRF guard requires. Same dist bundle the step above just proved boots
+        # in production mode — only the posture differs.
+        #
+        # SEEDED, not just migrated. lookupMatrixCoverageGap and lookupMatrixLifecycle read
+        # the Postgres policy matrices, and resolveMatrixValue throws rather than guessing
+        # when a row is absent — an unseeded database would fail this lane for a reason that
+        # is not the code.
+        #
+        # RATE LIMITS. RATE_LIMIT_RELAXED lifts the AUTH limiter (20/15min, which the suite's
+        # ~30 auth calls blow through in one pass) and nothing else: generalLimiter still
+        # applies 500 requests per 15 minutes to /api and does NOT consult the flag. A fresh
+        # process per run is what keeps the suite inside that budget. If this step ever starts
+        # failing with 429s, that is the first thing to look at, not the tests.
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
+        run: |
+          set -uo pipefail
+          # GRIDS BEFORE CONTENT, and both are required — scripts/local-db.sh says why, and the
+          # first CI run of this step proved it: `db:seed` alone left FANNIE_LLPA unseeded, the
+          # content seed logged "CRITICAL COMPLIANCE ERROR: Required matrix configuration
+          # [FANNIE_LLPA]", and all ten pricing/underwriting endpoints answered 500 because
+          # resolveMatrixValue throws rather than guessing. Nothing in package.json calls
+          # seedLendingGrids, which is exactly why a fresh database cannot price a loan.
+          ./node_modules/.bin/tsx server/scripts/seedLendingGrids.ts
+          DEV_TEST_PASSWORD=test1234 pnpm db:seed
+          NODE_ENV=development PORT=4000 RATE_LIMIT_RELAXED=true \
+          DEV_TEST_PASSWORD=test1234 \
+          SESSION_SECRET="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          PII_HASH_SALT="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          CREDIT_ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))')" \
+          node dist/index.js > /tmp/integration-server.log 2>&1 &
+          SRV_PID=$!
+          CODE=000
+          for i in $(seq 1 45); do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health 2>/dev/null || true)"
+            CODE="${CODE:-000}"
+            [ "$CODE" = "200" ] && break
+            kill -0 "$SRV_PID" 2>/dev/null || break
+            sleep 1
+          done
+          if [ "$CODE" != "200" ]; then
+            echo "--- server log ---"; cat /tmp/integration-server.log
+            kill "$SRV_PID" 2>/dev/null || true
+            echo "::error::the integration server never answered /api/health — the lane did not run"
+            exit 1
+          fi
+          TEST_BASE_URL=http://localhost:4000 DEV_TEST_PASSWORD=test1234 pnpm test:integration
+          RC=$?
+          kill "$SRV_PID" 2>/dev/null || true
+          if [ "$RC" != "0" ]; then
+            echo "--- server log (last 100 lines) ---"; tail -100 /tmp/integration-server.log
+            echo "::error::the integration lane failed"
+            exit "$RC"
+          fi
+
   migrate-prod:
     name: migrate-prod (apply pending migrations)
     # ▶️ RESUMED 2026-08-22, after the pause's premise turned out to be false and cost a
