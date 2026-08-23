@@ -47,6 +47,7 @@ doc-drift bug to fix):
   adoption table — no `⏳`, every row carries a number and the command that produces it
   (`pnpm guard:ui`). Merged 2026-08-18 from `design_guidelines.md` + `visual-consistency-standard.md`,
   both now in [archive/design/](archive/design/).
+- [handoff/](handoff/) — the **Feynman onboarding & handoff corpus** for a full-stack team: each chapter explains one subsystem plainly, then proves every claim with a read-only command, names where it breaks, and ends in a teach-back. Layered on the app-guide (which wins on any conflict; the code wins over both); counts are command-derived in `handoff/FACTS.md`, drift found in other docs is logged in `handoff/LEDGER.md` rather than hand-patched; `handoff/prompts/` holds the loop rails and templates for building through Claude without breaking the harness.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
@@ -108,6 +109,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [design-identity/ILLUSTRATION_BRIEF.md](design-identity/ILLUSTRATION_BRIEF.md) — what to commission for the animated scenes, and the mechanism that already exists.
+- [design-identity/LEDGER.md](design-identity/LEDGER.md) — Design Identity Engine cross-run memory: what each run raised, what it proved it on, and the directions it refused.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.

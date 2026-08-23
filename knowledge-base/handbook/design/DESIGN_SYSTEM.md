@@ -54,7 +54,7 @@ sites actually use it.
 | Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 34 in 25 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 9 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 120 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 123 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
 | `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
@@ -314,6 +314,31 @@ not the capture-flow container; see §12.
 - **Motion:** `transition-all duration-150 ease-in-out` on interactive atoms; the elevate system
   supplies hover/active tints. Loading is `<Skeleton>` (`animate-skeleton-precision`), **never a
   spinner**.
+
+  🚨 **JS-driven reveals must not be the only thing that makes content visible.**
+  `Reveal`/`Stagger`/`StaggerItem` (`client/src/components/motion/`) set inline
+  `opacity: 0` and animate to 1 — so anything that stops the animation leaves the
+  content **permanently unseen**, not merely un-animated.
+
+  That is not theoretical. On 2026-08-22 the home page was measured with two of
+  four journey cards at `opacity: 0` and the other two at 0.27 and 0.78 —
+  **identical readings at 6s and 10s.** Stalled. The cause is `document.hidden`:
+  browsers throttle `requestAnimationFrame` in a background tab, and
+  framer-motion drives on rAF, so a reveal that begins while hidden can stop
+  mid-ramp. Opening a link in a background tab is an ordinary thing to do.
+
+  The primitives now gate on `useCanAnimate()` — **reduced motion OR a hidden
+  document renders plainly**, with no observer and no inline opacity to get stuck
+  at. `client/src/components/motion/hiddenTab.test.tsx` pins it.
+
+  Two things to carry forward:
+  - **`prefers-reduced-motion` is not the whole accessibility story for motion.**
+    It was handled correctly here from the first commit, and the page was still
+    broken for a different reason entirely.
+  - **Verify reveals on a FULL-PAGE capture.** This survived several rounds of
+    review because every screenshot was a partial viewport that happened to miss
+    the section. A tall viewport (e.g. 1280x2600) puts the whole page in one
+    frame.
 
 ---
 
