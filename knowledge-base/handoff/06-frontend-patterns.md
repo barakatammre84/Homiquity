@@ -129,7 +129,7 @@ flowchart TD
   (`:417` — "a confident, frozen 'we're reviewing your file' to a borrower forever"),
   `borrowerGraphKeys` (`:439` — a path that does not exist), `calculatorResultKeys` (`:270-279` —
   has no reader; kept as the canonical shape).
-- **Three guards, three questions.** `package.json:37` `guard:querykeys` runs
+- **Three guards, three questions.** `package.json:38` `guard:querykeys` runs
   `scripts/query-key-guard.cjs` (no interpolated template-string key under `client/src`, `:15`),
   `scripts/query-key-reachability.cjs` (every invalidate/remove/refetch/reset key must element-wise
   prefix-match a fetched key, `:35-37`; cross-file misses are warnings, `:71-72`; sibling omission
@@ -181,7 +181,7 @@ flowchart TD
   → `120` (90 `.tsx`, 30 `.ts`); `vitest.client.config.ts:37` is a **glob** "so a colocated
   `*.test.tsx` can never be silently stranded" (`:11-13`); `happy-dom` (`:18`); the `@assets`
   alias exists because without it a component test reports "0 tests" rather than a failure
-  (`:44-47`). Every lane is `--config`-explicit (`package.json:15-18`) — a bare `vitest run <file>`
+  (`:44-47`). Every lane is `--config`-explicit (`package.json:15-19`) — a bare `vitest run <file>`
   resolves no client config.
 - **Bundle.** `tests/clientSchemaImports.test.ts:7-17` — types only from `@shared/schema`, never
   values ("the browser bundle shipped 174 table definitions with their column names … No data was
@@ -248,7 +248,7 @@ grep -rho 'data-testid="[^"]*"' client/src | wc -l
 | The `.app-surface` shadow rule's comment still reasons from Tailwind v3 `@layer` semantics while the same file declares v4 native cascade layers. Behaviour may be right; the stated reason cannot be. | `client/src/index.css:437-446` vs `:9` | Nothing reads `.css`. |
 | `ui-standard-guard` sees only literal double-quoted `className` strings — classes built by `cn()`, template literals or cva variants are invisible; every count is a floor. | `scripts/ui-standard-guard.cjs:27-29` | By its own statement. |
 | `VITE_*` is build-time: flipping `VITE_PRELAUNCH_GATED` needs a redeploy, not a restart. | `app-guide/07-frontend.md:89-93`; `client/src/lib/prelaunch.ts:17` | `tests/prelaunchGate.test.ts` covers the **server** gate (per-request env), not the client constant. |
-| `vitest run <file>` with no `--config` resolves no client config: no happy-dom, no `@`/`@shared`/`@assets` aliases, and a "0 tests" that reads like the file was never picked up. | `vitest.client.config.ts:18,37,40-48`; `package.json:15-18` | Only `pnpm test` / `pnpm test:client`. |
+| `vitest run <file>` with no `--config` resolves no client config: no happy-dom, no `@`/`@shared`/`@assets` aliases, and a "0 tests" that reads like the file was never picked up. | `vitest.client.config.ts:18,37,40-48`; `package.json:15-19` | Only `pnpm test` / `pnpm test:client`. |
 | `tests/formResolverContract.test.ts` covers only the six schemas it imports; a new `zodResolver` form is not auto-covered. | `tests/formResolverContract.test.ts:4-14` | The listed schemas only. |
 | `STATIC_ROUTE_META` (31) hand-mirrors `<SEOHead>` in 43 files — drift means crawlers read different copy than humans. | `shared/seo/routeMeta.ts:7-10,36-39` | No test compares a registry entry to a page's props. Proposed ticket in chapter 12. |
 | Public gates are UX only and `tests/routeGateDrift.test.ts` enumerates specific client↔server pairs; a *new* route whose client gate is wider than its server gate is not derived. | `client/src/lib/routeGates.ts:29-30` | Partially. |

@@ -43,7 +43,7 @@ MAX_ITER: 8
 8. **T3** `pnpm preflight` (integration lane on 4000). A baseline that tightened is staged and
    named.
 9. Territory check; push; PR body from `_REPORT_FORMAT.md` with **Prod impact** reading:
-   "migration <NNNN> — `migrate-prod` applies it on merge (`.github/workflows/ci.yml:574`,
+   "migration <NNNN> — `migrate-prod` applies it on merge (`.github/workflows/ci.yml:583`,
    re-armed 2026-08-22 by #669). After merge a human reads that job's log for
    `applied 1 migration(s)`, then confirms the `/api/health` commit. If the job has been paused
    again since — check its `if:` before writing this line — a human dispatches the workflow with

@@ -1,7 +1,15 @@
 # Client Journey Walk — rotation ledger
 
-Cross-run memory for the `client-journey-walk` seat (daily since 2026-08-19). One persona per run,
-**strict rotation 1 → 2 → 3 → 4 → 1**. A fresh session reads this file to know where to resume.
+> **⛔ Cadence retired 2026-08-23 (founder decision).** The daily 17:06 seat (`client-journey-walk`)
+> was reshaped into the **Handoff Corpus Steward** (`.claude/skills/handoff-refresh/SKILL.md`;
+> CHARTER §3). Journey walks are now **hand-invoked only** via `/journey-walk` — the charters
+> (`feature-review/JOURNEYS.md`), the five walker agents, and this rotation ledger all stay
+> authoritative for those runs. This file remains the walk's cross-run memory; the steward never
+> writes here.
+
+Cross-run memory for the `client-journey-walk` seat (daily 2026-08-19 → 2026-08-23, hand-invoked
+since). One persona per run, **strict rotation 1 → 2 → 3 → 4 → 1**. A fresh session reads this
+file to know where to resume.
 
 **Charter: `knowledge-base/feature-review/JOURNEYS.md` is ON `origin/main` and WINS.** It arrived
 **2026-08-20 via #595**, not via its founding PR #607 (still open, `DIRTY` — and now partly
@@ -24,6 +32,7 @@ and treat the `SKILL.md` summaries as a convenience copy. Record which source ea
 
 | date | journey | source used | server (commit) | verdict | report |
 |---|---|---|---|---|---|
+| 2026-08-23 | **3 — Active buyer, self-employed (ATTEMPTED)** | `JOURNEYS.md` on `origin/main` | `6377727e` via the primary checkout of a cloud container on :5001 (`commit: null` + `email` key = local signature; `lsof` cwd + fresh boot verified) | **BLOCKED** — no browser tooling exists in the cloud container (`mcp__Claude_Browser__*` absent; W2 forbids reporting HTTP substitution as a walk). **Rotation does not advance: next hand-invoked run still walks Journey 3.** A separately-labeled HTTP + public-render **seam probe** ran instead: fresh `jse+0823@test.local`, promotion `aspiring_owner→active_buyer` proven, draft round-trip value-exact incl. 2 entities + 1 rental, draft consumed on submit (same id), all 4 self-employed document artifacts generated, `employmentType` carried to the URLA payload; 12 public-page probes (4 pages × 320/768/1280) zero overflow. 2 candidate findings sent to finding-verifier | [2026-08-23-handoff-steward.md](../reports/2026-08-23-handoff-steward.md) §Journey-3 attempt |
 | 2026-08-20 (2nd run) | **2 — Active buyer, W-2 salaried** | **`JOURNEYS.md` on `origin/main`** — authoritative, as this ledger directed. First run to use it | `c23079b5` via a dedicated worktree on :5001; **`main` did not move during the run** (re-checked at the end) | **WARN** — the promotion and the whole client→server capture path are clean; the damage is post-submission. 12 findings (`J-0820-01`..`12`), 12 tickets. **2 candidate findings tested and withdrawn before filing** | [2026-08-20-journey-walk-j2.md](../reports/2026-08-20-journey-walk-j2.md) |
 | 2026-08-20 | **1 — Aspiring owner** | `SKILL.md` summaries — JOURNEYS.md was absent from `origin/main` at 12:31Z and **arrived at 12:47Z, mid-walk**, via #595 | `b799b91d` (`origin/main` tip at start; main advanced to `8260d734` during the run) via a dedicated worktree on :5001 | **WARN** — 2 data-correctness defects, 1 surface unreachable at 320px, 11 tickets. Findings re-verified against `8260d734` after the merge; **one claim withdrawn**, one new finding (`ux-50`) found by that re-verification | [2026-08-20-journey-walk.md](../reports/2026-08-20-journey-walk.md) |
 
