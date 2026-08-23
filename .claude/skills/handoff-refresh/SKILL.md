@@ -10,7 +10,9 @@ Bring `knowledge-base/handoff/` back into agreement with `origin/main`, and reco
 **Authoritative:** [`knowledge-base/handoff/README.md`](../../../knowledge-base/handoff/README.md)
 (the refresh protocol and the Feynman contract) and
 [`LEDGER.md`](../../../knowledge-base/handoff/LEDGER.md) (drift rows + the run log). Those win on
-conflict; the code wins over both.
+conflict; the code wins over both. **Scheduled consumer:** the daily `doc-accuracy` tick runs this
+protocol as its Phase 1.4 (`.claude/skills/doc-accuracy/SKILL.md`); invoke this skill by hand
+between ticks, or when a tick reported the refresh deferred.
 
 ## Rails (non-negotiable)
 

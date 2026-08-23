@@ -2,16 +2,19 @@
 
 ## Stack
 
-React 18 + TypeScript, built by **Vite**. Routing is **Wouter** (a tiny
+React 19 + TypeScript, built by **Vite**. Routing is **Wouter** (a tiny
 react-router alternative — `<Route path>` components, `useLocation`,
 `navigate`). Server state is **TanStack Query** (all API reads/writes go
 through `queryClient`); forms are **react-hook-form + Zod** (sharing the same
 schemas the server validates with, from `shared/`). UI is **Shadcn/ui** on
-Radix primitives + Tailwind, with light/dark themes (`next-themes`).
+Radix primitives + Tailwind. 🚨 **There is no theme switcher** — `next-themes`
+is not a dependency, and although `tailwind.config.ts` sets `darkMode: ["class"]`
+nothing under `client/src` ever applies the class, so the `.dark` block is dead
+code. Dark mode is decided UNSUPPORTED; do not "fix" a dark-mode bug.
 
 Entry chain: `client/index.html` → `client/src/main.tsx` →
-[`client/src/App.tsx`](../../../client/src/App.tsx) (~420 lines: providers, layout,
-and every route — 160+ `<Route>`s).
+[`client/src/App.tsx`](../../../client/src/App.tsx) (635 lines: providers, layout,
+and every route — 121 `<Route>`s).
 
 ## Page map (`client/src/pages/`)
 

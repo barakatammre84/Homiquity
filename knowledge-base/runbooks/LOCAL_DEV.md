@@ -323,8 +323,8 @@ deliberately never touches. The hook skips all of it to stay cheap enough to lea
 
 ## Landing work on GitHub
 
-`main` is protected — direct pushes are blocked by branch protection and barred
-by doctrine; the old `pnpm save`/`pnpm sync` one-command scripts were **removed**
+`main` — direct pushes are barred by doctrine. 🚨 **verified 2026-08-22: protection exists but blocks almost nothing** — `allow_force_pushes:false` and `enforce_admins:true`, but **0 required status checks, no required review, no push restriction**. A direct push to `main` is therefore *not* blocked; only doctrine stops it, and a red `gate` cannot hold a merge. Re-arming the required check is a founder action.
+The flow below is unchanged; the old `pnpm save`/`pnpm sync` one-command scripts were **removed**
 (PR #251). Everything lands as a short-lived branch → PR → `gate` check green →
 squash merge ([CICD.md](./CICD.md) §Shipping; verify protection is live before
 trusting `--auto` — [TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6):

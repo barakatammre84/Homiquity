@@ -85,7 +85,7 @@ flowchart TD
   (`grep -l "never fix\|never fixes" .claude/agents/*.md | wc -l` → `15`); ten journey walkers
   share one browser-tool profile.
 - **The routine skeleton** (read `.claude/skills/refactor-radar/SKILL.md`, 277 lines, or
-  `doc-accuracy/SKILL.md`, 204): frontmatter with only `name` + the anti-autoload `description` →
+  `doc-accuracy/SKILL.md`, 347): frontmatter with only `name` + the anti-autoload `description` →
   a loop contract ("One run = at most ONE reviewable PR, never merged by you", `:8`; "If any rail
   below conflicts with making progress, the rail wins", `:10`) → lettered rails (R1 stop if loaded
   without invocation; R2 never the primary checkout; R3 PR-only, explicit `git add`; R4 the
@@ -117,7 +117,7 @@ flowchart TD
   registered in the scheduler is not a routine — it is a fossil"; and six on-disk skills are
   explicitly *not* on the clock (`:249-253` — "read this table and `list_scheduled_tasks`").
   Freshness ≤ 2 commits and backpressure ≥ 2 PRs are **skill-level** rails
-  (`financial-audit/SKILL.md:24`, `doc-accuracy/SKILL.md:36-38`); CHARTER §5's clock is 24 h
+  (`financial-audit/SKILL.md:24`, `doc-accuracy/SKILL.md:47-51`); CHARTER §5's clock is 24 h
   staleness and a 72 h / 7-day decide-or-close.
 - **The board.** `knowledge-base/routines/REGISTER.md:23` — "A claim is a courtesy, not a mutex";
   `:29` "The stronger signal is always origin/main"; a three-tier overlap protocol (`:80-90`); three
@@ -140,7 +140,7 @@ flowchart TD
   no dead index link), `guard:staleness` (`scripts/doc-staleness-guard.cjs:55-86` — a five-term
   dead-vocabulary ratchet, baseline `{8,5,7,3,1}`), `guard:citations` (`scripts/citation-guard.cjs:13-15`
   — backticked repo paths that resolve to nothing; a ratchet at 29, not a zero, because ~2/3 of the
-  first 53 hits were correct as written, `:21-38`). None reads meaning — `doc-accuracy/SKILL.md:13-15`:
+  first 53 hits were correct as written, `:21-38`). None reads meaning — `doc-accuracy/SKILL.md:22-23`:
   "a doc can be green on both while telling readers to run commands that no longer exist."
 - **Zero hooks, and the attempt that never landed.** `git cat-file -e HEAD:.claude/settings.json`
   → "does not exist in 'HEAD'"; `grep -c '"hooks"'` over any tracked file → 0. Commit `69de42ae`
@@ -202,7 +202,7 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 | **There is no enforcement layer.** Every rail is honour-system prose a model may skip silently; the PR that added hooks is stranded on a branch — the governance system's own governance PR failed to land, the §0 failure shape the charter was written about. | `git cat-file -e HEAD:.claude/settings.json`; commit `69de42ae` | Nothing. |
 | The only machine-enforced permission layer is untracked and per-machine; a fresh clone or cloud session gets none of the deny-list — the same hole `scripts/hooks-installed-guard.cjs:5-13` documents for git hooks. | the primary checkout's untracked settings.local.json | Nothing guards it. |
 | "Does this routine run?" is not answerable from the repo: six on-disk skills are not scheduled, and the authoritative list is a laptop-local MCP call. | `CHARTER.md:249-253`, `:819-822` | the unmerged routine registry would have put it in the repo — same stranded branch. |
-| The guards cannot see meaning: a doc can be green on all four while telling readers to run commands that no longer exist. The mitigation (doc-accuracy) is itself prose. | `doc-accuracy/SKILL.md:13-15` | By design. |
+| The guards cannot see meaning: a doc can be green on all four while telling readers to run commands that no longer exist. The mitigation (doc-accuracy) is itself prose. | `doc-accuracy/SKILL.md:22-23` | By design. |
 | `vitest.config.ts` is both a shared-file hazard and the node lane's only truth; a stranded file is collected by nothing (chapter 07). | `REGISTER.md:162`; `CHARTER.md:768` | Nothing on `main`. |
 | Two checkouts on one machine drift and the harness follows the cwd: the stale primary checkout had 21 skills while `origin/main` has 23; a rail added to a skill is invisible to a session opened in the wrong directory. | `ls .claude/skills` in each | Nothing. |
 | The claim register is a courtesy and says so; a live interactive session attached to a PR is invisible to `gh` and `ListAgents` — "A peer had to say it out loud." | `REGISTER.md:23,47-61` | By design. |
@@ -247,7 +247,7 @@ Read in this order: `CLAUDE.md` (note how much it delegates) → `.claude/agents
 (the shortest complete statement of the value system) → `knowledge-base/routines/CHARTER.md` §0,
 §1b, §5, §10 (skip §2/§3/§6 on a first pass — tables to look up, not prose to read) →
 `.claude/skills/refactor-radar/SKILL.md` end to end (the canonical skeleton) →
-`.claude/skills/doc-accuracy/SKILL.md` (D7 at `:50-55` is the single best idea in the corpus) →
+`.claude/skills/doc-accuracy/SKILL.md` (D7 at `:67-72` is the single best idea in the corpus) →
 `.claude/agents/hq-auth-owner.md` (the sharpest yours / hand-back / not-yours boundary) →
 `knowledge-base/routines/REGISTER.md:23-90` → `knowledge-base/routines/LESSONS.md:26-42` →
 `scripts/citation-guard.cjs:20-45` (the best-written case for a ratchet over a hard zero) →

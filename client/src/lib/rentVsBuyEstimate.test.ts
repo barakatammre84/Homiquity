@@ -46,3 +46,29 @@ describe("calculateResults (rent vs. buy)", () => {
     expect(results.netCostBuying).toBeCloseTo(96777.89332583992, 6);
   });
 });
+
+describe("negative money inputs", () => {
+  // Neither number input on /calculators/rent-vs-buy carries a `min`, so a typed
+  // negative reached calculateResults untouched and inverted every ownership
+  // figure — the page rendered a -$225 monthly ownership cost and -$5,302 of
+  // "home equity" as though they were real money.
+  it("clamps a negative home price rather than reporting negative money", () => {
+    const r = calculateResults({ ...defaultInputs, homePrice: -100000 });
+    expect(r.totalMonthlyOwnership).toBeGreaterThanOrEqual(0);
+    expect(r.totalOwnershipCost).toBeGreaterThanOrEqual(0);
+    expect(r.homeEquity).toBeGreaterThanOrEqual(0);
+    expect(r.netCostBuying).toBeGreaterThanOrEqual(0);
+  });
+
+  it("clamps a negative rent rather than reporting negative money", () => {
+    const r = calculateResults({ ...defaultInputs, monthlyRent: -2000 });
+    expect(r.totalRentCost).toBeGreaterThanOrEqual(0);
+    expect(r.netCostRenting).toBeGreaterThanOrEqual(0);
+  });
+
+  it("leaves positive inputs untouched", () => {
+    const negativeFree = calculateResults(defaultInputs);
+    expect(negativeFree.totalMonthlyOwnership).toBeGreaterThan(0);
+    expect(negativeFree.homeEquity).toBeGreaterThan(0);
+  });
+});

@@ -77,8 +77,13 @@ function calculateMortgage(inputs: MortgageInputs): MortgageResults {
     pmiRate,
   } = inputs;
 
-  const downPayment = homePrice * (downPaymentPercent / 100);
-  const loanAmount = homePrice - downPayment;
+  // Clamp before any money is derived. The number input has no `min`, so a typed
+  // negative reached this untouched and every figure below inverted with it —
+  // a -$142 monthly payment against a -$80,000 loan. Same guard as
+  // HomeEquityCalculator's `Math.max(0, homeValue)`.
+  const price = Math.max(0, homePrice);
+  const downPayment = price * (downPaymentPercent / 100);
+  const loanAmount = price - downPayment;
   const monthlyRate = interestRate / 100 / 12;
   const numPayments = loanTermYears * 12;
 
@@ -88,8 +93,8 @@ function calculateMortgage(inputs: MortgageInputs): MortgageResults {
     numPayments,
   );
 
-  const monthlyPropertyTax = (homePrice * (propertyTaxRate / 100)) / 12;
-  const monthlyInsurance = (homePrice * (insuranceRate / 100)) / 12;
+  const monthlyPropertyTax = (price * (propertyTaxRate / 100)) / 12;
+  const monthlyInsurance = (price * (insuranceRate / 100)) / 12;
   const monthlyPMI = downPaymentPercent < 20 ? (loanAmount * (pmiRate / 100)) / 12 : 0;
   const monthlyHOA = hoaMonthly;
 
@@ -489,7 +494,7 @@ export default function MortgageCalculator() {
               </Button>
             )}
 
-            <ConversionCTA context="calculator" purchasePrice={String(inputs.homePrice)} />
+            <ConversionCTA context="calculator" purchasePrice={String(Math.max(0, inputs.homePrice))} />
           </div>
         </div>
       </PageShell>
