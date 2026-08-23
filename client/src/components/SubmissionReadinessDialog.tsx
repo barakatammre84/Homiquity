@@ -21,8 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle2, CircleDashed, Send, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, Send, XCircle } from "lucide-react";
 import { SubmissionLifecycleControl } from "@/components/SubmissionLifecycleControl";
 import {
   PackageConformanceBadge,
@@ -95,6 +100,61 @@ interface LenderSubmissionRow {
   readinessSnapshot?: { xsdConformance?: XsdConformance | null } | null;
 }
 
+/**
+ * The persisted shape of an AUS run (server/services/ausSubmission.ts, written
+ * onto loan_applications.ausFindings by routes/aus.ts — the LPA leg rides
+ * nested under `lpa`). Selling Guide B3-2-11 (p.317): the DU Underwriting
+ * Findings report "summarizes the overall underwriting recommendation … and
+ * lists certain steps necessary for the lender to complete the processing of
+ * the loan file"; B3-2-01 (p.290) calls it "typically the first report viewed
+ * by an underwriter or a loan officer". Until 2026-08-23 the run's findings
+ * were persisted and returned to this client — and no surface rendered them.
+ */
+interface AusMessage {
+  code: string;
+  severity: "info" | "condition" | "risk" | string;
+  text: string;
+}
+
+interface AusFindings {
+  simulated?: boolean;
+  casefileId?: string;
+  duVersion?: string;
+  recommendation?: string;
+  riskAssessment?: { dti?: number | null; ltv?: number | null; creditScore?: number | null };
+  day1Certainty?: Record<string, { relief: boolean; reason?: string | null }>;
+  messages?: AusMessage[];
+  lpa?: {
+    simulated?: boolean;
+    assessmentId?: string;
+    riskClass?: string;
+    purchaseEligibility?: string;
+    messages?: AusMessage[];
+  };
+}
+
+interface ApplicationDetailEnvelope {
+  application: {
+    ausCasefileId: string | null;
+    ausRecommendation: string | null;
+    ausSubmittedAt: string | null;
+    ausFindings: AusFindings | null;
+  };
+}
+
+const RECOMMENDATION_META: Record<string, { label: string; className: string }> = {
+  approve_eligible: { label: "Approve / Eligible", className: "text-success" },
+  approve_ineligible: { label: "Approve / Ineligible", className: "text-warning" },
+  refer: { label: "Refer", className: "text-warning" },
+  refer_with_caution: { label: "Refer with Caution", className: "text-destructive" },
+};
+
+const MESSAGE_SEVERITY_CLASS: Record<string, string> = {
+  info: "text-muted-foreground",
+  condition: "text-warning",
+  risk: "text-destructive",
+};
+
 const STAGE_ICON: Record<StageStatus, { icon: typeof CheckCircle2; className: string; label: string }> = {
   ready: { icon: CheckCircle2, className: "text-success", label: "Ready" },
   attention: { icon: AlertTriangle, className: "text-warning", label: "Attention" },
@@ -127,6 +187,12 @@ export function SubmissionReadinessDialog({
   });
   const { data: submissions } = useQuery<LenderSubmissionRow[]>({
     queryKey: loanApplicationKeys.lenderSubmissions(applicationId),
+    enabled: open,
+  });
+  // The application row already carries the persisted AUS findings — the DU /
+  // LPA panel below reads them off the standard detail query, no new endpoint.
+  const { data: appDetail } = useQuery<ApplicationDetailEnvelope>({
+    queryKey: loanApplicationKeys.detail(applicationId),
     enabled: open,
   });
 
@@ -165,6 +231,11 @@ export function SubmissionReadinessDialog({
     onSuccess: (data: { recommendation?: string; findings?: { simulated?: boolean } }) => {
       queryClient.invalidateQueries({
         queryKey: loanApplicationKeys.submissionReadiness(applicationId),
+      });
+      // The findings panel reads the application row — refresh it so the new
+      // run's report appears without a reload.
+      queryClient.invalidateQueries({
+        queryKey: loanApplicationKeys.detail(applicationId),
       });
       toast({
         title: "Automated underwriting complete (DU + LPA)",
@@ -280,7 +351,7 @@ export function SubmissionReadinessDialog({
                       </ul>
                     )}
                     {stage.key === "aus" && (
-                      <div className="mt-2 pl-6">
+                      <div className="mt-2 space-y-2 pl-6">
                         <Button
                           size="sm" className="touch-target"
                           variant="outline"
@@ -290,6 +361,109 @@ export function SubmissionReadinessDialog({
                         >
                           {runAusMutation.isPending ? "Running DU / LPA…" : "Run DU / LPA"}
                         </Button>
+                        {(() => {
+                          const application = appDetail?.application;
+                          const findings = application?.ausFindings ?? null;
+                          if (!application?.ausCasefileId || !findings) return null;
+                          const recommendation =
+                            application.ausRecommendation ?? findings.recommendation ?? "";
+                          const recMeta = RECOMMENDATION_META[recommendation] ?? {
+                            label: recommendation.replace(/_/g, " ") || "—",
+                            className: "text-muted-foreground",
+                          };
+                          const d1c = findings.day1Certainty ?? {};
+                          const messages = findings.messages ?? [];
+                          const lpaMessages = findings.lpa?.messages ?? [];
+                          return (
+                            <Collapsible>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="touch-target h-7 px-2 text-xs"
+                                  data-testid="aus-findings-toggle"
+                                >
+                                  <ChevronDown className="mr-1 h-3 w-3" aria-hidden="true" />
+                                  DU / LPA findings
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div
+                                  className="mt-1 space-y-2 rounded-md border border-border bg-muted/30 p-3 text-sm"
+                                  data-testid="aus-findings-panel"
+                                >
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span
+                                      className={`font-medium ${recMeta.className}`}
+                                      data-testid="aus-findings-recommendation"
+                                    >
+                                      {recMeta.label}
+                                    </span>
+                                    {findings.simulated && (
+                                      <Badge variant="outline" data-testid="aus-findings-simulated">
+                                        Simulated
+                                      </Badge>
+                                    )}
+                                    <span className="ml-auto text-xs text-muted-foreground">
+                                      {findings.duVersion ? `DU ${findings.duVersion} · ` : ""}
+                                      {application.ausCasefileId}
+                                    </span>
+                                  </div>
+                                  {findings.riskAssessment && (
+                                    <p className="text-xs text-muted-foreground" data-testid="aus-findings-risk">
+                                      {[
+                                        findings.riskAssessment.dti != null &&
+                                          `DTI ${(findings.riskAssessment.dti * 100).toFixed(1)}%`,
+                                        findings.riskAssessment.ltv != null &&
+                                          `LTV ${(findings.riskAssessment.ltv * 100).toFixed(1)}%`,
+                                        findings.riskAssessment.creditScore != null &&
+                                          `Credit ${findings.riskAssessment.creditScore}`,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </p>
+                                  )}
+                                  {findings.lpa && (
+                                    <p className="text-xs text-muted-foreground" data-testid="aus-findings-lpa">
+                                      LPA leg: {findings.lpa.riskClass ?? "—"} /{" "}
+                                      {findings.lpa.purchaseEligibility ?? "—"}
+                                      {findings.lpa.assessmentId ? ` · ${findings.lpa.assessmentId}` : ""}
+                                    </p>
+                                  )}
+                                  {(messages.length > 0 || lpaMessages.length > 0) && (
+                                    <ul className="space-y-1" data-testid="aus-findings-messages">
+                                      {messages.map(m => (
+                                        <li key={`du-${m.code}`} className="text-xs">
+                                          <span className={MESSAGE_SEVERITY_CLASS[m.severity] ?? "text-muted-foreground"}>
+                                            [{m.code}]
+                                          </span>{" "}
+                                          {m.text}
+                                        </li>
+                                      ))}
+                                      {lpaMessages.map(m => (
+                                        <li key={`lpa-${m.code}`} className="text-xs">
+                                          <span className={MESSAGE_SEVERITY_CLASS[m.severity] ?? "text-muted-foreground"}>
+                                            [{m.code}]
+                                          </span>{" "}
+                                          {m.text}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                  {Object.keys(d1c).length > 0 && (
+                                    <div className="text-xs text-muted-foreground" data-testid="aus-findings-d1c">
+                                      {Object.entries(d1c).map(([layer, r]) => (
+                                        <p key={layer}>
+                                          D1C {layer}: {r.relief ? "relief granted" : r.reason ?? "relief withheld"}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })()}
                       </div>
                     )}
                   </li>
