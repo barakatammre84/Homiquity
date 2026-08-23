@@ -1,5 +1,16 @@
 # Pre-Production Daily Operating Routines
 
+> ⚠️ **Status banner added 2026-08-20 by `/doc-accuracy` — this file is doctrine, not the live cadence.**
+> The **5-routine launch suite** described below **stopped running on 2026-07-04** and stayed dormant
+> for five weeks with its definitions still on disk describing each other as live peers — the failure
+> [`routines/CHARTER.md`](../routines/CHARTER.md) §0 exists to record. Every routine it names
+> (`morning-compliance-defense`, `daily-sprint-blitz`, `midday-lender-liquidity`,
+> `evening-economics-gtm`, `weekly-vendor-procurement`) has since been retired, reshaped or renamed.
+> **The live suite is CHARTER §3 (local fleet) and §3a (CCR fleet)** — read it there, and
+> `list_scheduled_tasks` over either. Nothing in the body below is rewritten: the doctrine, the
+> corrections table, and the human-only checklists are still the record of why those routines
+> existed, and several of their rails were carried verbatim into the routines that absorbed them.
+
 **Date adopted:** 2026-07-04 · **Lens:** the founder's daily operating system between "platform built" and "platform launched" — QA, vendor credentialing, liquidity acquisition
 **Companion docs:** [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (live checklist — items 27/28 added from this doctrine) · [REGULATORY_MONITORING.md](../compliance/REGULATORY_MONITORING.md) · [UNDERWRITING_SCENARIOS.md](../compliance/UNDERWRITING_SCENARIOS.md) · [AI_GOVERNANCE_POLICY.md](../governance/AI_GOVERNANCE_POLICY.md)
 
