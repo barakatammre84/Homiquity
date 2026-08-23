@@ -92,3 +92,58 @@ describe("checkLedger", () => {
     expect(checkLedger(entries, ["baseline.sql"])).toEqual([]);
   });
 });
+
+// -----------------------------------------------------------------------------
+// Check 7 — duplicate `when` (HO-0822-24).
+//
+// Drizzle orders pending migrations by `when`, so two entries sharing one are applied
+// in an order the journal does not specify, and `migrate-prod` can report success having
+// skipped one. Unlike a duplicate idx, nothing about it is loud.
+//
+// It is the easy mistake, not an exotic one: two branches each add a migration, each takes
+// "the next timestamp", and they collide on merge. Both of #650's migrations carried main's
+// `when` on 2026-08-22 — the index collision was caught by check 1 and this one would have
+// sailed through.
+// -----------------------------------------------------------------------------
+
+/** A well-formed ledger whose entries also carry distinct, increasing `when` stamps. */
+function healthyTimed(n: number) {
+  const entries = Array.from({ length: n }, (_, i) => ({
+    idx: i,
+    tag: `${String(i).padStart(4, "0")}_m${i}`,
+    when: 1786147200000 + i,
+  }));
+  return { entries, files: entries.map((e) => `${e.tag}.sql`) };
+}
+
+describe("checkLedger — duplicate `when`", () => {
+  it("passes when every entry has its own timestamp", () => {
+    const { entries, files } = healthyTimed(5);
+    expect(checkLedger(entries, files)).toEqual([]);
+  });
+
+  it("fails two migrations that share a timestamp — the defect, reintroduced", () => {
+    const { entries, files } = healthyTimed(5);
+    entries.push({ idx: 5, tag: "0005_beta", when: entries[4].when }); // collides with 0004
+    files.push("0005_beta.sql");
+
+    const problems = checkLedger(entries, files);
+    expect(problems.join("\n")).toMatch(/duplicate when/);
+    expect(problems.join("\n")).toMatch(/0004_m4/);
+    expect(problems.join("\n")).toMatch(/0005_beta/);
+  });
+
+  it("says why it matters, so the reader does not treat it as cosmetic", () => {
+    const { entries, files } = healthyTimed(3);
+    entries.push({ idx: 3, tag: "0003_beta", when: entries[2].when });
+    files.push("0003_beta.sql");
+    expect(checkLedger(entries, files).join("\n")).toMatch(/unspecified order|skip/i);
+  });
+
+  it("does NOT fire on a journal that omits `when` entirely", () => {
+    // The regression this nearly shipped with: comparing undefined to undefined reports
+    // every entry in a journal without the field. A missing `when` is a different defect.
+    const { entries, files } = healthy(4);
+    expect(checkLedger(entries, files)).toEqual([]);
+  });
+});
