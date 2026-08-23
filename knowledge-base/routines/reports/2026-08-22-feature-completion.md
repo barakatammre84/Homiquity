@@ -6,7 +6,7 @@ areas). The area is filed under a staff domain; its defect is entirely borrower-
 part of why nobody had looked.
 **Gap:** every borrower-facing letter surface read `hasLetter` alone, so a letter that had **expired**
 or been **revoked** still rendered "ready to download" — and there was no path to a fresh one.
-**PR:** [#TBD] · **Open `FINDINGS.md` rows:** 219 before · 219 after (unique ids in the *Open
+**PR:** [#689](https://github.com/barakatammre84/Homiquity/pull/689) · **Open `FINDINGS.md` rows:** 219 before · 219 after (unique ids in the *Open
 findings* section; this run closed none and minted none — see *Honesty*).
 
 STATUS: OK
