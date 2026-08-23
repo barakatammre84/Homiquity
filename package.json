@@ -48,6 +48,7 @@
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "db:seed": "tsx server/scripts/runSeed.ts",
     "coach:tools": "tsx scripts/coachToolTrigger.ts",
+    "handoff:facts": "node scripts/handoff-facts.cjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "brand:og": "node scripts/generate-og-card.mjs"
   },

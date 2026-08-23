@@ -47,6 +47,7 @@ doc-drift bug to fix):
   adoption table — no `⏳`, every row carries a number and the command that produces it
   (`pnpm guard:ui`). Merged 2026-08-18 from `design_guidelines.md` + `visual-consistency-standard.md`,
   both now in [archive/design/](archive/design/).
+- [handoff/](handoff/) — the **Feynman onboarding & handoff corpus** for a full-stack team: each chapter explains one subsystem plainly, then proves every claim with a read-only command, names where it breaks, and ends in a teach-back. Layered on the app-guide (which wins on any conflict; the code wins over both); counts are command-derived in `handoff/FACTS.md`, drift found in other docs is logged in `handoff/LEDGER.md` rather than hand-patched; `handoff/prompts/` holds the loop rails and templates for building through Claude without breaking the harness.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
