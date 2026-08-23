@@ -18,6 +18,22 @@ import { evaluateTridTrigger } from "../../services/trid";
 import { maskUrlaPersonalInfo } from "./access";
 import { routeParams } from "../../http/routeParams";
 
+/**
+ * B3-6-05, Debts Paid by Others: a liability the borrower says someone else
+ * pays has left (or re-entered) the qualifying ratio, and the Guide's 12-month
+ * payment history must follow it as a condition — runPreUnderwriting
+ * reconciles them. Detached: the write has already succeeded, and a flag-run
+ * failure must never fail the borrower's save.
+ */
+function scheduleThirdPartyPaidDebtReconcile(applicationId: string): void {
+  (async () => {
+    const { runPreUnderwriting } = await import("../../services/preUnderwriting");
+    await runPreUnderwriting(applicationId, "liability_declared");
+  })().catch((err) =>
+    console.warn(`[B3-6-05] Third-party-paid debt reconcile failed for ${applicationId} (non-fatal):`, err?.message || err),
+  );
+}
+
 export function registerUrlaRoutes(
   app: Express,
   storage: IStorage,
@@ -352,6 +368,7 @@ export function registerUrlaRoutes(
       }
       const data = { ...pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]), applicationId };
       const result = await storage.createUrlaLiability(data as any);
+      if (result.paidByOtherParty) scheduleThirdPartyPaidDebtReconcile(applicationId);
       res.status(201).json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Create liability error:", error);
@@ -377,6 +394,7 @@ export function registerUrlaRoutes(
       if (!result) {
         return res.status(404).json({ error: "Liability not found" });
       }
+      if (result.paidByOtherParty || record.paidByOtherParty) scheduleThirdPartyPaidDebtReconcile(record.applicationId);
       res.json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Update liability error:", error);
@@ -397,6 +415,7 @@ export function registerUrlaRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       await storage.deleteUrlaLiability(id);
+      if (record.paidByOtherParty) scheduleThirdPartyPaidDebtReconcile(record.applicationId);
       res.status(204).send();
     } catch (error) {
       console.error("Delete liability error:", error);
@@ -723,6 +742,24 @@ export function registerUrlaRoutes(
       })().catch((err) =>
         console.warn(`[Autopilot] Section run failed for ${applicationId} (non-fatal):`, err?.message || err),
       );
+
+      // B3-6-05, Debts Paid by Others: a liability the borrower says someone
+      // else pays has just left (or re-entered) the qualifying ratio, and the
+      // Guide's 12-month payment history must follow it as a condition —
+      // reconciled by runPreUnderwriting. Detached: the save has already
+      // succeeded, and a flag-run failure must not fail the borrower's save.
+      const savedLiabilities = [
+        ...(Array.isArray(results.liabilities) ? results.liabilities : []),
+        ...(Array.isArray(results.coApplicants)
+          ? results.coApplicants.flatMap((c: any) => (Array.isArray(c?.liabilities) ? c.liabilities : []))
+          : []),
+      ];
+      const touchesThirdPartyPaid =
+        savedLiabilities.some((l: any) => l?.paidByOtherParty) ||
+        [liabilities, ...(Array.isArray(req.body?.coApplicants) ? req.body.coApplicants.map((c: any) => c?.liabilities) : [])]
+          .flat()
+          .some((l: any) => l && typeof l === "object" && "paidByOtherParty" in l);
+      if (touchesThirdPartyPaid) scheduleThirdPartyPaidDebtReconcile(applicationId);
 
       res.json(safeResults);
     } catch (error) {

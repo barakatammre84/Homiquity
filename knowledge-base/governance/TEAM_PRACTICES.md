@@ -110,7 +110,10 @@ coherent push once — one CI cycle, one deploy, one review.
    things a component test already pins.
 5. Regulated math changes carry a `data/regulatory/regulatory-ledger.json` citation **in the
    same commit** — no citation, no code change. Never invent MISMO names (see
-   [CLAUDE.md](../../CLAUDE.md) compliance-first rules).
+   [CLAUDE.md](../../CLAUDE.md) compliance-first rules). Selling Guide-governed logic
+   (register in §10) additionally names its governing section id — resolving in
+   `docs/fannie-mae/selling-guide/section-index.tsv` — in the changed lines or a
+   `## Selling Guide authority` PR-body section; enforced by `pnpm guard:authority`.
 6. Schema changes are **hand-authored** SQL in `migrations/` (drizzle-kit generate has
    snapshot drift). Never `pnpm db:push` from a worktree — the shared dev DB serves
    multiple branches and push drops other branches' columns. Since #251 `db:push` and
@@ -406,3 +409,76 @@ were found after the Railway cutover created them.
   Plaid clearance pack). *(Added by the
   [2026-08-04 sovereign-stack adjudication](../logs/2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md)
   §3.4 — every external pitch in that series proposed an unreviewed new PII processor.)*
+
+---
+
+## 10. Selling Guide authority triggers (binding)
+
+The Fannie Mae *Selling Guide* (edition 08-05-2026, committed at
+`docs/fannie-mae/selling-guide/`) is the policy authority for eligibility, underwriting,
+income, credit, property and delivery. It controls over every job aid in `docs/fannie-mae/`,
+and over anything in this repo.
+
+**Why this is a gate and not a preference.** Homiquity is a broker — in the Guide's own
+vocabulary a **third-party originator** (A3-3-01). A wholesale lender selling our files to
+Fannie "must satisfy itself that the third-party originator is capable of producing quality
+loans," and its QC is required to pull "a post-closing stratified random sample of third-party
+originations" for full-file review "on at least a monthly basis" (D1-1-01). The Guide is
+therefore the standard every counterparty we want is contractually obliged to measure us
+against — not a reference shelf. A3-4-02 is the keystone: data must be "complete and
+accurate," all DU data "verifiable," and the lender must keep "adequate procedures in place to
+validate the integrity of specific data for each underwriting recommendation." Liability for
+inaccuracy runs **life-of-loan** (A2-2-07).
+
+Part D binds the *lender*, not us. Adopting its shape for our own quality program is a
+deliberate business choice, recorded as such — never described as a compliance obligation we
+are already under.
+
+### The two rules
+
+1. **Cite the governing section.** A PR changing logic under a trigger path below names the
+   Selling Guide section that governs it, either in the changed lines (a comment or a citation
+   object beside the rule) or in a `## Selling Guide authority` section of the PR body.
+2. **An unresolvable id fails anywhere in the diff** — including docs, including files no
+   trigger covers. The Guide renumbers between editions, and a stale cite does not announce
+   itself: when self-employment income moved off B3-3.2 on 2026-03-04, six sites kept citing
+   the old chapter because the URL still returned HTTP 200 and silently served the renumbered
+   page. Deliberate historical references stay writable — put `formerly` (or
+   `renumbered`/`superseded`/`historical`) on the same line.
+
+**The refactor exit is an attestation, not a waiver.** A diff that touches a governed file
+without asserting policy writes the exact sentence `No Selling Guide policy asserted or
+altered` in that PR-body section, plus a line of why. It is recorded in the PR with an author's
+name on it — the same logic as §9's: for a solo owner the enforceable thing is the artifact,
+not a second approver.
+
+### Trigger paths
+
+Mirrored in `PATH_TRIGGERS` in `scripts/selling-guide-authority-guard.cjs`. **This register and
+that array are edited in the same PR** — the §9 pairing, for the same reason.
+
+| Group | Paths |
+|---|---|
+| underwriting & decision engines | `server/underwritingEngine.ts`, `server/underwriting.ts`, `server/services/decisionEngine.ts`, `server/services/ruleEngine.ts`, `server/services/preUnderwriting.ts`, `server/services/underwritingNuance.ts` |
+| income policy | `server/services/selfEmploymentIncome.ts`, `server/services/income/`, `server/services/worksheetPrefill.ts`, `shared/incomePaths.ts`, `shared/taxFormExtraction.ts`, `shared/borrowerIncomeView.ts` |
+| scenario & classification | `server/services/scenarioCatalog.ts`, `server/services/situationClassifier.ts`, `server/services/loanAnalysis.ts` |
+| AUS / DU | `server/services/ausSubmission.ts`, `server/routes/aus.ts` |
+| delivery & submission readiness | `server/services/loanDeliveryReadiness.ts`, `server/services/brokerSubmissionReadiness.ts`, `server/services/lenderSubmission.ts`, `server/services/mismoValidation.ts`, `server/mismo.ts`, `shared/mismo.ts` |
+| policy data & schema | `server/scripts/seedLendingGrids.ts`, `shared/schema/lendingUrla.ts` |
+| borrower-facing policy surfaces | `server/services/autopilot/followUps.ts` |
+
+**Deliberately excluded — do not add without reading why.** `shared/fannieMae/` is job-aid
+sourced: it carries delivery *formats* (ULDD/UCD enumerations, edit codes, SFCs) whose
+authority is the job aids plus the §5.5 ledger rule, and dual-gating it would teach people to
+paste Guide ids onto job-aid data, which is worse than no citation. `server/pricing.ts` is
+excluded because LLPA authority is the LLPA Matrix, which is **not procured** — a trigger
+nobody can satisfy honestly trains route-arounds. Add it when the Matrix lands.
+
+### What a green gate does and does not mean
+
+It proves a citation was **written down** and that the id **exists**. It cannot prove the cited
+section says what the code claims — a resolving id is a pointer, not a verification. And a
+value read out of a **table** is not verified at all until it is checked against the PDF page:
+the text extraction flattens tables, ruled ones survive and borderless ones do not (B2-2-03's
+financed-property limits table is the known case). Prose may be trusted from the text; a
+threshold, matrix cell or eligibility limit may not.

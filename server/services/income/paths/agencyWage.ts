@@ -84,10 +84,22 @@ export function computeAgencyWageIncome(input: AgencyWageInput): AgencyWageCompu
   // Face value is not obviously correct for several of these. A non-taxable benefit
   // may be eligible to be grossed up, and a support payment may require documented
   // continuance before it counts at all — the first would UNDER-state this
-  // borrower's income, the second could OVER-state it. Neither adjustment is made
-  // here, because neither has an authority document in this repo (docs/fannie-mae/
-  // carries self-employment and rental income only). No citation, no computation —
-  // the same rule that hard-blocks the DSCR and bank-statement paths. The note is
+  // borrower's income, the second could OVER-state it.
+  //
+  // Neither adjustment is made here, and as of 2026-08-22 that is no longer for
+  // want of authority: B3-3.1-01 states both (Nontaxable Income — add 25% of the
+  // non-taxable amount; Continuance of Income — income with a defined expiration
+  // or asset-depletion dependency must be documented to continue three years from
+  // the note date). They are withheld for two DIFFERENT reasons:
+  //
+  //   * gross-up RAISES qualifying income, loosening the DTI gate. This repo's
+  //     rail permits a reading to tighten a gate, never to loosen one — so it is
+  //     a founder decision, not an agent's.
+  //   * continuance TIGHTENS, which is permitted, but other_income_sources holds
+  //     only income_source and monthly_amount. There is no expiration date to
+  //     test, so the rule is unimplementable until that is captured.
+  //
+  // See knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md. The note below is
   // how the gap reaches a human instead of silently resolving to "100%".
   const uncitedTypes = new Set<string>();
   const unclassifiedSources = new Set<string>();
@@ -106,9 +118,9 @@ export function computeAgencyWageIncome(input: AgencyWageInput): AgencyWageCompu
   }
   if (uncitedTypes.size > 0) {
     notes.push(
-      `Other income counted at declared face value, with no cited adjustment: ${[...uncitedTypes]
+      `Other income counted at declared face value, with no adjustment applied: ${[...uncitedTypes]
         .sort()
-        .join(", ")}. Gross-up eligibility and continuance requirements for these types have no in-repo authority, so no factor was applied in either direction — confirm the treatment before this figure reaches a lender.`,
+        .join(", ")}. Selling Guide B3-3.1-01 allows grossing up verified non-taxable income by 25% (raises income — withheld pending a policy decision) and requires three-year continuance for income with a defined expiration date (lowers income — not testable, no expiration date is captured). No factor was applied in either direction; confirm the treatment before this figure reaches a lender.`,
     );
   }
   if (unclassifiedSources.size > 0) {

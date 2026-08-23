@@ -70,6 +70,10 @@ export default defineConfig({
       "tests/rateProductHeadings.test.ts",
       "tests/migrationLedgerGuard.test.ts",
       "tests/securityReviewGuard.test.ts",
+      // TEAM_PRACTICES §10 — the Selling Guide authority gate.
+      "tests/sellingGuideAuthorityGuard.test.ts",
+      // F-0818-11 — the DU casefile DTI must include the proposed housing payment.
+      "tests/ausCasefileDti.test.ts",
       "tests/userPhones.test.ts",
       "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
@@ -149,6 +153,20 @@ export default defineConfig({
       "tests/lifecycleEngine.test.ts",
       "tests/homeownerHubWrites.test.ts",
       "tests/underwritingNuance.test.ts",
+      // Pins the DTI debt-summation rules to Selling Guide B3-6-05 / B3-6-07.
+      // Every rule here previously sat on a branch the liability vocabulary
+      // could not reach, so it never ran and the suite stayed green.
+      "tests/sellingGuideMonthlyDebt.test.ts",
+      "tests/liabilityExclusions.test.ts",
+      // B3-6-03 PITIA composition: association dues were absent from the
+      // decision path, and a null on a condo must gap rather than read as zero.
+      "tests/sellingGuideHousingExpense.test.ts",
+      // B2-1.3: the funnel collects a cash-out purpose the engine never read,
+      // so refi files were measured against purchase LTV ceilings.
+      "tests/sellingGuideLoanPurpose.test.ts",
+      // B3-5.3-07: the declarations table reached document generation and MISMO
+      // scoring and never the decision path — a declared foreclosure was invisible.
+      "tests/sellingGuideDerogatoryEvents.test.ts",
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeTypes.test.ts",
       "tests/incomeCutoverParity.test.ts",

@@ -31,9 +31,26 @@ mismo-*.xml
 # deploy target. It is not; Railway is.
 .vercel
 
+# Fannie Mae Selling Guide — the source PDF and its full text extraction.
+#
+# This repository is PUBLIC. The Guide is Fannie Mae's copyrighted work, and a
+# complete text extraction is the same content in another format, not a lesser
+# form of it — committing either would be redistribution. Regenerate locally with
+# `python3 scripts/extract-selling-guide.py`; that script explains where it looks.
+#
+# Tracked instead: section-index.tsv and revised-sections.tsv (titles and page
+# numbers — factual metadata), plus our own analysis in
+# knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
+docs/fannie-mae/selling-guide/*.pdf
+docs/fannie-mae/selling-guide/selling-guide-text.txt
+docs/fannie-mae/selling-guide/highlights.json
 # Transpiled scratch copies of the vitest configs, written by
 # scripts/test-collection-guard.cjs so it can read each lane's real `include`
 # list instead of restating it. Written to the repo root because that is where
 # `vitest/config` resolves from and where `__dirname` has to point; removed in a
 # `finally`, so one appearing here means a run was killed mid-flight.
 .hq-test-collection-guard.*.mjs
+# The ralph-loop state file. Written by the plugin's setup script (outside the repo)
+# and rewritten on every iteration, so it is per-run scratch and never shared state.
+# The acceptance run in handoff ch.12 had to remember to leave it untracked by hand.
+.claude/ralph-loop.local.md
