@@ -173,8 +173,27 @@ export function Navigation() {
       )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="touch-target flex items-center">
-            <Logo size="lg" tone="brand" data-testid="logo-nav" />
+          {/* Two lockups, one visible at a time. Below sm the full lockup does
+              not fit: it needs 139px (22 mark + 8 gap + 109 wordmark) beside a
+              135px CTA and a 44px menu button, which is 358px of header in a
+              320px viewport. It did not overflow the page — `.touch-target`
+              sets `min-width: 44px`, replacing this flex item's default
+              `min-width: auto`, so the link shrank to 101px and 38px of the
+              brand rendered UNDER the CTA instead. Measured, not inferred.
+
+              `shrink-0` alone is not the fix here: it removes the spill but
+              then the header really does overflow (342px right edge at 320px).
+              The mark alone is 22px and leaves a 57px gap, and Logo's own note
+              says the compact mark stays legible to 16px.
+
+              Rendering both rather than hiding the wordmark inside one Logo is
+              deliberate: `variant="mark"` is what adds `role="img"` +
+              `aria-label`, so hiding just the wordmark span would leave the
+              link with NO accessible name on phones. `display:none` keeps
+              exactly one of these in the a11y tree at any width. */}
+          <Link href="/" className="touch-target flex shrink-0 items-center">
+            <Logo size="lg" tone="brand" variant="mark" className="sm:hidden" data-testid="logo-nav-mark" />
+            <Logo size="lg" tone="brand" className="hidden sm:inline-flex" data-testid="logo-nav" />
           </Link>
 
           <div className="hidden items-center gap-1 lg:flex">
