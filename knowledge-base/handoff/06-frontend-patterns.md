@@ -93,7 +93,7 @@ flowchart TD
 - **`<Gated>` is the pre-license redirect.** `client/src/App.tsx:238-239`; used on 24 route
   sites; `client/src/lib/prelaunch.ts:17-19` `PRELAUNCH_GATED = VITE_PRELAUNCH_GATED === "true" || (PROD && VITE_PRELAUNCH_GATED !== "false")`
   — gated by default in a production build.
-- **Ten gates, one source.** `client/src/lib/routeGates.ts:32-109`: `borrower`, `staff`,
+- **Ten gates, one source.** `client/src/lib/routeGates.ts:33-109`: `borrower`, `staff`,
   `internalStaff`, `underwriterOps`, `disclosure`, `marketData`, `loTeam`, `cpaPortal`,
   `partnerHub` (a deliberate literal — `cpa` removed on RESPA §8(a) grounds, `:90-105`),
   `adminOnly`. Header `:29-31`: "Client gates are a UX affordance, never the security boundary."
@@ -129,7 +129,7 @@ flowchart TD
   (`:417` — "a confident, frozen 'we're reviewing your file' to a borrower forever"),
   `borrowerGraphKeys` (`:439` — a path that does not exist), `calculatorResultKeys` (`:270-279` —
   has no reader; kept as the canonical shape).
-- **Three guards, three questions.** `package.json:38` `guard:querykeys` runs
+- **Three guards, three questions.** `package.json:42` `guard:querykeys` runs
   `scripts/query-key-guard.cjs` (no interpolated template-string key under `client/src`, `:15`),
   `scripts/query-key-reachability.cjs` (every invalidate/remove/refetch/reset key must element-wise
   prefix-match a fetched key, `:35-37`; cross-file misses are warnings, `:71-72`; sibling omission
@@ -166,7 +166,7 @@ flowchart TD
   fresh object every render, `:41-47`), the server draft 2,500 ms
   (`pages/lending/preApproval/useServerDraftAutosave.ts:28`), and a post-auth replay 500 ms
   (`useDeferredSubmit.ts:25`, consumed synchronously so two tabs cannot double-submit, `:9-13`).
-  Keys "must never change" (`client/src/lib/pendingAttribution.ts:10-16`). `useDraftRestore.ts:124-128`
+  Keys "must never change" (`client/src/lib/pendingAttribution.ts:10-16`). `useDraftRestore.ts:133-137`
   — "form.reset IS the restore".
 - **URLA.** `client/src/pages/borrower/URLAForm.tsx` (857 lines) + 12 files in
   `client/src/pages/borrower/urla/`; `knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md:26-28` —
@@ -178,21 +178,25 @@ flowchart TD
   6 gated. `tests/seoPrerender.test.ts` pins the bot-prerender regex and the middleware's four
   guards — not the mirror.
 - **Client tests.** `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l`
-  → `120` (90 `.tsx`, 30 `.ts`); `vitest.client.config.ts:37` is a **glob** "so a colocated
-  `*.test.tsx` can never be silently stranded" (`:11-13`); `happy-dom` (`:18`); the `@assets`
+  → `124` (92 `.tsx`, 32 `.ts`); `vitest.client.config.ts:37` is a **glob** (`:11-13`) — which
+  protects against a colocated file being *forgotten*, not against the crawl being *truncated*: a
+  `readdir` that fails under load reads as an empty directory and the lane exits 0 short (chapter
+  07; `knowledge-base/runbooks/CICD.md` said "can never be stranded" and was corrected in 2026-08-23's
+  collection-guard change, which is now what `pnpm test` runs). `happy-dom` (`:18`); the `@assets`
   alias exists because without it a component test reports "0 tests" rather than a failure
-  (`:44-47`). Every lane is `--config`-explicit (`package.json:15-19`) — a bare `vitest run <file>`
-  resolves no client config.
+  (`:44-47`). Every vitest lane is `--config`-explicit (`package.json:20-24`; `:15` `pnpm test` is
+  the collection guard that runs both unit lanes, and `:16-19` are the `harness:t0..t3` tier
+  aliases, chapter 07) — a bare `vitest run <file>` resolves no client config.
 - **Bundle.** `tests/clientSchemaImports.test.ts:7-17` — types only from `@shared/schema`, never
   values ("the browser bundle shipped 174 table definitions with their column names … No data was
   exposed; the map of the database was"); `scripts/bundle-size-guard.cjs` gates the eager entry
-  graph in raw bytes against `scripts/bundle-size-baseline.json` `{eagerRawBytes: 525144}`; lazy
+  graph in raw bytes against `scripts/bundle-size-baseline.json` `{eagerRawBytes: 526640}`; lazy
   chunks are reported, never gated.
 - **Accessibility substrate.** `DESIGN_SYSTEM.md:424` §11 (SkipLink first focusable, `<main
   id="main" tabIndex={-1}>`, `FormMessage role="alert"`, visible labels, ≥ 44 px targets — drifted to
   233 before `subMinTouchTarget` ratcheted it, `:432-441`); the four-question gate `:532`
   (provenance · explanation · agreement · honesty). `grep -rho 'data-testid="[^"]*"' client/src | wc -l`
-  → `2206` (1,970 distinct) — the substrate the happy-dom lane drives.
+  → `2224` (1,985 distinct, `| sort -u | wc -l`) — the substrate the happy-dom lane drives.
 - **Two error boundaries at two altitudes.** `client/src/main.tsx:10` (root, backstops the
   providers) and `client/src/App.tsx:626` (inner — a failed lazy chunk is contained so the Toaster
   and providers stay mounted).
@@ -217,11 +221,11 @@ grep -n "staleTime\|refetchOnWindowFocus\|refetchInterval\|retry:" client/src/li
 grep -rin csrf client/src | wc -l
 # → 0 @ 12d7cbec
 grep -n '"guard:querykeys"' package.json
-# → 37: three scripts chained @ 12d7cbec
+# → 42: three scripts chained @ d9e8f79d
 cat scripts/design-token-baseline.json ; cat scripts/ui-standard-baseline.json ; cat scripts/bundle-size-baseline.json
-# → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 525144 @ 12d7cbec
+# → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 526640 @ 6377727e
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
-# → 120 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 12d7cbec
+# → 124 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ d9e8f79d
 grep -rl "zodResolver" client/src | wc -l ; grep -rl "SEOHead" client/src/pages | wc -l
 # → 7 / 43 @ 12d7cbec
 awk '/^export const STATIC_ROUTE_META/,/^};/' shared/seo/routeMeta.ts | grep -cE '^  "/'
@@ -229,7 +233,7 @@ awk '/^export const STATIC_ROUTE_META/,/^};/' shared/seo/routeMeta.ts | grep -cE
 wc -l client/src/pages/borrower/URLAForm.tsx ; ls client/src/pages/borrower/urla/ | wc -l
 # → 857 / 12 @ 12d7cbec
 grep -rho 'data-testid="[^"]*"' client/src | wc -l
-# → 2206 @ 12d7cbec
+# → 2224 @ d9e8f79d
 ```
 
 ## Where this breaks
@@ -248,7 +252,7 @@ grep -rho 'data-testid="[^"]*"' client/src | wc -l
 | The `.app-surface` shadow rule's comment still reasons from Tailwind v3 `@layer` semantics while the same file declares v4 native cascade layers. Behaviour may be right; the stated reason cannot be. | `client/src/index.css:437-446` vs `:9` | Nothing reads `.css`. |
 | `ui-standard-guard` sees only literal double-quoted `className` strings — classes built by `cn()`, template literals or cva variants are invisible; every count is a floor. | `scripts/ui-standard-guard.cjs:27-29` | By its own statement. |
 | `VITE_*` is build-time: flipping `VITE_PRELAUNCH_GATED` needs a redeploy, not a restart. | `app-guide/07-frontend.md:89-93`; `client/src/lib/prelaunch.ts:17` | `tests/prelaunchGate.test.ts` covers the **server** gate (per-request env), not the client constant. |
-| `vitest run <file>` with no `--config` resolves no client config: no happy-dom, no `@`/`@shared`/`@assets` aliases, and a "0 tests" that reads like the file was never picked up. | `vitest.client.config.ts:18,37,40-48`; `package.json:15-19` | Only `pnpm test` / `pnpm test:client`. |
+| `vitest run <file>` with no `--config` resolves no client config: no happy-dom, no `@`/`@shared`/`@assets` aliases, and a "0 tests" that reads like the file was never picked up. | `vitest.client.config.ts:18,37,40-48`; `package.json:20-24` | Only `pnpm test` / `pnpm test:client`. |
 | `tests/formResolverContract.test.ts` covers only the six schemas it imports; a new `zodResolver` form is not auto-covered. | `tests/formResolverContract.test.ts:4-14` | The listed schemas only. |
 | `STATIC_ROUTE_META` (31) hand-mirrors `<SEOHead>` in 43 files — drift means crawlers read different copy than humans. | `shared/seo/routeMeta.ts:7-10,36-39` | No test compares a registry entry to a page's props. Proposed ticket in chapter 12. |
 | Public gates are UX only and `tests/routeGateDrift.test.ts` enumerates specific client↔server pairs; a *new* route whose client gate is wider than its server gate is not derived. | `client/src/lib/routeGates.ts:29-30` | Partially. |

@@ -36,14 +36,14 @@ MAX_ITER: 8
 5. **T0**: `pnpm check`; `node --check` over `scripts/*.cjs`; `pnpm guard:schema &&
    pnpm guard:migrations` (the two that see this change) and the rest of the T0 guard list →
    `$SCRATCH/t0.log`.
-6. **T1**: `pnpm test > "$SCRATCH/t1.log" 2>&1`; the two `Test Files` lines equal the on-disk
-   counts; your test name is present.
+6. **T1**: `pnpm test > "$SCRATCH/t1.log" 2>&1`; the guard's last line is `all lanes ran every
+   file on disk`; your test name is present.
 7. Commit (explicit `git add` of WRITE paths only; never the ralph state file). **T2**
    `pnpm preflight --fast`. A new PII-vocabulary column trips §9 → draft PR + ⛔, stop editing.
 8. **T3** `pnpm preflight` (integration lane on 4000). A baseline that tightened is staged and
    named.
 9. Territory check; push; PR body from `_REPORT_FORMAT.md` with **Prod impact** reading:
-   "migration <NNNN> — `migrate-prod` applies it on merge (`.github/workflows/ci.yml:583`,
+   "migration <NNNN> — `migrate-prod` applies it on merge (`.github/workflows/ci.yml:681`,
    re-armed 2026-08-22 by #669). After merge a human reads that job's log for
    `applied 1 migration(s)`, then confirms the `/api/health` commit. If the job has been paused
    again since — check its `if:` before writing this line — a human dispatches the workflow with

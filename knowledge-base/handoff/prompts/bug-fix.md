@@ -27,7 +27,8 @@ MAX_ITER: 8
 3. Fix inside WRITE only. If the fix needs a status transition, it goes through
    `updatePipelineStage`; if it touches PII, through the vault and `logAudit`; if it changes
    regulated math, stop (`_RAILS.md` R8).
-4. **T0** → **T1** (the test's file name in the log; counts equal) → commit (explicit `git add`).
+4. **T0** → **T1** (the test's file name in the log; the guard's `all lanes ran every file on disk`
+   last line) → commit (explicit `git add`).
 5. **T2** `pnpm preflight --fast`. A §9 trigger → draft PR + ⛔ line, stop editing.
 6. **T3** `pnpm preflight` when the fix touches a route, storage, schema or anything the
    integration lane exercises. A baseline that tightened is staged and named.
