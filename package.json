@@ -25,6 +25,8 @@
     "mcp": "tsx server/mcp/index.ts",
     "checkup": "bash scripts/checkup.sh",
     "reg:watch": "node scripts/regulatory-watch.cjs",
+    "sg:watch": "node scripts/selling-guide-watch.cjs",
+    "sg:watch:save": "node scripts/selling-guide-watch.cjs --update-state",
     "reg:watch:save": "node scripts/regulatory-watch.cjs --update-state",
     "reg:triage": "node scripts/regulatory-triage.cjs",
     "db:generate": "echo 'BLOCKED: drizzle-kit generate has snapshot drift in this repo and emits wrong SQL. Hand-author migrations/NNNN_*.sql + a migrations/meta/_journal.json entry instead — see CLAUDE.md, Database.' && exit 1",

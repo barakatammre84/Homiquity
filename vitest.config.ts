@@ -107,6 +107,12 @@ export default defineConfig({
       // with every gate green — a monitor that stops running emits nothing to
       // be wrong about, and two of its four sources report false-clean.
       "tests/regulatoryWatch.test.ts",
+      // The Selling Guide edition & link watcher, on injected fetch. Its
+      // load-bearing rule is denied-is-not-rot: the first seed run took the
+      // agent proxy's 403s for link rot and emitted 293 false signals. Also
+      // pins the host short-circuit, the sha-based new-edition signal (founder
+      // runbook, never auto-cutover), and the offline freshness ratchet.
+      "tests/sellingGuideWatch.test.ts",
       "tests/decisionEngineGaps.test.ts",
       // WF1-002: the engine's compensation-independent pricing projection.
       "tests/paymentProjection.test.ts",
