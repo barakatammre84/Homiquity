@@ -5,7 +5,7 @@ description: Use ONLY when the user explicitly invokes /financial-audit or expli
 
 # Financial Audit — recurring capital-structure & money-path routine
 
-**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
 job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
 read out of the committed text this run — never from memory. An id the index does not know is a
@@ -78,7 +78,7 @@ was when the loop started.
    - `knowledge-base/financial-audit/LEDGER.md` — the F-### register and statuses.
    - `git log --oneline origin/main -20` — what landed since the last tick.
    - The newest `knowledge-base/logs/*financial-architecture*` entry.
-   - `CTO_ROADMAP.md` §0–§2 if the tick may touch launch-blocking work.
+   - `CTO_ROADMAP.md` §0–§2 if the tick may touch trunk-health or delivery-spine work.
 4. **Team sync — assume you are not alone, and do not rely on seeing anyone.**
 
    Order matters: the signals below run **strongest first**, because the weakest one
@@ -167,7 +167,7 @@ Permitted only for a ledger row at `authorized`, one per run (R7), within R8–R
    through one function — that is what makes a one-line fix repair four surfaces.
 4. Verify loop (max 5, restart from 1 on any failure):
    `pnpm check` → `pnpm test` → the guards (`design-token`, `kb-index`,
-   `doc-freshness`, `schema-migration`, `delivery-stack-freeze`) → `pnpm build` for a
+   `doc-freshness`, `schema-migration`) → `pnpm build` for a
    client-touching change.
 5. **Test-ran assertion:** a new file under `tests/` NEVER runs unless added to the
    `include:` array in `vitest.config.ts`. Confirm the filename appears in the output.

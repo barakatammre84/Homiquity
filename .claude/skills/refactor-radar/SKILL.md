@@ -5,7 +5,7 @@ description: Use ONLY when the user explicitly invokes /refactor-radar or explic
 
 # Refactor Radar — looping autonomous UI-vs-logic separation routine
 
-**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
 job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
 read out of the committed text this run — never from memory. An id the index does not know is a
@@ -179,7 +179,7 @@ Run in order; any failure → fix → restart from step 1. Attempts > 5 → Phas
    under tests/ (node lane) NEVER runs unless added to the `include:` array in
    vitest.config.ts — make that edit, rerun, confirm the filename appears in
    `pnpm test:unit` output. (Default: colocate under client/src instead.)
-4. `pnpm guard:tokens && pnpm guard:querykeys && pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb`
+4. `pnpm guard:tokens && pnpm guard:querykeys && pnpm guard:schema && pnpm guard:migrations && pnpm guard:kb`
 5. `pnpm build`
 6. Draft the PR body to $TMP/pr-body.md (template below), then rehearse §9 exactly
    as CI does:

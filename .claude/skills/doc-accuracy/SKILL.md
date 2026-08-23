@@ -14,7 +14,7 @@ reported to the 17:06 Handoff Corpus Steward, which is that corpus's only writer
 **Contract:** [`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) wins over this
 file on any conflict — say so in the report rather than following the stale copy.
 
-**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
 job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
 read out of the committed text this run — never from memory. An id the index does not know is a

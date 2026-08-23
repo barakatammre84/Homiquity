@@ -8,7 +8,7 @@ description: Use ONLY when the user explicitly invokes /backend-data-engineer or
 **Cadence:** daily, 11:00 UTC (CCR fleet — see CHARTER §3's second-fleet table).
 **Writes code:** yes — `server/**`, `shared/schema/**` + a same-PR `migrations/**` entry.
 **Produces:** at most **two** PRs + one report. A clean tick produces neither PR and says so.
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
@@ -207,7 +207,8 @@ or work CHARTER §5's assist ladder against what is already in flight.
 
 ## Phase 2 — Select (at most two items)
 
-Rank by CHARTER §1 — question A first, then B — then the §1a Illinois tiebreak. Scan in this order:
+Rank by CHARTER §1 — question A first, then B — then the §1a tiebreak (three-party deliverable /
+Guide conformance, then client quality). Scan in this order:
 
 **(a) A red gate outranks everything.** If `pnpm check` or `pnpm test` is red on fresh `origin/main`
 (reinstall after a rebase before believing it), that failure is item one.

@@ -281,7 +281,8 @@ Blocked on three gates, in order: (1) a deterministic **asset-depletion qualifyi
 built SE-program-style — Step-0 primary-source pass against the current Selling Guide
 (section verified at build, never from memory), cited factors in the regulatory ledger,
 then the engine, then tests (§5-C9); (2) the illustration-only advice posture (platform
-computes, the licensed advisor advises); (3) founder prioritization against the core loop.
+computes, the licensed advisor advises); (3) founder prioritization against the three-party
+deliverable (CHARTER §1a, 2026-08-23).
 Custodian integrations stay adapter-shaped until contracts exist. When the gates clear this
 becomes PH-7 with its own spec.
 
@@ -289,7 +290,7 @@ becomes PH-7 with its own spec.
 
 | Item | Type | Blocks |
 |---|---|---|
-| **F1 — NMLS licensure** → flip `PRELAUNCH_GATED` | Founder/ops | Consumer-reaching activation of PH-3/PH-4/PH-5 assets, PH-6 |
+| **Go-live flip** (`PRELAUNCH_GATED` — F1 licensure itself cleared 2026-07-13, NMLS #427468) | Founder/ops | Consumer-reaching activation of PH-3/PH-4/PH-5 assets, PH-6 — activation only; building them is not gated |
 | **PPE contract** (Lender Price + Mortech per broker-MISMO-PPE strategy) | Founder procurement | Any rate/payment figure in partner assets (§5-C4) |
 | **Counsel: RESPA co-marketing framework** — what marketing support we may provide partners, FMV documentation, MSA posture | Founder/counsel | PH-3 co-marketing scope beyond education-only; any §6 incentive reopen |
 | **Counsel: consent-share design** — PH-2 consent artifact + existence-only states; PH-5 shared-field set; GLBA/Reg P posture | Founder/counsel | PH-2 consent copy final; PH-5 ship |

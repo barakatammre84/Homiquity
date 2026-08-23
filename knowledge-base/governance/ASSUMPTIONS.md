@@ -1,6 +1,6 @@
 # Assumptions & Facts Register
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-08-23 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **Purpose:** one honest page separating what is **real**, what is **simulated**, and what
 is **assumed/pending** — so nobody joining a sprint builds on a fact that isn't one.
@@ -16,9 +16,9 @@ they are account state this codebase cannot see. Corrected in this pass: the mig
 which asserted `0023` while `main` carries **39 migration files through `0038`** (this branch adds
 `0039`–`0044`). Prod's *applied* HEAD is a database fact and is deliberately not asserted here —
 `migrate-prod` auto-applies on merge, so diff `drizzle.__drizzle_migrations` against the journal to
-confirm. New this pass: `shared/businessChannel.ts` declares the channel `broker` and the Fannie
-delivery stack is frozen (`pnpm guard:channel`) pending
-[CHANNEL_DECISION.md](./CHANNEL_DECISION.md).
+confirm. `shared/businessChannel.ts` declares the channel `broker` (an operations fact) pending
+[CHANNEL_DECISION.md](./CHANNEL_DECISION.md); the delivery-stack build freeze that used to
+accompany it was lifted 2026-08-23 by founder directive (CHARTER §1a).
 
 **2026-08-06 platform note (not a verification pass).** Hosting moved from Vercel to **Railway**;
 the Vercel project has been deleted, so every "in Vercel" phrase in the rows below now reads
@@ -70,7 +70,7 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials as Railway service variables, then the prod acceptance test | LS-2 |
 | "CI runs on every push" | **True** *(re-verified 2026-07-19 evening)*: `.github/workflows/ci.yml` runs the required **`gate`** check (typecheck · unit tests · blocking prod audit · schema guard · design-token ratchet) on every PR, branch protection enforces it with `enforce_admins` on, and the `migrate-prod` job auto-applies migrations on merge ([CICD.md](../runbooks/CICD.md)). Added 2026-08-06: a `verify-deploy` job polls `/api/health` after every push to `main` and fails if prod is not serving that commit — the control for the silent-failed-deploy class above. Scheduled jobs are **not** platform cron: `.github/workflows/cron-jobs.yml` curls `/api/jobs/*` with `Authorization: Bearer $CRON_SECRET`, so `CRON_SECRET` must match between the GitHub **repository secret** and the **Railway service variable** or every job 401s silently. ⚠️ Enforcement follows plan/visibility: a 2026-07-19 private flip silently **deleted** the rule for ~2½ hours (#252–#259 merged pre-green; re-applied when the repo went public again) — verify protection is live before trusting `--auto` ([TEAM_PRACTICES](./TEAM_PRACTICES.md) §6). Integration tests stay manual — CI never runs them. | — |
 | "Live mortgage rates" | **False everywhere as of 2026-08-06.** The vendor leg (realty-us RapidAPI) is real in code, but `RAPIDAPI_KEY` is set in no environment — it died with the Vercel project and was not re-created in Railway — so prod and local both fall back to the simulated survey | — |
-| "Homiquity is heading to correspondent" | **UNDECIDED — the largest open question about the capital structure.** The repo carried a full Fannie Mae seller/servicer delivery stack (1,482 lines) that a broker never uses. As of 2026-08-04 the channel is DECLARED `broker` in `shared/businessChannel.ts`, the stack is frozen by `pnpm guard:channel` (may shrink, not grow), and `mersOrgId` reads `NOT_APPLICABLE_BROKER_CHANNEL` rather than `PENDING`. Flipping to correspondent invalidates the asset-light finding (F-16) and makes the contingent-liability register incomplete. Checklist + consequences: [CHANNEL_DECISION.md](./CHANNEL_DECISION.md) | Founder decision |
+| "Homiquity is heading to correspondent" | **UNDECIDED — the largest open question about the capital structure.** The repo carries a full Fannie Mae seller/servicer delivery stack (~1,482 lines) that a broker never uses. As of 2026-08-04 the channel is DECLARED `broker` in `shared/businessChannel.ts`, and `mersOrgId` reads `NOT_APPLICABLE_BROKER_CHANNEL` rather than `PENDING`. The CI growth-freeze on the stack was lifted 2026-08-23 (founder directive, CHARTER §1a — the decision gates operations, never building); scope doctrine is now the coverage map's Part-C n/a rows. Flipping to correspondent invalidates the asset-light finding (F-16) and makes the contingent-liability register incomplete. Checklist + consequences: [CHANNEL_DECISION.md](./CHANNEL_DECISION.md) | Founder decision |
 
 ## 3. Uncited policy values — live code, unverified provenance
 

@@ -7,6 +7,10 @@ description: Use ONLY when the user explicitly invokes /design-identity-engine o
 
 **Writes code:** yes — the identity layer only (territory below).
 **Produces:** **one** PR + one ledger row. A run that raises nothing produces neither and says so.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the golden handbook
+behind every domain claim a surface makes (CHARTER §1a). This seat's own lane is visual, but any
+policy wording it touches cites the section id; never from memory.
 **Contract:** [CHARTER.md](../../../knowledge-base/routines/CHARTER.md) wins over this file on any
 conflict; say so in the report rather than following the stale copy.
 **Cross-run memory:** [design-identity/LEDGER.md](../../../knowledge-base/design-identity/LEDGER.md)

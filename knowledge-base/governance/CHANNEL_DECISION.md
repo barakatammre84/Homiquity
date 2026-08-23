@@ -1,8 +1,12 @@
 # Channel Decision: Broker or Correspondent
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-08-23 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
-**Status: OPEN — founder-owned. Current declared channel: `broker`.**
+**Status: OPEN — founder-owned. Current declared channel: `broker`, as an operations fact.**
+**The build freeze on the delivery stack was lifted 2026-08-23 by founder directive (CHARTER
+§1a): the channel constant governs runtime behavior and what the business operates as — it no
+longer governs what may be built.** Code may build for the declared channel and ahead of it;
+flipping the constant remains an L3 founder act gated by §3 below.
 
 **What this decides:** whether Homiquity hands every file to a wholesale lender who funds it
 (**broker**), or closes loans in its own name with borrowed money and sells them on
@@ -49,14 +53,19 @@ the business needs it.
 ### A — It is overhead (consistent with today's declared channel)
 
 The delivery stack implements a function the wholesale lender performs again itself. Under this
-reading it should be **frozen, not deleted** — deleting would destroy correct work that becomes
-valuable the moment reading B is chosen, and the maintenance burden (ULDD spec updates, annual QM
-threshold tables, SFC catalog drift) is the real recurring cost, not the disk space.
+reading it is **kept, not deleted** — deleting would destroy correct work that becomes valuable
+the moment reading B is chosen. The maintenance burden (ULDD spec updates, annual QM threshold
+tables, SFC catalog drift) is the real recurring cost, not the disk space.
 
-**This is what the code currently asserts**, and it is enforced: `pnpm guard:channel`
-([`scripts/delivery-stack-freeze-guard.cjs`](../../scripts/delivery-stack-freeze-guard.cjs)) runs
-in the CI gate and fails if the tracked files grow while the channel is `broker`. The stack may
-shrink freely. The guard turns itself off if the channel flips.
+**This is what the code currently asserts.** From 2026-08-04 to 2026-08-23 the reading was also
+enforced mechanically — a CI guard failed any PR that grew the four tracked files while the
+channel read `broker`. That freeze was **lifted 2026-08-23 by founder directive** (CHARTER §1a:
+business decisions gate operations, never what may be built; the guard's unblocking trigger was a
+warehouse line and GSE seller approval, i.e. purely business events). The scope doctrine that
+replaces it is the coverage map's Part-C not-applicable rows
+([SELLING_GUIDE_COVERAGE.md](../compliance/SELLING_GUIDE_COVERAGE.md)): GSE delivery is the
+wholesale lender's function (A3-3-01), so growth in this stack should serve a named need — a
+correction, a cited edit-mirror update, or reading B — not accretion by default.
 
 ### B — The real plan is mini-correspondent
 
@@ -92,7 +101,9 @@ every line below is true:
 - [ ] `CONTINGENT_LIABILITY_REGISTER.md` extended with warehouse, repurchase and mark-to-market
       exposures.
 - [ ] `L1_VISION_AND_SCOPE.md` §2 updated — it currently states the broker spine as the product.
-- [ ] The delivery-stack freeze lifted deliberately, not as a side effect.
+- [x] ~~The delivery-stack freeze lifted deliberately, not as a side effect.~~ Done 2026-08-23,
+      deliberately, by founder directive — ahead of the channel decision rather than as part of
+      it (see the status note above).
 
 ---
 
@@ -116,14 +127,16 @@ Nothing was deleted. Three things became honest:
 
 ## 5. How to decide
 
-The engineering cost of reading A is now bounded and visible: 1,482 frozen lines that cost nothing
-until someone tries to grow them, at which point CI asks this question again.
+The engineering cost of reading A is bounded and visible: ~1,482 lines whose upkeep is the cost,
+with the coverage map's Part-C rows as the standing scope guidance now that the mechanical freeze
+is gone.
 
-The cost of *not deciding* is higher than either answer. Under A, work keeps accreting into a
-stack the business does not need. Under B, the company is operating without a capital plan for
-risks it has already decided to take.
+The cost of *not deciding* is higher than either answer. Under A, the stack is dead weight the
+business does not need. Under B, the company is operating without a capital plan for risks it has
+already decided to take.
 
-**Decide the business question first; the code follows in one line.**
+**The business question is the founder's, on the founder's clock — and per the 2026-08-23
+directive it no longer holds any build work hostage. The code follows the answer in one line.**
 
 ---
 

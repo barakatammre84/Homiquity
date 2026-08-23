@@ -7,7 +7,7 @@
 
 ## 00 — Product, roles and the map
 
-1. **Post-launch.** `knowledge-base/L1_VISION_AND_SCOPE.md:52` — "If a feature does not serve the §2 core loop or unblock launch, it is post-launch. Full stop." The dashboard is already in the deferred column at `:60`.
+1. **Deferred by the cut-line.** `knowledge-base/L1_VISION_AND_SCOPE.md:53` — "If a feature does not advance the Selling-Guide-complete three-party system (borrower · broker · wholesale lender) or the platform quality it rides on, it is deferred. Full stop." (The 2026-08-23 founder directive removed launch from the test — CHARTER §1a; business events neither qualify nor disqualify work.) The dashboard is already in the deferred column at `:66`.
 2. Someone gated on `isStaffRole()` (`shared/roles.ts:102`) *and* someone added `realtor` to `STAFF_ROLES`. `:31-35` explains partners are excluded precisely because a public endpoint creates them; `:36-39` keeps them in `PARTNER_ROLES`, reachable only by exact-role checks.
 3. Design. `shared/roles.ts:77-79` — broker and lender are excluded from `INTERNAL_STAFF_ROLES` and "must be explicitly assigned to a deal-team before accessing any borrower record"; the predicate is `isInternalStaffRole` (`:110`), and the object check is `getLoanApplicationWithAccess` (chapter 02).
 4. Different questions. L1 decides *scope* by precedence (`knowledge-base/README.md:14-17`); `CTO_ROADMAP.md` is the *work queue*, a Tier-1 live source (`README.md:59`). On a fact, the code wins over both (`knowledge-base/README.md:14`).

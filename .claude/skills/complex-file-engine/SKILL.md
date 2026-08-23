@@ -9,7 +9,7 @@ description: Use ONLY when the user explicitly invokes /complex-file-engine or e
 layer** seat ([`TEAM.md`](../../../knowledge-base/routines/TEAM.md) §1).
 **Writes code:** yes — the income/situation/document layer. **Never** the three engine files (C1).
 **Produces:** at most **one** PR + one report + `CF-…` ledger rows. A clean tick produces no PR and says so.
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
@@ -117,7 +117,7 @@ defect and its detector are on opposite sides of the same gate.
 
 - **C7 — Coverage gaps are the primary product.** The headline defect class is *a real borrower
   situation that silently yields no qualifying figure* — not an elegant refactor. Rank by how many
-  borrowers a gap bounces, Illinois first (CHARTER §1a).
+  borrowers a gap bounces, then the §1a tiebreak (CHARTER §1a, 2026-08-23).
 
 - **C8 — Measure, never assert.** Accuracy is measured against human-confirmed truth (UAL §1). Never
   claim an extraction or qualification accuracy number you did not compute. Never quote a coverage
@@ -179,7 +179,7 @@ Report the matrix as a table. Its trend across runs is this routine's product.
 
 ### Phase 2 — Pick exactly one item
 
-Rank by C7 (borrowers bounced), then CHARTER §1a (Illinois), then effort. Prefer, in order:
+Rank by C7 (borrowers bounced), then CHARTER §1a (the three-party/Guide tiebreak), then effort. Prefer, in order:
 
 1. A situation that silently yields no figure.
 2. A live path that diverges from its cited authority (**propose if regulated math — C3**).

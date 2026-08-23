@@ -1,6 +1,6 @@
 # Unconsumed Capabilities
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-08-23 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **What this tracks:** capability built ahead of a consumer — endpoints, services and tables that
 work correctly and that nothing in the product actually calls yet.
@@ -24,7 +24,7 @@ An entry leaves this register in exactly one of three ways:
 | Outcome | Meaning |
 |---|---|
 | **Consumed** | A real surface calls it. Delete the row; it is now product. |
-| **Frozen** | Kept, but a ratchet stops it growing (the `guard:channel` pattern). Move the row to a freeze note. |
+| **Frozen** | Kept, but a ratchet stops it growing (the design-token-baseline pattern; the delivery-stack freeze was this shape until it was lifted 2026-08-23). Move the row to a freeze note. |
 | **Removed** | Deleted from the codebase. Delete the row. |
 
 "Leave it and look again next month" is not an outcome. If a capability has survived two review

@@ -9,7 +9,7 @@ description: Use ONLY when the user explicitly invokes /integration-readiness or
 **Writes code:** **no.** Its own board and report only (L1 per CHARTER §1b).
 **Produces:** the per-adapter sim → contract → live readiness board, and the procurement asks that
 feed Vendor & Procurement (Mon 09:37).
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
@@ -147,5 +147,6 @@ attention. A run that honestly reports no movement is `OK`.
 
 Call, authenticate against, or configure any external vendor · store a credential · write
 application code, tests or migrations · negotiate, price, draft or send anything to a vendor ·
-invent a MISMO name to close a gap · relax engine determinism · merge anything (L3) · build any
-part of the deferred lender persona, whose surfaces stay founder-gated.
+invent a MISMO name to close a gap · relax engine determinism · merge anything (L3). (The lender
+persona is sanctioned build work as of 2026-08-23 — roadmap 2.15 — but *building* it belongs to
+the code-writing seats, not this one.)

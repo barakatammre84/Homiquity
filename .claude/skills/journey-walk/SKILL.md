@@ -5,7 +5,7 @@ description: Walk one client journey end to end in the real browser as that pers
 
 # Journey Walk — experience the product as one continuous thing
 
-**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
 job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
 read out of the committed text this run — never from memory. An id the index does not know is a

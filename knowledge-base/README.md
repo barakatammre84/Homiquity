@@ -71,7 +71,8 @@ doc-drift bug to fix):
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
 - [CHANNEL_DECISION.md](governance/CHANNEL_DECISION.md) — **OPEN, founder-owned:** broker or
   mini-correspondent. One constant in `shared/businessChannel.ts`; the largest unanswered question
-  about the capital structure. The Fannie delivery stack is frozen (`pnpm guard:channel`) until it lands.
+  about the capital structure. (The build freeze on the delivery stack was lifted 2026-08-23 —
+  the decision gates operations, never building.)
 - [CONTINGENT_LIABILITY_REGISTER.md](governance/CONTINGENT_LIABILITY_REGISTER.md) — what we could owe and
   whether the reserve covers it. For an asset-light broker the contingent exposures *are* the balance
   sheet; live figures at `GET /api/reports/contingent-liabilities`.
@@ -95,8 +96,8 @@ doc-drift bug to fix):
 ### Runbooks — operational how-to · [`runbooks/`](runbooks/)
 - [CICD.md](runbooks/CICD.md) — the Railway build/deploy pipeline · [CHANGE_LEDGER.md](runbooks/CHANGE_LEDGER.md) — the append-only production change ledger (split out of CICD.md 2026-08-06) · [DB_MIGRATIONS.md](runbooks/DB_MIGRATIONS.md) — schema-gated, auto-applied to prod (Neon) · [ROLLBACK.md](runbooks/ROLLBACK.md) — Railway image rollback · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md) — `pnpm dev:up` (one command to a running app) and `pnpm preflight` (the whole gate, locally)
   · [BROWSER_PROBE.md](runbooks/BROWSER_PROBE.md) — rendering a page in real Chromium to see what a text scan cannot
-  · [TEST_ACCOUNTS.md](runbooks/TEST_ACCOUNTS.md) · [PRE_PRODUCTION_OPS_ROUTINES.md](runbooks/PRE_PRODUCTION_OPS_ROUTINES.md)
-  · [PROD_ACCEPTANCE_TEST.md](runbooks/PROD_ACCEPTANCE_TEST.md) — the F1 launch-gate checklist
+  · [TEST_ACCOUNTS.md](runbooks/TEST_ACCOUNTS.md)
+  · [PROD_ACCEPTANCE_TEST.md](runbooks/PROD_ACCEPTANCE_TEST.md) — the go-live acceptance checklist
   · [NEON_PREVIEW_DB.md](runbooks/NEON_PREVIEW_DB.md) — PII-free preview databases: the preview-seed branch + founder cutover
   · [BETA_GO_LIVE_READINESS.md](runbooks/BETA_GO_LIVE_READINESS.md) — dated beta-readiness snapshot (verified workflows + founder decisions)
 - [support-playbooks/](runbooks/support-playbooks/) — locked-out user, discrimination/credit-error escalation.

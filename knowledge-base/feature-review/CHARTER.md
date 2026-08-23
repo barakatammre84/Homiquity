@@ -133,7 +133,7 @@ false positive:
 
 | Sev | Meaning | Examples |
 |---|---|---|
-| **P0** | Blocks launch / legal exposure / data loss / PII leak | SSN exposed outside vault path; TRID hard-stop bypassable; role gate missing on staff route |
+| **P0** | Blocks the three-party deliverable / legal exposure / data loss / PII leak | SSN exposed outside vault path; TRID hard-stop bypassable; role gate missing on staff route |
 | **P1** | A workflow is broken for its intended use | Submission stage never satisfiable; route the UI calls doesn't exist; decision recalc never fires |
 | **P2** | Feature degraded, wrong on edges, or misleading | Wrong number on an edge case; error path shows raw exception; stale gate condition |
 | **P3** | Polish | Copy, spacing, empty states, minor drift |

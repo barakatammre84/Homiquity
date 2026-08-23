@@ -9,7 +9,7 @@ description: Use ONLY when the user explicitly invokes /move-up-lane or explicit
 **Writes code:** yes — at most ONE PR per run, never merged (L2 per CHARTER §1b).
 **Owns:** the move-up / jumbo lane — the "You're moving up" door, the conforming-limit boundary,
 jumbo product surfacing, and the honesty of what we tell a borrower above the limit.
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
@@ -28,8 +28,9 @@ the promise to "map the whole picture" has no borrower-reachable surface that ke
 
 Behind that door the lane is real but unfinished, and **no seat owns it**. Complex File Engine owns
 income *complexity*; jumbo is a loan-*size* lane, a different axis. Primary Engineer is
-launch-ranked, and launch is Illinois-first conforming business, so above-conforming work never
-reaches the top of its queue. Nothing else looks here at all.
+product-ranked across the whole queue (CHARTER §1a, 2026-08-23 — the three-party deliverable, no
+launch ranking), so above-conforming work competes with every other item and this dedicated lane
+is what guarantees it a daily look. Nothing else looks here at all.
 
 ### What it catches that nothing else does
 
@@ -119,7 +120,7 @@ Answer these from the code each run, with `file:line`:
 
 ## Phase 2 — Pick exactly one item
 
-Rank by borrower harm, then by launch relevance. **A wrong number shown to a borrower outranks a
+Rank by borrower harm, then by relevance to the three-party deliverable (CHARTER §1a). **A wrong number shown to a borrower outranks a
 missing page every time.** Prefer work that removes a second copy of a truth over work that adds a
 surface.
 

@@ -40,9 +40,10 @@ default; see §4 for the full built-vs-missing map.
   number underwriting sees) and pull-through (LO-4's signals rescue stalling files before
   they die). LO-3's client report is the borrower-facing face of "certainty and speed."
 - **Cut-line check:** the LO is the highest-leverage human in the loop; equipping them is
-  loop work, not peripheral work. The roadmap's launch-blocking queue (CTO_ROADMAP.md §0–§2) remains the standing priority; no prompt
-  below preempts a launch blocker. LO-3 (borrower-facing delivery) is explicitly gated
-  behind licensure (I9) and does not accelerate solicitation before F1.
+  loop work, not peripheral work. The roadmap's trunk-health and delivery-spine queue (CTO_ROADMAP.md §0–§2) remains the standing priority; no prompt
+  below preempts it. LO-3 (borrower-facing delivery) renders behind the pre-launch gate (I9) —
+  building it is never gated; consumer-reaching activation waits on the go-live flip (F1
+  licensure itself cleared 2026-07-13).
 
 ## 3. Bound by L2 (the guardrails every prompt obeys)
 
@@ -54,7 +55,7 @@ default; see §4 for the full built-vs-missing map.
 | **I5 — TRID timing is exact** | The Advisor Report (LO-3) is **not** a Loan Estimate and must not look like one; it carries the §1026.19(e)(2)(ii) statement verbatim. Nothing in this program collects or assembles the six §1026.2(a)(3) application pieces outside the existing application flow, so no prompt moves the LE clock. APR shown anywhere comes from `apr.ts` (Appendix J), never a flat spread. |
 | **I7 — Outbound messaging is TCPA-gated** | Every SMS leg (doc nudges, report delivery) passes `evaluateOutboundSms` (STOP ledger + quiet hours). Note open finding **F-008** (SMS webhook signature verification) — any prompt that turns SMS on inherits it as a blocker. |
 | **I8 — Fair lending is monitored** | LO-5 routes presentation-pattern review through the existing `fairLendingAnalysis` / HMDA machinery as a compliance-dashboard report. Explicitly **no** per-message protected-class inference and no prohibited-basis variable (or proxy) anywhere in signals or simulator inputs. |
-| **I9 — NMLS gates solicitation** | Everything LO-facing is internal staff tooling. The single borrower-facing surface (LO-3 delivery) ships behind the pre-license gate (`server/services/prelaunchGate.ts` pattern) and activates with licensure (F1). It also inherits the open calculator-suite counsel-review item (see §7). |
+| **I9 — the pre-launch gate covers solicitation** | Everything LO-facing is internal staff tooling. The single borrower-facing surface (LO-3 delivery) ships behind the pre-launch gate (`server/services/prelaunchGate.ts` pattern) and activates at the go-live flip (F1 licensure itself cleared 2026-07-13; the gate's live condition is the un-flipped posture plus the open advertising-content review). It also inherits the open calculator-suite counsel-review item (see §7). |
 | **I10 — Simulations never ground a real decision** | Rate sheets are simulated until the PPE contract (Lender Price + Mortech). Every simulator output, re-price signal, and client report renders the simulated-data provenance honestly; the `simulated` flag discipline carries through `scenario_runs` and into any report footer. |
 
 - **Security-review trigger?** Yes — LO-1 (staff role gates + PII display), LO-3 (borrower-facing
@@ -187,7 +188,7 @@ One-click share of a simulator scenario set as a read-only borrower page + PDF (
 - **LO free-text** passes the LO-5 lint before send; delivery through the existing message
   thread and `emailService`; any SMS leg through `evaluateOutboundSms` (I7, note F-008).
 - **Versioned, immutable, audit-logged**; simulated-data provenance rendered honestly (I10).
-- **Gate:** ships behind the pre-license gate; activates with licensure (I9). Inherits the
+- **Gate:** ships behind the pre-launch gate; activates at the go-live flip (I9). Inherits the
   calculator-suite counsel-review item (§7).
 
 **Done when:** LO clicks share on a scenario set → borrower receives a masked, disclaimed,
@@ -266,7 +267,7 @@ validations.
   re-check at PR time.
 - **Lender-masking fix** — *satisfied 2026-07-11 (merged as #120, `shared/borrowerOfferView.ts`
   whitelist mapper — reuse it for any borrower-facing offer surface).* Was the LO-3 blocker;
-  LO-3's remaining gate is licensure (I9).
+  LO-3's remaining activation gate is the go-live flip (I9; licensure cleared 2026-07-13).
 - **PPE contract** (Lender Price + Mortech — founder) converts LO-2/LO-4 from simulated to
   live rate data; until then I10's `simulated` discipline applies everywhere.
 

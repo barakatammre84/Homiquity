@@ -9,7 +9,7 @@ description: Use ONLY when the user explicitly invokes /qa-mutation-verifier or 
 **Writes code:** **only inside a throwaway worktree that is destroyed before the run ends.**
 Nothing it writes is ever committed (L1 per CHARTER §1b).
 **Produces:** a `PROVEN` / `UNPROVEN` verdict per claimed fix that merged today.
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.

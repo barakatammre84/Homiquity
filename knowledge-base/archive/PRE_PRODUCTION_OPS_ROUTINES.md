@@ -1,3 +1,11 @@
+> **⛔ ARCHIVED 2026-08-23 — do not act on this document.** It describes the founder's 2026-07-04
+> pre-launch operating doctrine, built around a 5-routine launch suite (with GTM and lender-sales
+> business routines) that stopped running on 2026-07-04 and never resumed
+> ([routines/CHARTER.md](../routines/CHARTER.md) §0). The live operating doctrine is CHARTER
+> §1–§3a and the Guide-keyed [CTO_ROADMAP.md](../../CTO_ROADMAP.md); the launch-suite framing here
+> also contradicts the 2026-08-23 development-first directive (CHARTER §1a — business activity
+> never ranks or gates engineering). Retained for the doctrine history only.
+
 # Pre-Production Daily Operating Routines
 
 > ⚠️ **Status banner added 2026-08-20 by `/doc-accuracy` — this file is doctrine, not the live cadence.**

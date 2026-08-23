@@ -6,7 +6,7 @@ matrix) and [`TEAM_PRACTICES.md`](TEAM_PRACTICES.md) (how work lands). Where thi
 of those disagree, they win and this file is the bug.
 **Last verified against the code:** 2026-08-18.
 
-> **Freshness:** last verified 2026-08-18 · review every 90 days
+> **Freshness:** last verified 2026-08-23 · review every 90 days
 
 ---
 
@@ -47,8 +47,9 @@ Two facts shape every role below:
 
 ## 1. Hire order, and the org at first funded Illinois loan
 
-Ranking follows [`CHARTER.md`](../routines/CHARTER.md) §1a: Illinois first, California second,
-national on performance. A role earns its slot by how directly it unblocks an Illinois file.
+Ranking follows [`CHARTER.md`](../routines/CHARTER.md) §1a (prove-it-first + the 2026-08-23
+development-first directive): a role earns its slot by how directly it advances the
+Selling-Guide-complete three-party system — borrower, broker, wholesale lender.
 
 | # | Role | Shape | Unblocks |
 |---|---|---|---|

@@ -8,7 +8,7 @@ description: Use ONLY when the user explicitly invokes /domain-oracle or explici
 **Cadence:** daily, 08:20 — after Trunk Health, before the capture-path lane.
 **Writes code:** **no, ever.** Docs, the conformance ledger, and the Guide corpus only
 (L1 per CHARTER §1b).
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/). It controls over
 every job aid in `docs/fannie-mae/` and over anything in this repo.
 **Produces:** conformance-ledger rows + the edition-change watch + adjudicated scenario rows
@@ -34,8 +34,12 @@ and block work silently.
 
 **Since 2026-08-20 that job is finally executable.** The Guide used to be unreachable —
 `singlefamily.fanniemae.com` returns 403 from a session, so "produce the citation" meant
-"produce it from memory," which the rails correctly forbid. The complete Guide is now committed
-and greppable, so this seat has a source to open rather than a wall to report.
+"produce it from memory," which the rails correctly forbid. The complete Guide is now in-repo
+(tracked index; one command materializes the corpus from the repo's own history), so this seat
+has a source to open rather than a wall to report. **And since 2026-08-23 it is the golden
+handbook** (CHARTER §1a): this seat's readings are the base the roadmap builds from — the 325
+unreviewed sections are a standing workstream (CTO_ROADMAP 3.40), swept randomly as well as by
+suspicion.
 
 **Why the seat is a control and not a librarian.** Homiquity is a broker — in the Guide's own
 vocabulary a **third-party originator** (A3-3-01). A wholesale lender selling our files must
@@ -64,12 +68,15 @@ is the only one that reads a rule and answers "is this true, and where does it s
   reader can check you. 🚨 **Use `grep -F` for any phrase containing `$`** — BSD grep returns zero
   matches on text that is verbatim present, which reads exactly like "the Guide does not say this."
 
-- **R3 — Reg Z is flagged, never asserted.** [`docs/reg-z/README.md`](../../../docs/reg-z/README.md)
-  is a shopping list; that directory holds **no authoritative source text**, and every upstream
-  (`ecfr.gov`, `consumerfinance.gov`, `govinfo.gov`, `law.cornell.edu`) is blocked from this
-  environment. A Reg Z reading is recorded in `data/regulatory/regulatory-ledger.json` as flagged
-  and **may only move conservatively** — it may remove a borrower charge or tighten a gate; it may
-  never create the violation it guards against. Anything else is an ⛔ for the founder.
+- **R3 — Reg Z is read from the pinned capture, and readings move conservatively.**
+  [`docs/reg-z/`](../../../docs/reg-z/README.md) holds the whole of 12 CFR 1026 + Supplement I
+  since 2026-08-20, pinned — cite by section and line per its README; **re-capture, never re-fetch
+  ad hoc** (a live fetch is unrepeatable and drifts silently). A Reg Z verdict recorded in
+  `data/regulatory/regulatory-ledger.json` **may only move conservatively** — it may remove a
+  borrower charge or tighten a gate; it may never create the violation it guards against, and a
+  verdict that *loosens* a consent, disclosure, adverse-action or FCRA gate is a founder decision
+  even when the text supports it. Outside Part 1026 (FCRA, Reg V, CROA), nothing is captured —
+  those stay flagged, never asserted.
 - **R4 — The default verdict is NEEDS CLARIFICATION.** Three verdicts only: **SHIP** (cited,
   deterministic, unambiguous) · **NEEDS CLARIFICATION** (any gap, any ambiguity, any conflict
   between sources) · **REJECT** (cited and contradicted). **When sources disagree, escalate — never
@@ -147,7 +154,8 @@ repo is dirty in a way you did not cause — report what you saw and stop).
 
 ## Phase 1 — Rank the queue
 
-Rank open intake rows by CHARTER §1 (question A before B), then the §1a Illinois tiebreak. **A
+Rank open intake rows by CHARTER §1 (question A before B), then the §1a tiebreak (three-party
+deliverable / Guide conformance, then client quality). **A
 scenario blocking a builder outranks a scenario blocking nothing** — check HANDOFF.md for rows
 another seat has marked `WAITING: domain-oracle`; those go first, always.
 

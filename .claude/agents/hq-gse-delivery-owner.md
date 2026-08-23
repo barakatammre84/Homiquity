@@ -73,7 +73,7 @@ The six that must survive even if you skip that read:
    `vitest.config.ts`'s `include` — assert its filename appears in the run output. Client tests are
    colocated and glob-picked; UI behaviour gets a component test here *first*.
 3. This area's owned tests green: `tests/mismoExport.test.ts`, `tests/mismoValidation.test.ts`, `tests/mismoValidationBatch.test.ts`, `tests/mismoXsdValidation.test.ts`, `tests/mismoMersMin.test.ts`, `tests/mismoExportAccess.test.ts`, `tests/loanDeliveryEdits.test.ts`, `tests/specialFeatureCodes.test.ts`, `tests/structureTranslation.test.ts`, `tests/lenderSubmission.test.ts`, `tests/brokerSubmissionReadiness.test.ts`, `tests/lenderConditions.test.ts`, `tests/lenderApprovalControl.test.ts`.
-4. Guards this area trips, green locally: `pnpm guard:channel`, `pnpm guard:schema`, `pnpm guard:citations`.
+4. Guards this area trips, green locally: `pnpm guard:schema`, `pnpm guard:citations`, `pnpm guard:authority`. (The delivery-stack growth freeze was lifted 2026-08-23; the scope doctrine is now the coverage map's Part-C not-applicable rows — GSE delivery is the wholesale lender's function, A3-3-01 — so growth here serves a named need, not accretion.)
 5. Server-side changes: integration lane green against a live worktree server on port 5002, with
    `RATE_LIMIT_RELAXED=true` and `X-Forwarded-Proto: https` on every authenticated call.
 6. Live verification where a running server can prove the behaviour; evidence pasted in the PR body.

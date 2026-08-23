@@ -6,6 +6,10 @@ description: Walk one STAFF desk end to end in the real browser — as the seede
 # Staff Journey Walk — one file, many hands
 
 **Writes code:** no. Findings only.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the golden handbook
+behind every domain claim a desk's surface makes (CHARTER §1a). A finding that asserts Fannie
+policy cites the section id; never from memory.
 **Charters:** [knowledge-base/feature-review/STAFF_JOURNEYS.md](../../../knowledge-base/feature-review/STAFF_JOURNEYS.md)
 **Program rules:** [knowledge-base/feature-review/CHARTER.md](../../../knowledge-base/feature-review/CHARTER.md)
 — it wins over this file on any conflict; say so in the report rather than following the stale copy.

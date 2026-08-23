@@ -130,8 +130,8 @@ flowchart TD
 - **The 20 gate steps, in order** (`grep -n '^      - name:' .github/workflows/ci.yml`): change
   scope (`:203`) → typecheck (`:261`) → unit tests (`:264` — `pnpm test`, i.e. the collection floor;
   the step's comment at `:265-273` says so) → `pnpm audit --prod --audit-level=high`
-  (`:276`) → `guard:schema` (`:284`) → `guard:migrations` (`:287`) → `guard:channel` (`:298`) →
-  `guard:tokens` (`:308`) → `guard:ui` (`:319`) → `guard:kb` (`:332`) → `guard:staleness` (`:342`) →
+  (`:276`) → `guard:schema` (`:284`) → `guard:migrations` (`:287`) →
+  `guard:tokens` → `guard:ui` → `guard:kb` → `guard:staleness` →
   `guard:citations` (`:355`) → `guard:security` (`:367`, PR body via env, diff from the merge-base —
   two dots was F-0818-16, `:73-78`) → Selling Guide authority guard (`:424`, TEAM_PRACTICES §10,
   added by #654) → `guard:querykeys` (`:457`) → guard scripts parse (`:481` —
@@ -171,11 +171,11 @@ flowchart TD
   `https://www.homiquity.com` (`:16`, the only lane that uses the `www` host); audits at
   `moderate` vs the gate's `high` (`:58` vs `ci.yml:283`); integration tests deliberately excluded
   (`:8-9`).
-- **The guard fleet.** `ls scripts/*-guard.cjs | wc -l` → `16`; `ls scripts/*baseline*.json | wc -l`
-  → `7`. Ratchets (down only; **auto-tighten on a shrink**): `bundle-size` (`:217-218`), `design-token`
-  (`:116-119`), `citation`, `doc-staleness`, `schema-migration` (baseline allow-list), `ui-standard`,
-  `delivery-stack-freeze` (= `pnpm guard:channel`: the four GSE-delivery files may shrink, never
-  grow, until the channel decision flips — `scripts/delivery-stack-freeze-guard.cjs`). Hard pass/fail with no baseline: `kb-index`,
+- **The guard fleet.** `ls scripts/*-guard.cjs | wc -l` → `15`; `ls scripts/*baseline*.json | wc -l`
+  → `6`. Ratchets (down only; **auto-tighten on a shrink**): `bundle-size` (`:217-218`), `design-token`
+  (`:116-119`), `citation`, `doc-staleness`, `schema-migration` (baseline allow-list), `ui-standard`.
+  (The delivery-stack freeze guard was removed 2026-08-23 — the channel decision gates operations,
+  never building; CHARTER §1a.) Hard pass/fail with no baseline: `kb-index`,
   `migration-ledger`, `query-key`, `query-key-transport`, `security-review`, `hooks-installed`,
   `test-collection` (the collected-count floor; its orphan floor is zero, `scripts/test-collection-guard.cjs:464-468`),
   `selling-guide-authority` (TEAM_PRACTICES §10, `scripts/selling-guide-authority-guard.cjs`, #654).

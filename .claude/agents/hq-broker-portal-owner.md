@@ -30,8 +30,7 @@ you **implement** — you land the change, you run the gate, you open the PR. Yo
 
 What this area is supposed to do — not what it does today.
 
-- **Broker and lender are separate personas.** The lender persona is deferred and unbuilt — its endpoints stay admin-only.
-- **Never build a lender-facing surface without asking first.** That is a founder-gated decision.
+- **Broker and lender are separate personas.** The lender persona is **sanctioned build work as of 2026-08-23** (founder directive, CTO_ROADMAP 2.15): build it sim-first; endpoints leave admin-only as its surfaces land, and live portal transmission activates per lender agreement (LS-10).
 - An invite carries attribution that survives the borrower's whole journey.
 - Deal desk threads are a record, and the broker sees only their own book.
 
@@ -91,7 +90,7 @@ The six that must survive even if you skip that read:
 Dated. **Re-verify before citing one** — `git log -S '<symbol>' -- <path>`. A trap that was fixed and
 is still asserted costs a whole run.
 
-- **The lender persona is deferred, not missing** — Endpoints that look half-built are gated on purpose. Ask before completing one.
+- **The lender persona is in-scope, not missing** — Endpoints that look half-built were gated until 2026-08-23; completing them is now sanctioned roadmap work (2.15). Keep the borrower-side lender masking (`shared/borrowerOfferView.ts`) intact while you do.
 - **`server/routes/agent-broker/` is a sub-registrar directory** — `index.ts` order is Express matching order.
 - **A dead `"agent"` role check and a hardcoded commission fallback both shipped once** — Role strings come from `shared/roles.ts`; a literal is a bug.
 

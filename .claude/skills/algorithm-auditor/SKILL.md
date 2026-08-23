@@ -8,7 +8,7 @@ description: Use ONLY when the user explicitly invokes /algorithm-auditor or exp
 **Cadence:** daily, 18:20 — after the Workflow Prover, before Evening Triage.
 **Writes code:** no. Its ledger and report only (L1 per CHARTER §1b).
 **Produces:** one algorithm audited by differential, property and boundary attack.
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.

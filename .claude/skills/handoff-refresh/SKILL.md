@@ -13,6 +13,10 @@ slug, per CHARTER §3). Also valid hand-invoked at any time as `/handoff-refresh
 and the `guard:ui` §0 table when that guard demands it.
 **Produces:** at most one corpus-refresh PR + one report
 (`knowledge-base/routines/reports/<YYYY-MM-DD>-handoff-steward.md`, CHARTER §9 format).
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the golden handbook
+behind every domain claim the corpus teaches (CHARTER §1a). A Fannie claim a chapter repeats
+cites a section id resolving in `section-index.tsv`; never from memory.
 **Contract:** [`knowledge-base/routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 

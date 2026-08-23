@@ -14,8 +14,11 @@ nothing.
 > any `Registered?` column below is the 2026-08-20 state.
 > **Read `CHARTER.md` §3 and `list_scheduled_tasks` for who actually runs** — this file is a
 > seating chart, not a registration, and §0 there is about exactly that confusion.
+> **2026-08-23:** every seat below now also binds to the CHARTER §1a development-first directive —
+> the Selling Guide is the golden handbook, the three-party deliverable is the ranking input, and
+> no business event ranks, pauses, or gates a seat's engineering work.
 
-> **Freshness:** last verified 2026-08-19 · review every 60 days
+> **Freshness:** last verified 2026-08-23 · review every 60 days
 
 ---
 

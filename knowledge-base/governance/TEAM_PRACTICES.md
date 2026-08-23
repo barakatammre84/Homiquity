@@ -414,8 +414,10 @@ were found after the Railway cutover created them.
 
 ## 10. Selling Guide authority triggers (binding)
 
-The Fannie Mae *Selling Guide* (edition 08-05-2026, committed at
-`docs/fannie-mae/selling-guide/`) is the policy authority for eligibility, underwriting,
+The Fannie Mae *Selling Guide* (edition 08-05-2026, in-repo at
+`docs/fannie-mae/selling-guide/` — the tracked index resolves ids; one command materializes the
+full corpus from the repo's own history, see that directory's README) is the policy authority for
+eligibility, underwriting,
 income, credit, property and delivery. It controls over every job aid in `docs/fannie-mae/`,
 and over anything in this repo.
 

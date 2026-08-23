@@ -472,8 +472,7 @@ What it does:
 
 What it does:
 
-- **Broker and lender are separate personas.** The lender persona is deferred and unbuilt — its endpoints stay admin-only.
-- **Never build a lender-facing surface without asking first.** That is a founder-gated decision.
+- **Broker and lender are separate personas.** The lender persona is **sanctioned build work as of 2026-08-23** (founder directive, CTO_ROADMAP 2.15): build it sim-first; endpoints leave admin-only as its surfaces land, and live portal transmission activates per lender agreement (LS-10).
 - An invite carries attribution that survives the borrower's whole journey.
 
 - **Server** — `server/routes/agent-broker/`, `server/services/lenderMatchingEngine.ts`

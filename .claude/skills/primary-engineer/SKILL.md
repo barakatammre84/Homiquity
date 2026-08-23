@@ -7,8 +7,8 @@ description: Use ONLY when the user explicitly invokes /primary-engineer or expl
 
 **Cadence:** daily, 07:15 — the first routine of the day.
 **Writes code:** yes — company-wide lane (L1/L2 per CHARTER §1b).
-**Produces:** up to **3 launch-ranked PRs** + one report.
-**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+**Produces:** up to **3 product-ranked PRs** (CHARTER §1 + the §1a three-party/Selling-Guide input) + one report.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, in-repo at
 [docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
 for eligibility, underwriting, income, credit, property and delivery, controlling over every job
 aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
@@ -19,10 +19,11 @@ wins over this file on any conflict; say so in the report rather than following 
 
 It absorbed Sprint Blitz on 2026-08-17 and widened the job: not one roadmap item a day, but the
 company's whole execution layer — roadmap queue, verified QA findings, its own ledger, and
-self-found defects — ranked by CHARTER §1's acceptance questions with the §1a Illinois-launch
-tiebreak. The founder is launching an end-to-end brokerage state by state; this routine is the
-engineering throughput that launch runs on. The founder merges — every merge to `main` deploys to
-production, so merging stays human (CHARTER §1b, L3).
+self-found defects — ranked by CHARTER §1's acceptance questions under the §1a-2026-08-23
+development-first directive: the Selling-Guide-conformant three-party deliverable (borrower ·
+broker · wholesale lender) is the ranking input, and no business event ranks, pauses, or gates an
+item. This routine is the engineering throughput the build runs on. The founder merges — every
+merge to `main` deploys to production, so merging stays human (CHARTER §1b, L3).
 
 ### What it catches that no other control does
 
@@ -40,12 +41,13 @@ moves only when the founder has a free evening.
   CHARTER §6's always-off-limits list**, plus `knowledge-base/primary-engineer/**` and your
   report. Never: capture-path files under an active Wiring Audit claim (check REGISTER.md);
   files with open rows in `knowledge-base/refactor-radar/LEDGER.md` (2026-08-17: `RR-003 =
-  client/src/pages/admin/AdminUsers.tsx`); the deferred-lender API/UI — **no client surface for**
-  `/api/rate-sheets*`, `/api/rate-sheet-products*`, `/api/lender-pricing-adjustments*`,
-  `/api/lender-offers*`, `/api/admin/lender-products*` (`CTO_ROADMAP.md` LS-10 is blocked on a
-  signed broker–lender agreement — founder-gated); `/api/leads` bind-or-delete (product decision —
-  propose only). Building a lender-persona or borrower-facing *new* surface class is a founder ask,
-  not a routine decision.
+  client/src/pages/admin/AdminUsers.tsx`); `/api/leads` bind-or-delete before its product decision
+  lands (`CTO_ROADMAP.md` 1.18 — propose only until then). **The lender persona is sanctioned
+  build work as of 2026-08-23** (founder directive; roadmap 2.15): build the lender-facing
+  surfaces sim-first over `/api/rate-sheets*`, `/api/rate-sheet-products*`,
+  `/api/lender-pricing-adjustments*`, `/api/lender-offers*`, `/api/admin/lender-products*` — live
+  portal transmission still swaps in at `submitToLenderPortal` when an agreement lands (LS-10,
+  roadmap §4). A *new* borrower-facing surface class beyond the roadmap is still a founder ask.
 - **R3 — Volume and backpressure.** Up to **3 PRs per run**, each item its own worktree branch and
   its own REGISTER row; **never two items touching the same file in one run.** **OBSERVE MODE**
   (audit + report, no code) when ≥3 of this routine's PRs are already open unmerged — founder
@@ -136,16 +138,18 @@ unreachable — report exactly what you saw and stop).
 ## Phase 1 — Pick up to three items
 
 The source order below is the **scan** order. The final slate is ranked by CHARTER §1 (question A
-before B), then the §1a Illinois tiebreak, then — inside the same roadmap section — the roadmap's
-own listed order. Scan in this order:
+before B), then the §1a tiebreak (three-party deliverable / Guide conformance, then client
+quality), then — inside the same roadmap section — the roadmap's own listed order. Scan in this
+order:
 
 **(a) A red gate outranks everything.** If the most recent Launch Gate report says `STATUS: FAIL`,
 or your own orient-time `pnpm check` + `pnpm test` on fresh `origin/main` is red (reinstall first;
 confirm with `gh run list --branch main` before believing it), **the failure is item one. No
 exceptions, no features first.**
-**(b) `CTO_ROADMAP.md`** ranked by CHARTER §1 — §0 keep-the-lights-on that is *engineering*, then
-§2 launch-blocking, then §3 — **skipping founder-held items** (NMLS, contracts, vendor paperwork,
-Railway variables), Illinois tiebreak per §1a.
+**(b) `CTO_ROADMAP.md`** ranked by CHARTER §1 — §0 trunk health, then §2 the three-party delivery
+spine, then §3, then §4's sim-first seams — **skipping §1, the founder lane** (NMLS, contracts,
+vendor paperwork, Railway variables — business events never rank or gate your slate), §1a
+tiebreak.
 **(c) Verified rows in `knowledge-base/feature-review/FINDINGS.md`** not already fixed (R9). A
 row you verify as already fixed on `origin/main` is closed via a proposed ticket for QA
 Sweep/Evening Triage — never by editing `FINDINGS.md` yourself (not your territory).
@@ -190,7 +194,7 @@ behavior), then the fix. Then R5's `detectTriggers()` on the final diff.
 ## Phase 4 — Ship and report
 
 Per item: PR titled `feat(...)`/`fix(...)` — ready if §9 clean, **draft** if tripped — body: what/
-why · evidence (test counts, real output) · compliance rails touched · §1 rank + Illinois tiebreak
+why · evidence (test counts, real output) · compliance rails touched · §1 rank + §1a tiebreak
 note · any ⛔ question for the founder. Check off a roadmap item in the same commit **only if
 genuinely complete**; roadmap *edits* beyond that checkbox belong to Evening Triage. Release each
 REGISTER row. Then one report,
@@ -212,7 +216,7 @@ one to three merged-ready PRs waiting for the founder — a quiet queue is not a
 ## What this routine deliberately does not do
 
 Merge or auto-merge anything (L3) · author a §9 security review · edit `CTO_ROADMAP.md` beyond a
-completed item's checkbox · touch the §6 permanent off-limits list · build the deferred lender
-persona · contact anything outside the repo — no outbound messages, no vendor calls outside
+completed item's checkbox · touch the §6 permanent off-limits list · contact anything outside the
+repo — no outbound messages, no vendor calls outside
 adapters, no production changes. The founder is the only merger; this routine's job is to make
 every merge a five-minute decision.
