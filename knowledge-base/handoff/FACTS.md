@@ -15,6 +15,14 @@ pnpm handoff:facts --cite      # every `path:line` in handoff/** resolves AND la
 pnpm handoff:facts --write     # rewrite the block and re-stamp the SHA (refuses to run off a branch)
 ```
 
+**FACTS records `main`, never your branch.** Three rows count things a PR can move —
+F-18 (skills), F-21 (knowledge-base docs, which includes this corpus) and F-31 (commits) — and a
+branch that adds a skill or a doc will disagree with them *correctly*. Do **not** pre-write those
+values on the branch that moves them: a number stamped at a commit that does not exist yet is a
+confident lie, and the next `--check` after the merge catches it in seconds. (This is the opposite
+of the `guard:ui` §0 rule, and for a good reason — that table is a *gate* that fails the build, so
+it must move with its PR; this file is a *record*, so it must follow `main`.)
+
 **37 of the 44 rows are machine-checkable** — the other 7 print prose rather than an integer, and
 `--check` names them rather than passing them silently (F-04, F-06, F-16, F-23, F-30, F-39, F-43).
 The "re-derive by hand" recipe at the bottom is what the generator automates, and remains the

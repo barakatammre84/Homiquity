@@ -28,6 +28,10 @@ conflict; the code wins over both.
    sentence in the same commit. A table that agrees with a paragraph that does not is worse than
    a stale table, because it looks maintained.
 6. **Bump a `Freshness:` date only for a file you actually re-read.** A date is a claim.
+6b. **Never pre-write a row your own PR will move.** F-18, F-21 and F-31 count things a PR can
+   change. If your branch adds a skill or a doc, those rows *should* disagree until it merges —
+   writing the post-merge number is stamping a commit that does not exist. The next `--check`
+   catches it. (Unlike the `guard:ui` §0 table, which is a gate and must move with its PR.)
 7. **≤ 2 commits behind.** Rebase and `pnpm install --frozen-lockfile` if not, and restart.
 8. **Any client test added anywhere** means `pnpm guard:ui --write-table` in its own commit —
    the §0 denominator counts test files, and a stale table blocks every push in the repo
