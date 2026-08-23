@@ -1,17 +1,18 @@
 # 07 — Test harness and the CI proof hierarchy
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
+> **Freshness:** last verified 2026-08-23 · review every 30 days
 > **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** `../runbooks/CICD.md` §Checks, `../governance/TEAM_PRACTICES.md` §5 and `vitest.config.ts`'s own header (they win on conflict; the code wins over both).
 
 > **Dated status box (re-verify on every refresh):** at 12d7cbec `main` requires **no** status
 > checks (`gh api …/branches/main/protection` → `contexts: []`, rulesets `0`); `migrate-prod` and
 > `verify-deploy` were **re-armed on 2026-08-22** by `76c96751` (#669) after a two-day pause, but
 > `verify-deploy` carries `continue-on-error: true` on purpose, so it reddens without failing the
-> workflow (chapter 10); the test-collection guard that would catch a silently-shortened
-> `pnpm test` is **still an open PR** (#670), not on `main`; the pre-push hook stopped running the
-> unit lanes by default on 2026-08-22 (`e49aab6d`, #660 — `PREPUSH_TESTS=1` opts back in), so CI is
-> now the first place a test failure surfaces; and one test file is still stranded in neither
-> vitest config (`tests/maintenanceMode.test.ts`).
+> workflow (chapter 10); the test-collection guard **merged 2026-08-23** (`fd4a22c5`, #670) and
+> `pnpm test` is now `scripts/test-collection-guard.cjs`, which fails when vitest collects fewer
+> files than exist and when any test file matches no lane's `include`; the pre-push hook stopped
+> running the unit lanes by default on 2026-08-22 (`e49aab6d`, #660 — `PREPUSH_TESTS=1` opts back
+> in), so **CI is where that floor binds**; and the previously stranded `tests/maintenanceMode.test.ts`
+> is listed — the strand count is now zero *and enforced*, not merely observed.
 
 ## The mental model
 
@@ -24,14 +25,15 @@ not a flake.
 ## Explain it to a new hire
 
 `pnpm test` runs two vitest configs back to back: the **node** lane, whose `include` is a
-hand-maintained allowlist of 219 entries in `vitest.config.ts` — an unlisted test file is silently
-never run, and there is one stranded right now — and the **client** lane, whose `include` is a
+hand-maintained allowlist of 221 entries in `vitest.config.ts` — an unlisted test file is silently
+never run, which is why the guard's orphan floor now fails the build rather than trusting the list —
+and the **client** lane, whose `include` is a
 glob on purpose so a colocated `*.test.tsx` cannot be *forgotten* — but the glob does not make it
 safe: `CICD.md` used to say such a file "can never be silently stranded", and that is false. Vitest
 crawls via `tinyglobby` → `fdir`, which defaults `suppressErrors: true`, so a directory whose
 `readdir` FAILED is indistinguishable from an empty one; under load `pnpm test` collected 111 of 118
 client files and exited 0. A glob protects against a file being *forgotten*, not against the crawl
-being *truncated* (PR #670 corrects the CICD.md sentence and adds the floor). A third config,
+being *truncated* (#670 corrected the CICD.md sentence and added the floor). A third config,
 `vitest.integration.config.ts`, lists 18 files that hit a *running* HTTP server over the network
 and never runs in CI at all — `CICD.md` says so explicitly, and `scripts/preflight.sh` is the only
 thing that runs it. CI's one gate job is `gate (typecheck · tests · schema guard)` — those
@@ -51,7 +53,7 @@ is re-armed.
 ```mermaid
 flowchart TD
   A["pnpm check - tsc, noEmit via tsconfig - types line up; blind to runtime, bundling, wiring"]
-  A --> B["vitest.config.ts - node lane - 219-entry ALLOWLIST, placeholder DATABASE_URL, 45s hang detector"]
+  A --> B["vitest.config.ts - node lane - 221-entry ALLOWLIST, placeholder DATABASE_URL, 45s hang detector"]
   B --> C["vitest.client.config.ts - GLOB client/src/**/*.test.{ts,tsx} - happy-dom, no layout engine"]
   C --> D["14 scripts/*-guard.cjs against 7 baselines - text scans; counts may only go down"]
   D --> E["pnpm build - vite + esbuild - it bundles"]
@@ -90,15 +92,17 @@ flowchart TD
   `X-Forwarded-Proto: https` + `Origin` (`tests/roleSeparation.test.ts:31`), logs in through
   `POST /api/test-login` with a **per-file session cache of promises** because hammering the login
   route trips the auth limiter even under `RATE_LIMIT_RELAXED` (`:33-36`). Nine files define their
-  own `loginAs`; 14 send the proto header. `knowledge-base/runbooks/CICD.md:353-357`: "The
+  own `loginAs`; 14 send the proto header. `knowledge-base/runbooks/CICD.md:357-361`: "The
   integration suite … never runs in CI: a green gate proves the change typechecks, breaks no unit or
   component test, and produces a bundle that boots and answers `/api/health` — nothing more."
-- **Counts that must agree.** `git ls-files 'tests/*.test.ts' | wc -l` → `238`; 219 + 18 = 237
-  configured; `comm -23 <(git ls-files 'tests/*.test.ts'|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts|tr -d '"'|sort -u)`
-  → `tests/maintenanceMode.test.ts` — stranded. The config itself records the precedent:
+- **Counts that must agree — and now a guard makes them.** `git ls-files 'tests/*.test.ts' | wc -l`
+  → `239`; 221 + 18 = 239 configured; `comm -23 <(git ls-files 'tests/*.test.ts'|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts|tr -d '"'|sort -u)`
+  → *empty*. Until `fd4a22c5` this identity was a thing you checked by hand and nobody did;
+  `scripts/test-collection-guard.cjs` now fails the build on any non-empty result. The config
+  records the precedent for why that matters:
   `vitest.config.ts:140-141` — `changeOfCircumstance.test.ts` "Was in NEITHER config since it
   landed, so its 10 assertions had never run (same class as F-013's maintenanceMode.test.ts)".
-- **Source-text tests.** `grep -lE 'readFileSync\(' tests/*.test.ts | wc -l` → `63` (27% of the
+- **Source-text tests.** `grep -lE 'readFileSync\(' tests/*.test.ts | wc -l` → `63` (26% of the
   node suite asserts on source text, not behaviour). `tests/complianceInvariants.test.ts` (691
   lines, 16 describes, 54 its): `:16` "If one of these fails, treat it as a compliance incident,
   not a flaky test"; the Reg B check is a grep of 8 decision-path modules for 6 AI import patterns
@@ -146,7 +150,7 @@ flowchart TD
 - **Checkup.** `scripts/checkup.sh` — `grep -c '^check "' scripts/checkup.sh` → `18`, including
   citations, regulatory-ledger freshness, living-doc freshness, and a live probe of
   `https://www.homiquity.com` (`:16`, the only lane that uses the `www` host); audits at
-  `moderate` vs the gate's `high` (`:58` vs `ci.yml:274`); integration tests deliberately excluded
+  `moderate` vs the gate's `high` (`:58` vs `ci.yml:283`); integration tests deliberately excluded
   (`:8-9`).
 - **The guard fleet.** `ls scripts/*-guard.cjs | wc -l` → `14`; `ls scripts/*baseline*.json | wc -l`
   → `7`. Ratchets (down only; **auto-tighten on a shrink**): `bundle-size` (`:217-218`), `design-token`
@@ -158,7 +162,7 @@ flowchart TD
 - **Gaps between the lanes.** Neither pre-push nor preflight runs `guard:citations`
   (`grep -n citation scripts/preflight.sh .githooks/pre-push` → nothing); both run **one** of the
   three query-key scripts (`pre-push:115`, `preflight.sh:93` call `query-key-guard.cjs` directly;
-  `package.json:37` chains all three for CI). A citation regression or a dead invalidation passes
+  `package.json:38` chains all three for CI). A citation regression or a dead invalidation passes
   locally and reds in CI.
 - **What the meta-test pins.** `tests/ciTriggers.test.ts` (294 lines): `:110` migrate-prod wired
   for push+dispatch **or explicitly paused to dispatch only**; `:115` verify-deploy wired for push
@@ -182,7 +186,7 @@ flowchart TD
   §8 (`:285-291`): "Grep before claiming 'missing'."
 - **Ports.** Dev 5001 (from `.env.example`; code default 5000; AirPlay squats on 5000), worktree
   servers 5002+, preflight boot 3999 / integration 4000, CI boot 3999
-  (`knowledge-base/runbooks/LOCAL_DEV.md:183-187`, `scripts/preflight.sh:37-38`, `ci.yml:517`).
+  (`knowledge-base/runbooks/LOCAL_DEV.md:183-187`, `scripts/preflight.sh:37-38`, `ci.yml:526`).
 - **The collection shortfall (not fixed on main).** An open PR documents that vitest 4 discovers
   files through tinyglobby → fdir with `suppressErrors: true`, so a `readdir` that fails under load
   is indistinguishable from an empty directory: in its reproduction one injected failure dropped 36
@@ -196,9 +200,9 @@ flowchart TD
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
 # → 12d7cbec @ 12d7cbec
 grep -cE '^\s*"tests/' vitest.config.ts ; grep -cE '^\s*"tests/' vitest.integration.config.ts ; git ls-files 'tests/*.test.ts' | wc -l
-# → 219 / 18 / 238 @ 23b256a5
+# → 221 / 18 / 239 @ fd4a22c5
 comm -23 <(git ls-files 'tests/*.test.ts'|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts|tr -d '"'|sort -u)
-# → tests/maintenanceMode.test.ts   (configured nowhere) @ 12d7cbec
+# → (empty — zero stranded, and `pnpm test` now fails if that changes) @ fd4a22c5
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
 # → 123 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 23b256a5
 grep -c '^step ' .githooks/pre-push ; grep -c PREPUSH_TESTS .githooks/pre-push
@@ -229,28 +233,28 @@ sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' te
 
 | Trap | Where | Caught by |
 |---|---|---|
-| A new server test in neither config never runs — deliberate allowlist, no detector. Live example: `tests/maintenanceMode.test.ts`. | `vitest.config.ts:30-300`; `CICD.md:360-362` | Nothing diffs `git ls-files` against the two includes. Proposed ticket in chapter 12. |
-| `pnpm test` can run fewer files than exist and exit 0 (fdir `suppressErrors`). | PR #670, still open; `package.json:15` | Nothing on `main`. Compare the printed `Test Files (N)` against 219 and 122 by hand. |
+| A new server test in neither config never runs — the allowlist is deliberate, and for the life of the repo nothing detected an omission. | `vitest.config.ts:30-300`; `CICD.md:366-376` | **Closed `fd4a22c5` (#670).** `scripts/test-collection-guard.cjs` diffs the disk against every lane's `include` and fails on a non-empty result; the floor is zero, with no baseline to bump. Its first run found the live example, `tests/maintenanceMode.test.ts` — the `INTAKE_PAUSED` kill switch, five assertions that had never executed. |
+| `pnpm test` can run fewer files than exist and exit 0 — vitest globs via `tinyglobby` → `fdir`, whose default `suppressErrors: true` makes a directory that failed `readdir` read as an *empty* one. Seen three times under load: 111/118, 214/215, 113/119. | `package.json:15`; `scripts/test-collection-guard.cjs` | **Closed `fd4a22c5` (#670).** `pnpm test` is the guard: it runs each lane with `--reporter=json` and fails on any shortfall, naming the missing files. Its own enumeration is `fs.readdirSync` with no error suppression — counting with the same glob would shrink both sides together and pass. |
 | `main` requires zero checks; `enforce_admins: true` binds admins to an empty list. | `ci.yml:30-45` | No mechanism — the comment warns the previous version of itself said "✅ CONFIGURED" while false. LEDGER HO-0822-15. |
-| A pause on `migrate-prod` makes the journal run ahead of prod; this caused a 35-minute auth outage (migration 0057, `users.last_failed_login_at`). Re-armed 2026-08-22 — but a *future* pause is equally invisible. | `ci.yml:574`; `76c96751` | `tests/ciTriggers.test.ts:110` accepts LIVE **or** PAUSED, so it cannot tell you which you have. |
-| `verify-deploy` reddens but cannot fail the workflow — `continue-on-error: true`, deliberately, because it and Railway's "Wait for CI" would otherwise deadlock into a permanent silent deploy freeze (`ci.yml:648-662`). With zero required checks, nothing turns its red into a block. | `ci.yml:647,663` | `tests/ciTriggers.test.ts:115`; the real alarm is Railway's own deployment notifications. |
-| `strict: false`: two individually green PRs can combine into a red `main`; the ratchets surface it on the *next* PR. | `ci.yml:303-301`; `CICD.md:339-343` | Detected late, by design. |
-| The integration lane never runs in CI — all multi-role authorization coverage rides on someone running it. | `CICD.md:353-357` | TEAM_PRACTICES §5.3 asks for it in the PR body; preflight runs it only when a DB is available. |
+| A pause on `migrate-prod` makes the journal run ahead of prod; this caused a 35-minute auth outage (migration 0057, `users.last_failed_login_at`). Re-armed 2026-08-22 — but a *future* pause is equally invisible. | `ci.yml:583`; `76c96751` | `tests/ciTriggers.test.ts:110` accepts LIVE **or** PAUSED, so it cannot tell you which you have. |
+| `verify-deploy` reddens but cannot fail the workflow — `continue-on-error: true`, deliberately, because it and Railway's "Wait for CI" would otherwise deadlock into a permanent silent deploy freeze (`ci.yml:657-671`). With zero required checks, nothing turns its red into a block. | `ci.yml:656,663` | `tests/ciTriggers.test.ts:115`; the real alarm is Railway's own deployment notifications. |
+| `strict: false`: two individually green PRs can combine into a red `main`; the ratchets surface it on the *next* PR. | `ci.yml:312-310`; `CICD.md:343-347` | Detected late, by design. |
+| The integration lane never runs in CI — all multi-role authorization coverage rides on someone running it. | `CICD.md:357-361` | TEAM_PRACTICES §5.3 asks for it in the PR body; preflight runs it only when a DB is available. |
 | Two guards auto-write their baselines on a shrink; a preflight run can dirty the tree with a file you did not edit. | `design-token-guard.cjs:116-119`; `bundle-size-guard.cjs:217-218` | `checkup.sh:48` "working tree clean" — after the fact. |
 | `guard:bundle` gates only the eager entry graph, raw bytes; a lazy route can never fail CI. | `bundle-size-guard.cjs:35-36,58-59` | By design. |
-| `guard:ui` / `guard:tokens` are text scans — no layout engine; `unprefixedMultiColGrid` is a proxy for "breaks at 320 px". | `ci.yml:319-313`; `scripts/browser-probe.cjs:9-11` | Only `browser-probe.cjs`, which nothing runs automatically. |
+| `guard:ui` / `guard:tokens` are text scans — no layout engine; `unprefixedMultiColGrid` is a proxy for "breaks at 320 px". | `ci.yml:328-322`; `scripts/browser-probe.cjs:9-11` | Only `browser-probe.cjs`, which nothing runs automatically. |
 | 63 of 238 node tests are source greps — "passes on wrong logic and breaks on renames" (F-014). | `hq-underwriting-owner.md:105` | Acknowledged, not caught. |
-| Pre-push and preflight run a strict subset of the gate (no citations; 1 of 3 query-key scripts). | `pre-push:115`; `preflight.sh:93` vs `package.json:37` | CI — now that it runs again. |
+| Pre-push and preflight run a strict subset of the gate (no citations; 1 of 3 query-key scripts). | `pre-push:115`; `preflight.sh:93` vs `package.json:38` | CI — now that it runs again. |
 | The pre-push probe blocks on `node_modules/.bin/vitest`; if the open hook PR lands the suite removal without the probe change, a checkout with `tsc` but no `vitest` blocks a push for a binary the hook no longer uses. | `.githooks/pre-push:67` | No test. |
-| Stale counts inside the harness: `cronSchedules.test.ts:63` "six" (7); `pre-push:107` "9 guards" (8); `pre-push:133` and `preflight.sh:6` "sixteen" (18); `checkup.sh:2-9` lists 8 categories for 18 checks. | as cited | `doc-staleness-guard` scans `.md` vocabulary, not counts in scripts. LEDGER HO-0822-20. |
+| Stale counts inside the harness: `cronSchedules.test.ts:63` "six" (7); `pre-push:107` "9 guards" (8); `pre-push:141` and `preflight.sh:6` "sixteen" (18); `checkup.sh:2-9` lists 8 categories for 18 checks. | as cited | `doc-staleness-guard` scans `.md` vocabulary, not counts in scripts. LEDGER HO-0822-20. |
 
 ## What we do not know
 
 | Question | What resolves it |
 |---|---|
 | Was the gate green on 12d7cbec? This chapter is about configuration and structure. | Measured on 2026-08-22 in chapter 12 §1, at the then-current `12d7cbec`: T0–T3 green plus the corpus, 218/218 and 120/120 files collected, the two database stages SKIPPED. The four commits since add one node test and two client tests; the run has not been repeated. |
-| Would `tests/maintenanceMode.test.ts` pass if it were listed? | Append it to the allowlist in a worktree and run the node lane. |
-| Does #670 (the collection guard, still open) still apply cleanly now that #660 has landed and rewritten the hook's test step? | `gh pr diff 670`; the hook's unit-test block moved to `:118-126`. |
+| ~~Would `tests/maintenanceMode.test.ts` pass if it were listed?~~ | **Answered 2026-08-23:** yes — 5 tests, listed in `fd4a22c5` (#670) and green in that PR's gate. |
+| ~~Does #670 still apply cleanly now that #660 has rewritten the hook's test step?~~ | **Answered 2026-08-23:** no, it needed a rebase, and it got one — #670 took #660's `PREPUSH_TESTS` conditional verbatim rather than restoring the unconditional step, and rewrote its own "while CI is down this hook is the only gate" rationale, which #660 had falsified. Merged `fd4a22c5`. |
 | Does `enforce_admins: true` with an empty context list have any effect at all? | The `ci.yml` comment asserts it does not; untested. |
 
 ## Analogy

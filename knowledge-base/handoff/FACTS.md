@@ -1,7 +1,7 @@
 # FACTS — every count the corpus uses, derived by command
 
 > **Freshness:** last verified 2026-08-22 · review every 14 days
-> **Verified against** `origin/main` @ **ca791d72** (full `ca791d7249cb2a7c4fd29b2ccacd1b5ee5571dd2`).
+> **Verified against** `origin/main` @ **fd4a22c5** (full `fd4a22c53d998ad4b4205a3b1ca85a99d210fb4a`).
 
 The chapters cite rows here by id (`F-07`). Every value below was produced by running the
 command in the same row, in a clean worktree of the stamped commit, with the output pasted —
@@ -38,7 +38,7 @@ and returns nothing — a false "the file changed").
 
 <!-- BEGIN GENERATED — do not hand-edit; re-derive with the recipe below and paste -->
 
-| id | fact | command (run from the worktree root) | value @ ca791d72 |
+| id | fact | command (run from the worktree root) | value @ fd4a22c5 |
 |---|---|---|---|
 | F-01 | Drizzle tables | `grep -c "pgTable(" shared/schema/*.ts \| awk -F: '{s+=$2} END{print s}'` | 188 |
 | F-02 | schema files | `ls shared/schema/*.ts \| wc -l` | 34 |
@@ -52,7 +52,7 @@ and returns nothing — a false "the file changed").
 | F-10 | role-group declarations (line numbers: STAFF, CLIENT, PARTNER, ALL, INTERNAL_STAFF) | `grep -nE "^export const (STAFF_ROLES\|CLIENT_ROLES\|PARTNER_ROLES\|INTERNAL_STAFF_ROLES\|ALL_ROLES)" shared/roles.ts \| cut -d: -f1` | 14 26 36 42 80 (8 + 2 + 2 = 12 roles; 6 internal) |
 | F-11 | `inArray(` call sites | `grep -rn "inArray(" server --include='*.ts' \| wc -l` | 56 |
 | F-12 | `.transaction(` call sites | `grep -rn "\.transaction(" server --include='*.ts' \| wc -l` | 6 |
-| F-13 | node-lane allowlist · test files on disk | `grep -cE '^\s*"tests/' vitest.config.ts ; git ls-files 'tests/*.test.ts' \| wc -l` | 219 · 238 |
+| F-13 | node-lane allowlist · test files on disk | `grep -cE '^\s*"tests/' vitest.config.ts ; git ls-files 'tests/*.test.ts' \| wc -l` | 221 · 239 |
 | F-14 | integration-lane includes | `grep -cE '^\s*"tests/' vitest.integration.config.ts` | 18 |
 | F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 123 |
 | F-16 | guards in the CI gate | `grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml \| sort -u` | bundle channel citations kb migrations querykeys schema security staleness tokens ui (11; `guard:docs` deliberately absent) |
@@ -69,20 +69,20 @@ and returns nothing — a false "the file changed").
 | F-27 | rate-limit mounts in `app.ts` | `grep -c "rateLimit(" server/app.ts` | 11 (9 named + 2 inline) |
 | F-28 | encrypted-at-rest column sites | `grep -rn "_encrypted" shared/schema/*.ts \| wc -l` | 8 (+ `credit_pulls.encryptedRawResponse`, named differently) |
 | F-29 | production cron sweeps | `grep -c "cron:" .github/workflows/cron-jobs.yml` | 7 |
-| F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 81,487 · shared 22,979 · client/src 107,118 · tests 45,962 |
-| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,085 — `HEAD`, so run it on `main`; on a branch it counts the branch |
+| F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 81,487 · shared 22,997 · client/src 107,288 · tests 46,168 |
+| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,098 — `HEAD`, so run it on `main`; on a branch it counts the branch |
 | F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
 | F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 63 |
 | F-35 | query-key factories | `grep -cE '^export const [a-zA-Z]+Keys' client/src/lib/queryClient.ts` | 17 |
-| F-36 | guard scripts · baseline files | `ls scripts/*-guard.cjs \| wc -l ; ls scripts/*baseline*.json \| wc -l` | 14 · 7 |
+| F-36 | guard scripts · baseline files | `ls scripts/*-guard.cjs \| wc -l ; ls scripts/*baseline*.json \| wc -l` | 15 · 7 |
 | F-37 | foreign keys to `loan_applications` · to `users` | `grep -rn "references(() => loanApplications.id)" shared/schema/*.ts \| wc -l ; grep -rn "references(() => users.id)" shared/schema/*.ts \| wc -l` | 91 · 130 |
 | F-38 | `app.use(` mounts · server `.ts` files | `grep -c "app.use(" server/app.ts ; find server -name '*.ts' \| wc -l` | 39 · 291 |
-| F-39 | test files in neither vitest config | `comm -23 <(git ls-files 'tests/*.test.ts'\|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts\|tr -d '"'\|sort -u)` | `tests/maintenanceMode.test.ts` (1) |
+| F-39 | test files in neither vitest config | `comm -23 <(git ls-files 'tests/*.test.ts'\|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts\|tr -d '"'\|sort -u)` | *none* (0) — the file was listed and the zero is now **enforced**: `scripts/test-collection-guard.cjs` fails on any test file no lane's `include` matches (`fd4a22c5`, #670) |
 | F-40 | `updatePipelineStage(` references · `recalculateDecision(` references | `grep -rn "updatePipelineStage(" server --include='*.ts' \| wc -l ; grep -rn "recalculateDecision(" server --include='*.ts' \| wc -l` | 5 · 11 |
 | F-41 | regulatory-ledger entries · still carrying a blocked-network note | `python3 -c "import json;e=json.load(open('data/regulatory/regulatory-ledger.json'))['entries'];print(len(e), len([x for x in e if 'block' in (x.get('notes','') or '').lower()]))"` | 59 · 9 |
 | F-42 | `complianceInvariants` describes · its | `grep -c "^describe(" tests/complianceInvariants.test.ts ; grep -c "  it(" tests/complianceInvariants.test.ts` | 16 · 54 |
-| F-43 | the two deploy-job conditions, and the one that cannot fail | `sed -n '574p;647p;663p' .github/workflows/ci.yml` | `if: … == 'push' \|\| … == 'workflow_dispatch'` · `if: … == 'push'` · `continue-on-error: true` — both re-armed by `76c96751` (#669) after a 2026-08-19/20 pause; `verify-deploy` reddens without failing the workflow, by design |
+| F-43 | the two deploy-job conditions, and the one that cannot fail | `sed -n '583p;656p;672p' .github/workflows/ci.yml` | `if: … == 'push' \|\| … == 'workflow_dispatch'` · `if: … == 'push'` · `continue-on-error: true` — both re-armed by `76c96751` (#669) after a 2026-08-19/20 pause; `verify-deploy` reddens without failing the workflow, by design |
 | F-44 | required status checks on `main` | `gh api repos/barakatammre84/Homiquity/branches/main/protection --jq '.required_status_checks.contexts\|length'` | 0 (measured 2026-08-22, not a property of the commit) |
 
 <!-- END GENERATED -->
