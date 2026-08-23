@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/charter-rails.cjs\"",
+            "statusMessage": "Checking CHARTER §8 rails…",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge|mcp__github__disable_pr_auto_merge",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/deny-merge-tools.cjs\"",
+            "statusMessage": "Checking CHARTER §8 rails…",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -33,6 +33,11 @@ export default defineConfig({
       // The reduced-motion accessibility floor — a presence ratchet against
       // someone deleting it while refactoring index.css.
       "tests/reducedMotion.test.ts",
+      // CHARTER §8 rails. The MUST_ALLOW half is the one that rots: a blocklist
+      // that also blocks ordinary work gets switched off, and a switched-off rail
+      // protects nothing. Appended at the END — a tests/ file absent from this
+      // allowlist is silently never run.
+      "tests/routineGovernance.test.ts",
       // The radius scale — a presence ratchet. An undeclared rung silently
       // inherits Tailwind's default instead of erroring; that is how xl and lg
       // rendered identically for the life of the project.
