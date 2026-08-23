@@ -544,11 +544,15 @@ anything else in this file being true.
   concludes the corpus is unavailable **and stops on a document sitting right there**, which is
   exactly the failure CLAUDE.md's compliance-first rule exists to prevent. `pypdf` (6.14.2) and
   `pymupdf` are installed and work. Replacement wording is written out verbatim in
-  [the report](knowledge-base/routines/reports/2026-08-22-doc-accuracy.md) §1. Owner: founder (or
+  the doc-accuracy report for 2026-08-22 §1 — **which is not on `main` yet**: it rides
+  [PR #658](https://github.com/barakatammre84/Homiquity/pull/658), so read it there until that
+  merges. Owner: founder (or
   anyone the founder authorizes to write under `docs/`); one file, ~8 lines.
 - [ ] **3.39 Dead paths in two registers this file points at** (doc-accuracy 2026-08-22,
   DA-0822-04/-05). `FINDINGS.md` cites `server/routes/lending.ts` (:344 — now a directory),
-  `tests/loanDeliveryReadiness.test.ts` (:130 — absent) and `docs/hmda/` (:320 — absent); this
+  a `tests/` file for `loanDeliveryReadiness` (:130 — absent; deliberately unbackticked here so
+  the citation ratchet does not count the roadmap as a second reporter of the same gap) and
+  `docs/hmda/` (:320 — absent); this
   roadmap cites `docs/freddie-mac/`, which does not exist. Prevention, and the better half of the
   ticket: fold doc-accuracy's dead-path sweep into `scripts/doc-staleness-guard.cjs` as a
   `deadRepoPaths` metric, reusing its four noise filters (without them 764 of 785 hits are noise).
