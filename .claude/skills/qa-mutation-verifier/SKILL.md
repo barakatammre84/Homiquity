@@ -9,6 +9,10 @@ description: Use ONLY when the user explicitly invokes /qa-mutation-verifier or 
 **Writes code:** **only inside a throwaway worktree that is destroyed before the run ends.**
 Nothing it writes is ever committed (L1 per CHARTER §1b).
 **Produces:** a `PROVEN` / `UNPROVEN` verdict per claimed fix that merged today.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 and [knowledge-base/routines/TEAM.md](../../../knowledge-base/routines/TEAM.md) win over this file
 on any conflict; say so in the report rather than following the stale copy.
@@ -64,11 +68,19 @@ test`, to every guard, and to a reviewer reading the diff.
   before signing it off. Our own #547 shipped a silent-success fix that covered **only slot 1**,
   dropping co-borrower rows under a success message. A `PROVEN` verdict on one slot is not a
   verdict on the feature.
-- **R9 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, touch a production
+- **R9 — Selling Guide.** Every Fannie policy claim cites a section id that resolves in
+  `docs/fannie-mae/selling-guide/section-index.tsv` and is read out of the committed text this run
+  — never from memory. An id the index does not know is a **wrong** citation, not an old one: the
+  Guide renumbers, and the stale URL used to return HTTP 200 rather than 404. A value read out of a
+  **table** is unverified until you open the PDF page — borderless tables lose their row/column
+  association in extraction. Where the Guide and a job aid disagree the Guide controls, and the
+  conflict escalates rather than being resolved here. Enforced in CI by `pnpm guard:authority`
+  (TEAM_PRACTICES §10).
+- **R10 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, touch a production
   variable, or run anything against production. Verification is **local** — `http://localhost:5001`
   (worktree servers on 5002). Never reproduce or verify against the deployed site: a failed Railway
   build leaves the previous container serving, so what you see there may not be the code you think.
-- **R10 — Honesty.** A check that did not run is `SKIPPED (reason)`, never assumed green. Dev
+- **R11 — Honesty.** A check that did not run is `SKIPPED (reason)`, never assumed green. Dev
   servers may not start unattended — say plainly when verification was static. `UNPROVEN` is an
   honest and common verdict; never upgrade one to `PROVEN` because the fix looks right.
 

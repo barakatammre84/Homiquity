@@ -1,7 +1,7 @@
 # Handoff — the Feynman onboarding corpus for Homiquity
 
-> **Freshness:** last verified 2026-08-22 · review every 60 days
-> Verified against `origin/main` @ 12d7cbec (every chapter carries its own stamp).
+> **Freshness:** last verified 2026-08-23 · review every 60 days
+> Verified against `origin/main` @ 6377727e (every chapter carries its own stamp).
 
 This directory teaches the product to a full-stack engineer who has never seen it, and hands it
 over to a team that will keep it running. It is a **layer over** the existing documentation, not
@@ -75,11 +75,16 @@ Three layers, weakest to strongest:
 2. **Command-derived facts.** A refresh re-runs every command in [FACTS.md](FACTS.md) and every
    chapter's prove-it block at the new `origin/main` tip, and re-stamps the SHA. A number that
    changed is a prose edit plus, if another doc carried the old number, a ledger row.
-3. **A steward.** The doc-accuracy routine sweeps `knowledge-base/**` every six hours for dead
-   pointers and renamed paths and may consume `HO-` rows as its own findings. A hand-invoked
-   refresh skill (a follow-up to this corpus, in a separate PR) automates layer 2 end to end:
-   detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run the commands,
-   rewrite the generated block, log the run.
+3. **A steward, on a clock.** Since 2026-08-23 the daily 17:06 seat (**Handoff Corpus Steward**,
+   `.claude/skills/handoff-refresh/SKILL.md`; CHARTER §3 — it took over the laptop `taskId`
+   `client-journey-walk` when the daily walk retired to hand-invocation) runs layer 2 end to end
+   every day: detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run the
+   commands, rewrite the generated block, **age the open `HO-` rows** (a fix-now row older than
+   7 days becomes a ⛔ line naming its lane), log the run. Its clocks: `--check`/`--cite` daily ·
+   FACTS fully re-derived every ≤14 days · every chapter re-read in rotation every ≤30 days — so
+   the numbers are never fresher than the prose that interprets them. The doc-accuracy routine
+   still sweeps the rest of `knowledge-base/**` and consumes `HO-` rows as its own findings; since
+   2026-08-23 it never edits `handoff/**` itself (CHARTER §6 — one writer per truth).
 
 **Refresh protocol:** invoke the `handoff-refresh` skill, or do it by hand — fresh worktree of
 `origin/main` → `pnpm handoff:facts --check` and `--cite` to find drift mechanically, plus
@@ -144,7 +149,7 @@ citation · CHARTER §1b rows L3 and L4.
 |---|---|---|
 | 1 | `main` requires **zero** status checks, and `enforce_admins: true` binds admins to an empty list. A green gate is advisory. | FACTS F-44; chapter 07 |
 | 2 | A merge is a deploy, and a **failed** Railway build leaves the previous container serving — so the site stays up and every check stays green while prod goes stale. Only `/api/health`'s `commit` proves a ship. | chapter 10 |
-| 3 | `pnpm test` runs a hand-maintained **allowlist**. An unlisted node test is silently never run — one is stranded on `main` today — and the lane can collect fewer files than exist and still exit 0. | FACTS F-13, F-39; chapter 07 |
+| 3 | `pnpm test` runs a hand-maintained **allowlist** — an unlisted node test is silently never run. Since #670 (`fd4a22c5`, 2026-08-23) the command IS the floor: `scripts/test-collection-guard.cjs` fails on a collected-vs-on-disk shortfall and on a test in no lane, and the once-stranded `tests/maintenanceMode.test.ts` is listed (`vitest.config.ts:306`). The discipline stands: append your new test to the allowlist, and read the collected counts. | FACTS F-13, F-39; chapter 07 |
 | 4 | Adding a colocated client test reddens `guard:ui` until you run `pnpm guard:ui --write-table`, because the generated table's denominator counts test files. This has already merged red to `main` once. | LEDGER HO-0822-25, HO-0822-26 |
 | 5 | The dominant defect class here is an operation that **does not happen while the UI says it did** — a 200 for a write that was silently dropped. Chapter 04's draft round-trip is the worked example, and its fix did not close the class. | chapter 04 |
 

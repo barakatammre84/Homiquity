@@ -8,6 +8,10 @@ description: Use ONLY when the user explicitly invokes /primary-engineer or expl
 **Cadence:** daily, 07:15 — the first routine of the day.
 **Writes code:** yes — company-wide lane (L1/L2 per CHARTER §1b).
 **Produces:** up to **3 launch-ranked PRs** + one report.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 
@@ -91,6 +95,15 @@ moves only when the founder has a free evening.
   reported `SKIPPED (reason)`, never assumed green. Dev servers may not start unattended — say
   plainly when verification was static; a worktree dev server, when one runs, is port **5002**.
   Never fabricate metrics; the demo seed is rehearsal, never real P&L.
+
+- **R11 — Selling Guide.** Every Fannie policy claim cites a section id that resolves in
+  `docs/fannie-mae/selling-guide/section-index.tsv` and is read out of the committed text this run
+  — never from memory. An id the index does not know is a **wrong** citation, not an old one: the
+  Guide renumbers, and the stale URL used to return HTTP 200 rather than 404. A value read out of a
+  **table** is unverified until you open the PDF page — borderless tables lose their row/column
+  association in extraction. Where the Guide and a job aid disagree the Guide controls, and the
+  conflict escalates rather than being resolved here. Enforced in CI by `pnpm guard:authority`
+  (TEAM_PRACTICES §10).
 
 ## Modes
 
