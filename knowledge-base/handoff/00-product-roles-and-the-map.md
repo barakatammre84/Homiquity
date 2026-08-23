@@ -1,7 +1,7 @@
 # 00 — Product, roles and the map
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3 · **Authoritative:** [app-guide 01 — Start Here](../handbook/app-guide/01-start-here.md) (it wins on conflict; the code wins over both; disagreements go to [LEDGER.md](LEDGER.md); counts are re-derived from [FACTS.md](FACTS.md)).
+> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 01 — Start Here](../handbook/app-guide/01-start-here.md) (it wins on conflict; the code wins over both; disagreements go to [LEDGER.md](LEDGER.md); counts are re-derived from [FACTS.md](FACTS.md)).
 
 ## The mental model
 
@@ -57,7 +57,7 @@ flowchart TD
 
 ## The facts, with receipts
 
-Every claim: `path:line` · the symbol there · the command that shows it (outputs at 074899e3).
+Every claim: `path:line` · the symbol there · the command that shows it (outputs at 12d7cbec).
 
 - **The product is a brokerage, not a lender.** `README.md:3` — "An AI-native mortgage
   **brokerage** platform: borrower intake (digital 1003), document collection, deterministic
@@ -116,25 +116,25 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
 
 ```bash
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 074899e3 @ 074899e3
+# → 12d7cbec @ 12d7cbec
 grep -cE '^export const (STAFF|CLIENT|PARTNER|INTERNAL_STAFF)_ROLES' shared/roles.ts
-# → 4 @ 074899e3
+# → 4 @ 12d7cbec
 grep -n 'export const ALL_ROLES' shared/roles.ts
-# → 42:export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES, ...PARTNER_ROLES] as const; @ 074899e3
+# → 42:export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES, ...PARTNER_ROLES] as const; @ 12d7cbec
 grep -n 'default("aspiring_owner")' shared/schema/core.ts
-# → 55:  role: varchar("role", { length: 50 }).default("aspiring_owner").notNull(), // See ALL_ROLES constant @ 074899e3
+# → 55:  role: varchar("role", { length: 50 }).default("aspiring_owner").notNull(), // See ALL_ROLES constant @ 12d7cbec
 grep -rn 'updateUserRole(' server --include='*.ts' | grep -v 'async updateUserRole' | wc -l
-# → 4   (applications.ts promotion · admin.ts · staff-invites.ts redeem · auth.ts dev test-login) @ 074899e3
+# → 4   (applications.ts promotion · admin.ts · staff-invites.ts redeem · auth.ts dev test-login) @ 12d7cbec
 grep -cE '^\| [0-9]+ \| \[' knowledge-base/handbook/FEATURE_MAP.md ; ls .claude/agents/hq-*-owner.md | wc -l
-# → 41 / 41 @ 074899e3
+# → 41 / 41 @ 12d7cbec
 ls -1 knowledge-base/handbook/app-guide/*.md | wc -l
-# → 12 @ 074899e3
+# → 12 @ 12d7cbec
 grep -n '^### Tier' README.md
-# → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 074899e3
+# → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 12d7cbec
 grep -rn "React 18" knowledge-base/handbook/app-guide/ ; grep -n '"react":' package.json
-# → app-guide/07-frontend.md:5 and 01-start-here.md:22 say React 18; package.json:102 "react": "^19.2.8" @ 074899e3
+# → app-guide/07-frontend.md:5 and 01-start-here.md:22 say React 18; package.json:102 "react": "^19.2.8" @ 12d7cbec
 wc -l PRODUCT_SPINE.md
-# → 8 @ 074899e3
+# → 8 @ 12d7cbec
 ```
 
 ## Where this breaks

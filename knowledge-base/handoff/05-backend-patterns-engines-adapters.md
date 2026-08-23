@@ -1,7 +1,7 @@
 # 05 — Backend patterns, engines and adapters
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3 · **Authoritative:** [app-guide 04 — API Surface](../handbook/app-guide/04-api-routes.md), [08 — Service Catalog](../handbook/app-guide/08-services.md), [09 — External Integrations](../handbook/app-guide/09-integrations.md), [12 — API contract](../handbook/app-guide/12-api-contract.md) and the `api-routes` skill (they win on conflict; the code wins over both — the skill's endpoint count and its `pgEnum` rule are stale, LEDGER HO-0822-04/05).
+> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 04 — API Surface](../handbook/app-guide/04-api-routes.md), [08 — Service Catalog](../handbook/app-guide/08-services.md), [09 — External Integrations](../handbook/app-guide/09-integrations.md), [12 — API contract](../handbook/app-guide/12-api-contract.md) and the `api-routes` skill (they win on conflict; the code wins over both — the skill's endpoint count and its `pgEnum` rule are stale, LEDGER HO-0822-04/05).
 
 ## The mental model
 
@@ -177,35 +177,35 @@ flowchart TD
 
 ```bash
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 074899e3 @ 074899e3
+# → 12d7cbec @ 12d7cbec
 grep -rnE 'app\.(get|post|put|patch|delete)\(' server/routes | wc -l ; grep -rhoE "app\.(get|post|put|patch|delete|all)\(" server | wc -l
-# → 558 / 579   (the api-routes skill says "~523") @ 074899e3
+# → 558 / 579   (the api-routes skill says "~523") @ 12d7cbec
 grep -rn "pgEnum(" shared --include='*.ts' | wc -l
-# → 1 @ 074899e3
+# → 1 @ 12d7cbec
 grep -n "ORIGINAL" server/routes/*/index.ts | wc -l
-# → 4 @ 074899e3
+# → 4 @ 12d7cbec
 grep -c "export class .*Storage extends" server/storage/*.ts | grep -v ":0" | wc -l ; wc -l server/storage/index.ts server/auditLog.ts
-# → 23 / 23 + 26 @ 074899e3
+# → 23 / 23 + 26 @ 12d7cbec
 grep -rl 'from "../db"' server/services | wc -l ; grep -rl 'from "../storage"' server/services | wc -l
-# → 43 / 34 @ 074899e3
+# → 43 / 34 @ 12d7cbec
 grep -rn "inArray(" server --include='*.ts' | wc -l ; grep -rn "\.transaction(" server --include='*.ts' | wc -l ; grep -rn "logAudit(" server | wc -l
-# → 56 / 6 / 138 @ 074899e3
+# → 56 / 6 / 138 @ 12d7cbec
 sed -n '235,239p' server/underwritingEngine.ts
-# → "Deterministic, rules-based decision engine. It is intentionally isolated from any external/AI decisioning path … there are no hardcoded fallbacks." @ 074899e3
+# → "Deterministic, rules-based decision engine. It is intentionally isolated from any external/AI decisioning path … there are no hardcoded fallbacks." @ 12d7cbec
 sed -n '219,224p' server/services/lookupResolver.ts
-# → tryResolveMatrixValue: "Non-throwing variant for NON-DECISION display surfaces only … The deterministic decision engine never uses this path" @ 074899e3
+# → tryResolveMatrixValue: "Non-throwing variant for NON-DECISION display surfaces only … The deterministic decision engine never uses this path" @ 12d7cbec
 grep -rn 'CREDIT_VENDOR_MODE !== "simulation"' server --include='*.ts'
-# → server/mcp/vendors.ts:90 · server/services/creditPulls.ts:192 @ 074899e3
+# → server/mcp/vendors.ts:90 · server/services/creditPulls.ts:192 @ 12d7cbec
 grep -rn "function seeded(" server --include='*.ts'
-# → server/mcp/vendors.ts:31 · server/services/ausSubmission.ts:35   (duplicated, not shared) @ 074899e3
+# → server/mcp/vendors.ts:31 · server/services/ausSubmission.ts:35   (duplicated, not shared) @ 12d7cbec
 sed -n '17,18p' server/scripts/seedLendingGrids.ts
-# → await db.delete(lookupMatrixCells); await db.delete(lookupMatrices);   ← destructive @ 074899e3
+# → await db.delete(lookupMatrixCells); await db.delete(lookupMatrices);   ← destructive @ 12d7cbec
 grep -n "COACH_MODEL\|COACH_PROMPT_VERSION\|MAX_MODEL_CALLS_PER_TURN" server/services/coachingClient.ts ; grep -c 'name: "' server/services/coachTools.ts
-# → 48 claude-sonnet-5 / 54 homi-2.5.0 / 83 = 4 ; 8 tools @ 074899e3
+# → 48 claude-sonnet-5 / 54 homi-2.5.0 / 83 = 4 ; 8 tools @ 12d7cbec
 grep -rln "anthropic" server --include='*.ts' | wc -l
-# → 7 @ 074899e3
+# → 7 @ 12d7cbec
 grep -c "cron:" .github/workflows/cron-jobs.yml ; grep -n -A1 'server.registerTool(' server/mcp/index.ts | grep -c 'name\|"'
-# → 7 cron rows ; 3 MCP tools @ 074899e3
+# → 7 cron rows ; 3 MCP tools @ 12d7cbec
 ```
 
 ## Where this breaks

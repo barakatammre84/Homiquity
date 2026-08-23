@@ -1,7 +1,7 @@
 # Handoff — the Feynman onboarding corpus for Homiquity
 
 > **Freshness:** last verified 2026-08-22 · review every 60 days
-> Verified against `origin/main` @ 074899e3 (every chapter carries its own stamp).
+> Verified against `origin/main` @ 12d7cbec (every chapter carries its own stamp).
 
 This directory teaches the product to a full-stack engineer who has never seen it, and hands it
 over to a team that will keep it running. It is a **layer over** the existing documentation, not

@@ -1,7 +1,7 @@
 # 02 — Authentication and authorization
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3 · **Authoritative:** [app-guide 06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md) (it wins on conflict; the code wins over both).
+> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md) (it wins on conflict; the code wins over both).
 
 ## The mental model
 
@@ -153,29 +153,29 @@ sequenceDiagram
 
 ```bash
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 074899e3 @ 074899e3
+# → 12d7cbec @ 12d7cbec
 grep -n "scryptAsync(password, salt, 64)" server/auth.ts
-# → 34:  const buf = (await scryptAsync(password, salt, 64)) as Buffer; @ 074899e3
+# → 34:  const buf = (await scryptAsync(password, salt, 64)) as Buffer; @ 12d7cbec
 grep -c 'app.post("/api/auth' server/auth.ts
-# → 7 @ 074899e3
+# → 7 @ 12d7cbec
 grep -n "rolling\|maxAge\|httpOnly\|sameSite\|secure:" server/integrations/auth/session.ts
-# → 40 rolling: true / 42 httpOnly: true / 46 secure: NODE_ENV === "production" / 47 sameSite: "lax" / 48 maxAge: sessionTtl @ 074899e3
+# → 40 rolling: true / 42 httpOnly: true / 46 secure: NODE_ENV === "production" / 47 sameSite: "lax" / 48 maxAge: sessionTtl @ 12d7cbec
 grep -n "user.role = dbUser.role" server/auth.ts
-# → 435:    user.role = dbUser.role; @ 074899e3
+# → 435:    user.role = dbUser.role; @ 12d7cbec
 grep -c "@test.com" server/auth.ts ; grep -n "process.env.DEV_TEST_PASSWORD" server/auth.ts
-# → 11 / 350 @ 074899e3
+# → 11 / 350 @ 12d7cbec
 grep -n "role: userData.role ?? " server/integrations/auth/storage.ts
-# → 68:        role: userData.role ?? "aspiring_owner", @ 074899e3
+# → 68:        role: userData.role ?? "aspiring_owner", @ 12d7cbec
 grep -rn "isAuthenticated" server --include='*.ts' | wc -l ; grep -rl "requireRole(" server --include='*.ts' | wc -l ; grep -rn "requireStaff" server | wc -l
-# → 347 / 40 / 0 @ 074899e3
+# → 347 / 40 / 0 @ 12d7cbec
 grep -rn "getLoanApplicationWithAccess(" server | wc -l ; grep -rn "verifyInternalStaffApplicationAccess(" server | wc -l
-# → 114 / 11 @ 074899e3
+# → 114 / 11 @ 12d7cbec
 sed -n '16p' server/routes/staff-invites.ts
-# → const validRoles = ["lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]; @ 074899e3
+# → const validRoles = ["lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]; @ 12d7cbec
 grep -oE "^  [a-zA-Z]+:" client/src/lib/routeGates.ts | wc -l
-# → 10 @ 074899e3
+# → 10 @ 12d7cbec
 grep -rn "maskUrlaPersonalInfo" server --include='*.ts' | wc -l
-# → 4   (definition, import, two call sites — all in two files) @ 074899e3
+# → 4   (definition, import, two call sites — all in two files) @ 12d7cbec
 ```
 
 ## Where this breaks

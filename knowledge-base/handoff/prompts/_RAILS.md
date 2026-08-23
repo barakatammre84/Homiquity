@@ -1,7 +1,7 @@
 # Loop rails — read this first, and again at the top of every iteration
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> Verified against `origin/main` @ 074899e3. One rails file, **read not copied** — the same shape as
+> Verified against `origin/main` @ 12d7cbec. One rails file, **read not copied** — the same shape as
 > `.claude/agents/_OWNER_RAILS.md`. Every template in this directory points here instead of
 > restating these rules, so a rail changes in exactly one place.
 
@@ -157,7 +157,7 @@ A clean iteration says so in one line and does not invent work.
 | T2 | `pnpm preflight --fast` (needs ≥1 commit on the branch or §9 reports SKIPPED) | T0 + T1 + `pnpm audit --prod` + the §9 guard as CI computes it | build, boot, integration — all SKIPPED |
 | T3 | `bash scripts/local-db.sh up` if no Postgres; `pnpm preflight` | build + `guard:bundle` + prod-mode boot on 3999 + the integration lane on 4000 | prod data; anything outside the integration include list |
 | T4 | `PORT=5002 pnpm dev` in the worktree; `node scripts/browser-probe.cjs --url http://localhost:5002/<route> --width 320`; journey-walker agents (findings only) | real render and wiring | contrast, full a11y; agents are snapshotted at session start |
-| T5 | after a human merges: `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` equals the merge SHA; migration applied via the CI workflow dispatch (human) | prod runs the merge | a commit match is not a schema match |
+| T5 | after a human merges: `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` equals the merge SHA; a migration is applied by `migrate-prod` on the merge push (`ci.yml:574`) — read `applied N migration(s)` in its log | prod runs the merge | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong schema; `verify-deploy` asks this same question but is `continue-on-error`, so its answer blocks nothing |
 
 The completion promise may be written only when the LOOP REPORT cites T0–T3 lines copied from the
 output files (T4 too when UI changed). **Belief is not a tier.**

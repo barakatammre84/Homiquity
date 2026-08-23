@@ -1,7 +1,7 @@
 # 09 — Prompting and automation: the second codebase
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3 · **Authoritative:** `CLAUDE.md`, `../routines/CHARTER.md`, `.claude/agents/_OWNER_RAILS.md` and the four router skills (they win on conflict; the code — here, the prose that Claude executes — wins over any description of it, including this one).
+> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** `CLAUDE.md`, `../routines/CHARTER.md`, `.claude/agents/_OWNER_RAILS.md` and the four router skills (they win on conflict; the code — here, the prose that Claude executes — wins over any description of it, including this one).
 
 ## The mental model
 
@@ -163,33 +163,33 @@ flowchart TD
 
 ```bash
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 074899e3 @ 074899e3
+# → 12d7cbec @ 12d7cbec
 wc -l CLAUDE.md .claude/agents/_OWNER_RAILS.md knowledge-base/routines/CHARTER.md | tail -4
-# → 240 / 114 / 855 / 1209 total @ 074899e3
+# → 240 / 114 / 855 / 1209 total @ 12d7cbec
 ls -d .claude/skills/*/ | wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l
-# → 23 / 17 @ 074899e3
+# → 23 / 17 @ 12d7cbec
 comm -13 <(grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | sort) <(ls .claude/skills/*/SKILL.md | sort) | sed 's|.claude/skills/||;s|/SKILL.md||' | tr '\n' ' '
-# → api-routes journey-walk mortgage-calculations seo-content staff-journey-walk ui-components @ 074899e3
+# → api-routes journey-walk mortgage-calculations seo-content staff-journey-walk ui-components @ 12d7cbec
 wc -l .claude/skills/*/SKILL.md | sort -n | sed -n '1,4p;23,25p'
-# → 26 api-routes / 26 seo-content / 28 mortgage-calculations / 33 ui-components … 277 backend-data-engineer / 277 refactor-radar / 3258 total @ 074899e3
+# → 26 api-routes / 26 seo-content / 28 mortgage-calculations / 33 ui-components … 277 backend-data-engineer / 277 refactor-radar / 3258 total @ 12d7cbec
 ls .claude/agents/*.md | wc -l ; ls .claude/agents/hq-*-owner.md | wc -l ; grep -l "never fix\|never fixes" .claude/agents/*.md | wc -l
-# → 58 / 41 / 15 @ 074899e3
+# → 58 / 41 / 15 @ 12d7cbec
 grep -cE '^## ' knowledge-base/routines/CHARTER.md ; grep -c "" knowledge-base/routines/LESSONS.md
-# → 14 / 42 @ 074899e3
+# → 14 / 42 @ 12d7cbec
 grep -nE '"guard:(kb|docs|staleness|citations)"' package.json
-# → 36 docs / 40 kb / 41 staleness / 42 citations @ 074899e3
+# → 36 docs / 40 kb / 41 staleness / 42 citations @ 12d7cbec
 grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml | sort -u | tr '\n' ' '
-# → bundle channel citations kb migrations querykeys schema security staleness tokens ui   (no guard:docs) @ 074899e3
+# → bundle channel citations kb migrations querykeys schema security staleness tokens ui   (no guard:docs) @ 12d7cbec
 grep -n 'cron:' .github/workflows/doc-freshness.yml
-# → 26:    - cron: "0 9 * * 1" @ 074899e3
+# → 26:    - cron: "0 9 * * 1" @ 12d7cbec
 cat scripts/citation-baseline.json scripts/doc-staleness-baseline.json | tr -d '\n '
-# → {"unresolvedCitations":29,"updated":"2026-08-22"}{"kbPathRefs":8,"npmCommandRefs":5,"launchSprintRefs":7,"oldRepoRefs":3,"deadHostRefs":1,"updated":"2026-08-20"} @ 074899e3
+# → {"unresolvedCitations":29,"updated":"2026-08-22"}{"kbPathRefs":8,"npmCommandRefs":5,"launchSprintRefs":7,"oldRepoRefs":3,"deadHostRefs":1,"updated":"2026-08-20"} @ 12d7cbec
 git cat-file -e HEAD:.claude/settings.json 2>&1 ; git branch -a --contains 69de42ae
-# → fatal: path '.claude/settings.json' does not exist in 'HEAD' / remotes/origin/claude/routines-code-quality-review-snqxol @ 074899e3
+# → fatal: path '.claude/settings.json' does not exist in 'HEAD' / remotes/origin/claude/routines-code-quality-review-snqxol @ 12d7cbec
 cat .mcp.json | tr -d '\n ' ; grep -c 'cron:' .github/workflows/cron-jobs.yml
-# → {"mcpServers":{"homiquity":{"command":"npx","args":["tsx","server/mcp/index.ts"]}}} / 7 @ 074899e3
+# → {"mcpServers":{"homiquity":{"command":"npx","args":["tsx","server/mcp/index.ts"]}}} / 7 @ 12d7cbec
 grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .claude/skills/*/SKILL.md | grep -ci "max\|cap"
-# → 7 / 5 @ 074899e3
+# → 7 / 5 @ 12d7cbec
 ```
 
 ## Where this breaks

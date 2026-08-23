@@ -1,7 +1,7 @@
 # 01 — Architecture and the request lifecycle
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3 · **Authoritative:** [app-guide 02 — Architecture](../handbook/app-guide/02-architecture.md) (it wins on conflict; the code wins over both — and on this chapter the code has moved past it in five places, listed under *Where this breaks*).
+> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 02 — Architecture](../handbook/app-guide/02-architecture.md) (it wins on conflict; the code wins over both — and on this chapter the code has moved past it in five places, listed under *Where this breaks*).
 
 ## The mental model
 
@@ -144,29 +144,29 @@ flowchart TD
 
 ```bash
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 074899e3 @ 074899e3
+# → 12d7cbec @ 12d7cbec
 grep -c "app.use(" server/app.ts
-# → 39 @ 074899e3
+# → 39 @ 12d7cbec
 grep -cE '^const [a-zA-Z]+Limiter = rateLimit\(' server/app.ts ; grep -c "rateLimit(" server/app.ts
-# → 9 named, 11 mounts @ 074899e3
+# → 9 named, 11 mounts @ 12d7cbec
 grep -cE "^\s*(await )?register[A-Za-z]+Routes\(app" server/routes.ts ; grep -n "await register" server/routes.ts
-# → 40 ; 115:  await registerTaskEngineRoutes(app, storage); @ 074899e3
+# → 40 ; 115:  await registerTaskEngineRoutes(app, storage); @ 12d7cbec
 ls -d server/routes/*/ ; ls server/routes/*/index.ts | wc -l
-# → admin/ agent-broker/ borrower/ lending/ underwriting/ ; 4 @ 074899e3
+# → admin/ agent-broker/ borrower/ lending/ underwriting/ ; 4 @ 12d7cbec
 sed -n '481,485p' server/app.ts
-# → RESPONSE_BODY_LOG_ALLOWLIST = [ /^\/api\/health$/, /^\/api\/track$/, /^\/api\/csp-report$/ ] @ 074899e3
+# → RESPONSE_BODY_LOG_ALLOWLIST = [ /^\/api\/health$/, /^\/api\/track$/, /^\/api\/csp-report$/ ] @ 12d7cbec
 sed -n '150,153p' server/routes.ts
-# → app.all("/api/*splat", …) → 404 { error: "Not found" } @ 074899e3
+# → app.all("/api/*splat", …) → 404 { error: "Not found" } @ 12d7cbec
 tail -1 server/spaCatchAll.ts
-# → export const SPA_CATCH_ALL_PATTERN = "/{*splat}"; @ 074899e3
+# → export const SPA_CATCH_ALL_PATTERN = "/{*splat}"; @ 12d7cbec
 grep -rn 'load-env' server/*.ts
-# → server/index-dev.ts:1 only @ 074899e3
+# → server/index-dev.ts:1 only @ 12d7cbec
 grep -n 'healthcheckPath' railway.json
-# → 9:    "healthcheckPath": "/api/health", @ 074899e3
+# → 9:    "healthcheckPath": "/api/health", @ 12d7cbec
 find server -name '*.ts' | wc -l ; find server -name '*.ts' -exec cat {} + | wc -l
-# → 291 ; 81467 @ 074899e3
+# → 291 ; 81467 @ 12d7cbec
 grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l
-# → 579 @ 074899e3
+# → 579 @ 12d7cbec
 ```
 
 ## Where this breaks

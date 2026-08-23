@@ -1,7 +1,7 @@
 # 11 — Patterns and repetition
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3. This chapter is analysis, not doctrine: the
+> **Verified against** `origin/main` @ 12d7cbec. This chapter is analysis, not doctrine: the
 > patterns are what the code and the prompt corpus *actually do*, each with the command that
 > counted it. Where a pattern contradicts a written rule, the LEDGER row is cited — the rule's
 > owner decides which side is right.
@@ -12,7 +12,7 @@ must obey because of it, and (e) the known exceptions. A number without its comm
 a claim without `file:line` is not a finding. Reproduce with:
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git fetch origin && git rev-parse --short HEAD   # → 074899e3
+cd /Users/ammrebarakat/Developer/Homiquity-handoff && git fetch origin && git rev-parse --short HEAD   # → 12d7cbec
 ```
 
 ## A. The most consistent application-logic patterns
@@ -80,7 +80,7 @@ the KMS unwrap, the `SESSION_SECRET` floor, `prelaunchGate` failing *safe* to th
 credit interlocks, the ECOA chokepoint (`statusDecisions.ts:215-224`), `resolveMatrixValue`, the
 MCP identity handshake (`server/mcp/index.ts:63-70`), `CRON_SECRET` unset → admin-only never open
 (`server/routes/jobs.ts:28-32`), the change-scope CI step failing closed to `code=true`
-(`ci.yml:210-213`). **Loop rule.** When a loop cannot satisfy a gate, it stops and reports; it
+(`ci.yml:217-213`). **Loop rule.** When a loop cannot satisfy a gate, it stops and reports; it
 never adds a bypass. **Exceptions.** `logAudit` deliberately swallows its own errors
 (`server/auditLog.ts:23-25`) — the one fail-open by design.
 
@@ -205,11 +205,11 @@ for the loop rails in chapter 12, and most already are.
 | Worktree `node_modules` resolve upward; the primary checkout is a peer's branch. | `routines/reports/2026-08-20-primary-engineer.md:203-204`; `refactor-radar:21` | R0. |
 | `preview_start {name}` boots the primary checkout. | the journey-walk ledger | R0: `PORT=5002 pnpm dev` in the worktree, `lsof` to prove it. |
 | `git stash` is repo-wide across worktrees; `git reset --hard` throws away a peer's work. | the deny-list categories; `reports/2026-08-20-wiring-audit.md:203-209` | R9, R12. |
-| A baseline race between concurrent PRs; a guard writing its baseline mid-run. | `ci.yml:296-301`; `design-token-guard.cjs:116-119` | R5. |
+| A baseline race between concurrent PRs; a guard writing its baseline mid-run. | `ci.yml:303-301`; `design-token-guard.cjs:116-119` | R5. |
 | `git push \| tail` reports success on failure; `\| tail -n` eats a failure list. | `TEAM_PRACTICES.md:142-151`; `LESSONS.md:42` | R9, R13: no pipes on push, full logs to a file. |
 | A red scanning guard on a loaded machine is a timeout until you check its duration. | `LESSONS.md:41`; `vitest.config.ts:8-19` | R5's last bullet. |
 | `ListAgents` as evidence of solitude. | `LESSONS.md:27`; `doc-accuracy/SKILL.md:94-97` | T-1 reads open PRs first, the board second, agents last. |
-| Memory claims that are not repo facts (`PREPUSH_TESTS=1`; "collection guard gated"; "skills hot-reload"). | LEDGER HO-0822-08/09/21 | "Unmerged memory is not memory": the loop trusts `origin/main`, then the board, then memory. |
+| Memory claims that are not repo facts ("collection guard gated" — still #670, still open; "skills hot-reload"). | LEDGER HO-0822-09/21 | "Unmerged memory is not memory": the loop trusts `origin/main`, then the board, then memory. **The instructive case is the one that resolved:** the `PREPUSH_TESTS=1` claim (HO-0822-08) was false when written and became true on 2026-08-22 when #660 merged. A memory that describes an intention is not wrong forever — it is unverifiable, which is worse, because re-reading it never tells you which state you are in. Check the repo, not the recollection. |
 
 ## C. The repetitive work, from the history
 
@@ -243,7 +243,7 @@ not the change ("The borrower's own upload read their pay stub and threw the num
 | UI-conformance batches (`fix(ux-38 batch n)`) | the ui-conformance-sweep routine | `prompts/refactor.md` with the UI ratchets as the floor | taste decisions |
 | Dependency bumps (7 dependabot PRs) | dependabot opens them | none — `package.json` is off limits to every owner | verify-only carve-out §6c: one routine, one merge per run, deploy attached |
 | Baseline bumps (5 commits mention "baseline") | the guards auto-tighten | never a loop's call | raising one, with the reason in the PR body |
-| Migration authoring (3 migration commits since 08-06) | `guard:schema`, `guard:migrations` | `prompts/schema-migration.md` (expand-only) | contract steps; applying to prod while `migrate-prod` is paused |
+| Migration authoring (3 migration commits since 08-06) | `guard:schema`, `guard:migrations` | `prompts/schema-migration.md` (expand-only) | contract steps, which the auto-applier cannot dry-run |
 | Doc drift (22 of the last 100 merged PRs are `docs`; 24 LEDGER rows from this survey alone) | doc-accuracy every 6 h | `prompts/doc-update.md`; the LEDGER rows as its queue | rule semantics in a skill or CHARTER |
 | Counting things for a doc (this corpus; the stale 178/174/523/"11-chapter"/"six sweeps" numbers) | nothing | `FACTS.md` + the follow-up generator script | — |
 | Walking a persona through the UI after a change | 10 journey-walker agents (findings only) | the T4 step in every UI template | acting on a finding that needs a design call |

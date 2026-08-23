@@ -1,7 +1,7 @@
 # 04 — Data flow: a loan's journey
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3 · **Authoritative:** [app-guide 05 — Data Flow: A Loan's Journey](../handbook/app-guide/05-data-flow.md) (it wins on conflict; the code wins over both — and this chapter's hop table is where the code has moved furthest from it, LEDGER HO-0822-16).
+> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 05 — Data Flow: A Loan's Journey](../handbook/app-guide/05-data-flow.md) (it wins on conflict; the code wins over both — and this chapter's hop table is where the code has moved furthest from it, LEDGER HO-0822-16).
 
 ## The mental model
 
@@ -38,7 +38,7 @@ flowchart TD
   A["calculators - sessionStorage calculatorPrefill"] --> B["funnel /apply - 17 steps - localStorage homiquity_preapproval_draft, 800ms"]
   B --> C["POST /api/auth/register - auth.ts:71 - users row, role aspiring_owner"]
   C --> D["POST /api/loan-applications/draft - applications.ts:320 - find-or-create ONE draft row"]
-  D --> E["PATCH /api/loan-applications/:id - statusDecisions.ts:32 - 17 UPDATABLE_COLUMNS - 409 unless status is draft - debounce 2500ms"]
+  D --> E["PATCH /api/loan-applications/:id - statusDecisions.ts:32 - 20 UPDATABLE_COLUMNS - 409 unless status is draft - debounce 2500ms"]
   E --> F["POST /api/loan-applications - applications.ts:36 - gates: unlicensed state 422, prelaunch, intake paused"]
   F --> G["consume the draft, updatePipelineStage draft to submitted - applications.ts:103"]
   G --> H["side writes: readiness_checklist, role promotion, credit_consents soft-pull stamp, loan_outcomes stamp, TRID trigger eval"]
@@ -67,7 +67,7 @@ flowchart TD
 | 1 | Calculators | read-only endpoints in `server/routes/calculators.ts` | — | none; figures ride in `sessionStorage` key `calculatorPrefill` (`client/src/lib/calculatorPrefill.ts:23`) — "a URL is logged, shared and referred" (`:9-12`) |
 | 2 | Anonymous funnel | — | `client/src/funnel/preApprovalMachine.ts` (17 steps, no SSN by design `:33-35`), `client/src/funnel/useFunnelAutosave.ts` (800 ms; consent acknowledgements deliberately not persisted `:11-12`) | `localStorage` only — keys in `client/src/lib/pendingAttribution.ts:14-16` ("must never change") |
 | 3 | Signup | `POST /api/auth/register` `server/auth.ts:71` | `issueEmailVerification` fire-and-forget `:119` | `users`, `sessions`, `auth_tokens` |
-| 4 | Server draft | `POST /api/loan-applications/draft` `server/routes/lending/applications.ts:320` (find-or-create); `PATCH /api/loan-applications/:id` `server/routes/lending/statusDecisions.ts:32` | `client/src/pages/lending/preApproval/useServerDraftAutosave.ts` (`DEBOUNCE_MS = 2500`, `:28`; empty answers omitted, clears are a transition `:60-68`); restore via `useDraftRestore.ts` (`draftToFormValues` `:44`, `form.reset` IS the restore `:124-128`) | `loan_applications` (status `draft`); the PATCH 409s `not_editable` unless `draft` (`statusDecisions.ts:52-55`) and only writes `UPDATABLE_COLUMNS` — 17 names at `:78-84` |
+| 4 | Server draft | `POST /api/loan-applications/draft` `server/routes/lending/applications.ts:320` (find-or-create); `PATCH /api/loan-applications/:id` `server/routes/lending/statusDecisions.ts:32` | `client/src/pages/lending/preApproval/useServerDraftAutosave.ts` (`DEBOUNCE_MS = 2500`, `:28`; empty answers omitted, clears are a transition `:60-68`); restore via `useDraftRestore.ts` (`draftToFormValues` `:44`, `form.reset` IS the restore `:124-128`) | `loan_applications` (status `draft`); the PATCH 409s `not_editable` unless `draft` (`statusDecisions.ts:52-55`) and only writes `UPDATABLE_COLUMNS` — 20 names at `:78-91`, the last three added by #667 |
 | 5 | Submit | `POST /api/loan-applications` `applications.ts:36` | gates: `unlicensedStateRejection` → 422 (`:52`), `prelaunchGate`, `intakePausedGate`; consumes the draft via `updatePipelineStage(existingDraft.id, "submitted")` (`:103`) | `loan_applications`; `readiness_checklist` (`:117`); `users.role` promotion (`:130-142`); `credit_consents` soft-pull stamp with `FUNNEL_SOFT_PULL_CONSENT_TEXT` (`:179-197`); `loan_outcomes` (`:150-158`, create path only); `deal_activities`, `notifications`, `application_invites` — every one wrapped as non-fatal |
 | 6 | Intake automation | runs after `res.status(201)` (`:279` → `:293`) | `server/services/loanAnalysis.ts:426` `finalizeIntake` — writes `status: "analyzing"` (`:436`) then the outcome (`:455`) **directly**; resets to `submitted` on failure (`:588`) for the recovery sweep (`:596-614`); automation never denies — the non-approval outcome is `under_review` (`:400`) | `loan_applications.status`, `preApprovalAmount`, `dtiRatio`, `ltvRatio`, `aiAnalysis` |
 | 7 | URLA sections | `POST /api/urla/:applicationId/save` `server/routes/borrower/urla.ts:425` → `writeBorrowerSections` `:455` | `server/storage/urla.ts` (whitelisted to table columns before any write; `upsertUrlaPersonalInfo` `:116` → `ssnVault.resolveSsnInput`); the `/personal-info` route is dead (`urla.ts:481-484`) | the 8 URLA tables; `urla_personal_info` keyed by `borrowerSequenceNumber` |
@@ -93,36 +93,36 @@ allows exactly four files: `server/pipelineEngine.ts`, `server/services/loanAnal
 
 ```bash
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 074899e3 @ 074899e3
+# → 12d7cbec @ 12d7cbec
 grep -rn "updatePipelineStage(" server --include='*.ts'
-# → pipelineEngine.ts:594 (def) · borrower/dealTeam.ts:143 · lending/applications.ts:103 · lending/statusDecisions.ts:240 · underwriting/pipeline.ts:382 @ 074899e3
+# → pipelineEngine.ts:594 (def) · borrower/dealTeam.ts:143 · lending/applications.ts:103 · lending/statusDecisions.ts:240 · underwriting/pipeline.ts:382 @ 12d7cbec
 grep -rn 'status: "' server/services/loanAnalysis.ts
-# → :436 "analyzing" · :514 "unread" · :531 "unread" (notifications) · :588 "submitted" (failure reset) @ 074899e3
+# → :436 "analyzing" · :514 "unread" · :531 "unread" (notifications) · :588 "submitted" (failure reset) @ 12d7cbec
 sed -n '254,259p' tests/statusVocabulary.test.ts
-# → const ALLOWED = new Set(["server/pipelineEngine.ts", "server/services/loanAnalysis.ts", "scripts/migrate-status-vocabulary.ts", "server/seed.ts"]) @ 074899e3
+# → const ALLOWED = new Set(["server/pipelineEngine.ts", "server/services/loanAnalysis.ts", "scripts/migrate-status-vocabulary.ts", "server/seed.ts"]) @ 12d7cbec
 grep -n "STORAGE_KEY =" client/src/lib/calculatorPrefill.ts ; grep -rn "PREAPPROVAL_AUTOSAVE_KEY =" client/src
-# → 23:const STORAGE_KEY = "calculatorPrefill"; / pendingAttribution.ts:14 "homiquity_preapproval_draft" @ 074899e3
+# → 23:const STORAGE_KEY = "calculatorPrefill"; / pendingAttribution.ts:14 "homiquity_preapproval_draft" @ 12d7cbec
 awk '/export const CANONICAL_ORDER/,/^\];/' client/src/funnel/preApprovalMachine.ts | grep -c '^  "'
-# → 17 @ 074899e3
+# → 17 @ 12d7cbec
 sed -n '78,84p' server/routes/lending/statusDecisions.ts
-# → UPDATABLE_COLUMNS = [annualIncome, monthlyDebts, creditScore, employmentType, employmentYears, propertyType, purchasePrice, downPayment, loanPurpose, isVeteran, isFirstTimeBuyer, propertyState, employerName, propertyAddress, propertyCity, propertyZip, incomeSources] @ 074899e3
+# → UPDATABLE_COLUMNS = [annualIncome, monthlyDebts, creditScore, employmentType, employmentYears, propertyType, purchasePrice, downPayment, loanPurpose, isVeteran, isFirstTimeBuyer, propertyState, employerName, propertyAddress, propertyCity, propertyZip, incomeSources, householdFamilySize, homeSquareFootage, avoidsInterestFinancing] @ 12d7cbec
 grep -n "DEBOUNCE_MS =" client/src/pages/lending/preApproval/useServerDraftAutosave.ts
-# → 28:const DEBOUNCE_MS = 2500; @ 074899e3
+# → 28:const DEBOUNCE_MS = 2500; @ 12d7cbec
 sed -n '26,29p' server/services/creditPulls.ts
-# → function creditVendorIsSimulated() { return !process.env.CREDIT_VENDOR_API_KEY; } @ 074899e3
+# → function creditVendorIsSimulated() { return !process.env.CREDIT_VENDOR_API_KEY; } @ 12d7cbec
 grep -rn "recalculateDecision(" server --include='*.ts' | wc -l
-# → 11 @ 074899e3
+# → 11 @ 12d7cbec
 grep -n "simulated: boolean" shared/schema/delivery.ts
-# → 132:    simulated: boolean("simulated").notNull().default(true), @ 074899e3
+# → 132:    simulated: boolean("simulated").notNull().default(true), @ 12d7cbec
 grep -n "finalizeIntake\|pipelineEngine\|updatePipelineStage\|decision_snapshots\|lender_submissions\|adverse" knowledge-base/handbook/app-guide/05-data-flow.md | wc -l
-# → 0   (the app-guide chapter names none of the current chokepoints) @ 074899e3
+# → 0   (the app-guide chapter names none of the current chokepoints) @ 12d7cbec
 ```
 
 ## Where this breaks
 
 | Seam | Where | Caught by |
 |---|---|---|
-| **The draft round-trip drop.** The funnel collects `householdFamilySize`, `homeSquareFootage`, `avoidsInterestFinancing` (`shared/preApprovalForm.ts:164-183`; two are required for VA borrowers `:217-233`), `draftToFormValues` reads `avoidsInterestFinancing` back (`useDraftRestore.ts:66`) — but `UPDATABLE_COLUMNS` (17 names) never writes them, so a veteran who resumes on another device loses the VA residual answers. An open PR addresses it; not landed at 074899e3. | `server/routes/lending/statusDecisions.ts:78-88` vs `shared/preApprovalForm.ts:174-183` | Nothing — the PATCH silently drops unlisted keys; the hook swallows failures by design (`useServerDraftAutosave.ts:10-13`). |
+| **The draft round-trip drop — FIXED 2026-08-22 by `12d7cbec` (#667); kept here because the *class* is not fixed.** The funnel collects `householdFamilySize`, `homeSquareFootage`, `avoidsInterestFinancing` (`shared/preApprovalForm.ts:164-183`; two are required for VA borrowers `:217-233`), every autosave validated them and returned 200 — and `UPDATABLE_COLUMNS` never wrote them, so a veteran who resumed on another device was re-asked the VA residual questions and the UAL routing opt-in came back a silent "no". The three names are now in the list (`:90`) with the two integer columns parsed rather than copied as strings (`:97-104`), and `tests/funnelDraftRoundTrip.test.ts` (allowlist `:110`) pins it. | `server/routes/lending/statusDecisions.ts:78-91`; the fix's own comment at `:84-89` | **Still nothing generic.** The PATCH silently drops any unlisted key and the hook swallows failures by design (`useServerDraftAutosave.ts:10-13`) — so the next field added to the funnel repeats this exactly. That is silent-success: a 200 for a write that did not happen. |
 | **Two document pipelines.** The UAL tax pipeline (`document_uploads → pages → logical_documents`) and the borrower upload flow (plain `documents`) — extracted *values* were discarded between them until migration 0056 added `extracted_fields.document_id` (its header's first line says "0054", a typo). Nothing backfilled. | `migrations/0056_extracted_fields_source_document.sql:1-24` | The ledger guard would catch a filename/idx mismatch, not an in-comment typo; nothing stops a new writer picking the wrong pipeline. |
 | **Credit-audit chain cross-process race.** Appends serialize through an in-process promise queue only; no unique `(application_id, sequence_number)` constraint exists in `shared/schema/compliance.ts:270-311`. | `server/services/creditAuditChain.ts:40-45` | Documented, not guarded. |
 | **Rent furnishing is a deliberate dead end** — `pending_authority` is the entry state and the terminus; `hasMetro2Authority()` and `BUREAU_MINIMUM_ACTIVE_LINES = null` hold it there. | `server/services/rentFurnishing.ts:128-142`, `:192`, `:214` | `assertTransition` / `assertFurnishable` refuse to advance. |
@@ -137,7 +137,7 @@ grep -n "finalizeIntake\|pipelineEngine\|updatePipelineStage\|decision_snapshots
 
 | Question | What resolves it |
 |---|---|
-| Is the draft round-trip drop an intended scope limit or a defect? The `UPDATABLE_COLUMNS` comment says only "real loan_applications columns" — but `householdFamilySize` / `homeSquareFootage` *are* real columns (`lendingCore.ts:91-92`). | `hq-intake-funnel-owner` + `hq-pipeline-owner`; the open funnel-draft PR. |
+| Answered by #667: it was a defect, and the fix's comment says why it survived — the list "never learned about" the three answers the funnel added after the #202 registrar split. What is still open is whether anything stops the *next* one: nothing diffs the funnel schema against `UPDATABLE_COLUMNS`. | `hq-intake-funnel-owner` + `hq-pipeline-owner`; proposed as a guard in chapter 12 §6. |
 | How Plaid results land as income/asset verification — `server/plaid.ts` exposes identity data only and `verification.ts` is 47 lines of boolean flips; the asset ingestion path is elsewhere. | `grep -rn "assetReport\|plaidClient" server --include='*.ts'`; `hq-verifications-owner`. |
 | Has the credit-audit race ever occurred in production? | A prod query for duplicate `(application_id, sequence_number)` through CI. |
 | Does `lookupResolver` sit on the underwriting `evaluate()` path or only on pricing? (The resolver exists; the call graph into `underwritingEngine.ts:246-400` was not traced here.) | `grep -rn "lookupResolver" server --include='*.ts'`. |

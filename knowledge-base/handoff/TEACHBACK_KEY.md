@@ -1,7 +1,7 @@
 # Teach-back answer key
 
 > **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 074899e3. Do not open this until you have tried the
+> **Verified against** `origin/main` @ 12d7cbec. Do not open this until you have tried the
 > questions in each chapter. Every answer cites `path:line`; when a line has moved, the symbol
 > named next to it is what you grep for.
 
@@ -51,7 +51,7 @@
 
 ## 04 — Data flow: a loan's journey
 
-1. localStorage does not (device-local, `client/src/lib/pendingAttribution.ts:14`); the server draft does — `useServerDraftAutosave` find-or-creates one row (`server/routes/lending/applications.ts:320`) and PATCHes on a 2,500 ms debounce (`:28`); `useDraftRestore` fetches `draft/latest` (`statusDecisions.ts:419`), adopts the container unconditionally (`:94-98`) and offers the answers behind a banner. Caveat: only the 17 `UPDATABLE_COLUMNS` survive.
+1. localStorage does not (device-local, `client/src/lib/pendingAttribution.ts:14`); the server draft does — `useServerDraftAutosave` find-or-creates one row (`server/routes/lending/applications.ts:320`) and PATCHes on a 2,500 ms debounce (`:28`); `useDraftRestore` fetches `draft/latest` (`statusDecisions.ts:419`), adopts the container unconditionally (`:94-98`) and offers the answers behind a banner. Caveat: only the `UPDATABLE_COLUMNS` survive — 20 since `12d7cbec` (#667) added the three the funnel had been collecting and the PATCH had been silently dropping.
 2. `updatePipelineStage` (`server/pipelineEngine.ts:594`, docblock `:587-592`); five references repo-wide. `tests/statusVocabulary.test.ts:243` scans every server file for a direct `status:` write and allow-lists four files (`:254-259`).
 3. `tests/statusVocabulary.test.ts:249-253` — it owns the self-contained intake flow, does its own state-machine sync, and is idempotent with a recovery sweep: `FINALIZABLE_STATUSES` (`loanAnalysis.ts:413`), early return `:429`, reset to `submitted` on failure `:588`, sweep `:596-614`.
 4. `PATCH …/status` (`statusDecisions.ts:127`) → Zod against `STAFF_SETTABLE_STATUSES` → TRID hard stop (`:202`) → not a denial → `updatePipelineStage(id, "underwriting")` (`:240`) → `LOAN_APP_TRANSITIONS.funded` is `[]` (`shared/loanApplicationStatus.ts:74`) → `PipelineTransitionError` (`pipelineEngine.ts:618`) → **409** with `code: "invalid_transition"` and `allowedStatuses: []` (`:244-252`). An admin's `force: true` (`:242`) skips the table only.
@@ -85,13 +85,13 @@
 ## 07 — Test harness and the CI proof hierarchy
 
 1. Only if it is in `vitest.config.ts`'s include (`:30-300`); `:264-265` "an unlisted test file is silently never run". Append at the **end** (`:261-263`). It has happened twice: `changeOfCircumstance.test.ts` (`:140-141`) and `tests/maintenanceMode.test.ts` right now (FACTS F-39).
-2. `knowledge-base/runbooks/CICD.md:354-357` — typechecks, breaks no unit or component test, bundles and boots to a 200 — "nothing more". Not: the integration lane (never in CI), rendered layout or contrast (`ci.yml:312`), or the deploy (`:461-462`, owned by `verify-deploy`, which is `if: false`).
-3. Everything expensive gates on its output, so it decides first, and it **fails closed** — `ci.yml:210-213`; `:233-238` `decide true` for a missing sha and for an empty diff. Even an all-prose diff still runs five doc guards and the parse check.
+2. `knowledge-base/runbooks/CICD.md:354-357` — typechecks, breaks no unit or component test, bundles and boots to a 200 — "nothing more". Not: the integration lane (never in CI), rendered layout or contrast (`ci.yml:319`), or the deploy (`:461-462`, owned by `verify-deploy` — live again since `76c96751`, but `continue-on-error: true` at `ci.yml:663`, so its red cannot fail the workflow).
+3. Everything expensive gates on its output, so it decides first, and it **fails closed** — `ci.yml:217-213`; `:233-238` `decide true` for a missing sha and for an empty diff. Even an all-prose diff still runs five doc guards and the parse check.
 4. Not green in any meaningful sense, and nothing on `main` tells you: vitest 4 → tinyglobby → fdir with `suppressErrors: true`, so a failed `readdir` looks like an empty directory; the reproduction dropped 36 of 118 files with no signal. The guard is in an open PR. Compare the reported `Test Files` count with `grep -cE '^\s*"tests/' vitest.config.ts` yourself.
 5. `scripts/design-token-guard.cjs:116-119` and `scripts/bundle-size-guard.cjs:217-218`, on a **shrink** only — "an improvement is locked in and cannot silently erode later" (`bundle-size-guard.cjs:61-67`). Running preflight can dirty your tree with a file you did not edit; `scripts/checkup.sh:48` notices afterwards.
-6. No. `gh api …/branches/main/protection --jq '.required_status_checks.contexts'` → `[]`, rulesets `0`; `ci.yml:40-41` — "`enforce_admins` is still ON, which reads reassuring and means nothing while the required-check list is empty: it binds admins to zero checks." Deliberate (2026-08-19, the Actions billing failure).
+6. No. `gh api …/branches/main/protection --jq '.required_status_checks.contexts'` → `[]`, rulesets `0`; `ci.yml:47-41` — "`enforce_admins` is still ON, which reads reassuring and means nothing while the required-check list is empty: it binds admins to zero checks." Deliberate (2026-08-19, the Actions billing failure).
 7. `tests/roleSeparation.test.ts:33-36` — "hammering `/api/test-login` trips the auth rate limiter (429) even under `RATE_LIMIT_RELAXED`"; the Map holds the **promise** so concurrent `it`s share one in-flight login. `BASE_HEADERS` at `:31` carry `X-Forwarded-Proto: https` + `Origin`.
-8. tsc → node lane (218 allowlisted, hermetic) → client lane (120, glob, happy-dom) → 14 guards against 7 baselines (text scans) → `pnpm build` → boot `dist/index.js` against disposable Postgres to a 200 (`ci.yml:494-531`) → integration lane (18 files over real HTTP) → `verify-deploy` (prod `/api/health` commit == `github.sha`). The last two do not run automatically: the integration lane never in CI (`CICD.md:353`); `verify-deploy` is `if: false` (`ci.yml:621`); `migrate-prod` is dispatch-only (`:553`).
+8. tsc → node lane (219 allowlisted, hermetic) → client lane (122, glob, happy-dom) → 14 guards against 7 baselines (text scans) → `pnpm build` → boot `dist/index.js` against disposable Postgres to a 200 (`ci.yml:501-531`) → integration lane (18 files over real HTTP) → `verify-deploy` (prod `/api/health` commit == `github.sha`). Of the last two, the integration lane still never runs in CI (`CICD.md:353`); `verify-deploy` and `migrate-prod` were re-armed on 2026-08-22 (`ci.yml:647`, `:574`) after a two-day pause — but `verify-deploy` is `continue-on-error: true` (`:663`) and `main` requires no checks, so nothing it finds can block a merge.
 
 ## 08 — Compliance rails
 
@@ -117,7 +117,7 @@
 
 ## 10 — Deploy, environments and migrations
 
-1. Unknown until one command: `curl -s https://homiquity-production.up.railway.app/api/health` and compare `commit` with `git rev-parse origin/main` (`knowledge-base/runbooks/ROLLBACK.md:25-28`). A failed build leaves the previous container serving (`CICD.md:221-226`) — and the job that used to do this is `if: false` (`ci.yml:621`).
+1. Unknown until one command: `curl -s https://homiquity-production.up.railway.app/api/health` and compare `commit` with `git rev-parse origin/main` (`knowledge-base/runbooks/ROLLBACK.md:25-28`). A failed build leaves the previous container serving (`CICD.md:221-226`). `verify-deploy` does poll this for you again (`ci.yml:647`), but it is `continue-on-error` (`:663`) and unrequired, so a green workflow is not the same as a green deploy check — read the job.
 2. Wrong database. The handler runs only `SELECT 1` (`server/routes.ts:78`); on 2026-08-06 `DATABASE_URL` pointed at a stale Neon branch with 28 of 53 migrations (`CICD.md:205-210`). Check Railway's `DATABASE_URL` first.
 3. No, and it is not even weak evidence: `scripts/migrate-prod.cjs:84-87` prints `pending <tag>` and `continue`s; `DB_MIGRATIONS.md:160-164` — "It answers *is the ledger in sync?*, never *will this DDL succeed?*". Use the read-only prod probe (`:171-205`) before authoring.
 4. Silently skipped: `migrate-prod.cjs:71,81` dedupes by `created_at` (= journal `when`) as well as hash, so prod treats it as applied — green job, missing DDL (`DB_MIGRATIONS.md:145-150`). `scripts/migration-ledger-guard.cjs:19-20` checks duplicate `idx` and `tag`, not `when` (LEDGER HO-0822-24).
