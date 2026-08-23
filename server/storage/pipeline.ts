@@ -24,7 +24,6 @@ import {
   underwritingSnapshots,
   applicationProperties,
   dealTeamMembers,
-  type User,
   type LoanApplication,
   type LoanMilestone,
   type InsertLoanMilestone,
@@ -40,6 +39,7 @@ import {
   type InsertDealTeamMember,
 } from "@shared/schema";
 import { AgentProfilesStorage } from "./agentProfiles";
+import { toPublicUserOrUndefined, type PublicUser } from "./publicUser";
 export class PipelineStorage extends AgentProfilesStorage {
   // ============================================================================
   // LOAN PIPELINE TRACKING
@@ -292,7 +292,7 @@ export class PipelineStorage extends AgentProfilesStorage {
     return member;
   }
 
-  async getDealTeamMembers(applicationId: string): Promise<(DealTeamMember & { user?: User })[]> {
+  async getDealTeamMembers(applicationId: string): Promise<(DealTeamMember & { user?: PublicUser })[]> {
     const members = await db
       .select()
       .from(dealTeamMembers)
@@ -305,7 +305,7 @@ export class PipelineStorage extends AgentProfilesStorage {
 
     return members.map(row => ({
       ...row.deal_team_members,
-      user: row.users || undefined,
+      user: toPublicUserOrUndefined(row.users),
     }));
   }
 

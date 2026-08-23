@@ -340,6 +340,12 @@ export default defineConfig({
       // shortfall, and independently re-asserts the zero-orphan floor so it
       // survives someone unwiring the guard from `pnpm test`.
       "tests/testCollectionGuard.test.ts",
+      // F-0820-50 (P0): four storage queries returned a joined `users` row whole,
+      // so `passwordHash` (scrypt digest + salt) crossed the wire — on two
+      // endpoints the external `broker`/`lender` roles can reach. Runtime tests
+      // on the projection, plus a call-site scan. The durable guard is the
+      // `PublicUser` type; this is the belt to its braces.
+      "tests/credentialLeak.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

@@ -11,6 +11,7 @@ import { summarizeCompensation } from "@shared/compensationLedger";
 import { buildClawbackRegister } from "@shared/compensationClawback";
 import { approvedLenderCount, isLenderApprovalStatus } from "@shared/wholesaleLenders";
 import { PropertiesStorage } from "./properties";
+import { publicUserColumns } from "./publicUser";
 export class StatsStorage extends PropertiesStorage {
   // Stats
   async getAdminStats() {
@@ -34,7 +35,9 @@ export class StatsStorage extends PropertiesStorage {
 
       db.select({
         application: loanApplications,
-        user: users,
+        // F-0820-50: projected, not `users` whole — this row is serialised to
+        // the admin stats response and the table carries `passwordHash`.
+        user: publicUserColumns,
       })
         .from(loanApplications)
         .leftJoin(users, eq(loanApplications.userId, users.id))

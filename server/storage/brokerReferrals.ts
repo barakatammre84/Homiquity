@@ -9,7 +9,6 @@ import {
   users,
   loanApplications,
   brokerCommissions,
-  type User,
   type LoanApplication,
   type BrokerCommission,
   type InsertBrokerCommission,
@@ -17,9 +16,10 @@ import {
   isTerminalLoanAppStatus,
 } from "@shared/schema";
 import { RatesStorage } from "./rates";
+import { toPublicUser, type PublicUser } from "./publicUser";
 export class BrokerReferralsStorage extends RatesStorage {
   // Broker Referrals & Commissions
-  async getBrokerReferrals(brokerId: string): Promise<(LoanApplication & { borrower: User })[]> {
+  async getBrokerReferrals(brokerId: string): Promise<(LoanApplication & { borrower: PublicUser })[]> {
     const referrals = await db
       .select()
       .from(loanApplications)
@@ -29,7 +29,7 @@ export class BrokerReferralsStorage extends RatesStorage {
     
     return referrals.map(r => ({
       ...r.loan_applications,
-      borrower: r.users,
+      borrower: toPublicUser(r.users),
     }));
   }
 
@@ -133,7 +133,7 @@ export class BrokerReferralsStorage extends RatesStorage {
     return db.select().from(brokerCommissions).orderBy(desc(brokerCommissions.createdAt));
   }
 
-  async getAllPendingCommissions(): Promise<(BrokerCommission & { broker: User; application: LoanApplication })[]> {
+  async getAllPendingCommissions(): Promise<(BrokerCommission & { broker: PublicUser; application: LoanApplication })[]> {
     const commissions = await db
       .select()
       .from(brokerCommissions)
@@ -144,7 +144,7 @@ export class BrokerReferralsStorage extends RatesStorage {
     
     return commissions.map(c => ({
       ...c.broker_commissions,
-      broker: c.users,
+      broker: toPublicUser(c.users),
       application: c.loan_applications,
     }));
   }
