@@ -9,28 +9,49 @@ exists so Reg Z gets the same treatment [`docs/fannie-mae/`](../fannie-mae/) and
 [`docs/nmls/`](../nmls/) already give their domains: a local, citable copy, so a reading can be
 **verified** rather than **flagged**.
 
-> ## ⚠️ Local inventory is EMPTY — this is the blocker, not an oversight
+## ✅ Inventory — obtained 2026-08-20
+
+| File | What it is | Provenance |
+|---|---|---|
+| [`12-cfr-1026-regulation-z.xml`](./12-cfr-1026-regulation-z.xml) | **The whole of 12 CFR Part 1026 plus Supplement I (Official Interpretations)** — 3.9 MB, 13,691 lines | eCFR versioner API, `full/2026-08-06/title-12.xml?chapter=X&part=1026`. Title 12 `latest_amended_on` **2026-08-06**, `up_to_date_as_of` **2026-08-18**. Captured 2026-08-20. |
+
+This is the single artifact the "What to obtain" section below asks for. It covers every Reg Z
+question in this repo and anything Reg Z that comes next.
+
+### Section → line map
+
+The file is XML, so the locator is a **line number**, not a page. Regulation text lives in
+`<DIV8 N="…" TYPE="SECTION">`; the commentary lives under `Supplement I to Part 1026` (line 5961).
+
+| Provision | Regulation text | Supplement I commentary |
+|---|---|---|
+| §1026.4 (finance charge) | line 151 | — |
+| §1026.17 (general disclosure) | line 799 | — |
+| §1026.19 (TRID / good faith) | line 944 | §19(e)(3) from line 2029 |
+| §1026.32 (points and fees) | line 1393 | ¶32(b)(1) from line 9527 |
+| §1026.36 (LO compensation) | line 1704 | §36(d)(2) from line 10212 |
+| §1026.43 (ATR / QM) | line 2719 | — |
+
+Grep recipe — the section, not the whole part:
+
+```bash
+sed -n '1704,2718p' docs/reg-z/12-cfr-1026-regulation-z.xml | sed -e 's/<[^>]*>/ /g' | tr -s ' '
+```
+
+> ### Why a captured copy and not a live fetch
 >
-> **Five ledger entries are stuck on it**, three of them due within two weeks (see the table
-> below). Each one records a reading that is *implemented conservatively and shipped*, but whose
-> verbatim regulatory text **could not be checked**, because every authoritative source is
-> unreachable from the agent environments this repo is developed in.
+> A reading fetched live is unrepeatable and drifts silently — the section you quote today may be
+> amended before anyone rechecks your citation, and nothing in the repo would show it. This file is
+> pinned to a stated amendment date, so a citation against it is reproducible. **Re-capture, do not
+> re-fetch ad hoc**, and record the new `latest_amended_on` here when you do.
 >
-> Verified blocked on 2026-08-04 and re-verified 2026-08-05 — all return `CONNECT tunnel failed,
-> 403` or equivalent at the proxy:
+> ### Reachability is a thing to test, never to assert
 >
-> | Source | Status |
-> |---|---|
-> | `ecfr.gov` (incl. the versioner API) | ❌ blocked |
-> | `consumerfinance.gov` | ❌ blocked |
-> | `govinfo.gov` (incl. CFR bulk data) | ❌ blocked |
-> | `law.cornell.edu` | ❌ blocked |
-> | `uscode.house.gov` | ❌ blocked |
-> | `federalregister.gov` (API) | ❌ blocked |
->
-> **This cannot be worked around from inside a session.** A human has to place the document
-> here once; after that every entry below becomes verifiable, and the next Reg Z question does
-> not repeat this.
+> This directory was empty until 2026-08-20 because every regulatory host returned `CONNECT 403`
+> on 2026-08-04/05. **That was true when written and is now false**: on 2026-08-20 `ecfr.gov`
+> answered `200` with genuine section text, verified by grepping the body rather than trusting the
+> status code. It has flipped in both directions already. Probe before you claim either way — and
+> mind the eCFR API's 302 canonicalisation (use `curl -L`).
 
 ## Document hierarchy
 
@@ -53,19 +74,20 @@ Drop it here as `12-cfr-1026-regulation-z.pdf` (or the eCFR XML as
 `12-cfr-1026-regulation-z.xml`), then add it to the inventory section below with a section→page
 map, following the pattern in [`docs/nmls/README.md`](../nmls/README.md).
 
-### The five entries waiting on it
+### The five entries — three cleared 2026-08-20, two still open
 
-Each row is a *shipped* implementation whose regulatory basis is recorded as unverified in
+Status per row below. The three marked ✅ were verified verbatim against the captured file on
+2026-08-20 and their review interval reset 14d → 180d. Live status is in
 [`data/regulatory/regulatory-ledger.json`](../../data/regulatory/regulatory-ledger.json).
 Run `pnpm checkup` to see live due dates.
 
 | Ledger entry | Sections needed | What it decides | Code |
 |---|---|---|---|
-| `regz-1026-36d2-dual-compensation` | **§1026.36(d)(2)** + Supp. I commentary | Whether the borrower may be charged an origination fee when the lender also pays the originator. Currently: never. | `shared/compliance/loCompensation.ts`, `server/services/loanCosts.ts` |
-| `regz-1026-32b1-points-and-fees-floor` | **§1026.32(b)(1)** (esp. `(i)`) + Supp. I | Exactly which charges compose "points and fees". Our floor is a deliberate *lower bound* because this list could not be confirmed. | `shared/compliance/loCompensation.ts`, `server/services/mismoValidation.ts` |
-| `regz-1026-4-platform-finance-charge-classification` | **§1026.4(a)**, **§1026.4(c)** + Supp. I | Whether a **tax service fee** is a finance charge. Drives both the QM numerator and denominator. Post-F-17 this no longer changes originability — see below. | `server/services/loanCosts.ts` (`PLATFORM_FINANCE_CHARGES`) |
-| `trid-1026-19e3-fee-tolerance` | **§1026.19(e)(3)(i)–(iv)**, **§1026.19(f)(2)(v)** + Supp. I | Which tolerance bucket each fee sits in (zero / ten-percent / none), reset rules, and the 60-day refund. | `shared/compliance/feeTolerance.ts`, `server/services/leDisclosureBaseline.ts` |
-| `platform-fee-schedule-qm-fit` | **§1026.36(d)(1)**, **§1026.17/19** disclosure rules | Whether a platform fee that varies with the comp plan is acceptable disclosure practice, and its fair-lending posture. | `server/services/loanCosts.ts` (`resolvePlatformFinanceCharges`) |
+| ✅ `regz-1026-36d2-dual-compensation` | **§1026.36(d)(2)** + Supp. I commentary | Whether the borrower may be charged an origination fee when the lender also pays the originator. Currently: never. | `shared/compliance/loCompensation.ts`, `server/services/loanCosts.ts` |
+| ✅ `regz-1026-32b1-points-and-fees-floor` | **§1026.32(b)(1)** (esp. `(i)`) + Supp. I | Exactly which charges compose "points and fees". Our floor is a deliberate *lower bound* because this list could not be confirmed. | `shared/compliance/loCompensation.ts`, `server/services/mismoValidation.ts` |
+| ⬜ `regz-1026-4-platform-finance-charge-classification` | **§1026.4(a)**, **§1026.4(c)** + Supp. I | Whether a **tax service fee** is a finance charge. Drives both the QM numerator and denominator. Post-F-17 this no longer changes originability — see below. | `server/services/loanCosts.ts` (`PLATFORM_FINANCE_CHARGES`) |
+| ✅ `trid-1026-19e3-fee-tolerance` | **§1026.19(e)(3)(i)–(iv)**, **§1026.19(f)(2)(v)** + Supp. I | Which tolerance bucket each fee sits in (zero / ten-percent / none), reset rules, and the 60-day refund. | `shared/compliance/feeTolerance.ts`, `server/services/leDisclosureBaseline.ts` |
+| ⬜ `platform-fee-schedule-qm-fit` | **§1026.36(d)(1)**, **§1026.17/19** disclosure rules | Whether a platform fee that varies with the comp plan is acceptable disclosure practice, and its fair-lending posture. | `server/services/loanCosts.ts` (`resolvePlatformFinanceCharges`) |
 
 ### Which one to do first — corrected
 

@@ -188,6 +188,7 @@ and the launch/procurement seats reduced to one weekly and one monthly.
 | 09:20 | `10 9 * * *` | **Capture Path Engineer** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
 | 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | one end-to-end workflow driven in a browser, first seam **fixed** |
 | 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
+| 13:40 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | one staff desk walked as the seat **and** its counterpart, own port 5003, torn down after |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
 | 17:06 | `5 17 * * *` | **Client Journey Walk** (`client-journey-walk`) | daily | no — trace + tickets | one persona walked end to end in a real browser |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
@@ -564,6 +565,36 @@ the one carve-out is §6c's verify-only lane, which authors no dependency change
 in the same commit. No citation, no code change. Never weaken a consent gate, a disclosure gate, an
 FCRA pull gate, or a `complianceInvariants` test to make something pass — **a
 `complianceInvariants` failure is a compliance incident, not a flaky test.**
+
+---
+
+### 6a-ii. Raising the design standard — who owns it, and why it is a SECOND routine
+
+§6a assigns *propagation*. It does not assign *invention*, and the two are different jobs with
+different failure modes — which is why §6a explicitly forbids the sweep from
+`client/src/components/ui/**`. That carve-out was empty territory until 2026-08-22.
+
+- **The [Design Identity Engine](../../.claude/skills/design-identity-engine/SKILL.md) owns it.**
+  Territory: `components/ui/**`, `index.css`, `tailwind.config.ts`, `components/motion/**`,
+  `components/illustrations/**`, `components/layout/**`, `lib/icons.ts`, `client/index.html`
+  (font links). Cross-run memory is
+  [`design-identity/LEDGER.md`](../design-identity/LEDGER.md).
+- **One invents, one spreads, neither edits the other's files.** The Conformance Sweep is judged
+  on `guard:ui` falling; this routine is judged on one identity decision landed and *proved on a
+  surface*. A raised standard with no adopter is the same preference §6a already named.
+- **Read the ledger's `Refused` column before proposing anything.** Most of this routine's cost is
+  spent discovering that a reference site's answer is wrong for a broker, and that finding is
+  worth more than the change it prevented. Re-adopting a refused direction under a new wording is
+  the specific waste this column exists to stop.
+- **Bundle bytes: move them rather than raise the baseline.** Raise it only when the bytes buy
+  something that renders, and say so in the PR. Precedent both ways on 2026-08-22: 44 bytes taken
+  for a layout primitive rendering on three pages, 106 bytes declined for pre-wiring a component
+  to artwork that did not exist.
+- **Founder calls this routine may not make for itself:** licensing a display face, commissioning
+  illustration, relaxing any AA or WCAG rail, or extending identity work into the authed app's
+  tenant-brandable tokens (`--primary`/`--accent`/`--sidebar`/`--ring`).
+
+The same "off limits to every routine, always" list in §6a applies here in full, unchanged.
 
 ---
 

@@ -18,15 +18,15 @@ API, is handled by the middleware chain below.
                                      ▼
 ┌─────────────────────────────── server/ ────────────────────────────────┐
 │ app.ts        — express app: helmet, rate limits, CSRF, logging          │
-│ routes.ts     — registerRoutes(): health, auth, seeding, 38 route domains │
+│ routes.ts     — registerRoutes(): health, auth, seeding, 39 route domains │
 │ routes/*.ts   — HTTP handlers per domain (borrower, lending, admin, …)    │
 │ services/*.ts — business logic (underwriting, pricing, borrower graph, …) │
-│ storage/      — the data-access layer (22 domain files → DatabaseStorage) │
+│ storage/      — the data-access layer (26 domain files → DatabaseStorage) │
 │ db.ts         — Drizzle + driver selection (Neon serverless vs local pg)  │
 └───────────────────┬──────────────────────────────┬─────────────────────┘
                     ▼                              ▼
              PostgreSQL (Drizzle)          External services
-             178 tables, 21 files          (Plaid, Anthropic, GCS,
+             188 tables, 34 files          (Plaid, Anthropic, GCS,
              shared/schema/*               Google Maps, RapidAPI, SMTP)
 ```
 
@@ -55,7 +55,9 @@ Order matters — this is the actual middleware chain from `server/app.ts`:
 1. `trust proxy` — hop count must match the real proxy chain (Railway's edge)
    or `req.ip` records the load balancer instead of the caller, which would
    poison TCPA consent and audit rows (`server/trustProxy.ts`).
-2. **Helmet** — security headers (CSP disabled, see threat model).
+2. **Helmet** — security headers. **CSP is enabled in production**, report-only
+   unless `CSP_ENFORCE=true` (`server/app.ts:181-186`); it is `false` only
+   outside production.
 3. **Private-beta gate** (`server/middleware/betaGate.ts`) — a plain Express
    middleware (it replaced a platform edge middleware at the Railway cutover).
    A total no-op unless `BETA_ACCESS_CODE` is set, read **per request**, so
@@ -67,8 +69,15 @@ Order matters — this is the actual middleware chain from `server/app.ts`:
 5. **Body parsing** — JSON (with `rawBody` capture) + urlencoded.
 6. **CSRF check** — Origin/Referer validation for state-changing `/api`
    requests; OAuth callbacks exempt; relaxed in development.
-7. **Request logging** — method/path/status/duration; response bodies for
-   sensitive paths (documents, auth, staff invites) are suppressed from logs.
+7. **Request logging** — method/path/status/duration. 🚨 **Response bodies are
+   logged ONLY for paths on an allow-list** — `/api/health`, `/api/track`,
+   `/api/csp-report` (`RESPONSE_BODY_LOG_ALLOWLIST`, `server/app.ts:481-485`).
+   This is not a denylist of sensitive paths, and the code says why in as many
+   words: *"A denylist was the previous approach and it silently missed new PII
+   routes (e.g. /api/urla/* responses contain the borrower's SSN) — do not
+   revert to one."* Almost every endpoint here can carry borrower PII, so the
+   safe default is status and duration only. Add a path only if its response can
+   never contain personal or credential data.
 8. `registerRoutes(app)` (`server/routes.ts`):
    - `GET /api/health` — DB connectivity probe: `{status, timestamp, commit}`,
      503 if the DB is down. `commit` is `RAILWAY_GIT_COMMIT_SHA` and is the
@@ -79,14 +88,17 @@ Order matters — this is the actual middleware chain from `server/app.ts`:
      `CREDIT_ENCRYPTION_KEY` and `PII_HASH_SALT`**.
    - `setupAuth(app)` — sessions, Passport, login routes (see doc 06).
    - `seedDatabase()` — idempotent reference-data seeding on boot.
-   - 22 domain route registrars (see doc 04).
+   - 39 domain route registrars (see doc 04). Four of them are *directories*
+     with an `index.ts`, where the file order in that index is the Express
+     matching order (`lending/`, `underwriting/`, `borrower/`, `staff/`).
    - `app.all("/api/*")` → 404 JSON — **the API exit point for unknown routes**.
 9. Central error handler — any thrown/`next(err)` error becomes
    `{ message }` JSON with the right status code.
 10. The `setup` step — Vite middleware (dev) or, in production,
     `serveStatic` (`server/index-prod.ts`): **bot prerender**
-    (`server/prerender.ts`, an in-process replacement for the platform's
-    prerender feature) → `express.static(dist/public)` → SPA fallback to
+    — the mounted symbol is `prerenderMiddleware` (`server/routes/seo.ts:187`),
+    built by `makePrerenderMiddleware` from `server/prerender.ts`; an in-process
+    replacement for the platform's prerender feature — → `express.static(dist/public)` → SPA fallback to
     `index.html`. **This is why unknown non-API URLs render the React app
     instead of 404ing**, and why the same process answers both crawlers and
     humans. The prerender middleware must sit directly ahead of the static

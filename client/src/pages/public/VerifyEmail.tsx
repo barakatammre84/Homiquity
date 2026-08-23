@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 type Status = "verifying" | "success" | "error";
 
@@ -43,9 +44,7 @@ export default function VerifyEmail() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/">
-            <span className="text-2xl font-bold tracking-tight text-flare cursor-pointer" data-testid="text-brand-logo">
-              homiquity
-            </span>
+            <Logo size="lg" tone="brand" data-testid="text-brand-logo" />
           </Link>
         </div>
 

@@ -53,7 +53,7 @@ check "typecheck (tsc)"               npx tsc --noEmit
 # script line, so it lands on the last command of the && chain — esbuild
 # rejected it and the build check failed on a healthy build (found 2026-07-19).
 # check() captures all output to $LOG anyway, so the flag bought nothing.
-check "unit tests"                    pnpm test
+check "unit tests + collection floor" pnpm test
 check "production build"              pnpm build
 check "dependency vulnerabilities"    pnpm audit --audit-level=moderate
 check "no orphaned files"             node scripts/orphan-scan.cjs

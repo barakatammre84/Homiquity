@@ -73,6 +73,35 @@ export function compensationAmount(loanAmount: number, comp: OriginatorCompensat
  * fee is zero, not merely disclosed differently.
  */
 export function borrowerPaidOriginationAllowed(model: CompensationModel): boolean {
+  return borrowerPaidCompensationAllowed(model);
+}
+
+/**
+ * The general form of the same gate: may the originator collect ANY retained
+ * charge from the borrower on this file?
+ *
+ * VERIFIED 2026-08-20 against docs/reg-z/12-cfr-1026-regulation-z.xml.
+ * §1026.36(a)(3) defines compensation as "salaries, commissions, and any
+ * financial or similar incentive", and Official Interpretations comment
+ * 36(a)-5.ii settles the label question outright: compensation "includes
+ * amounts the loan originator retains and is not dependent on the label or
+ * name of any fee imposed in connection with the transaction" — its worked
+ * example is a retained "processing fee", and it applies "whether the
+ * originator expends the time to process the consumer's application or uses
+ * the fee for other expenses, such as overhead."
+ *
+ * So a retained application or underwriting fee is consumer-paid compensation
+ * exactly as an origination fee is, and §1026.36(d)(2)(i)(A) then bars anyone
+ * else from paying the originator on that transaction. Naming a fee something
+ * other than "origination" does not move it out of (d)(2).
+ *
+ * What this does NOT reach — comment 36(a)-5.iii: amounts received as payment
+ * for bona fide and reasonable third-party charges that are PASSED ON to a
+ * third party which is not the creditor or an affiliate are not compensation.
+ * That is why the tax service fee survives under a lender-paid election while
+ * the platform's own fees do not.
+ */
+export function borrowerPaidCompensationAllowed(model: CompensationModel): boolean {
   return model === "borrower_paid";
 }
 

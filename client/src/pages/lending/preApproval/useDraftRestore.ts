@@ -41,7 +41,13 @@ function draftHasAnswers(draft: LoanApplication): boolean {
   );
 }
 
-function draftToFormValues(
+/**
+ * Exported for its test: every field the server draft can carry must come
+ * back here, because the result is fed to `form.reset` — an omitted field is
+ * RESET to its default, not left alone. The two VA residual-income inputs were
+ * omitted until 2026-08-22 and a veteran was re-asked for them on every resume.
+ */
+export function draftToFormValues(
   draft: LoanApplication,
   current: PreApprovalFormData,
 ): PreApprovalFormData {
@@ -64,6 +70,9 @@ function draftToFormValues(
     isVeteran: !!draft.isVeteran,
     isFirstTimeBuyer: !!draft.isFirstTimeBuyer,
     avoidsInterestFinancing: !!draft.avoidsInterestFinancing,
+    // Integer columns → the form's digit strings (38 CFR 36.4340(e) inputs).
+    householdFamilySize: draft.householdFamilySize ? String(draft.householdFamilySize) : "",
+    homeSquareFootage: draft.homeSquareFootage ? String(draft.homeSquareFootage) : "",
     propertyState: draft.propertyState || "",
     hasAdditionalIncome: sources.length > 0,
     incomeSources: sources,

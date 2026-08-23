@@ -14,7 +14,14 @@ const path = require("path");
 const OUT = path.join(__dirname, "Homiquity_Lender_Demo.pptx");
 const SHOTS = path.join(__dirname, "screenshots");
 
-// ---- Palette (Royal Blue Emerald, from client/src/index.css tokens) ----
+// ---- Palette ----
+// ⚠️ STALE vs the app. These are the old "Royal Blue Emerald" values and they are
+// NO LONGER "from client/src/index.css tokens" — that claim was true until the
+// 2026-08-20 rebuild (`3cba2dae`) moved the app to "Mint & Flare": green-black
+// dark surfaces (#0B1E19/#112823/#17302A), a mint tint, and an orange --flare.
+// The deck therefore pitches lenders in a palette the product no longer uses.
+// Left as-is deliberately: restyling it is a design decision plus a regen of the
+// committed .pptx/.pdf binaries, not a doc fix. Founder call.
 const ROYAL       = "1C3A8F"; // vivid royal blue — dark slide surfaces
 const ROYAL_DEEP  = "142A66"; // deeper royal — cards/gradient feel
 const INK         = "0F1729"; // near-black navy — body text

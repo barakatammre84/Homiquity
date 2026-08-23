@@ -1,5 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+// Load pipelineEngine at module init, not inside the first test that reaches it.
+//
+// finalizeIntake does `await import("../pipelineEngine")`, so whichever test hits
+// it first pays the cold load of that whole module graph — measured at ~14s
+// against ~1-14ms for every sibling. In isolation that fits inside the 45s
+// testTimeout; under a full 219-file parallel lane it contends for CPU and can
+// exceed it, which is why this ECOA guard failed intermittently (~2 runs in 25)
+// and passed on re-run. A compliance invariant that goes green on retry is worse
+// than one that fails outright, so the cost is paid here, before any test timer
+// starts, rather than being hidden behind a raised timeout.
+//
+// finalizeIntake lazily imports several heavy modules; these are the ones it
+// reaches that no vi.mock replaces (emailService pulls the SendGrid SDK).
+// Importing them here only changes WHEN they load, never whether.
+import "../server/pipelineEngine";
+import "../server/services/preUnderwriting";
+import "../server/services/emailService";
+
 // ---------------------------------------------------------------------------
 // ECOA locus: automated intake may say YES. It may never say NO.
 // (F-014 slice 4; also closes the loanAnalysis half of F-015.)
