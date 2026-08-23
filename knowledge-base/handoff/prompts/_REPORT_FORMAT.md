@@ -25,6 +25,7 @@ LOOP REPORT
 STATUS: DONE | STOPPED(<reason>)
 BASE: origin/main @ <sha>   HEAD: <sha>   WORKTREE: <path>   ITERATIONS: <n>/<max>
 PR: <url> | none
+T0@BASE: <first summary line of $SCRATCH/t0-base.log> | trunk-red
 T0: <tsc summary line> | <guards: one word each, e.g. schema ✓ migrations ✓ channel ✓ kb ✓ staleness ✓ citations ✓ querykeys ✓ tokens ✓ ui ✓>
 T1: <the guard's last line: "all lanes ran every file on disk" | "test collection floor FAILED — N problem(s):" + the named problems> | <node "Test Files" line> | <client "Test Files" line>
 T2: <preflight --fast last summary line, incl. §9 result>
@@ -47,6 +48,9 @@ Rules for filling it:
 
 - Every `T*` line is **copied** from the output file the tier wrote (`"$SCRATCH/t0.log"` …),
   never retyped from memory. If a tier did not run, the line says `not run` and why.
+- `T0@BASE` is the R1b baseline — T0 run on the untouched worktree before the first edit, from
+  `"$SCRATCH/t0-base.log"`. `trunk-red` there means the loop stopped with
+  `STATUS: STOPPED(trunk-red)` and the hand-back names the failing step, not the diff.
 - The T1 line opens with the collection guard's own verdict (`_RAILS.md` R14): `pnpm test` is
   `scripts/test-collection-guard.cjs`, which compares each lane's collected set with the disk for
   you — copy its last line, and on a failure the lane or files it names. A `Test Files N passed (M)`
