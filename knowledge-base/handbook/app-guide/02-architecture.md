@@ -39,7 +39,7 @@ API, is handled by the middleware chain below.
 | Client | `client/index.html` → `client/src/main.tsx` → `App.tsx` | The SPA — all browser routes |
 | MCP server | `server/mcp/index.ts` → `pnpm mcp` (stdio) | AI agents calling platform tools (soft credit pull, best-execution rates, AVM) — registered for Claude Code via `.mcp.json` |
 | DB scripts | `server/scripts/*` (e.g. `seedLendingGrids.ts`), `pnpm db:migrate` (`db:push` is blocked — see doc 03) | Manual/ops |
-| Tests | `vitest.config.ts` (unit), `vitest.integration.config.ts` (HTTP) | `pnpm test:*` |
+| Tests | `vitest.config.ts` (node unit — **allowlist**), `vitest.client.config.ts` (client components — **glob** over `client/src`), `vitest.integration.config.ts` (HTTP) | `pnpm test` runs the two unit lanes behind the collected-count floor; `pnpm test:unit` / `pnpm test:client` / `pnpm test:integration` run one each |
 
 Key distinction in `server/app.ts`:
 - **`createApp(setup)`** builds the fully-wired Express app *without* binding a

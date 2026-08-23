@@ -49,8 +49,11 @@ PR touches shared/schema/**
 - **Deploy-time apply:** [`scripts/migrate-prod.cjs`](../../scripts/migrate-prod.cjs) applies pending
   migrations over a plain `pg` client (NOT the Neon serverless pool — that has the pooler gotcha).
   Idempotent: a no-op when nothing is pending, safe to re-run on every merge.
-- **Ship confirmation:** `verify-deploy` polls `https://www.homiquity.com/api/health` until its
-  `commit` field equals the pushed SHA, and fails the run if it never does. It is ordered *after*
+- **Ship confirmation:** `verify-deploy` polls `https://homiquity-production.up.railway.app/api/health`
+  until its `commit` field equals the pushed SHA. **The Railway origin, never `www`** — `www` resolves
+  through Squarespace DNS and can answer from a stale record, a redirect or a cached edge, which is the
+  one false green this job must not produce (`ci.yml:846-852`). Note it is `continue-on-error: true`
+  (`ci.yml:825`), so a failure here is a signal to read, not a run that stops. It is ordered *after*
   `migrate-prod` deliberately, so a schema failure is reported as itself rather than as a mysterious
   stale deployment. This job exists because of 2026-08-06: nine consecutive Railway builds failed,
   and a **failed** Railway deploy leaves the previous container serving — so the site stayed up,

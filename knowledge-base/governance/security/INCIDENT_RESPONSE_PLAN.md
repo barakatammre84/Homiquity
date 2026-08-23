@@ -65,8 +65,13 @@ the vector is closed and credentials are rotated.
 **Confirm what is actually running before declaring recovery.** A failed Railway build leaves
 the *previous* container serving, so the site being up — and `/api/health` returning 200 — does
 not prove your fix deployed. Read the **`commit`** field of
-`curl https://www.homiquity.com/api/health` and match it to the commit you intended to ship
-(CI's `verify-deploy` job does the same check automatically after every push to `main`).
+`curl -sS https://homiquity-production.up.railway.app/api/health` and match it to the commit you
+intended to ship. **Probe the Railway origin, not `www`** — `www` answers through Squarespace DNS,
+so a stale record, a redirect or a cached edge response can report a healthy service that is not the
+one you just deployed, and during an incident that reads as recovery (`routines/CHARTER.md` §2;
+`ci.yml:846-852`). CI's `verify-deploy` job runs this same check against the same origin after every
+push to `main`, but it is `continue-on-error: true` (`ci.yml:825`) — its red does not stop anything,
+so confirm by hand here rather than waiting to be told.
 
 ## 4. Notification (counsel-guided)
 

@@ -63,11 +63,15 @@ the production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY`
 — no prod DB password is stored in GitHub; full flow and its limits (a manual
 `dry_run` reconciles the journal only, it never executes migration SQL) in
 [DB_MIGRATIONS.md](./DB_MIGRATIONS.md). A third job, **`verify-deploy`**, then
-polls `https://www.homiquity.com/api/health` until its `commit` field equals the
-pushed SHA and **fails the run** if it never does — the automated form of the
-post-deploy check below, added after the 2026-08-06 stale-prod incident. It is
-not a required check (it runs on push, after the merge), so a red `verify-deploy`
-is a page-the-founder signal, not a merge blocker. ⚠️ The required-check string is matched
+polls `https://homiquity-production.up.railway.app/api/health` until its `commit`
+field equals the pushed SHA — the automated form of the post-deploy check below,
+added after the 2026-08-06 stale-prod incident. **It probes the Railway origin, never
+`www`** (`ci.yml:846-852`): `www` answers through Squarespace DNS, where a stale record,
+a redirect or a cached edge response can all answer for something other than the Railway
+service — and a false green here is precisely the silent-stale-prod condition the job
+exists to catch. It is not a required check (it runs on push, after the merge) **and it
+carries `continue-on-error: true` (`ci.yml:825`)**, so a red `verify-deploy` neither fails
+the run nor blocks anything: it is a page-the-founder signal you have to go and read. ⚠️ The required-check string is matched
 **verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
 never rename the job without re-pointing branch protection in the same change
 (procedure in the workflow's comments).
@@ -354,12 +358,20 @@ pnpm checkup                          # daily umbrella: the gate's checks + buil
                                       # token/kb guards, prod health — deliberately no integration
 ```
 
-The integration suite (`vitest.integration.config.ts`) **never runs in CI**: a
-green gate proves the change typechecks, breaks no unit or component test, and
-produces a bundle that boots and answers `/api/health` — nothing more. (The
-gate's disposable Postgres exists for that boot probe only; it is not an
-integration environment, and no integration test is pointed at it.) If a
-change is only exercised by an integration test, run it by hand against a live
+**The integration suite now runs in the gate** — `Integration lane (HTTP, against the
+built bundle)` (`.github/workflows/ci.yml:638`), added by #704 (`d9e8f79d`, 2026-08-23).
+It re-boots the same `dist/index.js` in development mode on port 4000 against the gate's
+Postgres, seeds the grids, and runs `pnpm test:integration`. It is conditional: the step
+runs only when the change-scope step reports code changed (`ci.yml:639`), so a docs-only
+PR still gets a green gate without it.
+
+*(Until that merge this section said the suite **never** ran in CI, and that was true for
+the life of the repo — the gate's disposable Postgres existed for the boot probe only.
+`pnpm checkup` still deliberately excludes integration (`scripts/checkup.sh:8`), so the
+umbrella and the gate no longer agree on this and the gate is the stricter one.)*
+
+A change reachable only through an integration test is therefore gated now, but only if it
+touches code; if the change-scope step skips the lane, run it by hand against a live
 worktree server and record that in the PR
 ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5).
 

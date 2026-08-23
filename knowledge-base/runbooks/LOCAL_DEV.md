@@ -21,9 +21,10 @@ pnpm dev:up status # is it up?
 pnpm db:local reset  # rebuild the database from migrations + seed
 ```
 
-Sign in with any seeded account — `buyer@test.com`, `lo@test.com`, `admin@test.com`,
-`underwriter@test.com`, `broker@test.com`, `lender@test.com`, `closer@test.com`,
-`cpa@test.com` — password `test1234` (`DEV_TEST_PASSWORD`).
+Sign in with any of the **eleven** seeded accounts, all `@test.com` — `admin@`, `lo@`, `loa@`,
+`processor@`, `underwriter@`, `closer@` (staff) · `broker@`, `lender@`, `cpa@` (partner) ·
+`renter@` (aspiring owner), `buyer@` (active buyer) — password `test1234` (`DEV_TEST_PASSWORD`).
+The list is defined in [`server/auth.ts`](../../server/auth.ts); §6a below has the same table.
 
 **Why this exists.** `pnpm dev` on a clean checkout dies with `DATABASE_URL must be set` before
 it prints anything useful, and the documented fix below is a five-step manual setup. Every step
