@@ -18,12 +18,23 @@
   "group_nodes": 129,
   "front_matter_nodes": 2
  },
+ "links": {
+  "external_annotations": 1475,
+  "unique_urls": 319,
+  "ok_urls": 295,
+  "mailto_urls": 22,
+  "malformed_urls": 2,
+  "internal_links": 4267,
+  "internal_unresolved": 0,
+  "xref_edges": 989
+ },
  "tracked": [
   "README.md",
   "INDEX.md",
   "section-index.tsv",
   "revised-sections.tsv",
   "toc.json",
+  "links.json",
   "manifest.json"
  ],
  "generated_gitignored": [
@@ -32,5 +43,5 @@
   "extracted/"
  ],
  "regenerate": "python3 scripts/extract-selling-guide.py",
- "format_version": 2
+ "format_version": 3
 }

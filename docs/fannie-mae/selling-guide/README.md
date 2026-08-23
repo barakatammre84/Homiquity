@@ -29,6 +29,7 @@ works before anyone runs the script):
 | `section-index.tsv` | "Which section governs X, and what page is it on?" — `grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv`. All 554 TOC entries. Parsed by `scripts/selling-guide-authority-guard.cjs` and `scripts/selling-guide-coverage.cjs`. |
 | `revised-sections.tsv` | The 25 sections revised in this edition (from the PDF's highlight annotations) — the release change list. |
 | `toc.json` | The same structure, machine-readable: id, title, effective date, page range, breadcrumb, and which generated file holds each section's text. |
+| `links.json` | Every link annotation in the PDF: 319 unique external URLs (classed ok / mailto / malformed), the 989-edge section-to-section cross-reference graph, and each section's derived canonical URL on selling-guide.fanniemae.com. See "The Guide's own links" below. |
 | `INDEX.md` | The whole Guide as a browsable tree, every section linked to its generated file. |
 | `manifest.json` | The corpus identity: PDF SHA-256 (pins the edition), byte size, git blob/commit for recovery, structural counts. |
 | `README.md` | This file. |
@@ -68,6 +69,25 @@ zero matches on text that is verbatim present. Lines wrap mid-sentence; grep a f
 `section-index.tsv` — `pnpm guard:authority` enforces that on changed lines, because the
 Guide renumbers between editions and a stale id does not 404. Cite tracked artifacts (or
 the conformance ledger), never `selling-guide-text.txt` paths, in anything CI reads.
+
+## The Guide's own links
+
+`links.json` (tracked — URLs, ids, pages and counts are facts; anchor text is Guide
+prose and is deliberately never stored) inventories all 1,475 external link annotations
+and 4,267 internal cross-reference links in the PDF:
+
+- **external** — 319 unique URLs, mostly `singlefamily.fanniemae.com` forms, SEL
+  announcements and exhibits. Classes: `ok` (295 — probeable), `mailto` (22), and
+  `malformed` (2 — corrupt annotations in the PDF itself, e.g.
+  `https://IM%20B3-3.4-151`; documented, never probed). A deterministic `cleaned`
+  repair is recorded where one applies (e.g. a zero-width-space-wrapped URL).
+- **internal_xrefs** — leaf-to-leaf adjacency at page grain: `grep B3-6-05` here
+  answers both "what does B3-6-05 cite" and "who cites B3-6-05".
+- **canonical_html** — each section's derived URL on the HTML edition
+  (`https://selling-guide.fanniemae.com/sel/<id>/<slug>`). Derived form, not verified
+  reachable — `scripts/selling-guide-watch.cjs` owns probing and records per-URL
+  reachability in `data/regulatory/selling-guide-watch-state.json`; content fetched
+  from links lands only under gitignored `linked/`, never in the tree.
 
 ## Extraction fidelity — what is fixed, what is not
 

@@ -13,10 +13,10 @@ turns it into an organized local corpus:
     extracted/front-matter.txt    cover pages before the first TOC node
     extracted/extraction-report.json  anchor methods + verification results for this run
 
-and (re)generates the tracked fact layer — titles, page numbers, structure; no Guide
-prose — that works even before anyone runs this script:
+and (re)generates the tracked fact layer — titles, page numbers, structure, link
+inventory; no Guide prose — that works even before anyone runs this script:
 
-    section-index.tsv   revised-sections.tsv   toc.json   manifest.json   INDEX.md
+    section-index.tsv  revised-sections.tsv  toc.json  links.json  manifest.json  INDEX.md
 
 WHY THE TEXT IS NOT COMMITTED: this repository is PUBLIC. The Guide is Fannie Mae's
 copyrighted work, and a complete text extraction is the same content in another format,
@@ -81,6 +81,12 @@ PDF_BYTES = 3606598
 # Where the bytes live inside this repository's own history (see docstring).
 PDF_GIT_BLOB = "c984148cc8300ce6821687b6af6b0e637cafc461"
 PDF_GIT_COMMIT = "978ec3839a69d15058c819d17cf19697cd7cd2dd"
+
+# Extraction output is deterministic only for a fixed PDF + pymupdf version. The
+# tracked fact layer is TOC-derived and version-independent except the anchor-based
+# page_end values and the link inventory; CI and the steward install exactly this
+# version, so a local mismatch is a warning, not an error.
+PYMUPDF_PINNED = "1.28.2"
 
 RUNNING_HEADER = "Published August 5, 2026"
 
@@ -356,6 +362,134 @@ def write_page_stream(raw_pages, nodes, path):
             fh.write(text)
 
 
+# ----------------------------------------------------------------------- link corpus
+
+URL_OK_RE = re.compile(r"^https?://[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:[/:?#]|$)")
+# The PDF itself carries a handful of corrupt link annotations — a zero-width-space
+# wrapper around a second URL, and internal-memo artifacts like
+# https://IM%20B3-3.4-151. Cleaning is a pure function of the URI string so
+# links.json stays deterministic; anything unrepairable is classified malformed and
+# is documented, never probed.
+WRAPPED_URL_RE = re.compile(r"^https?://(?:%E2%80%8B|%20|\s)+(https?://.+)$", re.IGNORECASE)
+
+
+def clean_url(uri):
+    """Repaired form of a corrupt URI, or None when no repair applies."""
+    m = WRAPPED_URL_RE.match(uri)
+    cleaned = m.group(1) if m else uri
+    cleaned = re.sub(r"(?:%20|\s)+$", "", cleaned)
+    return cleaned if cleaned != uri else None
+
+
+def classify_url(uri):
+    target = clean_url(uri) or uri
+    if target.startswith("mailto:"):
+        return "mailto"
+    return "ok" if URL_OK_RE.match(target) else "malformed"
+
+
+def url_domain(uri):
+    m = re.match(r"^https?://([^/:?#]+)", uri)
+    return m.group(1).lower() if m else ""
+
+
+def html_slug(name):
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def leaf_active_by_page(nodes, npages):
+    """Leaf section id active on each 1-based page — the carry-forward rule the page
+    stream labels use. None before the first section (cover/ToC/Preface)."""
+    start = {}
+    for n in nodes:
+        if n.kind == "section":
+            start.setdefault(n.page, n.sec_id)
+    out, current = [], None
+    for pno in range(1, npages + 1):
+        current = start.get(pno, current)
+        out.append(current)
+    return out
+
+
+def render_links_json(doc, nodes, pymupdf, npages):
+    """Tracked inventory of every link annotation in the PDF. Facts only: URLs,
+    section ids, page numbers, counts — never the anchor text (that is Guide prose).
+    Attribution is page-grain: a link belongs to the leaf section active on its page.
+    Returns (json_text, stats)."""
+    leaf_at = leaf_active_by_page(nodes, npages)
+    external = {}
+    xref = {}
+    goto_total = unresolved = annotations = 0
+    for i in range(npages):
+        src = leaf_at[i]
+        for lnk in doc[i].get_links():
+            kind = lnk.get("kind")
+            if kind == pymupdf.LINK_URI:
+                annotations += 1
+                uri = lnk.get("uri", "")
+                e = external.get(uri)
+                if e is None:
+                    cls = classify_url(uri)
+                    e = external[uri] = {
+                        "class": cls,
+                        "domain": url_domain(clean_url(uri) or uri) if cls == "ok" else "",
+                        "pages": [],
+                        "count": 0,
+                    }
+                    repaired = clean_url(uri)
+                    if repaired:
+                        e["cleaned"] = repaired
+                e["count"] += 1
+                if (i + 1) not in e["pages"]:
+                    e["pages"].append(i + 1)
+            elif kind in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED):
+                goto_total += 1
+                tpage = lnk.get("page")
+                if tpage is None or tpage < 0 or tpage >= npages:
+                    unresolved += 1
+                    continue
+                tgt = leaf_at[tpage]
+                if src and tgt and src != tgt:
+                    xref.setdefault(src, set()).add(tgt)
+    for e in external.values():
+        e["pages"].sort()
+    xrefs = {k: sorted(v) for k, v in xref.items()}
+    stats = {
+        "external_annotations": annotations,
+        "unique_urls": len(external),
+        "ok_urls": sum(1 for e in external.values() if e["class"] == "ok"),
+        "mailto_urls": sum(1 for e in external.values() if e["class"] == "mailto"),
+        "malformed_urls": sum(1 for e in external.values() if e["class"] == "malformed"),
+        "internal_links": goto_total,
+        "internal_unresolved": unresolved,
+        "xref_edges": sum(len(v) for v in xrefs.values()),
+    }
+    canonical = {
+        n.sec_id: f"https://selling-guide.fanniemae.com/sel/{n.sec_id.lower()}/{html_slug(n.name)}"
+        for n in nodes
+        if n.kind == "section"
+    }
+    payload = {
+        "_": (
+            "Every link annotation inside the Selling Guide PDF — facts only (URLs, "
+            "section ids, pages, counts; never anchor text, which is Guide prose). "
+            "external: each verbatim URI with class ok|mailto|malformed (malformed = "
+            "corrupt in the PDF itself; mailto and malformed are documented, never "
+            "probed) and a deterministic 'cleaned' repair where one applies. internal_xrefs: leaf-to-leaf "
+            "cross-reference adjacency at page grain. canonical_html: the DERIVED "
+            "per-section URL on selling-guide.fanniemae.com (best-effort form, not "
+            "verified reachable — scripts/selling-guide-watch.cjs owns probing). "
+            "Generated by scripts/extract-selling-guide.py; do not hand-edit."
+        ),
+        "edition": EDITION,
+        "summary": stats,
+        "external": external,
+        "internal_xrefs": xrefs,
+        "canonical_html": canonical,
+    }
+    return json.dumps(payload, indent=1, ensure_ascii=False, sort_keys=True) + "\n", stats
+
+
 # ------------------------------------------------------------------ tracked fact layer
 
 def render_section_index(toc):
@@ -423,7 +557,7 @@ def render_toc_json(nodes, npages, annotations):
     return json.dumps(payload, indent=1, ensure_ascii=False) + "\n"
 
 
-def render_manifest(nodes, npages, toc_len, annotations):
+def render_manifest(nodes, npages, toc_len, annotations, link_stats):
     kinds = {}
     for n in nodes:
         kinds[n.kind] = kinds.get(n.kind, 0) + 1
@@ -446,11 +580,12 @@ def render_manifest(nodes, npages, toc_len, annotations):
             "group_nodes": kinds.get("group", 0),
             "front_matter_nodes": kinds.get("front", 0),
         },
+        "links": link_stats,
         "tracked": ["README.md", "INDEX.md", "section-index.tsv", "revised-sections.tsv",
-                    "toc.json", "manifest.json"],
+                    "toc.json", "links.json", "manifest.json"],
         "generated_gitignored": [PDF_NAME, "selling-guide-text.txt", "extracted/"],
         "regenerate": "python3 scripts/extract-selling-guide.py",
-        "format_version": 2,
+        "format_version": 3,
     }
     return json.dumps(payload, indent=1, ensure_ascii=False) + "\n"
 
@@ -558,6 +693,14 @@ def main():
     except ImportError:
         sys.exit("pymupdf required to regenerate: pip3 install pymupdf")
 
+    if pymupdf.__version__ != PYMUPDF_PINNED:
+        print(
+            f"warning: pymupdf {pymupdf.__version__} != pinned {PYMUPDF_PINNED} — CI and "
+            "the steward run the pinned version; anchor page_ends and link extraction "
+            "could differ across versions",
+            file=sys.stderr,
+        )
+
     doc = pymupdf.open(pdf_path)
     toc = doc.get_toc()
     npages = doc.page_count
@@ -583,11 +726,13 @@ def main():
         if m:
             revised_pages.setdefault(m.group(1), []).append(pno)
 
+    links_text, link_stats = render_links_json(doc, nodes, pymupdf, npages)
     rendered = {
         "section-index.tsv": render_section_index(toc),
         "revised-sections.tsv": render_revised(revised),
         "toc.json": render_toc_json(nodes, npages, annotations),
-        "manifest.json": render_manifest(nodes, npages, len(toc), annotations),
+        "links.json": links_text,
+        "manifest.json": render_manifest(nodes, npages, len(toc), annotations, link_stats),
         "INDEX.md": render_index_md(nodes, npages),
     }
 
@@ -647,7 +792,10 @@ def main():
         f"  anchors: {report['anchor_methods']}"
         + (f" unanchored={report['unanchored_sections']}" if report["unanchored_sections"] else "")
         + "\n"
-        f"  tracked:    section-index.tsv revised-sections.tsv toc.json manifest.json INDEX.md\n"
+        f"  links: {link_stats['unique_urls']} unique urls "
+        f"({link_stats['ok_urls']} ok / {link_stats['mailto_urls']} mailto / "
+        f"{link_stats['malformed_urls']} malformed) {link_stats['xref_edges']} xref edges\n"
+        f"  tracked:    section-index.tsv revised-sections.tsv toc.json links.json manifest.json INDEX.md\n"
         f"  gitignored: selling-guide-text.txt extracted/ ({len(sections)} section files) — never commit"
     )
     if problems:
