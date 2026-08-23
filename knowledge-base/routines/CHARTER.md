@@ -182,7 +182,10 @@ at thirteen that day; the *allocation* changed. Two seats have joined the table 
 registered against definitions that had never merged and no-opped every run, and four seats a week
 asked whether we could launch. After: **four daily build lanes**, a **daily** client journey walk,
 and the launch/procurement seats reduced to one weekly and one monthly. *(2026-08-23: the daily
-walk seat was reshaped again — see the Handoff Corpus Steward note below the table.)*
+walk seat was reshaped again — see the Handoff Corpus Steward note below the table. Same day: a
+16:10 slot recommended to restore the walk's daily cadence at a new taskId,
+`client-journey-walk-v2` — the old taskId stayed with the seat that took it over, and the new one is
+not yet registered; see that row and the Handoff Corpus Steward note.)*
 
 | Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
 |---|---|---|---|---|---|
@@ -193,6 +196,7 @@ walk seat was reshaped again — see the Handoff Corpus Steward note below the t
 | 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
 | 13:40 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | one staff desk walked as the seat **and** its counterpart, own port 5003, torn down after |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
+| 16:10 | `10 16 * * *` | **Client Journey Walk** (`client-journey-walk-v2`) | daily — **recommended 2026-08-23, scheduler registration pending founder action** | no — trace + tickets | one client persona walked in rotation (`journey-walk/LEDGER.md`), verified tickets in `FINDINGS.md` — definition `.claude/skills/journey-walk/SKILL.md` + `.claude/agents/_JOURNEY_WALK_RAILS.md`; sits between QA Sweep and the Handoff Corpus Steward, both docs/findings-only neighbors, so same-day findings still reach Evening Triage and next-morning's Primary Engineer as §4 already assumes |
 | 17:06 | `5 17 * * *` | **Handoff Corpus Steward** (`client-journey-walk`) | daily | no — `knowledge-base/handoff/**` docs only | corpus refresh PR + drift/aging report — definition `.claude/skills/handoff-refresh/SKILL.md`; seat reshaped 2026-08-23, **scheduler-prompt repoint pending** (replacement prompt in that file) |
 | 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | one docs PR per tick at most + [`DA-…` ledger](../doc-accuracy/LEDGER.md); a read-only consistency check of `knowledge-base/handoff/` every tick (the 17:06 seat is its only writer) and the corpus's fresh-hire teach-back every 14th tick, reported to that seat |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
@@ -395,6 +399,10 @@ The day is a pipeline, not a stack of independent jobs.
 15:00 QA Sweep ──► one domain + one workflow, adversarially verified → buildable
         │           tickets in FINDINGS.md
         ▼
+16:10 Client Journey Walk ──► one client persona walked end to end in a browser;
+        │                      seam findings verified into FINDINGS.md — RECOMMENDED,
+        │                      not yet registered (see §3's client-journey-walk-v2 row)
+        ▼
 17:05 Handoff Corpus Steward ──► the onboarding corpus re-proven against main; drift
         │                         rows opened, resolved and aged (⛔ when a lane sits on one)
         ▼
@@ -552,7 +560,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | QA Sweep | nothing | — (findings only; fixes go to a build lane or a human) |
 | Workflow Completion Engine | the **one seam** it fixes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/workflow-completion/**` and its report (L1/L2 per §1b) | more than one seam per run; any file under an active REGISTER claim or in an open PR; the `URLA_FORM_REFACTOR_TRAP.md` prohibitions; §9-tripping diffs as *ready* PRs (draft + human-written review only) |
 | Feature Completion Engine | the **one domain** it takes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/feature-completion/**` and its report (L1/L2 per §1b) | the underwriting/decision/rule engines (it may surface and route them, never edit them); regulated math without a same-commit ledger citation; the deferred lender persona UI/API (founder-gated); any file under an active REGISTER claim or in an open PR |
-| Client Journey Walk *(hand-invoked since 2026-08-23; was the daily 17:06 seat)* | `knowledge-base/routines/journey-walk/**`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
+| Client Journey Walk *(hand-invoked; was the daily 17:06 seat until 2026-08-23; daily ~16:10 recommended 2026-08-23 as `client-journey-walk-v2`, scheduler registration pending founder action — §3)* | `knowledge-base/routines/journey-walk/**`, `.claude/agents/_JOURNEY_WALK_RAILS.md`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
 | Handoff Corpus Steward *(the 17:06 seat since 2026-08-23)* | `knowledge-base/handoff/**`, its own report, and the `guard:ui` §0 table only when that guard demands it | every code path; **every sibling doc** — drift there becomes an `HO-` row, never a fix (that rule is what keeps the corpus a reader, not an authority); this file; its own `SKILL.md`; peer cross-run memory |
 | Selling Guide Steward *(daily 05:30 UTC, CCR — registered 2026-08-23)* | the Guide's tracked fact layer under `docs/fannie-mae/selling-guide/**` (regenerated by the extractor, never hand-edited) + `data/regulatory/selling-guide-watch-*.json` + its own report — **the two path sets below the line were off-limits to every seat until this row; this steward is their single writer** (draft PRs only) | every code path including `scripts/**` and the extractor's pinned constants (edition cutover is ⛔ founder runbook); the regulatory seat's `regulatory-ledger.json` / `regulatory-watch-*.json`; `knowledge-base/handoff/**` (the Handoff Corpus Steward's lane, ch. 13 included); `selling-guide-coverage.json` (section judgement lives with reviewing seats); `acknowledgedBlocked` entries (proposes ⛔, human commits); this file; its own `SKILL.md` |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |

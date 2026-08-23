@@ -14,8 +14,15 @@ the PDF page. (TEAM_PRACTICES §10; enforced by `pnpm guard:authority`.)
 
 **Writes code:** no. Findings only.
 **Charters:** [knowledge-base/feature-review/JOURNEYS.md](../../../knowledge-base/feature-review/JOURNEYS.md)
+— the single source of truth for personas, routes, accounts and thresholds; nothing in this file or
+the walker agents restates those facts, they point here instead.
+**Rails:** [.claude/agents/_JOURNEY_WALK_RAILS.md](../../agents/_JOURNEY_WALK_RAILS.md) — the shared
+ground rules, walk procedure and report contract every `journey-walker-*` agent reads (not copies).
 **Program rules:** [knowledge-base/feature-review/CHARTER.md](../../../knowledge-base/feature-review/CHARTER.md)
 — it wins over this file on any conflict; say so in the report rather than following the stale copy.
+**Cadence:** recommended daily, ~16:10 local — see `knowledge-base/routines/CHARTER.md` §3. Not yet
+registered in the laptop-side scheduler as of this note; hand-invocable via `/journey-walk`
+regardless.
 
 ## Why this skill exists
 
@@ -47,6 +54,12 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
 | 4. Active buyer — move-up / jumbo | `journey-walker-affluent` | the door with no explainer; promise-vs-reachability |
 | 5. Active buyer — condo / project | `journey-walker-condo-buyer` | the **property** axis — whether answering `condo` changes anything the borrower is shown |
 
+This table must match `JOURNEYS.md`'s `## N. <title>` headers exactly — it is a thin index, not a
+second copy of the charter. A mismatch is itself a finding: report it rather than silently trusting
+whichever list is more convenient. If `JOURNEYS.md` has gained a persona with no row above (no
+walker agent written for it yet), walk it directly under `.claude/agents/_JOURNEY_WALK_RAILS.md`
+rather than skipping it, and flag the missing agent.
+
 ## Rails
 
 **Binding. Each maps to a failure this design is meant to prevent.**
@@ -60,16 +73,10 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
   substituting HTTP calls and reporting a walk is a `FAIL` for the run (CHARTER §9). *Verified
   2026-08-19: pointed at a dead port, `journey-walker-aspiring-owner` correctly returned `BLOCKED`
   and refused to substitute a live port on its own initiative.*
-- **W3 — Local only, and know what you are pointed at.** Default `http://localhost:5001`. **Never
-  the deployed site.** A local `/api/health` answers `commit: null` on every branch, so it cannot
-  identify a checkout — use `lsof -a -p <pid> -d cwd` plus process start time. Stale listeners are
-  the norm: on 2026-08-19 the `:5002` "worktree" port was still served by a **14-day-old orphan**
-  from the deleted `launch-hygiene` worktree, whose `/api/health` returned only
-  `{status,timestamp}` while current code also returns `commit` and `email` — that missing key is
-  the cheapest tell. **A right checkout can still serve stale server code**: `pnpm dev` is
-  `tsx server/index-dev.ts` with no watch flag, so the server half freezes at process start while
-  the client stays current per request. Check the process start time against `server/**` mtimes
-  before attributing any server-side finding to HEAD.
+- **W3 — Local only, and know what you are pointed at.** Full checklist in
+  `.claude/agents/_JOURNEY_WALK_RAILS.md` (J3) — default `http://localhost:5001`, never the
+  deployed site, and the specific stale-listener/stale-server traps this repo has hit before. Read
+  it there; it is not restated here.
 - **W4 — Seams, not surfaces.** A finding must need **two surfaces to be visible**. Single-surface
   issues come back as `HANDOFF` lines with no id, and you route them **to the seat that can act**:
   a file with an owner → its `hq-*-owner` agent (`knowledge-base/handbook/FEATURE_MAP.md` maps every
@@ -80,13 +87,11 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
 - **W5 — Nothing enters the register unverified.** Every `J-<MMDD>-<NN>` goes through
   `finding-verifier` before `FINDINGS.md`, and anything flagged `compliance-risk: yes` also needs a
   `compliance-auditor` verdict. CHARTER §2 is not relaxed for journeys.
-- **W6 — Test data discipline.** `journey-walker-aspiring-owner` signs up **fresh** as
-  `jr+<MMDD>@test.local` and **must never apply** — *(amended 2026-08-20: the seeded `renter@test.com`
-  seat is retired as the primary; its central surface keys on the account's own rows and the dev DB
-  had polluted it — see `JOURNEYS.md` §1 for the probe if you want the seeded seat anyway)*. The
-  buyer walkers self-register `jw2+` / `jse+` / `jaf+` / `jcd+<MMDD>@test.local`; **never `buyer@test.com`**,
-  which is pinned to `active_buyer` and cannot cross the promotion seam. No destructive SQL, never
-  `pnpm db:push`, never touch a row you did not create.
+- **W6 — Test data discipline.** Each persona's account convention lives in `JOURNEYS.md` §N and in
+  its own walker agent — both must agree, and `JOURNEYS.md` wins if they don't. The shape is always
+  the same: a **fresh** self-registration per persona, never a seeded seat pinned to a role this walk
+  needs to cross out of or that may carry accumulated state from a prior run. No destructive SQL,
+  never `pnpm db:push`, never touch a row you did not create.
 - **W7 — You never fix.** This skill reports. Fixes are triaged into waves by the founder, or
   claimed by a builder seat via `knowledge-base/routines/REGISTER.md`.
 
@@ -95,8 +100,10 @@ that keeps it, a persona that runs out of next step. That is also the repo's dom
 1. **Pick the journey.** If the user named a persona, map it to a seat above. If they did not, pick
    the next row in `knowledge-base/routines/journey-walk/LEDGER.md` — **strict rotation**, the one
    selection rule this lane has (the ledger, not "oldest Last walked"; two rules diverge the first
-   time a run is `BLOCKED`) — and say which and why. Staff desks are a separate lane:
-   `/staff-journey-walk`.
+   time a run is `BLOCKED`) — and say which and why. The rotation is read from the ledger's
+   **current** state, over however many personas `JOURNEYS.md` lists **today** — never assume a
+   fixed count; the ledger has gone stale against a persona count before. Staff desks are a separate
+   lane: `/staff-journey-walk`.
 2. **Establish a server.** If nothing listens on 5001, start one; if something does, identify its
    checkout per W3 before trusting a single observation.
 3. **Spawn the seat** with the Agent tool, passing: the journey number, the base URL, and any
