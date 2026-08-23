@@ -215,9 +215,16 @@ describe("F-17 — the non-QM dead band is resolved, by construction", () => {
     }
   });
 
+  // NOTE (2026-08-20): the three fee-trimming cases below moved from
+  // lender_paid to borrower_paid. Not a weakening — the dual-compensation gate
+  // (§1026.36(a)(3) + comment 36(a)-5.ii) now zeroes every RETAINED charge
+  // under a lender-paid election, so there is nothing left there to trim and
+  // F-17's fitting logic is only reachable on borrower-paid files. The
+  // lender-paid side is asserted directly in its own case at the end.
+
   it("charges the standard schedule whenever it fits — no revenue given away", () => {
     const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 400_000, {
-      model: "lender_paid",
+      model: "borrower_paid",
       bps: SUMMIT,
     });
     expect(resolved.reduced).toBe(false);
@@ -226,7 +233,7 @@ describe("F-17 — the non-QM dead band is resolved, by construction", () => {
 
   it("trims only what is ours — a vendor pass-through is never discounted", () => {
     const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, {
-      model: "lender_paid",
+      model: "borrower_paid",
       bps: SUMMIT,
     });
     expect(resolved.reduced).toBe(true);
@@ -252,12 +259,44 @@ describe("F-17 — the non-QM dead band is resolved, by construction", () => {
     // the schedule stays standard, the file is not originable, and the gate
     // still refuses — the honest residual.
     const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 400_000, {
-      model: "lender_paid",
+      model: "borrower_paid",
       bps: 320,
     });
     expect(resolved.originable).toBe(false);
     expect(resolved.reduced).toBe(false);
     expect(resolved.total).toBe(PLATFORM_FINANCE_CHARGE_TOTAL);
+    expect(clears(400_000, 320)).toBe(false);
+  });
+
+  it("charges NOTHING of ours under lender-paid — §1026.36(d)(2)(i)(A)", () => {
+    // The defect this replaced: retained application and underwriting fees
+    // were billed on every file, lender-paid included, while the origination
+    // fee alone was gated. Comment 36(a)-5.ii makes a retained fee
+    // compensation regardless of its label, so that pairing — borrower pays
+    // us AND lender pays us on one transaction — is the prohibition itself.
+    for (const amount of [60_000, 150_000, 400_000]) {
+      const resolved = resolvePlatformFinanceCharges(NOTE_DATE, amount, {
+        model: "lender_paid",
+        bps: SUMMIT,
+      });
+      const byId = Object.fromEntries(resolved.charges.map(c => [c.id, c.amount]));
+      expect(`${amount}:application`, "retained fee under lender-paid").toBe(`${amount}:application`);
+      expect(byId.application).toBe(0);
+      expect(byId.underwriting).toBe(0);
+      // ...but the vendor pass-through is not ours to waive (comment 36(a)-5.iii).
+      expect(byId.tax_service).toBe(PLATFORM_TAX_SERVICE_FEE);
+      expect(resolved.total).toBe(PLATFORM_TAX_SERVICE_FEE);
+    }
+  });
+
+  it("still refuses a file whose compensation alone busts the cap, gate or no gate", () => {
+    // Zeroing our fees must not make an over-comp file look originable — that
+    // would be the gate laundering a compensation problem into a pass.
+    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 400_000, {
+      model: "lender_paid",
+      bps: 320,
+    });
+    expect(resolved.originable).toBe(false);
     expect(clears(400_000, 320)).toBe(false);
   });
 });

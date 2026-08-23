@@ -138,6 +138,31 @@ describe("calculate (amortization schedule)", () => {
   });
 });
 
+describe("negative money inputs", () => {
+  // The page's number inputs carry no `min`, so a typed negative reaches
+  // calculate() directly. `simulate` exits its `balance > 0.01` loop on the
+  // first test, so totalInterest came back 0 and totalPaid rendered the raw
+  // negative: the /calculators/amortization page showed "-$100,000 total paid".
+  it("clamps a negative loan amount to zero rather than reporting negative money", () => {
+    const r = calculate({ ...defaultInputs, loanAmount: -100000 });
+    expect(r.totalPaid).toBe(0);
+    expect(r.monthlyPayment).toBe(0);
+    expect(r.totalInterest).toBe(0);
+  });
+
+  it("clamps a negative extra payment to zero", () => {
+    const negative = calculate({ ...defaultInputs, extraMonthly: -500 });
+    const none = calculate({ ...defaultInputs, extraMonthly: 0 });
+    expect(negative.payoffMonths).toBe(none.payoffMonths);
+    expect(negative.totalPaid).toBeCloseTo(none.totalPaid, 6);
+  });
+
+  it("leaves positive inputs untouched", () => {
+    const r = calculate(defaultInputs);
+    expect(r.monthlyPayment).toBeCloseTo(2022.6176751774892, 6);
+  });
+});
+
 describe("simulate (payoff loop)", () => {
   it("pins the baseline simulation for the default loan", () => {
     const r = simulate(320000, 6.5, 2022.6176751774892, 0);

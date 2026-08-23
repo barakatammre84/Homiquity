@@ -34,6 +34,12 @@ const read = (p: string) => readFileSync(resolve(repoRoot, p), "utf8");
 
 const NOTE_DATE = "2026-03-15";
 const LENDER_PAID = { model: "lender_paid" as const, bps: 200 };
+// Since 2026-08-20 the dual-compensation gate zeroes every RETAINED charge
+// under a lender-paid election (§1026.36(a)(3) + comment 36(a)-5.ii), so any
+// case that needs the platform's own fees to be PRESENT — schedule
+// flow-through, F-17 trimming — must elect borrower-paid. Using LENDER_PAID
+// there does not fail loudly; it passes vacuously, which is worse.
+const BORROWER_PAID = { model: "borrower_paid" as const, bps: 200 };
 
 /** A deliberately different schedule — cheaper fees, halved origination. */
 const LEAN: PlatformFeeSchedule = {
@@ -88,7 +94,7 @@ describe("a published schedule flows through every surface", () => {
   });
 
   it("changes what the Loan Estimate discloses", () => {
-    const costs = computeClosingCosts({ ...baseCosts, compensation: LENDER_PAID, feeSchedule: LEAN });
+    const costs = computeClosingCosts({ ...baseCosts, compensation: BORROWER_PAID, feeSchedule: LEAN });
     expect(costs.applicationFee).toBe(250);
     expect(costs.underwritingFee).toBe(750);
     expect(costs.taxServiceFee).toBe(60);
@@ -136,23 +142,36 @@ describe("F-19's invariant survives an editable schedule", () => {
   });
 
   it("keeps the vendor pass-through non-reducible under a published schedule", () => {
-    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, LENDER_PAID, RICH);
+    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, BORROWER_PAID, RICH);
     expect(resolved.reduced).toBe(true);
     // We still cannot discount someone else's charge, whatever the schedule.
     expect(resolved.charges.find(c => c.id === "tax_service")!.amount).toBe(RICH.taxServiceFee);
   });
 
   it("trims relative to the published schedule's own total, not the baseline's", () => {
-    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, LENDER_PAID, RICH);
+    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, BORROWER_PAID, RICH);
     expect(resolved.standardTotal).toBe(4_120);
     expect(resolved.total).toBeLessThan(4_120);
+  });
+
+  it("gates the schedule's retained fees under lender-paid, whatever the schedule says", () => {
+    // A published schedule cannot re-open the dual-compensation door: an admin
+    // raising the application fee must not put a charge back on a lender-paid
+    // file. Only the vendor pass-through survives.
+    for (const schedule of [LEAN, RICH]) {
+      const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, LENDER_PAID, schedule);
+      const byId = Object.fromEntries(resolved.charges.map(c => [c.id, c.amount]));
+      expect(byId.application).toBe(0);
+      expect(byId.underwriting).toBe(0);
+      expect(byId.tax_service).toBe(schedule.taxServiceFee);
+    }
   });
 
   it("a cheap enough schedule simply never needs trimming — the F-17 lever", () => {
     // This is what an admin buys by lowering fees: the trim stops firing at all
     // across the whole realistic range, and every file pays the full schedule.
     for (const amount of [100_000, 150_000, 200_000, 250_000, 400_000]) {
-      const resolved = resolvePlatformFinanceCharges(NOTE_DATE, amount, LENDER_PAID, LEAN);
+      const resolved = resolvePlatformFinanceCharges(NOTE_DATE, amount, BORROWER_PAID, LEAN);
       expect(`${amount}:${resolved.reduced}`).toBe(`${amount}:false`);
       expect(`${amount}:${resolved.originable}`).toBe(`${amount}:true`);
     }

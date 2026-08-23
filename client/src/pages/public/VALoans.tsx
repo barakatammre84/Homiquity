@@ -9,6 +9,9 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { OffsetBlock } from "@/components/layout/OffsetBlock";
+import { VaBenefitArt } from "@/components/illustrations/VaBenefitArt";
+import { AdvocacyArt } from "@/components/illustrations/AdvocacyArt";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -23,6 +26,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * Military-status pre-screen: every service-connected answer routes to the
@@ -89,8 +93,8 @@ export default function VALoans() {
         <section className="bg-muted px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
-              <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-va-home">
-                homiquity
+              <Link href="/" className="touch-target inline-flex items-center" data-testid="link-va-home">
+                <Logo size="md" tone="mono" />
               </Link>
               <span className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
                 <ShieldCheck aria-hidden="true" className="h-4 w-4 text-primary" />
@@ -104,7 +108,7 @@ export default function VALoans() {
                   <Medal aria-hidden="true" className="h-4 w-4 text-primary" />
                   Built by a fellow veteran
                 </div>
-                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-va-hero-title">
+                <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-va-hero-title">
                   You earned this benefit. We'll help you use it.
                 </h1>
                 <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -127,13 +131,9 @@ export default function VALoans() {
                 </div>
               </div>
 
-              <FramedPhoto
-                src={lifestyleImages.vaLoans.src}
-                alt={lifestyleImages.vaLoans.alt}
-                testId="img-hero-va"
-                position="center 25%"
-                loading="eager"
+              <VaBenefitArt
                 className="mx-auto w-full max-w-lg lg:max-w-none"
+                data-testid="img-hero-valoans"
               />
             </div>
           </div>
@@ -186,9 +186,7 @@ export default function VALoans() {
           testId="section-va-earned"
           eyebrow="Built by a fellow veteran"
           title="The benefit you earned, put to work for your family"
-          image={lifestyleImages.landingHero.src}
-          imageAlt={lifestyleImages.landingHero.alt}
-          imagePosition="center 25%"
+          illustration={<AdvocacyArt />}
           reverse
           className="bg-muted"
         >
@@ -204,8 +202,8 @@ export default function VALoans() {
         </ImageTextSection>
 
         <section aria-labelledby="va-benefits-heading" className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
-            <h2 id="va-benefits-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
+          <OffsetBlock side="left" className="max-w-5xl" data-testid="offset-va-benefits">
+            <h2 id="va-benefits-heading" className="lg:text-left text-2xl font-semibold tracking-tight sm:text-3xl">
               What makes a VA loan different
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-6">
@@ -221,12 +219,12 @@ export default function VALoans() {
                 </Card>
               ))}
             </div>
-          </div>
+          </OffsetBlock>
         </section>
 
         {/* Differentiator — the human/veteran angle vs algorithmic lenders */}
         <section aria-labelledby="va-why-us-heading" className="bg-muted px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl rounded-lg border border-card-border bg-card p-8">
+          <OffsetBlock side="right" className="max-w-3xl rounded-lg border border-card-border bg-card p-8" data-testid="offset-va-why-us">
             <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:text-left">
               <VeteranFoundedBadge
                 variant="seal"
@@ -254,7 +252,7 @@ export default function VALoans() {
                 </p>
               </div>
             </div>
-          </div>
+          </OffsetBlock>
         </section>
 
         {/* FAQ — objection handling via progressive disclosure */}

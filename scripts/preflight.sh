@@ -2,10 +2,11 @@
 #
 # Preflight — run the WHOLE CI gate locally, before it costs anything.
 #
-# `.githooks/pre-push` runs four of the gate's checks and is deliberately cheap
-# enough to leave on. This runs all sixteen, including the three that only ever
-# ran in CI and are the ones that catch a broken DEPLOY rather than a broken
-# diff: the production build, the self-host boot, and the integration lane.
+# `.githooks/pre-push` runs the typecheck and the nine guards (the unit suite is
+# opt-in there: PREPUSH_TESTS=1) and is deliberately cheap enough to leave on.
+# This runs all sixteen, including the three that only ever ran in CI and are
+# the ones that catch a broken DEPLOY rather than a broken diff: the production
+# build, the self-host boot, and the integration lane.
 #
 # WHY IT MATTERS BEYOND MINUTES. A merge to `main` is a Railway deploy. The gate
 # is the last thing between a diff and production, and until now half of it was
@@ -117,7 +118,7 @@ else
   step "security review (§9 triggers)" security_review
 fi
 
-step "unit tests (node + client)"     pnpm test
+step "unit tests + collection floor" pnpm test
 step "dependency audit (prod, high+)" pnpm audit --prod --audit-level=high
 
 if [ "$FAST" = 1 ]; then

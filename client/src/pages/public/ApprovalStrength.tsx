@@ -28,6 +28,7 @@ import {
   ShieldQuestion,
   Sparkles,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 // Everything on this page is client-side arithmetic on the visitor's own
 // inputs — no network calls, nothing collected or stored, and deliberately
@@ -136,11 +137,9 @@ export default function ApprovalStrength() {
       <div className="bg-primary/5 dark:bg-primary/10 border-b">
         <div className="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
           <Link href="/">
-            <span className="text-2xl font-bold tracking-tight text-primary cursor-pointer" data-testid="text-brand-logo">
-              homiquity
-            </span>
+            <Logo size="lg" tone="brand" data-testid="text-brand-logo" />
           </Link>
-          <h1 className="text-3xl md:text-4xl font-bold mt-6 mb-3" data-testid="text-page-title">
+          <h1 className="font-display text-3xl md:text-4xl font-bold leading-none mt-6 mb-3" data-testid="text-page-title">
             How Strong Is Your Approval Case?
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">

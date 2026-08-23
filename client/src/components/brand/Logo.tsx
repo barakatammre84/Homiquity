@@ -4,13 +4,16 @@ import { cn } from "@/lib/utils";
 import { useBranding } from "./BrandingProvider";
 
 /**
- * The one brand lockup. Replaces the ~13 copy-pasted `homiquity` wordmark spans
- * (which varied in weight/size/color). Branding-aware: on a private surface with
- * an active tenant it shows the tenant logo/brand name; otherwise the Homiquity
- * wordmark + logomark. See DESIGN_SYSTEM.md → Brand & white-label.
+ * The one brand lockup. Branding-aware: on a private surface with an active
+ * tenant it shows the tenant logo/brand name; otherwise the Homiquity wordmark
+ * + logomark. See DESIGN_SYSTEM.md → Brand & white-label.
  *
- * Phase 2 ships this component but does NOT swap it into the existing spans yet
- * (that migration + mounting BrandingProvider is Phase 4), so it is inert.
+ * This replaces 18 copy-pasted `homiquity` spans — not the "~13" an earlier
+ * revision of this comment claimed; the census was re-run and the real count is
+ * 18. They rendered in FIVE different tones with no rule behind which was which:
+ * Login orange and Signup emerald, with byte-identical markup around them.
+ * Centralising them here is what makes the tone a decision instead of an
+ * accident.
  */
 
 const wordmarkSize = {
@@ -19,10 +22,13 @@ const wordmarkSize = {
   lg: "text-2xl",
 } as const;
 
+// Height only. `.brand-mark` carries the artwork's real aspect-ratio, so the
+// width follows from the height — pinning `w-*` as well would force a square and
+// letterbox the mark inside it.
 const markSize = {
-  sm: "h-5 w-5",
-  md: "h-6 w-6",
-  lg: "h-7 w-7",
+  sm: "h-5",
+  md: "h-6",
+  lg: "h-7",
 } as const;
 
 const imgHeight = {
@@ -43,45 +49,39 @@ export interface LogoProps {
   size?: keyof typeof wordmarkSize;
   variant?: "wordmark" | "mark" | "lockup";
   tone?: keyof typeof toneClass;
+  /**
+   * Which artwork to paint. The kit holds two drawings, and they are a
+   * large/small pair rather than duplicates: `compact` (solid stem) stays legible
+   * down to 16px, `primary` (outlined stem + chart columns) turns to a blob below
+   * ~48px. Every lockup here renders the mark at 20-28px, so `compact` is the
+   * default and `primary` is an opt-in for hero-scale use.
+   */
+  mark?: "compact" | "primary";
   className?: string;
   "data-testid"?: string;
 }
 
 /**
- * Homiquity logomark — the app's first real mark. A rising roofline (home +
- * upward momentum). `currentColor` so it inherits the tokenized text color and
- * re-skins per tenant; no palette literals (design-token-guard safe).
+ * Homiquity logomark — the founder's h-as-bridge mark with the growth arrow.
+ *
+ * Painted as a CSS mask (see `.brand-mark` in index.css), not an <img> or inline
+ * SVG: the mask takes its colour from `currentColor`, so one asset serves every
+ * tone and a white-label tenant's re-skin reaches it for free. It replaced a
+ * hand-drawn "rising roofline" placeholder that was never the real logo and that
+ * nothing ever imported.
  */
-function Logomark({ className }: { className?: string }) {
+function Logomark({
+  className,
+  mark,
+}: {
+  className?: string;
+  mark: "compact" | "primary";
+}) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
+    <span
       aria-hidden="true"
-      className={className}
-    >
-      <path
-        d="M3 12.5 11.2 5a1.2 1.2 0 0 1 1.6 0L21 12.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5.5 11v7.5a1 1 0 0 0 1 1H17.5a1 1 0 0 0 1-1V11"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.5 19.5V14h5v5.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+      className={cn(mark === "primary" ? "brand-mark-primary" : "brand-mark", className)}
+    />
   );
 }
 
@@ -89,6 +89,7 @@ export function Logo({
   size = "md",
   variant = "lockup",
   tone = "brand",
+  mark = "compact",
   className,
   "data-testid": testId = "logo",
 }: LogoProps) {
@@ -114,8 +115,14 @@ export function Logo({
     <span
       className={cn("inline-flex items-center gap-2", toneClass[tone], className)}
       data-testid={testId}
+      // The mark itself is aria-hidden (it is a mask, so it carries no text).
+      // When the wordmark is showing, the visible name IS the accessible name and
+      // labelling the wrapper too would make a screen reader announce it twice.
+      // With `variant="mark"` there is no text at all, so the wrapper has to
+      // supply the name or the logo is an unlabelled decoration.
+      {...(showWord ? {} : { role: "img", "aria-label": label })}
     >
-      {showMark && <Logomark className={markSize[size]} />}
+      {showMark && <Logomark className={markSize[size]} mark={mark} />}
       {showWord && (
         <span className={cn("font-bold tracking-tight", wordmarkSize[size])}>
           {label}

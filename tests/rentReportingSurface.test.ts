@@ -132,7 +132,7 @@ describe("capture path", () => {
 describe("design system", () => {
   it("uses semantic tokens — no raw palette or bare white/black utilities", () => {
     // The pitch asked for "indigo focus rings" and a Stripe aesthetic. This repo routes
-    // all color through Royal Blue Emerald tokens (scripts/design-token-guard.cjs).
+    // all color through the "Mint & Flare" tokens (scripts/design-token-guard.cjs).
     expect(src).not.toMatch(
       /\b(bg|text|border|ring|from|to|via)-(indigo|slate|gray|emerald|blue|amber|violet)-\d{2,3}\b/,
     );

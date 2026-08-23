@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { HomiLauncher } from "@/components/homi/HomiLauncher";
 import { NotificationsBell } from "@/components/NotificationsPanel";
 import { SkipLink } from "@/components/SkipLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { UserRole } from "@shared/roles";
+import { Logo } from "@/components/brand/Logo";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
@@ -96,7 +98,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
           <header className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background shrink-0 md:px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="hidden md:flex" />
-              <span className="text-sm font-semibold tracking-tight text-primary md:hidden" data-testid="text-mobile-brand">homiquity</span>
+              <Logo size="sm" tone="brand" className="md:hidden" data-testid="text-mobile-brand" />
             </div>
             <div className="flex items-center gap-2">
               <NotificationsBell />
@@ -121,6 +123,14 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
             {children}
           </main>
           <MobileBottomNav />
+          {/*
+            Homi, reachable from wherever the borrower is stuck rather than only
+            from its own page. HomiLauncher is deliberately TINY and eager — this
+            layout is imported non-lazily by App.tsx, so anything it reaches ships
+            in the entry chunk every first-time visitor downloads. The chat lives
+            behind lazy() inside it; see the header comment on HomiLauncher.
+          */}
+          <HomiLauncher />
         </div>
       </div>
     </SidebarProvider>
