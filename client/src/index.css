@@ -491,6 +491,57 @@
   .app-surface .shadcn-card:not([class*="shadow-"]) {
     box-shadow: var(--shadow-sm);
   }
+
+  /**
+   * The logomark, painted as a CSS mask rather than an <img> or an inline SVG.
+   *
+   * WHY A MASK. The mark has to appear in five tones (brand orange, white on the
+   * green-black chrome, green-black on light, and whatever a white-label tenant
+   * re-skins to). Three approaches were possible and two are worse:
+   *   - an <img> per tone: three network assets that can drift apart, and the
+   *     tenant re-skin is impossible because a PNG's colour is baked in;
+   *   - an inline SVG: there IS no vector master — the supplied kit is raster.
+   * A mask keeps ONE asset and takes its colour from `currentColor`, so the mark
+   * inherits whatever tone class the lockup already sets, and a tenant's
+   * `--primary` override re-skins it for free. It is also why this lives in CSS:
+   * `mask-image: url(...)` needs no hex, so it cannot trip ui-standard-guard's
+   * rawHexLiterals metric (baseline 11, live 11 — one new hex in client/src reds CI).
+   *
+   * The URL is ABSOLUTE, not imported. An import under 4096 bytes is inlined by
+   * Vite as base64 straight into the eager chunk, and Navigation/Footer are both
+   * in the eager graph, which the bundle guard gates on raw bytes with a strict
+   * `>`. An absolute path costs the gated graph nothing.
+   *
+   * DEFAULT IS THE COMPACT ARTWORK, deliberately. The kit holds two drawings: the
+   * primary mark (outlined stem, chart columns) and a compact one (solid stem).
+   * Every in-app mark renders at 20-28px, and the primary artwork's slots and
+   * columns merge into a blob below ~48px. `.brand-mark-primary` opts into the
+   * detailed drawing for hero-scale use only.
+   *
+   * aspect-ratio carries the mark's real proportion (840x1072 ink box), so a call
+   * site sets only a height class and the width follows — no arbitrary Tailwind
+   * value, which `arbitraryColorValues` (baseline 3, live 3) would otherwise catch.
+   */
+  .brand-mark,
+  .brand-mark-primary {
+    display: inline-block;
+    aspect-ratio: 105 / 134;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
+  .brand-mark {
+    -webkit-mask-image: url("/brand/mark-compact.png");
+    mask-image: url("/brand/mark-compact.png");
+  }
+  .brand-mark-primary {
+    -webkit-mask-image: url("/brand/mark.png");
+    mask-image: url("/brand/mark.png");
+  }
 }
 
 /**
