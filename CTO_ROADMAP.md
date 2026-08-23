@@ -8,8 +8,15 @@ items with their closure reasoning — moved verbatim to
 
 **Where things actually stand:** the commercial machine is **built and verified end to end behind
 the pre-launch gate, against simulated vendors**. What stands between here and live is §0 and §1 —
-almost entirely founder actions, not code. §2 is short because it is honest, not because it is
-incomplete.
+almost entirely founder actions, not code — and as of 2026-08-23 those live in
+[CEO_BUSINESS_QUEUE.md](knowledge-base/governance/CEO_BUSINESS_QUEUE.md), not here. §2 is short
+because it is honest, not because it is incomplete.
+
+**The ranked build order is [the Lender-Demo Ten](knowledge-base/launch/LENDER_DEMO_TEN.md)**, with
+its day-by-day sequence in [the 15-day sprint](knowledge-base/launch/LENDER_DEMO_SPRINT.md). The
+founder direction behind both: *the app is part of the lender-approval process* — an AE must be able
+to drive a live, real client application end to end. Where the Ten and the ordering below disagree,
+**the Ten wins**; it was verified against the code on 2026-08-23 and this section was not.
 
 **Maintenance rules — binding. They are why this file is small.**
 
@@ -22,6 +29,11 @@ incomplete.
 4. **Deploy, ops and compliance facts live in the runbooks.** Link; never restate.
 5. **Verify before you check a box.** Six items in the old file were `[ ]` with bodies saying the
    work had landed, and two more asserted things the code contradicted.
+6. **Engineering only — added 2026-08-23 on founder direction.** Legal, licensing, vendor
+   paperwork, lender outreach, billing and DNS do not live here; they live in
+   [CEO_BUSINESS_QUEUE.md](knowledge-base/governance/CEO_BUSINESS_QUEUE.md), which received fifteen
+   items verbatim on that date. An item belongs here only if an engineer can action it. Nothing
+   returns.
 
 **Detail lives elsewhere:** [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) (real vs
 simulated vs pending) · [feature-review/FINDINGS.md](knowledge-base/feature-review/FINDINGS.md)
@@ -33,73 +45,17 @@ simulated vs pending) · [feature-review/FINDINGS.md](knowledge-base/feature-rev
 ## §0 Keep-the-lights-on — time-bound; prod stops if these lapse
 
 These outrank every engineering item below. They are not features; they are the condition for
-anything else in this file being true.
+anything else in this file being true. The billing items that used to sit here — Railway, GitHub
+Actions, Neon compute — moved to the
+[CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §C on 2026-08-23; they are payment
+decisions, and moot while development is local-only. **KTLO-4 stayed, because it is a safety
+property of this repository rather than a bill.**
 
-- [ ] **KTLO-1. Railway — being decommissioned, not paid for.** Founder direction 2026-08-19:
-  development is local-only until the app is fully built and debugged; the production service is
-  to be taken down deliberately rather than left to lapse unattended. CI's `migrate-prod` and
-  `verify-deploy` jobs are paused accordingly (see `.github/workflows/ci.yml`, both carry restore
-  instructions). **Blocked on one thing first:** a read-only census of the production database, so
-  the decision is made against row counts rather than a guess — and that census runs through CI,
-  which is currently dead (KTLO-2). Do not take the service down until the census answers.
-  **Founder-held.** Superseded text follows for provenance:
-- [ ] ~~**KTLO-1. Railway billing — add a payment method; the risk is the expiring trial credit, not
-  consumption.** Re-measured 2026-08-17 (#536): 7-day usage ≈ **$3.20/month** (CPU avg 0.0002 vCPU,
-  mem 0.32 GB — the container is idle), so this is the $5 Hobby plan plus a trial credit last read
-  "~30 days / ~$4.97" on **2026-08-06** and unreadable by any session since (no MCP billing
-  endpoint; the local `RAILWAY_API_TOKEN` is dead — #536 E8). When the credit lapses **production
-  stops serving.** Railway → project `Homiquity` → Settings → Billing. Coupled: image retention is
-  **72 h on Hobby** — the 2026-08-18 merge round (#539/#537/#514/#536/#543) refreshed the rollback
-  window, which now relapses **~2026-08-21** without another deploy
-  ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1).~~
-- [ ] 🚨 **KTLO-2. GitHub Actions billing has FAILED — every merge is blocked.** Escalated
-  2026-08-19. The repo was flipped **public** on 2026-08-18, which made Actions free and *masked*
-  an underlying payment failure. It was flipped back to **private** on 2026-08-19 (founder
-  direction — the security pack and the open-findings register were world-readable), and the
-  failure immediately reasserted: every run since 14:18 UTC dies in ~2 s with `steps: []` and the
-  annotation *"The job was not started because recent account payments have failed or your
-  spending limit needs to be increased."* Runs up to 14:16 succeeded.
-  **Consequence, precisely:** `gate` is a required status check on `main` with
-  `enforce_admins: true`, so no new PR can merge — the check never runs, the PR sits
-  "Expected — Waiting for status", and nobody can bypass it. PRs whose gate went green before the
-  flip keep their recorded pass and remain mergeable. The read-only prod census (KTLO-1) is
-  blocked on this too.
-  **DECISION 2026-08-19 — the required check was REMOVED rather than the bill paid.** Development
-  is local-only and not launching, so the gate moved from GitHub to the laptop: `main`'s
-  `required_status_checks.contexts` is now `[]`. Force-push and deletion protection and
-  `enforce_admins` are untouched. This is safe *only because* the local gate was hardened the same
-  day — `.githooks/pre-push` now BLOCKS instead of skipping when it cannot check anything, and
-  `scripts/hooks-installed-guard.cjs` fails when a clone has `core.hooksPath` unset, which is how a
-  fresh clone used to start ungated. Run `pnpm preflight` before opening a PR; it is the same 16
-  checks CI ran.
-  🚨 **RESTORE THIS BEFORE ANY RETURN TO LAUNCH.** One command — the separators are U+00B7 MIDDLE
-  DOTs, not periods, and the string must match verbatim or every PR deadlocks on a check that never
-  arrives:
-  ```bash
-  echo '{"strict":false,"contexts":["gate (typecheck · tests · schema guard)"]}' | gh api -X PATCH repos/barakatammre84/Homiquity/branches/main/protection/required_status_checks --input -
-  ```
-  **Fix:** GitHub → Settings → Billing & plans — resolve the failed payment and/or raise the
-  Actions spending limit. The alternative is re-publishing the repo, which re-exposes
-  `knowledge-base/feature-review/FINDINGS.md` and `governance/security/`. **Founder-held, and it
-  now outranks everything else in this file.** Prior measurement for context:
-- [ ] ~~**KTLO-2. GitHub Actions minutes — this is the platform bill, not Railway.** Measured
-  2026-08-17 (#536 E9): ~13.6 CI runs/day × ~4–5 billable min ≈ **1,850 of the private repo's
-  2,000 free min/month (~92%)**; overage $0.008/min. The 2026-08-06 queueing symptom is stale —
-  Actions was healthy all day today (launch-gate 2026-08-17). Mitigations landed 2026-08-17: the
-  local pre-push gate (#529) and superseded-run cancellation (#535). Decide: set an Actions
-  spending limit **knowing a hard cap that halts `gate` also halts every merge and `migrate-prod`**,
-  or accept overage. Settings → Billing → Actions.~~
-- [ ] **KTLO-3. Neon production compute is unpinned — cold starts measured at 5.5–7.4 s.** The first
-  request after autosuspend pays that, on the borrower funnel. Decide alongside KTLO-1 (same billing
-  conversation): pin the compute / disable autosuspend on the production branch, or accept it and
-  record the number in [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md). Still unverified
-  2026-08-17: the GitHub cron sweeps (every ~20–40 min) keep the compute warm and mask the cold
-  start; the first borrower after a real idle window still pays it (#526 E6). **Founder-held.**
 - [ ] 🚨 **KTLO-4. `main` has no gate and still auto-deploys to production. Both halves verified
   tonight, 2026-08-20T02:19Z.** (a) Branch protection on `main` now reads
   `required_status_checks.contexts: []` — the `gate` check was deliberately removed today so work
   could continue through the Actions billing failure (rationale and the restore command are in
-  KTLO-2 as rewritten by [#608](https://github.com/barakatammre84/Homiquity/pull/608), unmerged).
+  the [CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §C KTLO-2 as rewritten by [#608](https://github.com/barakatammre84/Homiquity/pull/608), unmerged).
   (b) The Railway service is **still connected**: `get-service-config` returns
   `source: {repo: barakatammre84/Homiquity, branch: main, checkSuites: false}`, custom domain
   `www.homiquity.com` attached, and prod is currently serving `b799b91d` — equal to `origin/main`.
@@ -113,122 +69,26 @@ anything else in this file being true.
 
 ---
 
-## §1 Founder-held — blocks go-live
+## §1 Founder-supervised production actions
 
-> **Framing note, 2026-08-19 (evening-triage).** Founder direction that day: **development is
-> local-only until the app is fully built and debugged; there is no live launch.** So "blocks
-> go-live" in this section's title now describes a *deferred* event, not this week's deadline —
-> the items are still real, their urgency is not. Ranking below therefore follows CHARTER §1
-> (lender package / borrower experience) rather than proximity to a flip date. §0 still outranks
-> everything: the site is still up and still auto-deploying (KTLO-4).
+> **Rescoped 2026-08-23 (maintenance rule 6).** This section used to be "Founder-held — blocks
+> go-live" and carried fifteen items no engineer could action. Those moved verbatim to
+> [CEO_BUSINESS_QUEUE.md](knowledge-base/governance/CEO_BUSINESS_QUEUE.md). What remains is
+> engineering work that happens to touch production data or local secrets, so it runs **with the
+> founder present** rather than autonomously. Development is local-only (founder direction
+> 2026-08-19), so none of it is urgent — but §0 still outranks everything, because the site is up
+> and still auto-deploying (KTLO-4).
 
-- [ ] **1.1 Confirm the go-live flip that live probes say already happened.** Prod has served
-  ungated public pages since 2026-08-06; re-probed 2026-08-17: `/` and `/api/rates` 200 with no
-  prelaunch/waitlist markers (launch-gate report). `PRELAUNCH_GATED` and `VITE_PRELAUNCH_GATED`
-  still exist as **names** in Railway variables and values are unreadable from any session — open
-  the panel, confirm both are `false`/removed, then archive this line. `BETA_ACCESS_CODE` is a
-  separate front-door switch (currently unset — #526 E2).
-- [ ] **1.2 Railway service variables — live read 2026-08-17 (#526 E2): 19 non-injected names set;
-  launch-critical still unset:** `GCS_SERVICE_ACCOUNT_KEY` + `PRIVATE_OBJECT_DIR` (+
-  `PUBLIC_OBJECT_SEARCH_PATHS`) — durable uploads; `request-url` 503s `UPLOADS_UNCONFIGURED` until
-  they land; `SENTRY_DSN` + an uptime monitor on `/api/health` (a prod crash between CI
-  `verify-deploy` runs is invisible); `GOOGLE_MAPS_API_KEY` — `server/routes/geocode.ts:34` 503s
-  without it, so **every production address lookup fails today**; `RAPIDAPI_KEY` (or record staying
-  on the simulated rate survey in ASSUMPTIONS.md). Also delete the stray lowercase `fromemail`
-  sitting beside the real `FROM_EMAIL`. Verified done and dropped from this line 2026-08-17:
-  SendGrid key + `FROM_*` set; `CRON_SECRET` matches (sweeps 200 — #526 E6); `DATABASE_URL` on a
-  populated branch (data-backed routes 200). ~45 min.
-- [ ] **1.3 Wholesale-lender outreach — UNBLOCKED since 2026-07-13; still unworked five weeks later
-  (2026-08-17).** F1 cleared with NMLS #427468, but the shortlist still gated five actions on "once F1
-  clears". Live now: the UWM AE / Director-hotline call (sandbox process + whether BOLT exposes a
-  PPE-consumable feed); the Newrez Brigade contact for the sandbox path; Angel Oak / Newrez
-  approval-checklist requests; a manual read of Plaza's wholesale-broker guide PDF for
-  net-worth/bond minimums; and **re-verifying all five are still broker-friendly and NMLS-active**
-  (the file is a 2026-07-04 snapshot). Detail:
-  [wholesale-lender-shortlist](knowledge-base/research/my-research/wholesale-lender-shortlist-2026-07-04.md).
-- [ ] **1.4 Start the F3 (credit vendor) and F6 (DU/LPA) applications now** — vendor paperwork lead
-  time runs *in parallel* with everything else, not after it. Starting the paperwork is not the same
-  as building against it. No application opened as of 2026-08-17 (#526). Ask in the same first
-  email: SOC 2 Type II + signed DPA + permissible-purpose / FCRA end-user certification package
-  (F3); both the DU **and** LPA legs (F6).
 - [ ] **1.5 Production reseed for #24** — grids rerun + BRC-J30 jumbo min `806500.01`.
   `seedMarketPricing` is skip-if-exists, so this is a **destructive wipe-and-reseed**.
   Founder-supervised.
 - [ ] **1.6 Status-vocabulary data migration on prod.** Dry-run
   `npx tsx scripts/migrate-status-vocabulary.ts`, confirm whether it already ran, apply with
   `--apply` if not. Founder-supervised (production data write).
-- [ ] **1.7 Counsel gates, aggregated** (detail:
-  [BETA_GO_LIVE_READINESS.md](knowledge-base/runbooks/BETA_GO_LIVE_READINESS.md) §5): BUILD-1
-  pre-license calculator deviation · PH-2 consent copy · the Reg N cite confirmations from #138 ·
-  the UAL §5 halal-lane review · **an ad-imagery / Fair Housing marketing policy — none exists**
-  (flagged by `attached_assets/lifestyle/CREDITS.md`) · ratification of
-  [MODEL_RISK_GOVERNANCE.md](knowledge-base/governance/MODEL_RISK_GOVERNANCE.md), which both READMEs
-  cite as an authority while it is still marked DRAFT. **Added 2026-08-19 (qa-sweep F-0819-04,
-  counsel Ask 2 — the half a session cannot close):** in a *brokered* transaction, is Homiquity the
-  **creditor** whose federal administering agency belongs on an adverse-action notice
-  (§1002.9(g))? The mechanical half is settled and is a §3 ticket — every notice we generate today
-  names the **CFPB**, while Reg B Appendix A item 9 assigns the **FTC** to a non-depository
-  originator — but which entity is named turns on the creditor question, so the fix is written
-  against your answer, not ahead of it.
-- [ ] **1.8 Regulatory subscriptions + Fannie Developer Portal** (~30 min): Fannie Selling Guide
-  notifications (**email is the only Fannie channel** — their page is bot-protected), Freddie Guide
-  bulletins, FHA INFO, VA lender news; register for the Developer Portal (public APIs free,
-  business-partner APIs unlock with F6). See
-  [REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md). Urgency doubled
-  2026-08-17: the automated Tier-2 watcher (`reg:watch`) has been dark since 2026-07-04 (§3.15) —
-  right now **no channel, automated or human, reports a guideline change**.
 - [ ] **1.9 Delete the dead `GEMINI_API_KEY` from local `.env`** — all AI is Anthropic; prod
   verified clean 2026-08-17 (absent from the live variable list, #526 E2). The same local `.env`
   also carries a dead `RAILWAY_API_TOKEN` and a dead `OPENAI_API_KEY` (#536 E8) — delete all three
   together.
-- [ ] **1.10 Counsel: is the referral-commission payout permitted?** Two questions, both opened by
-  the [2026-08-08 financial re-audit](knowledge-base/logs/2026-08-08-financial-architecture-reaudit-commission-payouts.md)
-  (F-21) and recorded in the regulatory ledger under `regz-1026-36d1-referral-commission-payout` on a
-  **14-day** interval so `pnpm checkup` goes loud. (a) **Reg Z §1026.36(d)(1)** — a *fixed* percentage
-  of the amount of credit extended is permitted; `POST /api/broker/commissions` takes a percentage
-  chosen **per file** by an admin, and `calculateAgentCommission` would pay 25% of a lender comp
-  figure that varies by lender and product. (b) **RESPA §8** — the partner tables were built with no
-  fee/commission columns *by design* (charter §5-C1), and `broker_commissions` is that column set on
-  the same referral edge. Today only the staff `broker` role can reach it (the `agent` role in the
-  gate does not exist), so nothing is exposed — but §3.7 schedules wiring it up. **No commission may
-  be paid on a live file until this is answered.**
-- [ ] **1.11 Set the four email-auth DNS records at Squarespace — the 2026-08-17 vendor FAIL
-  (#526 E1).** SPF TXT on the apex, DMARC TXT at `_dmarc`, and SendGrid's `s1`/`s2` DKIM CNAMEs
-  **on the apex** (the existing `s1._domainkey.www` is scoped to the wrong host and never queried).
-  Until then every password reset, verification and waitlist email leaves unauthenticated and lands
-  in spam while `/api/health` reports email fine. MX (Google Workspace) intact — inbound
-  unaffected. Recovery values: the DNS zone notes. ~20 min.
-- [ ] **1.12 Authorize a Reg Z / FCRA / CROA capture pass into `docs/reg-z/`** (compliance-watch
-  2026-08-17 ⛔5 + qa-sweep U-26; procedure in `docs/reg-z/README.md`): 12 CFR 1026.36(d)(1)-(2),
-  1026.32(b)(1), 1026.19(e)(3), FCRA 1681s-2, CROA 1679b. **Corrected 2026-08-17 evening — the
-  premise this item and `CLAUDE.md` both rest on is stale:** two qa-sweep agents independently got
-  **200** from `consumerfinance.gov/rules-policy/regulations/1026/…`, the eCFR *versioner API*, and
-  `law.cornell.edu`; only eCFR **HTML** is blocked. So this is no longer "only the founder can
-  fetch it" — it is that nothing is *captured and versioned*, so a reading is unrepeatable. The
-  founder decision is narrower and cheaper than it was: **authorize a session to capture those
-  texts into `docs/reg-z/` and amend the `CLAUDE.md` "every authoritative source is blocked"
-  clause** (it is a binding project rule, so a session may not amend it unasked). **The first of
-  five ledger entries reaches its review date TODAY (2026-08-18); the remaining four follow through
-  2026-08-23** — past this point `pnpm checkup` is reporting on stale verification, and two P1s
-  (F-076, F-079) stay held below their evidence until a Reg Z reading may be asserted.
-- [ ] **1.13 One NMLS login session, four outcomes** (compliance-watch 2026-08-17 ⛔1–4 +
-  [STATE_LADDER.md](knowledge-base/compliance-watch/STATE_LADDER.md)): (a) **does an IL-licensed
-  MLO with an approved sponsorship exist?** — if not, nobody can originate the first Illinois loan
-  and this becomes the top item in this section; (b) pull Consumer Access / MU1 / surety bond /
-  financial-statement records; (c) download the IL checklists from the NMLS Resource Center
-  (unreachable from sessions) and hand them to a session for `docs/nmls/`; (d) confirm the first
-  MCR due date (computed: Q3-2026 RMLA due **2026-11-14**; prep draft ready in
-  `knowledge-base/compliance-watch/drafts/`) and calendar it. ~1 h.
-- [ ] **1.14 Decide F-040's scope: the stored FCRA disclosure promises 120-day consent validity,
-  but `credit_consents` has no expiry column and no gate checks age.** Does 120 days bind funnel
-  soft-pull consents too, or only `/credit-consent` hard pulls? Strictest defensible reading (bind
-  everything, force re-consent past 120 d) is the default absent an answer. The mechanism (expiry
-  column + age gate, expand-only migration) is a routine engineering item once decided (PE-006).
-- [ ] **1.15 Counsel: is the borrower Loan Options page a §1026.18 disclosure?** (qa-sweep 2026-08-17
-  ⛔3, F-076.) If it is, the §1026.22(a)(2) 1/8% APR tolerance is exceeded **4–7×** and F-076
-  escalates P1 → P0. Fetching the regulation does not settle it — it is a characterization
-  question. It gates how *fast* §3.18 must move, not whether it moves, so it does not block that
-  work starting.
 
 ---
 
@@ -236,11 +96,11 @@ anything else in this file being true.
 
 - [ ] **2.2 Fix uploads end-to-end**, then run the acceptance test. The code half is done
   (memory storage, honest failure copy in #444); it is `GCS_SERVICE_ACCOUNT_KEY` +
-  `PRIVATE_OBJECT_DIR` from §1.2 that makes it real (names confirmed still unset in the 2026-08-17
+  `PRIVATE_OBJECT_DIR` from the [CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §A 1.2 that makes it real (names confirmed still unset in the 2026-08-17
   live read — #526 E2). Uploads silently vanishing is the single worst borrower-facing failure
   available to us.
 - [ ] **2.3 Run [PROD_ACCEPTANCE_TEST.md](knowledge-base/runbooks/PROD_ACCEPTANCE_TEST.md) end to
-  end** once §1.1 and §1.2 land. See §5.
+  end** once [CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §A 1.1 and 1.2 land. See §5.
 - [ ] **2.5 F-080 — the delivered package drops the co-borrower.** One `PARTY` is emitted for a
   two-borrower file while **both** employers and both incomes are emitted under it, so the package
   misstates who earns the income, under the wrong SSN — and it validates clean (`xmllint` passes,
@@ -282,7 +142,7 @@ anything else in this file being true.
   — verifying `checkPipelineProgress` actually enforces it.
 - [ ] **3.7 Optimization-engine dispositions:** wire `matchAndPriceBorrower` / `getCoachPreFillData`
   to a surface **or delete them**; fire `calculateAgentCommission` from the funded-loan transition
-  (near `graduateClosedLoan`) rather than a schedule. **Blocked on §1.10** — wiring this fires a
+  (near `graduateClosedLoan`) rather than a schedule. **Blocked on [CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §B 1.10** — wiring this fires a
   payout whose Reg Z / RESPA posture is unanswered. When it is unblocked, the wiring must write
   through `evaluateCommissionPayout` (`shared/commissionPayout.ts`) the way
   `POST /api/broker/commissions` does: this path inserts straight into `broker_commissions` and so
@@ -339,7 +199,7 @@ anything else in this file being true.
   app-guide, a spec) and the *marketing* surface already does it right — only the borrower surface
   contradicts them. Fix: route through `calculateMortgageAPR`, and pin it with a test asserting
   `loan_options.apr` came from the solver (F-090 shows the current test cannot). Severity depends
-  on §1.15.
+  on [CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §B 1.15.
 - [ ] **3.19 One loan, three different MI figures** (qa-sweep F-077 + F-087, P1). The MI the LE
   discloses and the DTI the engine decides on both come from a hardcoded card that exceeds the
   `CONVENTIONAL_PMI` matrix in **all 32 swept cells (1.42–2.17×)**;
@@ -452,11 +312,11 @@ anything else in this file being true.
   worse than an absent one: it makes the round-trip look closed. Owner: Backend Data Engineer
   (§6b); the client half is the wiring audit's.
 - [ ] **3.30 Adverse-action notices name the wrong federal agency** (qa-sweep F-0819-04, P2 —
-  mechanical half of §1.7's new counsel question). Every notice we generate names the **CFPB**;
+  mechanical half of the [CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §B 1.7 counsel question). Every notice we generate names the **CFPB**;
   Reg B Appendix A item 9 assigns the **FTC** to a non-depository originator, and the Appendix
   forecloses the supervisory-authority defence in its own words. Derive the agency from
   `shared/companyIdentity.ts` rather than hardcoding it, so the answer moves with the entity —
-  **but the entity to name is counsel's call (§1.7), so build the derivation and leave the value
+  **but the entity to name is counsel's call ([CEO queue](knowledge-base/governance/CEO_BUSINESS_QUEUE.md) §B 1.7), so build the derivation and leave the value
   configurable.** Downgraded from P1 in verification: the reasons, the creditor identity and the
   FCRA attribution are all still correct, and the misdirection is toward an agency that does take
   mortgage complaints.

@@ -62,11 +62,16 @@ doc-drift bug to fix):
 - [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, one command from greppable via `scripts/extract-selling-guide.py`; the copyrighted text is gitignored since the repo went public, the tracked `section-index.tsv` still locates any section). Verified-conforming table, the ten corrections landed 2026-08-20/22, and twenty-one recorded gaps resolved conservatively rather than assumed
 - [security/threat_model.md](compliance/security/threat_model.md)
 
+### Launch — the ranked build order to a lender demo · [`launch/`](launch/)
+- [LENDER_DEMO_TEN.md](launch/LENDER_DEMO_TEN.md) — **the ranked ten**, verified against the code at `c8bb44f` rather than against the findings register (four of the register's top open rows proved already fixed; an audit put the total at 21 mislabeled). Carries the ten-or-twenty argument, the one open P0 (`F-0820-50`, whole `users` rows incl. `passwordHash` returned to third-party partners), and the organising idea: a validator that checks *shape* cannot catch a *lie*.
+- [LENDER_DEMO_SPRINT.md](launch/LENDER_DEMO_SPRINT.md) — the 15-working-day sequence for that ten, one PR a day, each day exiting on a command whose output you can paste. Ends in an **organic** dress rehearsal, not a seeded one.
+
 ### SOP Manual — written operating procedures (DRAFT) · [`sop/`](sop/)
 - [SOP-000-manual-charter.md](sop/SOP-000-manual-charter.md) — **DRAFT, unsigned** — charter for the operations/QC manual (TPO written-QC-plan obligation, examiner readiness, numbering scheme, approval workflow). Landed 2026-08-20 from the 08-19 orphan snapshot; its template, RACI table and SOP freshness guard are planned, not yet built; its Fannie A3-3-01 wording is ⚠️ unverified pending procurement.
 
 ### Governance — policies & session rules · [`governance/`](governance/)
 - [TEAM_PRACTICES.md](governance/TEAM_PRACTICES.md) — how we work (the house-style exemplar).
+- [CEO_BUSINESS_QUEUE.md](governance/CEO_BUSINESS_QUEUE.md) — the non-engineering half of launch: lender outreach, counsel gates, NMLS, vendor paperwork, billing, DNS. Received fifteen items verbatim from `CTO_ROADMAP.md` on 2026-08-23 (founder direction: the roadmap is engineering only, maintenance rule 6). Moving them relocated the dependency; it did not remove it.
 - [AI_GOVERNANCE_POLICY.md](governance/AI_GOVERNANCE_POLICY.md) · [MODEL_RISK_GOVERNANCE.md](governance/MODEL_RISK_GOVERNANCE.md)
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
 - [CHANNEL_DECISION.md](governance/CHANNEL_DECISION.md) — **OPEN, founder-owned:** broker or
