@@ -1,0 +1,16 @@
+{
+  "$comment": "Tracked project settings. DELIBERATELY hooks-only — no permissions keys, ever: the per-machine permission layer lives in the untracked .claude/settings.local.json on each checkout, and a tracked permissions block here would shadow it for every machine at once. The SessionStart hook is the corpus-first rule (CLAUDE.md compliance block) made mechanical: it verifies/materializes the Selling Guide corpus at the start of every session and prints a loud directive when it cannot — it informs (always exit 0); ci.yml's corpus gate steps are what block.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/selling-guide-session-hook.cjs\"",
+            "timeout": 240
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -51,6 +51,7 @@ Then run `bash scripts/dev-up.sh` from the repo root and the Day-1 teach-backs.
 
 **Month 1 — what must never change, and how we build without breaking it?**
 [08 Compliance rails](08-compliance-rails.md) →
+[13 The Selling Guide as the foundation](13-selling-guide-as-the-foundation.md) →
 [09 Prompting and automation: the second codebase](09-prompting-and-automation.md) →
 [11 Patterns and repetition](11-patterns-and-repetition.md) →
 [12 The loop-safe build playbook](12-loop-safe-build-playbook.md) and its

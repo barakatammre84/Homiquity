@@ -31,19 +31,26 @@ mismo-*.xml
 # deploy target. It is not; Railway is.
 .vercel
 
-# Fannie Mae Selling Guide — the source PDF and its full text extraction.
+# Fannie Mae Selling Guide — the source PDF and every artifact carrying its text
+# (the page-marked stream and the per-section files under extracted/).
 #
 # This repository is PUBLIC. The Guide is Fannie Mae's copyrighted work, and a
 # complete text extraction is the same content in another format, not a lesser
 # form of it — committing either would be redistribution. Regenerate locally with
-# `python3 scripts/extract-selling-guide.py`; that script explains where it looks.
+# `python3 scripts/extract-selling-guide.py` (it can recover the PDF from this
+# repo's own git history, so a fresh clone needs no setup and no network).
 #
-# Tracked instead: section-index.tsv and revised-sections.tsv (titles and page
-# numbers — factual metadata), plus our own analysis in
-# knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
+# Tracked instead — the FACT layer, which carries no Guide prose: README.md,
+# INDEX.md, section-index.tsv, revised-sections.tsv, toc.json, manifest.json,
+# plus our own analysis in knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
 docs/fannie-mae/selling-guide/*.pdf
 docs/fannie-mae/selling-guide/selling-guide-text.txt
 docs/fannie-mae/selling-guide/highlights.json
+docs/fannie-mae/selling-guide/extracted/
+# Content fetched from the Guide’s own links by the steward/watch — third-party
+# documents captured for local reference; hashes and reachability are the tracked
+# facts (data/regulatory/selling-guide-watch-state.json), the bytes never are.
+docs/fannie-mae/selling-guide/linked/
 # Transpiled scratch copies of the vitest configs, written by
 # scripts/test-collection-guard.cjs so it can read each lane's real `include`
 # list instead of restating it. Written to the repo root because that is where

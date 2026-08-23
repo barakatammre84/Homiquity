@@ -1,0 +1,4 @@
+{
+  "$comment": "Durable queue of Selling Guide edition/amendment/link signals emitted by scripts/selling-guide-watch.cjs. Append-only: a row is never deleted, only moved new -> promoted | dismissed by a human (or a triage tool), so a dismissal stays on the record. An edition-changed signal NEVER auto-cutovers the corpus: the cutover runbook is docs/fannie-mae/selling-guide/README.md 'When the next edition lands', and it is a founder decision.",
+  "signals": []
+}
