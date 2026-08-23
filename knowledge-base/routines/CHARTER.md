@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane). **§2 and §3/§3a were also re-verified 2026-08-20 by `/doc-accuracy`** (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe). **§3a, §6 and §6's always-off-limits list amended 2026-08-23 to register the Selling Guide Steward** (daily 05:30 UTC, CCR; the Guide fact layer and its watch state get their single writer — founder-approved plan of the same day; the CCR trigger is registered in the session that sees the corpus PR merge, per §11).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane). **§2 and §3/§3a were also re-verified 2026-08-20 by `/doc-accuracy`** (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe). **§3a, §6 and §6's always-off-limits list amended 2026-08-23 to register the Selling Guide Steward** (daily 05:30 UTC, CCR; the Guide fact layer and its watch state get their single writer — founder-approved plan of the same day; the CCR trigger is registered in the session that sees the corpus PR merge, per §11). **§3's Doc Accuracy row and §3a's "moved off this table" note amended 2026-08-23 by a founder-directed routing session** (`list_triggers` read live: the un-deleted 6-hourly CCR fossil found and deleted; a Selling-Guide-Steward-shaped CCR replacement created **disabled** at `30 22 * * *`, pending the paired founder action that retires the local `doc-accuracy-daily` task — §3a).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -194,7 +194,7 @@ walk seat was reshaped again — see the Handoff Corpus Steward note below the t
 | 13:40 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | one staff desk walked as the seat **and** its counterpart, own port 5003, torn down after |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
 | 17:06 | `5 17 * * *` | **Handoff Corpus Steward** (`client-journey-walk`) | daily | no — `knowledge-base/handoff/**` docs only | corpus refresh PR + drift/aging report — definition `.claude/skills/handoff-refresh/SKILL.md`; seat reshaped 2026-08-23, **scheduler-prompt repoint pending** (replacement prompt in that file) |
-| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | one docs PR per tick at most + [`DA-…` ledger](../doc-accuracy/LEDGER.md); a read-only consistency check of `knowledge-base/handoff/` every tick (the 17:06 seat is its only writer) and the corpus's fresh-hire teach-back every 14th tick, reported to that seat |
+| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | one docs PR per tick at most + [`DA-…` ledger](../doc-accuracy/LEDGER.md); a read-only consistency check of `knowledge-base/handoff/` every tick (the 17:06 seat is its only writer) and the corpus's fresh-hire teach-back every 14th tick, reported to that seat. ⛔ *A CCR replacement is staged **disabled** pending one founder action — §3a* |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
 | Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | organic-file delivery verdict + one field's write path cleared |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state compliance ladder + signature-ready drafts |
@@ -338,15 +338,20 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 | 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
 | hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
 
-**Moved off this table, kept as a record:** Doc Accuracy ran here as `40 3,9,15,21 * * *` (every
-6 h, UTC) from 2026-08-18 until the founder re-seated it on the local clock as `doc-accuracy-daily`,
-daily 19:30 (§3, 2026-08-20). Its skill (`.claude/skills/doc-accuracy/SKILL.md`) has been on
-`origin/main` since 2026-08-18, so the "cites a skill not on `main`" caveat that once applied to
-three CCR rows now applies to none of the rows above. ⛔ *Unverified 2026-08-23: whether the old
-CCR trigger was deleted — read `list_triggers` and, if it still exists, delete it (§11): two stewards
-over one corpus is the two-truths hazard the retired row below records.* **Two of the rows above
-write code** (the others are report-, issue- or PR-lane only), so §6's territory rows and §5's claim
-register do real work here rather than being formalities.
+**Moved off this table, kept as a record — and a move now staged back.** Doc Accuracy ran here as
+`40 3,9,15,21 * * *` (every 6 h, UTC) from 2026-08-18 until the founder re-seated it on the local
+clock as `doc-accuracy-daily`, daily 19:30 (§3, 2026-08-20). Its skill
+(`.claude/skills/doc-accuracy/SKILL.md`) has been on `origin/main` since 2026-08-18, so the "cites a
+skill not on `main`" caveat that once applied to three CCR rows now applies to none of the rows
+above. ✅ *Resolved 2026-08-23 (founder-directed session, `list_triggers` read live): the old CCR
+trigger **had** survived the move — `trig_01AuiWjui3tz3ApbNKV5vxBU`, `40 3,9,15,21 * * *`, disabled,
+never deleted — and **it was deleted in that session**. Two stewards over one corpus is the
+two-truths hazard the retired row below records; that fossil is now gone rather than merely inert.*
+⛔ *Still open, same live read: the retired weekly doc-hygiene sweep described below
+(`trig_011uNfD7y5GgBhjzm1RXgkVr`, `0 14 * * 1`) also still exists, disabled — its deletion was
+declined in that session, so it stays a founder call.* **Two of the rows above write code** (the
+others are report-, issue- or PR-lane only), so §6's territory rows and §5's claim register do real
+work here rather than being formalities.
 
 A retired row, kept as a deliberate record: a **weekly doc & memory hygiene sweep** (Mon 14:00,
 created 18:11Z) was disabled the same evening on discovering it duplicated Doc Accuracy, which had
@@ -363,6 +368,31 @@ tick. Since 2026-08-23 every tick also runs a **read-only** consistency check of
 the 17:06 Handoff Corpus Steward) and every fourteenth tick re-runs the corpus's fresh-hire
 teach-back, reporting misses to that seat. Its report lands in `reports/` like every routine's (§7 counts it; §9 format
 binds it) and its proposed tickets go to Evening Triage like everyone's (§4).
+
+⛔ **A move back to this fleet is staged, disabled, and waiting on one founder action** (2026-08-23,
+founder-directed session, on the Selling Guide Steward's pattern). Two things argue for it. The local
+seat sits on the fleet a cloud session cannot read or audit — §0's own rule is *"a definition only one
+machine can see is one nobody can audit"* — and it fires only while the laptop app is open (§3). And
+its laptop prompt **had already drifted**: the prompt that launched the 2026-08-23 session still
+routed the run to a `## Modes` amendment on branch `docs/doc-accuracy-daily-steward`, which had
+merged to `origin/main` days earlier (#700) and whose branch is now ~23,000 lines behind — a stale
+instruction on the one fleet no peer session can inspect. So the replacement trigger was written the
+way the Selling Guide Steward's is: a thin pointer to the skill, the no-op proof (*if
+`.claude/skills/doc-accuracy/SKILL.md` is absent on `origin/main`, STOP*), the rails restated, and
+**no restated cadence or branch fact that can drift**. It is
+`trig_01HNfBQUXKmkLb9kmCfQEBG2`, **`30 22 * * *` UTC (= 19:30 local at UTC−3), created DISABLED**,
+and it is deliberately **not** in the table above: a disabled trigger does not fire, and a
+registered-looking non-routine is §0's founding failure wearing the other face.
+
+**To complete the move — both halves in one session, per §11:** delete the local `doc-accuracy-daily`
+scheduled task on the laptop, enable `trig_01HNfBQUXKmkLb9kmCfQEBG2`, and move its row into the table
+above. Until both happen, **the live seat is the local one** and this trigger is inert. ⚠️ Two things
+to check at that moment: the **UTC offset** (this section's header warns the offset moves — confirm
+local is still UTC−3, or the seat drifts out of its §4 chain position between the 17:06 Handoff
+Corpus Steward and 21:00 Evening Triage), and that the trigger fires sessions **without connector
+(`mcp__*`) tools** — the creating session held none to pass through, so if a tick needs the GitHub
+MCP server to open its PR, recreate it from a session that holds that connector or add it from the
+claude.ai routines UI.
 
 ---
 
