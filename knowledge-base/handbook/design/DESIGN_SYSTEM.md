@@ -1,9 +1,16 @@
 # Design System — Homiquity
 
 **Status:** binding on every client surface. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 at `56cf00a`.
+**Last verified against the code:** 2026-08-22 at `074899e3`.
 
-> **Freshness:** last verified 2026-08-18 · review every 30 days
+> **Freshness:** last verified 2026-08-22 · review every 30 days
+>
+> ⚠️ The previous stamp read *2026-08-18 at `56cf00a`* — **two days before the palette
+> rebuild landed** (`3cba2dae`, 2026-08-20). §1 described a system the code had already
+> replaced, and the name "Royal Blue Emerald" propagated from here into CLAUDE.md, three
+> auto-loading skill/agent files, and the token guard's own header. That is the failure
+> mode this stamp exists to catch: **a doc can be "fresh" and wrong if the freshness date
+> predates the change.** Re-verify §1 against `client/src/index.css` on any palette commit.
 
 > **Code wins.** Tokens live in [`client/src/index.css`](../../../client/src/index.css) and
 > [`tailwind.config.ts`](../../../tailwind.config.ts); primitives live in
@@ -73,18 +80,44 @@ commit the result in the same PR; never edit the block by hand. Adding a row mea
 
 ---
 
-## 1. Design approach — "Royal Blue Emerald"
+## 1. Design approach — "Mint & Flare"
 
-*Royal-blue repaint 2026-07-08 of "Charcoal Emerald" (which superseded "Obsidian Indigo" on
-2026-07-06).* Better.com-style conversion clarity: stark-white surfaces, neutral slate
-structure, near-black slate typography, **royal-blue dark surfaces** (sidebar, hero gradients),
-and **emerald reserved for forward-moving conversion actions** ("green means Go") — radical
-transparency, frictionless onboarding, high-velocity conversion.
+*Rebuilt 2026-08-20 (`3cba2dae`) on **Monzo's structure**, superseding "Royal Blue Emerald"
+(2026-07-08) → "Charcoal Emerald" → "Obsidian Indigo" (2026-07-06).* Monzo's whole live site
+measures as white + one near-black + **one** tint; the restraint is the craft, not the specific
+hues. So Homiquity took the structural decisions and **deliberately not the values** — the
+near-black is tinted with Homiquity's own emerald rather than Monzo's navy, because an
+indistinguishable palette from a bank in the same sector is trade-dress risk, not homage.
 
-**Dark-surface ramp** (`precision.950/900/700` — hero gradients only): `950 #0A1E52` deep royal
-navy · `900 #1B3B9E` royal blue · `700 #2456D6` vivid royal blue. **Neutral light ramp**
-(`precision.500→50`): `500 #64748B` Muted Slate (micro-copy) · `300 #94A3B8` · `100 #E2E8F0`
-(hairlines) · `50 #F8FAFC` (data-section separation).
+🚨 **There is no royal blue in this system, and the neutral ramp is no longer the slate family.**
+Every neutral now carries the brand hue. Audit notes, screenshots or docs describing stark-white
+surfaces over a slate structure with royal-blue dark surfaces describe the *previous* system.
+
+White ground · **green-black dark surfaces** (sidebar, footer, hero gradients) · **one mint
+tint** · **emerald reserved for forward-moving conversion actions** ("green means Go") · **one
+orange `--flare`** as the single warm accent.
+
+**Dark-surface ramp** (`precision.950/900/700` — hero gradients only): `950 #0B1E19` green-black,
+hero anchor · `900 #112823` green-black mid · `700 #17302A` deep emerald-slate, hero end. *White
+on 950 measures 17.30:1; on 700, 14.07:1.* **Neutral light ramp** (`precision.500→50`):
+`500 #5A726C` muted green-grey, micro-copy (5.17:1 on white) · `300 #93A5A0` hover/disabled
+borders · `100 #E2E9E7` hairlines · `50 #F1F8F5` the single pale tint.
+
+**The warm accent — `--flare` #DD610E (hue 24deg), and it is a FILL colour, never text.** It does
+the job Monzo's coral does (one jolt of warmth against a cold near-black, used sparingly) at a
+plainly different hue. Its usage is constrained by contrast, not taste:
+
+| | Pair | Ratio |
+|---|---|---|
+| ✅ ALLOWED | fills, borders, illustration, focus rings — any ground | — |
+| ✅ ALLOWED | flare as text **on the dark surface** | 4.77:1 |
+| ✅ ALLOWED | `--flare-foreground` text on a flare fill | 4.77:1 |
+| ❌ FORBIDDEN | flare as text on white | 3.63:1 |
+| ❌ FORBIDDEN | white text on a flare fill | 3.63:1 |
+
+When orange must actually be **read**, use **`--flare-ink` #A54709** (5.99:1 on white, 5.56:1 on
+mint). Logos are exempt from WCAG 1.4.3, so the wordmark may carry bright `--flare` on white —
+that exemption covers the mark only, never body copy, labels or numbers.
 
 **Core principles**
 
