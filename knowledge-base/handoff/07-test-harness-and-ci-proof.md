@@ -78,7 +78,7 @@ flowchart TD
 - **The client lane.** `vitest.client.config.ts:37` `include: ["client/src/**/*.test.{ts,tsx}"]`
   ("a GLOB on purpose", `:11-13`); `:18` `environment: "happy-dom"`; the `@assets` alias (`:47`)
   exists because without it a component test "reports '0 tests' rather than a failure" (`:44-46`).
-  `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l` → `122`.
+  `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l` → `123`.
 - **The integration lane.** `vitest.integration.config.ts:15-34` — 18 files
   (`grep -cE '^\s*"tests/'` → `18`); `tests/setup.ts:1` `BASE_URL = TEST_BASE_URL || "http://localhost:5000"`;
   tighter timeouts than the unit lane (15 s / 30 s, `:13-14`). Every request sends
@@ -191,11 +191,11 @@ flowchart TD
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
 # → 12d7cbec @ 12d7cbec
 grep -cE '^\s*"tests/' vitest.config.ts ; grep -cE '^\s*"tests/' vitest.integration.config.ts ; git ls-files 'tests/*.test.ts' | wc -l
-# → 219 / 18 / 238 @ 12d7cbec
+# → 219 / 18 / 238 @ 23b256a5
 comm -23 <(git ls-files 'tests/*.test.ts'|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts|tr -d '"'|sort -u)
 # → tests/maintenanceMode.test.ts   (configured nowhere) @ 12d7cbec
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
-# → 122 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 12d7cbec
+# → 123 / 37:  include: ["client/src/**/*.test.{ts,tsx}"], @ 23b256a5
 grep -c '^step ' .githooks/pre-push ; grep -c PREPUSH_TESTS .githooks/pre-push
 # → 9 / 4   (the hook stopped running the unit lanes by default — #660) @ 12d7cbec
 grep -lE 'readFileSync\(' tests/*.test.ts | wc -l ; grep -c '^describe(' tests/complianceInvariants.test.ts
