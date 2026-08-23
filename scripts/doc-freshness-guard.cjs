@@ -48,6 +48,14 @@ const REQUIRED = [
   // Added 2026-08-18 with the doc. It makes present-tense claims that money gets spent on —
   // comp ranges, hire order, which roles are deferred, which founder decisions are still open.
   "governance/HIRING_PLAN.md",
+  // Added 2026-08-23. The handoff corpus shipped (#692/#696) with a freshness line on all 28
+  // of its files and NOTHING enforcing any of them — the README's own rule 1 says "every
+  // file carries" the line, and this guard had never heard of the directory. FACTS.md is the
+  // one that bites: its 44 rows are command-derived numbers re-stamped against `main`, on a
+  // 14-day interval, and `--check` was already red on 6377727e (F-13, F-31, F-36 moved). The
+  // README (60 days) is the corpus's front door and names the refresh loop.
+  "handoff/README.md",
+  "handoff/FACTS.md",
 ];
 
 const LINE = /\*\*Freshness:\*\*\s*last verified\s*(\d{4}-\d{2}-\d{2})\s*·\s*review every\s*(\d+)\s*days/;
