@@ -18,6 +18,8 @@ import type {
   BorrowerDeclarations,
 } from "@shared/schema";
 import { isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { isExcludedAsPaidByOtherParty } from "@shared/liabilityExclusions";
+import { liabilityKind, type LiabilityKind } from "@shared/liabilityTypes";
 import { COMPANY_CONFIG } from "./config/company";
 import { mersOrgIdApplicable } from "@shared/businessChannel";
 import {
@@ -237,22 +239,29 @@ function mapAssetType(type: string | null | undefined): AssetType {
   return mapping[type?.toLowerCase() || ""] || "Other";
 }
 
+/**
+ * LiabilityTypeEnumerated (MISMO_3_0.xsd line 9773) from the stored type.
+ * Classifies through the shared `liabilityKind`, so the URLA picker's own
+ * labels ("Revolving (Credit Card)", "Student Loan") reach a real enum instead
+ * of falling to the default — and the default is now a value the schema
+ * enumerates. F-020: "Mortgage", "Other", "ChildSupport" and "Alimony" were
+ * emitted verbatim and none of them exist in the schema; alimony and child
+ * support are EXPENSE items in MISMO and travel as OtherLiability until an
+ * EXPENSE container is built (the remaining half of F-020).
+ */
 function mapLiabilityType(type: string | null | undefined): LiabilityType {
-  const mapping: Record<string, LiabilityType> = {
-    credit_card: "Revolving",
+  const byKind: Record<LiabilityKind, LiabilityType> = {
     revolving: "Revolving",
-    auto_loan: "Installment",
-    car_loan: "Installment",
-    student_loan: "Installment",
-    mortgage: "Mortgage",
-    home_equity: "Mortgage",
-    personal_loan: "Installment",
     installment: "Installment",
-    child_support: "ChildSupport",
-    alimony: "Alimony",
-    other: "Other",
+    student_loan: "Installment",
+    mortgage: "MortgageLoan",
+    heloc: "HELOC",
+    lease: "LeasePayments",
+    alimony: "OtherLiability",
+    child_support: "OtherLiability",
+    other: "OtherLiability",
   };
-  return mapping[type?.toLowerCase() || ""] || "Other";
+  return byKind[liabilityKind(type)];
 }
 
 interface XMLNode {
@@ -1107,6 +1116,18 @@ function buildLiabilitiesNode(dto: MISMOLoanDTO): XMLNode | null {
     const liabilityDetail: XMLNode[] = [];
     if (liability.accountNumber) {
       liabilityDetail.push({ tag: "LiabilityAccountIdentifier", text: liability.accountNumber });
+    }
+    // B3-6-05, Debts Paid by Others: a payment the qualifying ratio leaves out
+    // is declared to the lender as excluded, so the package and the decision
+    // tell one story. MISMO_3_0.xsd (docs/fannie-mae/schemas/uldd-phase5-
+    // extension, line 9748): "Indicates whether the liability is to be
+    // excluded from inclusion in calculations associated with processing the
+    // loan." Emitted only when true — absent means included, the default —
+    // and in the container's alphabetical position (after AccountIdentifier,
+    // before MonthlyPaymentAmount) as the schema sequence requires. The
+    // 12-month payment history rides the file as its own condition.
+    if (isExcludedAsPaidByOtherParty(liability)) {
+      liabilityDetail.push({ tag: "LiabilityExclusionIndicator", text: "true" });
     }
     if (liability.monthlyPayment) {
       liabilityDetail.push({ 
