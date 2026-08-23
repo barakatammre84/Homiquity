@@ -1,6 +1,6 @@
 # 11 — Patterns and repetition
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
+> **Freshness:** last verified 2026-08-23 · review every 30 days
 > **Verified against** `origin/main` @ 12d7cbec. This chapter is analysis, not doctrine: the
 > patterns are what the code and the prompt corpus *actually do*, each with the command that
 > counted it. Where a pattern contradicts a written rule, the LEDGER row is cited — the rule's
@@ -123,7 +123,7 @@ rule.** Any `for`/`map` that awaits a query inside is a defect.
 
 **What.** Seven guard baselines in `scripts/*baseline*.json`; a count may go down, never up; two
 guards rewrite the baseline on a shrink so an improvement cannot erode. **Evidence.** FACTS F-36
-(14 guards, 7 baselines); `scripts/bundle-size-guard.cjs:61-67`; `scripts/design-token-guard.cjs:116-119`;
+(15 guards, 7 baselines); `scripts/bundle-size-guard.cjs:61-67`; `scripts/design-token-guard.cjs:116-119`;
 `scripts/citation-guard.cjs:21-38` (why a ratchet and not a zero). **Loop rule.** Never raise a
 baseline to go green; stage a tightened baseline explicitly and say so. **Exceptions.** A ratchet
 sees only literal strings (`scripts/ui-standard-guard.cjs:27-29`) — every count is a floor.
@@ -132,7 +132,7 @@ sees only literal strings (`scripts/ui-standard-guard.cjs:27-29`) — every coun
 
 **What.** When the invariant is "file X never imports Y" or "every denial route calls Z", the test
 reads the source as text. **Evidence.** `grep -lE 'readFileSync\(' tests/*.test.ts | wc -l` → 63 of
-237 (27%); `tests/complianceInvariants.test.ts:34-53`. **Loop rule.** A rule-shaped requirement gets
+239 (26%); `tests/complianceInvariants.test.ts:34-53`. **Loop rule.** A rule-shaped requirement gets
 a source-text test, appended to the allowlist at the end. **Exceptions.** Grep-only tests pass on
 wrong logic and break on renames (L2 F-014) — they are a floor, like the ratchets.
 
@@ -205,11 +205,11 @@ for the loop rails in chapter 12, and most already are.
 | Worktree `node_modules` resolve upward; the primary checkout is a peer's branch. | `routines/reports/2026-08-20-primary-engineer.md:203-204`; `refactor-radar:21` | R0. |
 | `preview_start {name}` boots the primary checkout. | the journey-walk ledger | R0: `PORT=5002 pnpm dev` in the worktree, `lsof` to prove it. |
 | `git stash` is repo-wide across worktrees; `git reset --hard` throws away a peer's work. | the deny-list categories; `reports/2026-08-20-wiring-audit.md:203-209` | R9, R12. |
-| A baseline race between concurrent PRs; a guard writing its baseline mid-run. | `ci.yml:303-301`; `design-token-guard.cjs:116-119` | R5. |
+| A baseline race between concurrent PRs; a guard writing its baseline mid-run. | `ci.yml:312-310`; `design-token-guard.cjs:116-119` | R5. |
 | `git push \| tail` reports success on failure; `\| tail -n` eats a failure list. | `TEAM_PRACTICES.md:142-151`; `LESSONS.md:42` | R9, R13: no pipes on push, full logs to a file. |
 | A red scanning guard on a loaded machine is a timeout until you check its duration. | `LESSONS.md:41`; `vitest.config.ts:8-19` | R5's last bullet. |
 | `ListAgents` as evidence of solitude. | `LESSONS.md:27`; `doc-accuracy/SKILL.md:148-151` | T-1 reads open PRs first, the board second, agents last. |
-| Memory claims that are not repo facts ("collection guard gated" — still #670, still open; "skills hot-reload"). | LEDGER HO-0822-09/21 | "Unmerged memory is not memory": the loop trusts `origin/main`, then the board, then memory. **The instructive case is the one that resolved:** the `PREPUSH_TESTS=1` claim (HO-0822-08) was false when written and became true on 2026-08-22 when #660 merged. A memory that describes an intention is not wrong forever — it is unverifiable, which is worse, because re-reading it never tells you which state you are in. Check the repo, not the recollection. |
+| Memory claims that are not repo facts ("skills hot-reload"). The collection-guard example **stopped being one on 2026-08-23** — #670 merged (`fd4a22c5`), so the memory line that ran ahead of the repo is now simply true; the lesson is that it was written before it was true, not that it was wrong forever. | LEDGER HO-0822-09/21 | "Unmerged memory is not memory": the loop trusts `origin/main`, then the board, then memory. **The instructive case is the one that resolved:** the `PREPUSH_TESTS=1` claim (HO-0822-08) was false when written and became true on 2026-08-22 when #660 merged. A memory that describes an intention is not wrong forever — it is unverifiable, which is worse, because re-reading it never tells you which state you are in. Check the repo, not the recollection. |
 
 ## C. The repetitive work, from the history
 

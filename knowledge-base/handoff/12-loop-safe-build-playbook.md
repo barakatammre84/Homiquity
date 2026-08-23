@@ -1,6 +1,6 @@
 # 12 — The loop-safe build playbook
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
+> **Freshness:** last verified 2026-08-23 · review every 30 days
 > **Verified against** `origin/main` @ 12d7cbec. The rails this chapter summarises live in
 > [prompts/_RAILS.md](prompts/_RAILS.md) (read, not copied — edit them there); the report shape
 > in [prompts/_REPORT_FORMAT.md](prompts/_REPORT_FORMAT.md); the eight fill-in templates and the
@@ -11,10 +11,12 @@
 > **Dated status box (re-verify on every refresh):** `main` requires no status checks;
 > `migrate-prod` and `verify-deploy` were re-armed on 2026-08-22 (`76c96751`, #669), but
 > `verify-deploy` is `continue-on-error: true` and nothing requires it, so its red blocks nothing;
-> the test-collection guard is **still an open PR** (#670), so T1 keeps its manual count check; the
-> pre-push hook no longer runs the unit lanes unless you set `PREPUSH_TESTS=1` (`e49aab6d`, #660),
-> which makes T1 a step you must run deliberately; one node test file is still stranded
-> (`tests/maintenanceMode.test.ts`).
+> the test-collection guard **merged 2026-08-23** (`fd4a22c5`, #670), so **T1's manual count check
+> is retired** — `pnpm test` now fails by itself when a lane collects fewer files than exist, or when
+> any test file matches no lane's `include`; the pre-push hook still does not run the unit lanes
+> unless you set `PREPUSH_TESTS=1` (`e49aab6d`, #660), so T1 is a step you run deliberately *or*
+> read off CI; no node test file is stranded any more, and the zero is enforced rather than
+> observed.
 > **T5 stays a human step** — a machine-checked deploy that cannot fail a merge is not a gate
 > (FACTS F-13, F-39, F-43, F-44).
 
@@ -42,7 +44,7 @@ cannot produce any of those four is most of the way to safe.
 | **T2 `pnpm preflight --fast`** | needs ≥ 1 commit on the branch, else the §9 stage reports SKIPPED | T0 + T1 + `pnpm audit --prod --audit-level=high` + the §9 security-review guard **exactly as CI computes it** (merge-base diff) | build, boot and the integration lane — reported SKIPPED, which is neither a pass nor a fail | **142 s** wall on the second run (`tsc` 5 s warm, unit lanes ≈ 2 min); 13 stages `ok`, 4 `SKIPPED — --fast`; its closing block lists what it cannot see even when green | before every push |
 | **T3 `pnpm preflight`** | `bash scripts/local-db.sh up` first if no Postgres answers (needs `pg_ctl` or Docker; neither was present on the measuring machine) | + `pnpm build` + `guard:bundle` + a production-mode boot on 3999 answering `/api/health` + the 18-file integration lane on 4000 | production data shape; anything outside the 18 files; `/api/health` is `SELECT 1`; `guard:bundle` rewrites its baseline on a shrink | **204 s** wall with the database stages skipped: 16 stages `ok` including `production build` and `client bundle ratchet`; `self-host boot` and `integration lane` reported `SKIPPED — no database — run: bash scripts/local-db.sh up` (this laptop has neither `pg_ctl` nor Docker); tree clean afterwards | before opening the PR; after every rebase |
 | **T4 browser** | `PORT=5002 pnpm dev` **inside the worktree** (prove it: `lsof -a -p <pid> -d cwd`); `node scripts/browser-probe.cjs --url http://localhost:5002/<route> --width 320` (and 768, 1280); the `journey-walker-*` / `workflow-verifier` agents, findings only | real render at three widths, end-to-end wiring | contrast and full a11y; anything `browser-probe.cjs` does not check; agents are snapshotted at session start | not measured (needs the database for a server) | UI or workflow changes; evidence = pasted probe output |
-| **T5 post-merge** | `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` must equal the merge SHA. `verify-deploy` now polls this for you on every push (`ci.yml:647`) — but it is `continue-on-error` and unrequired, so read its result rather than assuming a green workflow means it passed. A migration rides along automatically again (`migrate-prod`, `:574`); confirm `applied N migration(s)` in that job's log | prod runs the merge; the migration landed | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong database for 35 minutes; 200 is not the right database | — | never by the loop — it writes these commands into the PR body |
+| **T5 post-merge** | `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` must equal the merge SHA. `verify-deploy` now polls this for you on every push (`ci.yml:656`) — but it is `continue-on-error` and unrequired, so read its result rather than assuming a green workflow means it passed. A migration rides along automatically again (`migrate-prod`, `:574`); confirm `applied N migration(s)` in that job's log | prod runs the merge; the migration landed | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong database for 35 minutes; 200 is not the right database | — | never by the loop — it writes these commands into the PR body |
 
 The same table without the measurements is R14 in `prompts/_RAILS.md` — the loop reads only that
 file, so the copy is deliberate and the rails file is the one to edit.
@@ -53,7 +55,7 @@ is not a tier.**
 
 What each blind spot costs, from the record: a stranded test (`vitest.config.ts:140-141`, and one
 right now); a collection that dropped 36 of 118 files with no signal (the open collection-guard
-PR); a guard that could not run and whose silence read as CLEAN (`ci.yml:441-440`); nine
+PR); a guard that could not run and whose silence read as CLEAN (`ci.yml:450-449`); nine
 consecutive failed deploys behind a green check (`CICD.md:221-226`); a 35-minute auth outage from
 a migration the paused applier never ran — during which `verify-deploy`, had it been on, would have
 been **green throughout**, because it compares commits and can never see a schema mismatch. Every
@@ -172,7 +174,7 @@ destructive-operation categories were passed as disallowed tools. 83 turns, 22.5
 lines below are copied from its logs and its LOOP REPORT; the PR number lives only in the
 ledger's run log. **The counts in this table are the run's, not today's** — it executed at
 `074899e3`, when the allowlist held 218 entries and 120 client tests were tracked; four commits
-have landed since (219 / 123). Do not read them as current facts; read them as what the harness
+have landed since (221 / 123). Do not read them as current facts; read them as what the harness
 printed on the day, which is the point of recording a run at all.
 
 | step | what happened | copied from the logs |
@@ -229,19 +231,20 @@ is where the third one **stops**:
    U+00B7 separators; `strict: true`). A founder click; highest value. ⛔
 2. ~~**Land the re-arm of `migrate-prod` and `verify-deploy`**~~ — **DONE** 2026-08-22, `76c96751`
    (#669). LEDGER HO-0822-14 closed. **The successor ticket is smaller and still open:** nothing
-   makes `verify-deploy`'s red matter. It is `continue-on-error: true` on purpose (`ci.yml:663` —
+   makes `verify-deploy`'s red matter. It is `continue-on-error: true` on purpose (`ci.yml:672` —
    it and Railway's "Wait for CI" deadlock otherwise), so the only way its finding becomes a block
    is ticket 1. Until then T5 stays a human read. ⛔
-3. **Land the test-collection guard** (#670, still open at 12d7cbec — the script it adds under
-   scripts/ does not exist on `main`, so it carries no backticks here, and `package.json:15` is
-   still the bare two-lane chain) — removes T1's manual count check. It now needs a rebase first: #660 landed on 2026-08-22 and rewrote the same hook
-   block into a `PREPUSH_TESTS` conditional (HO-0822-U6).
+3. ~~**Land the test-collection guard**~~ — **DONE 2026-08-23**, `fd4a22c5` (#670).
+   `scripts/test-collection-guard.cjs` is `package.json:15`; T1's manual count check is retired.
+   It did need the rebase this ticket predicted (HO-0822-U6): #660 had rewritten the same hook block
+   into a `PREPUSH_TESTS` conditional, which #670 adopted verbatim rather than reverting.
 4. **Run the integration lane in the CI gate.** The `postgres:16` service already exists for the
    boot probe (`ci.yml:172-181`); boot `dist/index.js` in dev mode on 4000 with
    `RATE_LIMIT_RELAXED=true` and run `pnpm test:integration` (+2–3 min). Owner `hq-ci-guards-owner`.
    Resolves HO-0822-U2.
-5. **A stranded-test guard**: fail when `git ls-files 'tests/*.test.ts'` minus both include lists
-   is non-empty (today: `tests/maintenanceMode.test.ts`, HO-0822-23) — and append that file.
+5. ~~**A stranded-test guard**~~ — **DONE 2026-08-23**, `fd4a22c5` (#670). The orphan floor in
+   `scripts/test-collection-guard.cjs` fails when `git ls-files` minus every lane's include is
+   non-empty; `tests/maintenanceMode.test.ts` was appended in the same PR (HO-0822-23 closed).
 6. **A seventh ledger check**: duplicate `when` in `migrations/meta/_journal.json` (HO-0822-24) —
    the one mistake that makes `migrate-prod` skip a migration silently.
 7. **Shared test helpers** — a `loginAs` and an HTTP helper under a new tests/helpers/ directory

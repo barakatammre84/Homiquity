@@ -132,7 +132,7 @@ flowchart TD
   `# | Area | Owner agent | Review domain | Last reviewed | Also writes here`; `:17` "rather than
   being restated 41 times — so there is nothing to drift"; `:741` "An owner refusing to edit is the
   control working, not an obstacle"; 23 of 41 areas have never been reviewed (`:753`).
-- **Four Markdown linters.** `package.json:36,40,41,42`: `guard:docs` (`scripts/doc-freshness-guard.cjs`
+- **Four Markdown linters.** `package.json:37,40,41,42`: `guard:docs` (`scripts/doc-freshness-guard.cjs`
   — the `REQUIRED` list of 8 docs must carry `> **Freshness:** last verified … · review every N days`
   and be inside the interval; weekly in `.github/workflows/doc-freshness.yml:26`, deliberately
   outside the gate: "it would go red on the day ASSUMPTIONS.md hits day 31 and block EVERY merge",
