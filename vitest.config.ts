@@ -303,6 +303,18 @@ export default defineConfig({
       "tests/homiFileTruth.test.ts",
       "tests/homiReadinessDerivation.test.ts",
       "tests/assistantIdentity.test.ts",
+      // The INTAKE_PAUSED kill switch. Landed in 5d2af554 and was in NEITHER
+      // config from that day to 2026-08-22 — the ops control that stops all new
+      // business had 5 assertions that had never once run. Found by
+      // scripts/test-collection-guard.cjs, whose orphan floor is now zero and
+      // keeps it that way. Pure unit test: no HTTP, no DB.
+      "tests/maintenanceMode.test.ts",
+      // The collected-count floor itself. `pnpm test` ran 111 of 118 client files
+      // and exited 0, three times under load — so the gate must now prove it ran
+      // everything on disk. This pins the guard's own logic against the real
+      // shortfall, and independently re-asserts the zero-orphan floor so it
+      // survives someone unwiring the guard from `pnpm test`.
+      "tests/testCollectionGuard.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

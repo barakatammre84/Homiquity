@@ -10,6 +10,7 @@ import { friendlyApiError } from "@/lib/errorMessage";
 import { SEOHead } from "@/components/SEOHead";
 import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 import { Handshake, CheckCircle2, ArrowRight } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * Pre-launch partner / center-of-influence waitlist.
@@ -94,7 +95,7 @@ export default function PartnerWaitlist() {
 
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
         <Link href="/">
-          <span className="text-2xl font-bold tracking-tight text-flare">homiquity</span>
+          <Logo size="lg" tone="brand" data-testid="logo-partner-waitlist" />
         </Link>
         <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
           <Link href="/login">Sign in</Link>

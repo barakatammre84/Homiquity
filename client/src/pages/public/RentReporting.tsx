@@ -9,6 +9,7 @@ import { friendlyApiError } from "@/lib/errorMessage";
 import { SEOHead } from "@/components/SEOHead";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Home, CheckCircle2, Info, Building2, Landmark, FileText } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * Rent reporting — pre-launch interest capture.
@@ -85,7 +86,7 @@ export default function RentReporting() {
 
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
         <Link href="/">
-          <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
+          <Logo size="lg" tone="brand" data-testid="logo-rent-reporting" />
         </Link>
         <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
           <Link href="/login">Sign in</Link>

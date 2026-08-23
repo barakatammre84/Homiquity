@@ -8,6 +8,7 @@ import { friendlyApiError } from "@/lib/errorMessage";
 import { SEOHead } from "@/components/SEOHead";
 import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 import { Mail, CheckCircle2, ArrowRight } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * Pre-license waitlist / "coming soon" surface.
@@ -75,7 +76,7 @@ export default function Waitlist() {
       />
 
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
-        <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
+        <Logo size="lg" tone="brand" data-testid="logo-waitlist" />
         <Button asChild variant="ghost" size="sm" className="touch-target" data-testid="button-login">
           <Link href="/login">Sign in</Link>
         </Button>

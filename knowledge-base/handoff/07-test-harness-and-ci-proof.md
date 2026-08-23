@@ -26,7 +26,12 @@ not a flake.
 `pnpm test` runs two vitest configs back to back: the **node** lane, whose `include` is a
 hand-maintained allowlist of 219 entries in `vitest.config.ts` — an unlisted test file is silently
 never run, and there is one stranded right now — and the **client** lane, whose `include` is a
-glob on purpose so a colocated `*.test.tsx` "can never be silently stranded". A third config,
+glob on purpose so a colocated `*.test.tsx` cannot be *forgotten* — but the glob does not make it
+safe: `CICD.md` used to say such a file "can never be silently stranded", and that is false. Vitest
+crawls via `tinyglobby` → `fdir`, which defaults `suppressErrors: true`, so a directory whose
+`readdir` FAILED is indistinguishable from an empty one; under load `pnpm test` collected 111 of 118
+client files and exited 0. A glob protects against a file being *forgotten*, not against the crawl
+being *truncated* (PR #670 corrects the CICD.md sentence and adds the floor). A third config,
 `vitest.integration.config.ts`, lists 18 files that hit a *running* HTTP server over the network
 and never runs in CI at all — `CICD.md` says so explicitly, and `scripts/preflight.sh` is the only
 thing that runs it. CI's one gate job is `gate (typecheck · tests · schema guard)` — those

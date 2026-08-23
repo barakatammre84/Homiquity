@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, MailCheck } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -33,9 +34,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/">
-            <span className="text-2xl font-bold tracking-tight text-primary cursor-pointer" data-testid="text-brand-logo">
-              homiquity
-            </span>
+            <Logo size="lg" tone="brand" data-testid="text-brand-logo" />
           </Link>
           <p className="text-sm text-muted-foreground mt-2">Clarity for every stage of homeownership</p>
         </div>
