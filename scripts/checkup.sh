@@ -64,6 +64,8 @@ check "UI standard ratchet"           node scripts/ui-standard-guard.cjs
 check "knowledge base indexed"        node scripts/kb-index-guard.cjs
 check "doc staleness ratchet"         node scripts/doc-staleness-guard.cjs
 check "citations resolve"             node scripts/citation-guard.cjs
+check "selling-guide corpus coherent" node scripts/selling-guide-corpus-guard.cjs
+check "selling-guide coverage map"    node scripts/selling-guide-coverage.cjs --check
 check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs
 check "living docs fresh"             node scripts/doc-freshness-guard.cjs
 check "production health ($PROD_URL)" prod_healthy
