@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane). **§2 and §3/§3a were also re-verified 2026-08-20 by `/doc-accuracy`** (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe). **§3a, §6 and §6's always-off-limits list amended 2026-08-23 to register the Selling Guide Steward** (daily 05:30 UTC, CCR; the Guide fact layer and its watch state get their single writer — founder-approved plan of the same day; the CCR trigger is registered in the session that sees the corpus PR merge, per §11).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -155,9 +155,9 @@ Each of these killed the previous suite. Probe them; do not trust this table's a
 | Repo | `/Users/ammrebarakat/Developer/Homiquity` | — |
 | Package manager | **pnpm** (`pnpm check`, `pnpm test`, `pnpm test:unit`, `pnpm test:client`, `pnpm test:integration`, `pnpm checkup`, `pnpm guard:*`) | `package.json` scripts |
 | Platform | **Railway** — one Node process serving API + static client. **Vercel is deleted (404).** | `railway.json`, [`runbooks/CICD.md`](../runbooks/CICD.md) |
-| Public host | `https://www.homiquity.com` — the **apex is not on Railway** (Squarespace has no ALIAS/flattening) | `curl -s https://www.homiquity.com/api/health` |
+| Public host | `https://www.homiquity.com` — the **apex is not on Railway** (Squarespace has no ALIAS/flattening) | in a browser only; for a machine probe use the Railway host (row below) |
 | Machine-to-machine host | **`*.up.railway.app`, never `www`** — three cron sweeps died `curl` exit 6 on DNS | `CTO_ROADMAP.md` §2.1 |
-| Deploy proof | **only** the `commit` field of `GET /api/health`. A green check is not a shipped deploy; a failed Railway build leaves the *previous* container serving | `curl -s https://www.homiquity.com/api/health` |
+| Deploy proof | **only** the `commit` field of `GET /api/health`. A green check is not a shipped deploy; a failed Railway build leaves the *previous* container serving. ⚠️ CI paused this check on 2026-08-20 (#608: `verify-deploy` `if: false`, `migrate-prod` dispatch-only, while Railway kept deploying — prod served `d8316ec1` at 2026-08-20T22:45Z) and #669 re-armed both on 2026-08-22 (`ci.yml:681`, `:754`); `verify-deploy` stays `continue-on-error: true` (`:770`), so its red blocks nothing — read the job, and poll by hand when it matters | `curl -s https://homiquity-production.up.railway.app/api/health` — **never `www`**, per the row above |
 | NMLS / F1 | **#427468, issued 2026-07-13 — CLEARED.** Lender outreach is live work, not gated work | `shared/companyIdentity.ts` |
 | Docs root | `knowledge-base/` (**not `kb/`**) | — |
 | Regulatory ledger | `data/regulatory/regulatory-ledger.json` (**not `kb/`**) | `pnpm checkup` |
@@ -228,8 +228,10 @@ retiring, archived under `~/.claude/scheduled-tasks/_archive/` with a dated note
 - The 09:53 slot went to the Workflow Completion Engine; the daily 12:30 slot to the Feature
   Completion Engine, which is why the Lender Package Gate moved to Monday **18:31**.
 
-Their founding PRs (#589, #607) are unaffected — if they merge, the skills stay available for
-manual `/` invocation.
+Their founding PRs **both merged** — #589 on 2026-08-20T16:25Z, #607 on 2026-08-20T18:11Z — so
+`.claude/skills/complex-file-engine/` and `.claude/skills/move-up-lane/` are on `origin/main` and
+available for manual `/` invocation. Neither is registered in the scheduler, and per §0 a
+definition on disk is still not a routine.
 
 **Two seats changed shape rather than retiring.** The **Launch Gate became Trunk Health**: it keeps
 the gates, the security delta, the regulatory-freshness check and the platform floor, and it drops
@@ -244,7 +246,8 @@ work stops — and vendor lead times still have to start early enough not to be 
 is the instrument for the second half of the founder's directive — *a UX that genuinely serves our
 clients* — and it was the single most misallocated seat in the fleet: weekly, and dead. It now
 inlines its four persona charters so it runs without `JOURNEYS.md`, and defers to that file
-automatically once #607 lands.
+automatically. **`JOURNEYS.md` landed 2026-08-20** — at `feature-review/JOURNEYS.md`, via #595
+(`8260d734`) rather than via #607, which merged the same day.
 
 **…and reshaped again 2026-08-23 into the Handoff Corpus Steward** (founder decision, in the
 session that verified the handoff corpus end to end). The daily 17:06 seat now keeps
@@ -325,6 +328,7 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 
 | Fires (UTC) | Cron | Trigger | Cadence | Writes? | Produces |
 |---|---|---|---|---|---|
+| 05:30 | `30 5 * * *` | **Selling Guide Steward** (`selling-guide-steward`) | daily | **yes — Guide fact layer + its watch state only (docs-lane draft PR, never merge)** | extraction drill verdict + edition/amendment/link sweep + ≤1 draft PR *(row lands with the corpus PR; the trigger is registered in the same session that sees that PR merge — §11's land-the-definition-first lesson)* |
 | 11:00 | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | **yes — `server/**`, `shared/**` + same-PR migration** | ≤2 PRs + `BD-…` ledger |
 | 12:00 | `0 12 * * *` | Daily Better.com competitive review | daily | GitHub issues only (`design-standard`) | competitive brief |
 | Mon 12:30 | `30 12 * * 1` | Better logged-in deep-dive reminder | weekly | no | founder reminder |
@@ -550,6 +554,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Feature Completion Engine | the **one domain** it takes this run, anywhere outside the always-off-limits list below, plus `knowledge-base/routines/feature-completion/**` and its report (L1/L2 per §1b) | the underwriting/decision/rule engines (it may surface and route them, never edit them); regulated math without a same-commit ledger citation; the deferred lender persona UI/API (founder-gated); any file under an active REGISTER claim or in an open PR |
 | Client Journey Walk *(hand-invoked since 2026-08-23; was the daily 17:06 seat)* | `knowledge-base/routines/journey-walk/**`, `feature-review/FINDINGS.md` rows it raises, and its own report | every code path — it is the one seat that experiences the product rather than changing it, and a walker that can patch what it finds stops reporting what it cannot |
 | Handoff Corpus Steward *(the 17:06 seat since 2026-08-23)* | `knowledge-base/handoff/**`, its own report, and the `guard:ui` §0 table only when that guard demands it | every code path; **every sibling doc** — drift there becomes an `HO-` row, never a fix (that rule is what keeps the corpus a reader, not an authority); this file; its own `SKILL.md`; peer cross-run memory |
+| Selling Guide Steward *(daily 05:30 UTC, CCR — registered 2026-08-23)* | the Guide's tracked fact layer under `docs/fannie-mae/selling-guide/**` (regenerated by the extractor, never hand-edited) + `data/regulatory/selling-guide-watch-*.json` + its own report — **the two path sets below the line were off-limits to every seat until this row; this steward is their single writer** (draft PRs only) | every code path including `scripts/**` and the extractor's pinned constants (edition cutover is ⛔ founder runbook); the regulatory seat's `regulatory-ledger.json` / `regulatory-watch-*.json`; `knowledge-base/handoff/**` (the Handoff Corpus Steward's lane, ch. 13 included); `selling-guide-coverage.json` (section judgement lives with reviewing seats); `acknowledgedBlocked` entries (proposes ⛔, human commits); this file; its own `SKILL.md` |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
 | Vendor & Platform Risk (was Vendor & Procurement) | nothing | `.env`, Railway config, anything outbound |
 | Compliance Watch | `knowledge-base/compliance-watch/**` + its own report file | every code path; `docs/**` (read-only reference); anything outbound — it drafts, only the founder files or sends |
@@ -590,7 +595,11 @@ hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session cod
 `server/integrations/object_storage/**`; outbound messaging; the underwriting/decision/rule engines;
 `shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever** —
 the one carve-out is §6c's verify-only lane, which authors no dependency change at all);
-`docs/**`; `data/regulatory/**`.
+`docs/**` (**one named exception, founder-amended 2026-08-23:** the Selling Guide Steward may
+regenerate the tracked fact layer under `docs/fannie-mae/selling-guide/**` via the extractor —
+never hand-edits, never the gitignored content, per its §6 row); `data/regulatory/**` (**same
+amendment:** the Selling Guide Steward's own `selling-guide-watch-*.json` state files only —
+the regulatory ledger and the sibling watcher's files stay off-limits to it and to everyone).
 
 **Regulated math changes only with a citation** → a `data/regulatory/regulatory-ledger.json` entry
 in the same commit. No citation, no code change. Never weaken a consent gate, a disclosure gate, an

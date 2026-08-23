@@ -8,6 +8,13 @@
 // educational: which income sources are under analysis, framed as finding
 // the borrower's full purchasing power — no figures (live math is a recorded
 // binding rejection; the SERVER decides which state, never this component).
+//
+// Every row is what a source CONTRIBUTED, so the rows sum to the total beneath
+// them. They did not before: the rental row carried the portfolio's NET while
+// the total counted only its positive offsets, and the subject property's unit
+// rent joined the total with no row at all — a duplex buyer saw one $6,000 line
+// under a $7,125 total. Rows the server cannot reconcile are not rendered as a
+// partial breakdown; it says so instead.
 import { useQuery } from "@tanstack/react-query";
 import { loanApplicationKeys } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
@@ -68,32 +75,48 @@ export function IncomeSummaryCard({ applicationId }: { applicationId: string }) 
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {data.paths.map((path) => (
-          <div
-            key={path.pathId}
-            className="flex items-start justify-between gap-3 rounded-lg bg-muted/30 p-3"
-            data-testid={`row-income-path-${path.pathId}`}
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{path.label}</p>
-              {path.citations.length > 0 && (
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {path.citations.map((c) => `${c.doc} ${c.section}`).join(" · ")}
+        {data.breakdownAvailable ? (
+          data.paths.map((path) => (
+            <div
+              key={path.pathId}
+              className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-lg bg-muted/30 p-3"
+              data-testid={`row-income-path-${path.pathId}`}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{path.label}</p>
+                {path.citations.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {path.citations.map((c) => `${c.doc} ${c.section}`).join(" · ")}
+                  </p>
+                )}
+                {path.monthlyObligationApplied > 0 && (
+                  <p
+                    className="text-xs text-muted-foreground mt-1 leading-snug"
+                    data-testid={`text-income-obligation-${path.pathId}`}
+                  >
+                    {formatCurrency(path.monthlyObligationApplied)}/mo of this
+                    {" "}property loss counts toward your monthly debts instead of your income.
+                  </p>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-semibold">
+                  {formatCurrency(path.monthlyIncomeApplied)}/mo
                 </p>
-              )}
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-semibold">
-                {formatCurrency(path.monthlyQualifyingIncome)}/mo
-              </p>
-              {path.appliedToDti && (
                 <Badge variant="outline" className="text-[10px] border-border text-success-subtle-foreground">
                   Counted
                 </Badge>
-              )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p
+            className="text-sm text-muted-foreground leading-snug"
+            data-testid="text-income-breakdown-unavailable"
+          >
+            {data.breakdownUnavailable}
+          </p>
+        )}
         <div className="flex items-center justify-between border-t pt-3">
           <p className="text-sm font-semibold">Qualifying monthly income</p>
           <p className="text-base font-bold" data-testid="text-income-total">

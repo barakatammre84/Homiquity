@@ -73,7 +73,7 @@ Two axes of authority:
 | [compliance/REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md) | How statutory constants stay verifiably aligned with official sources. |
 | [compliance/SCENARIO_ARCHITECT.md](knowledge-base/compliance/SCENARIO_ARCHITECT.md) | Operating instructions for scenario/guardian work. |
 | [compliance/SAFE_MLO_COMPLIANCE_MAP.md](knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [compliance/COMPLIANCE_COUNSEL_REVIEW.md](knowledge-base/compliance/COMPLIANCE_COUNSEL_REVIEW.md) | SAFE Act / MLO advertising crosswalk + the standing compliance-counsel review. |
-| [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 5-routine launch suite). |
+| [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's 2026-07-04 pre-launch operating doctrine. **Its 5-routine launch suite is not the live suite** — that suite stopped running on 2026-07-04 and stayed dormant five weeks ([routines/CHARTER.md](knowledge-base/routines/CHARTER.md) §0). The live cadence is CHARTER §3/§3a; read this file for the doctrine behind the routines, never for what runs today. |
 | [docs/fannie-mae/](docs/fannie-mae/) · [docs/nmls/](docs/nmls/) · [docs/nmls-safe/](docs/nmls-safe/) | Official GSE + NMLS reference documents — never work from memory on ULDD/UCD/URLA/MISMO or NMLS licensing. |
 | [handbook/design/DESIGN_SYSTEM.md](knowledge-base/handbook/design/DESIGN_SYSTEM.md) | The design system — tokens, type scale, layout, capture-flow standard, four-question gate. |
 | [compliance/security/threat_model.md](knowledge-base/compliance/security/threat_model.md) | Security threat model. |
@@ -105,11 +105,22 @@ history. Never act on these.
 
 ## Repository ground rules (summary — full rules in CLAUDE.md)
 
-- `main` is production and protected: every merge builds and deploys on Railway (`railway.json`).
-  Land work via short-lived PR branches through the required `gate` check — direct pushes are
-  rejected. A green check is not proof the merge shipped: a failed Railway build leaves the previous
-  container serving, so only the `commit` field of `/api/health` (polled by CI's `verify-deploy`
-  job) proves prod is on your code. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
+- `main` is production, and Railway still builds and deploys every merge (`railway.json`) —
+  observed 2026-08-20: prod `/api/health` served `d8316ec1`, the `origin/main` tip.
+  ⚠️ **CI stopped proving that for two days.** PR #608 (2026-08-20) paused both prod jobs for
+  local-only development (`verify-deploy` `if: false`, `migrate-prod` `workflow_dispatch`-only); PR #669
+  (`76c96751`, 2026-08-22) re-armed them — `migrate-prod` applies on every push to `main`
+  ([`ci.yml`](.github/workflows/ci.yml) `:681`) and `verify-deploy` polls `/api/health` after each
+  (`:754`) — but `verify-deploy` is `continue-on-error: true` (`:770`), deliberately, so its red blocks
+  nothing. The rule that survived the pause is still the rule: a green check is not proof the merge
+  shipped — a failed Railway build leaves the previous container serving — so only the `commit`
+  field of `/api/health` proves prod is on your code. Read that job's result; never assume it.
+  ⚠️ **Re-measure branch protection before trusting the `gate` check.** It read **empty** on
+  2026-08-20 (`gh api repos/barakatammre84/Homiquity/branches/main/protection` → `contexts: []`,
+  `enforce_admins: true` over zero checks) and was re-armed by 2026-08-23: `contexts` = the `gate`
+  check, `strict: true` — a PR must be green *and* current with `main` to merge. The measurement
+  is the truth on the day you run it; land work via short-lived PR branches through the `gate`
+  check regardless. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
 - `client/` and `server/` never import from each other; both import from `shared/`.
 - Vendor integrations are deterministic simulations behind adapters until real contracts exist.
 - Borrower PII goes through `server/services/encryptionService.ts` / `ssnVault.ts` + audit log.

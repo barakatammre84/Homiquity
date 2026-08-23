@@ -79,7 +79,7 @@ and says so three times (`:7-10`, `:36-39`, `:65-66`).
 **What.** Anything that admits input enumerates what is allowed. **Why.** The response-body
 logger was a denylist and silently missed new PII routes — `/api/urla/*` responses carry SSNs
 (`server/app.ts:475-480`, "do not revert to one"). **Evidence.** `grep -rn "UPDATABLE_COLUMNS\|RESPONSE_BODY_LOG_ALLOWLIST\|STAFF_SETTABLE_STATUSES" server --include='*.ts' | wc -l`
-→ 9 references across three allow-lists; the node test lane is an explicit allowlist of 221 files
+→ 9 references across three allow-lists; the node test lane is an explicit allowlist of 230 files
 (`grep -cE '^\s*"tests/' vitest.config.ts` → 228; the list is `vitest.config.ts:30-331`, FACTS F-13);
 `pickTableFields` (`server/routes/urlaValidation.ts:44`) whitelists URLA bodies to their table's
 columns before any write (`server/routes/borrower/urla.ts:452-453`). **Loop rule.** Never widen an
@@ -232,7 +232,7 @@ for the loop rails in chapter 12, and most already are.
 
 | # | Pattern | Evidence | What the loop rails inherit |
 |---|---|---|---|
-| B1 | **Router vs routine**: six skills may auto-load (the four thin routers plus the two journey walks — `api-routes`, `mortgage-calculations`, `seo-content`, `ui-components`, `journey-walk`, `staff-journey-walk`); the other nineteen carry the anti-autoload template and `R1: STOP if loaded without invocation`. | `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` → 19 of `ls -d .claude/skills/*/ \| wc -l` → 25; `.claude/skills/refactor-radar/SKILL.md:3,26-27` | A loop template is invoked by a pointer prompt, never by context. |
+| B1 | **Router vs routine**: six skills may auto-load (the four thin routers plus the two journey walks — `api-routes`, `mortgage-calculations`, `seo-content`, `ui-components`, `journey-walk`, `staff-journey-walk`); the other twenty carry the anti-autoload template and `R1: STOP if loaded without invocation`. | `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` → 20 of `ls -d .claude/skills/*/ \| wc -l` → 26; `.claude/skills/refactor-radar/SKILL.md:3,26-27` | A loop template is invoked by a pointer prompt, never by context. |
 | B2 | **One rails file, read not copied.** | `.claude/agents/_OWNER_RAILS.md:3`; `FEATURE_MAP.md:16-17` | `prompts/_RAILS.md` is read every iteration; templates never restate a rail. |
 | B3 | **The routine skeleton**: preamble → lettered rails → Phase 0 memory/sync/backpressure → detect with date-qualified ids → fix in lanes → verify loop with a TEST-RAN assertion → ledger in the same PR → `STATUS` report → negative scope. | `.claude/skills/refactor-radar/SKILL.md:24-118,172-212,245-284`; `.claude/skills/doc-accuracy/SKILL.md:51-115,286-351` | Every template has the same eight sections in the same order. |
 | B4 | **Freshness ≤ 2 commits; backpressure ≥ 2 open PRs ⇒ assist, never idle.** | `.claude/skills/financial-audit/SKILL.md:31`; `.claude/skills/doc-accuracy/SKILL.md:57-61`; `knowledge-base/routines/CHARTER.md:464-479` | `_RAILS.md` R1; "an idle tick is a failed tick". |

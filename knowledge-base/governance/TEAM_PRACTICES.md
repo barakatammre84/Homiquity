@@ -482,3 +482,29 @@ value read out of a **table** is not verified at all until it is checked against
 the text extraction flattens tables, ruled ones survive and borderless ones do not (B2-2-03's
 financed-property limits table is the known case). Prose may be trusted from the text; a
 threshold, matrix cell or eligibility limit may not.
+
+### The corpus itself is gated (added 2026-08-23)
+
+The authority guard only works while the corpus it resolves against is trustworthy, so the
+corpus carries its own enforcement, wired the same same-PR way as this register:
+
+- **In the gate, always-run (never behind the scope step — corpus PRs classify as inert
+  docs):** `pnpm guard:corpus` (the fact layer agrees with itself and with the extractor's
+  pinned identity — the pins are *parsed out of* `scripts/extract-selling-guide.py`, and the
+  guard's anchors, the extractor's constants, `manifest.json` and the regenerated fact layer
+  move **in the same PR** or the gate is red); `pnpm guard:coverage` (the 423-row map current);
+  and the full extraction proof (recover the PDF from git history, re-extract at the pinned
+  pymupdf, `--check`). `tests/ciTriggers.test.ts` pins all three steps present and
+  unconditioned.
+- **Per session:** the SessionStart hook (`.claude/settings.json` →
+  `scripts/selling-guide-session-hook.cjs`) verifies/materializes the corpus at session start
+  and prints a corpus-first directive when it cannot. The hook informs; the gate blocks.
+- **Per day:** the **Selling Guide Steward** routine (CHARTER §3a, 05:30 UTC) re-proves the
+  whole chain from a clean worktree, probes for editions/amendments, sweeps the Guide's own
+  link inventory (`docs/fannie-mae/selling-guide/links.json`), and reports — draft PRs only.
+  Edition cutover is a founder runbook
+  ([docs/fannie-mae/selling-guide/README.md](../../docs/fannie-mae/selling-guide/README.md)
+  "When the next edition lands"), never an automated act.
+
+Program map and the founder-gated end-state criteria:
+[knowledge-base/compliance/SELLING_GUIDE_PERMANENCE.md](../compliance/SELLING_GUIDE_PERMANENCE.md).

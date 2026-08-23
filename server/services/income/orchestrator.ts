@@ -19,7 +19,7 @@ import { calculateSubjectPropertyQualifyingRent } from "../underwritingNuance";
 import { estimateMonthlyPITI } from "../preUnderwriting";
 import { computeAgencyWageIncome } from "./paths/agencyWage";
 import { computeSelfEmploymentPath } from "./paths/selfEmployment";
-import { computeRentalPath, splitRentalOffsets } from "./paths/rental";
+import { computeRentalPath, splitRentalOffsets, withSubjectPropertyRent } from "./paths/rental";
 import { computeDscrPath } from "./paths/dscr";
 import {
   computeBankStatementPath,
@@ -110,14 +110,6 @@ export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestra
   const dscr = computeDscrPath(input.rentalProperties, input.subjectProperty ?? null);
   const bankStatement = computeBankStatementPath(hasSelfEmployment, input.bankStatementAnalysis);
 
-  const paths: IncomePathResult[] = [
-    agency.path,
-    selfEmployment.path,
-    rentalPath,
-    bankStatement,
-    dscr,
-  ];
-
   // Primary DTI income = applied component dti_income paths. Rental applies
   // PER PROPERTY per B3-3.8-01 (ledger fnma-b3-3-8-01-rental-offset-dti):
   // each positive per-property offset joins the income side (provenance-
@@ -149,6 +141,23 @@ export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestra
   const primary = roundCents(
     agencyApplied + seApplied + rentalIncomeApplied + subjectRentalIncomeApplied,
   );
+
+  // Every path states what it CONTRIBUTED to `primary`, not merely what it is
+  // worth. The two differ for rental (per-property B3-3.8-01 splits the
+  // portfolio between the income and obligation sides) and for the subject
+  // property's unit rent (which had no path to belong to at all). Without this,
+  // any surface that itemises the qualifying total renders rows that do not sum
+  // to the number above them — which is what the borrower's "how your
+  // qualifying income was calculated" card and the LO cockpit both did.
+  const paths: IncomePathResult[] = [
+    { ...agency.path, appliedMonthlyIncome: agencyApplied, appliedMonthlyObligation: 0 },
+    { ...selfEmployment.path, appliedMonthlyIncome: seApplied, appliedMonthlyObligation: 0 },
+    withSubjectPropertyRent(rentalPath, subjectRentalIncomeApplied),
+    // Alternatives are a competing METHOD, never summed into the full-doc
+    // total: their contribution is zero by construction.
+    { ...bankStatement, appliedMonthlyIncome: 0, appliedMonthlyObligation: 0 },
+    dscr,
+  ];
 
   // Recommendation: max qualifying income among the full-doc total and any
   // ENABLED alternative method. All alternatives are gated today, so this is

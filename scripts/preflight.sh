@@ -97,6 +97,17 @@ step "query-key convergence"          node scripts/query-key-guard.cjs
 step "query-key reachability"         node scripts/query-key-reachability.cjs
 step "query-key transport"            node scripts/query-key-transport-guard.cjs
 step "citation ratchet"               node scripts/citation-guard.cjs
+step "selling-guide corpus"           node scripts/selling-guide-corpus-guard.cjs
+step "selling-guide coverage"         node scripts/selling-guide-coverage.cjs --check
+
+# The full extraction proof needs pymupdf; CI always runs it (pinned, in a venv).
+# Locally it runs only where pymupdf is importable — and SAYS so when skipped,
+# because a silently skipped check reads as a pass.
+if python3 -c "import pymupdf" >/dev/null 2>&1; then
+  step "selling-guide extraction"       python3 scripts/extract-selling-guide.py --check
+else
+  echo "  ~ selling-guide extraction        SKIPPED (no pymupdf — CI runs the pinned proof)"
+fi
 
 # §9 needs the PR's changed-file set, which CI computes from the pull request.
 # Locally the equivalent is the diff against origin/main. If origin/main is not
