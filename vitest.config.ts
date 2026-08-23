@@ -70,6 +70,10 @@ export default defineConfig({
       "tests/rateProductHeadings.test.ts",
       "tests/migrationLedgerGuard.test.ts",
       "tests/securityReviewGuard.test.ts",
+      // TEAM_PRACTICES §10 — the Selling Guide authority gate.
+      "tests/sellingGuideAuthorityGuard.test.ts",
+      // F-0818-11 — the DU casefile DTI must include the proposed housing payment.
+      "tests/ausCasefileDti.test.ts",
       "tests/userPhones.test.ts",
       "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
