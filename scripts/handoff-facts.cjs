@@ -28,11 +28,14 @@
  * to it; `pnpm preflight` does this for you.
  *
  * MODES
- *   --table    print the regenerated table to stdout; touch nothing
- *   --write    rewrite the generated block in FACTS.md, and re-stamp the SHA
- *   --check    exit 1 if any checkable row disagrees with its live command
- *   --cite     exit 1 if any `path:line` in handoff/** is missing or out of range
- *   --verbose  with --check, print every row, not just the failures
+ *   --table        print the regenerated table to stdout; touch nothing
+ *   --write        rewrite the generated block in FACTS.md, and re-stamp the SHA
+ *   --check        exit 1 if any checkable row disagrees with its live command
+ *   --cite         exit 1 if any `path:line` in handoff/** is absent, ambiguous,
+ *                  out of range, or names a symbol that is no longer on that line
+ *   --no-symbols   with --cite, bounds-only (skip the symbol check) — for diagnosis
+ *   --verbose      with --check, print every row, not just the failures;
+ *                  with --cite, print every symbol verdict, not just the failures
  *
  * THE ONE SUBTLETY — "checkable"
  * ------------------------------
@@ -228,7 +231,8 @@ function renderTable(measured, sha) {
 }
 
 // ---------------------------------------------------------------------------
-// --cite : every `path:line` resolves, and the line exists
+// --cite : every `path:line` resolves, the line exists, and the symbol it names
+//          is still on that line
 // ---------------------------------------------------------------------------
 
 /**
@@ -236,8 +240,42 @@ function renderTable(measured, sha) {
  * file extension, so `foo.ts:341` is checked as `foo.ts` and the line number is
  * invisible. That is exactly the drift the fresh-hire audit found six of —
  * a path that still exists, pointing at a line that moved.
+ *
+ * THREE THINGS THE FIRST VERSION COULD NOT SEE (HO-0822-27). It bounds-checked
+ * rooted paths only and SKIPPED every bare basename, and "inside the file" was
+ * its whole test. Measured on 2026-08-23 at 6377727e: it was green on a corpus
+ * where 277 of 832 citations had never been judged at all, 28 named a basename
+ * two or three tracked files share, 9 ranges ran backwards (`ci.yml:303-301`),
+ * and 4 bound symbols had slid (`statusDecisions.ts:330` `/verify-financials`
+ * is at :351; `routeGates.ts:32` `ROUTE_GATES` is at :33). Now:
+ *
+ *   1. A bare basename (`sla.test.ts:12`) or partial path (`lending/foo.ts:9`)
+ *      is resolved by SUFFIX against `git ls-files`. Exactly one tracked file
+ *      ends that way → bounds-checked like a rooted path. Two or more → the
+ *      citation is AMBIGUOUS and fails: the reader cannot know which file was
+ *      meant, so the check cannot either. Zero → ABSENT, and fails.
+ *   2. A citation that names its symbol is checked for that symbol, in exactly
+ *      two forms — explicit `path:N` (`symbol`) and immediately adjacent
+ *      `path:N` `symbol` (one space, the next backticked token). The symbol
+ *      must occur within lines N..M of the file. Found only elsewhere → SLID,
+ *      with the lines it is on now. Found nowhere → MISSING. Symbol-BEFORE
+ *      forms (`symbol` (`path:N`)) are deliberately not bound: measured
+ *      precision on the corpus was poor.
+ *   3. Every citation is counted into exactly one bucket and the buckets are
+ *      printed. "Bounds-only" is a named number, never a silent pass.
+ *
+ * What counts as a symbol: the longest "strong" identifier in the backticked
+ * text — ≥5 chars with a camelCase hump, or containing `_`, or ALL_CAPS (≥5),
+ * or containing any of `./:-`. Text with an ellipsis (`…`) is an annotation,
+ * not a symbol, and so is text with no strong identifier at all; both are
+ * bounds-only. A substring search, not a regex: `/verify-financials` must
+ * appear verbatim on one of the cited lines.
  */
 const CITE = /`([A-Za-z0-9_./@-]+\.(?:ts|tsx|js|cjs|mjs|json|sh|md|yml|yaml|css|sql)):(\d+)(?:-(\d+))?`/g;
+/** Is a backticked token itself a `path:line` citation (a neighbour, not a symbol)? */
+const IS_CITE = /^[A-Za-z0-9_./@-]+\.(?:ts|tsx|js|cjs|mjs|json|sh|md|yml|yaml|css|sql):\d+(?:-\d+)?$/;
+const BIND_EXPLICIT = /^ \(`([^`]+)`\)/;   // `path:N` (`symbol`)
+const BIND_ADJACENT = /^ `([^`]+)`/;       // `path:N` `symbol`
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -248,46 +286,153 @@ function walk(dir, out = []) {
   return out;
 }
 
-const lineCache = new Map();
-function lineCount(file) {
-  if (lineCache.has(file)) return lineCache.get(file);
-  let n = 0;
+const textCache = new Map();
+/** The file's lines, or null when it cannot be read. One read per file per run. */
+function fileLines(file) {
+  if (textCache.has(file)) return textCache.get(file);
+  let lines = null;
   try {
     const s = fs.readFileSync(file, "utf8");
-    n = s.length === 0 ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);
-  } catch { n = -1; }
-  lineCache.set(file, n);
-  return n;
+    lines = s.length === 0 ? [] : s.split("\n");
+    if (lines.length && s.endsWith("\n")) lines.pop();
+  } catch { lines = null; }
+  textCache.set(file, lines);
+  return lines;
 }
 
-function checkCitations() {
-  const problems = [];
-  let checked = 0;
-  let unresolvable = 0;
+function lineCount(file) {
+  const lines = fileLines(file);
+  return lines === null ? -1 : lines.length;
+}
+
+/** ONE index over `git ls-files`: basename -> every tracked path with that basename. */
+let basenameIndex = null;
+function trackedByBasename() {
+  if (basenameIndex) return basenameIndex;
+  basenameIndex = new Map();
+  for (const t of run("git ls-files").out.split("\n").filter(Boolean)) {
+    const b = path.posix.basename(t);
+    if (!basenameIndex.has(b)) basenameIndex.set(b, []);
+    basenameIndex.get(b).push(t);
+  }
+  return basenameIndex;
+}
+
+/**
+ * Where a cited path points. "rooted" resolves from the repo root as written
+ * (this includes build output like `dist/index.js` when it is present — the
+ * old behaviour, kept). Otherwise it is matched by suffix against tracked
+ * files: `statusDecisions.ts` and `lending/statusDecisions.ts` both resolve to
+ * `server/routes/lending/statusDecisions.ts` as long as nothing else ends in
+ * the same segments.
+ */
+function resolveCited(p) {
+  const rooted = path.join(ROOT, p);
+  if (fs.existsSync(rooted)) return { kind: "rooted", file: rooted, shown: p };
+  const all = trackedByBasename().get(path.posix.basename(p)) || [];
+  const cands = all.filter((t) => t === p || t.endsWith("/" + p));
+  if (cands.length === 1) return { kind: "basename", file: path.join(ROOT, cands[0]), shown: cands[0] };
+  if (cands.length === 0) return { kind: "absent" };
+  return { kind: "ambiguous", candidates: cands };
+}
+
+/** The backticked text bound to the citation that ends at `at` in `line`, or null. */
+function boundText(line, at) {
+  const rest = line.slice(at);
+  const m = rest.match(BIND_EXPLICIT) || rest.match(BIND_ADJACENT);
+  return m ? m[1] : null;
+}
+
+/** The longest strong identifier in a backticked text, or null when it is an annotation. */
+function strongToken(text) {
+  if (text.includes("…") || !text.trim()) return null;
+  if (IS_CITE.test(text.trim())) return null;
+  let best = null;
+  for (const m of text.matchAll(/[A-Za-z0-9_$./:@-]+/g)) {
+    const t = m[0].replace(/[.:;,]+$/, "");     // `include:` is `include`; `.test.` is `.test`
+    if (!/[A-Za-z]/.test(t)) continue;          // `127.0.0.1`, `3.4`: numbers are never symbols
+    const strong =
+      (t.length >= 5 && /[a-z][A-Z]/.test(t)) ||          // camelCase / PascalCase with a hump
+      t.includes("_") ||                                  // snake_case, CONSTANT_CASE, a column
+      (t.length >= 5 && /^[A-Z][A-Z0-9]*$/.test(t)) ||    // ALL_CAPS without underscores (MISMO)
+      /[./:-]/.test(t);                                   // a path, a route, a dotted member
+    if (strong && (!best || t.length > best.length)) best = t;
+  }
+  return best;
+}
+
+/** 1-based line numbers in `file` that contain `token` verbatim. */
+function linesContaining(file, token) {
+  const out = [];
+  const lines = fileLines(file) || [];
+  for (let i = 0; i < lines.length; i++) if (lines[i].includes(token)) out.push(i + 1);
+  return out;
+}
+
+function checkCitations({ symbols = true, verbose = false } = {}) {
+  const n = {
+    total: 0, rooted: 0, basename: 0, ambiguous: 0, absent: 0,
+    boundsOk: 0, boundsBad: 0,
+    symChecked: 0, symOk: 0, symSlid: 0, symMissing: 0, boundsOnly: 0,
+  };
+  const problems = { absent: [], ambiguous: [], range: [], slid: [], missing: [] };
+  const oks = [];
   for (const md of walk(HANDOFF_DIR)) {
     const lines = fs.readFileSync(md, "utf8").split("\n");
     lines.forEach((line, idx) => {
       for (const m of line.matchAll(CITE)) {
         const [, p, aStr, bStr] = m;
-        const target = path.join(ROOT, p);
-        if (!fs.existsSync(target)) {
-          // Bare basenames (`sla.test.ts:12`) and deliberately-absent files are
-          // the citation-guard's business, not ours. We only judge line numbers
-          // on paths that resolve from the repo root.
-          unresolvable++;
+        const where = `${rel(md)}:${idx + 1}`;
+        const cite = `${p}:${aStr}${bStr ? "-" + bStr : ""}`;
+        n.total++;
+
+        const r = resolveCited(p);
+        if (r.kind === "absent") {
+          n.absent++;
+          problems.absent.push(`${where}  ->  ${cite}  absent (no tracked file ends in ${p})`);
           continue;
         }
-        checked++;
-        const n = lineCount(target);
-        const hi = bStr ? Number(bStr) : Number(aStr);
+        if (r.kind === "ambiguous") {
+          n.ambiguous++;
+          problems.ambiguous.push(
+            `${where}  ->  ${cite}  ambiguous (${r.candidates.length} candidates: ${r.candidates.join(", ")})`,
+          );
+          continue;
+        }
+        n[r.kind]++;
+
+        const len = lineCount(r.file);
         const lo = Number(aStr);
-        if (lo < 1 || hi > n || lo > hi) {
-          problems.push(`${rel(md)}:${idx + 1}  ->  ${p}:${aStr}${bStr ? "-" + bStr : ""}  (file has ${n} lines)`);
+        const hi = bStr ? Number(bStr) : lo;
+        if (lo < 1 || hi > len || lo > hi) {
+          n.boundsBad++;
+          problems.range.push(`${where}  ->  ${cite}  (file has ${len} lines)`);
+          continue;
+        }
+        n.boundsOk++;
+
+        if (!symbols) continue;
+        const text = boundText(line, m.index + m[0].length);
+        const token = text === null ? null : strongToken(text);
+        if (token === null) { n.boundsOnly++; continue; }
+
+        n.symChecked++;
+        const at = linesContaining(r.file, token);
+        if (at.some((l) => l >= lo && l <= hi)) {
+          n.symOk++;
+          if (verbose) oks.push(`${where}  ->  ${cite} \`${token}\`  ok`);
+        } else if (at.length) {
+          n.symSlid++;
+          const shown = at.slice(0, 3).map((l) => `:${l}`).join(",") + (at.length > 3 ? ` (+${at.length - 3} more)` : "");
+          problems.slid.push(`${where}  ->  ${cite} \`${token}\`  slid — now at ${shown}`);
+        } else {
+          n.symMissing++;
+          problems.missing.push(`${where}  ->  ${cite} \`${token}\`  missing — not in ${r.shown}`);
         }
       }
     });
   }
-  return { problems, checked, unresolvable };
+  return { n, problems, oks };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,8 +448,11 @@ function usage() {
   node scripts/handoff-facts.cjs --table     print the regenerated table
   node scripts/handoff-facts.cjs --write     rewrite the generated block + re-stamp the SHA
   node scripts/handoff-facts.cjs --check     exit 1 when a checkable row disagrees
-  node scripts/handoff-facts.cjs --cite      exit 1 on a missing or out-of-range path:line
+  node scripts/handoff-facts.cjs --cite      exit 1 on an absent, ambiguous or out-of-range path:line,
+                                             or a bound symbol that slid off its line / is missing
+  ... --cite --no-symbols                    bounds-only (skip the symbol check) — for diagnosis
   ... --check --verbose                      print every row, not only failures
+  ... --cite --verbose                       print every symbol verdict, not only failures
 
 Runs from the repo root; safe to run in any worktree. In no CI job by design.`);
 }
@@ -418,16 +566,43 @@ if (has("--table") || has("--write") || has("--check")) {
 }
 
 if (has("--cite")) {
-  const { problems, checked, unresolvable } = checkCitations();
-  console.log(`handoff-facts --cite: ${checked} resolvable path:line citation(s) checked · ${unresolvable} skipped (path does not resolve from the repo root — that is citation-guard's job)`);
-  if (problems.length) {
-    console.log(`\nFAIL  ${problems.length} citation(s) point past the end of the file, or backwards:`);
-    for (const p of problems) console.log(`      ${p}`);
+  const symbols = !has("--no-symbols");
+  const { n, problems, oks } = checkCitations({ symbols, verbose: VERBOSE });
+  const symbolsLine = symbols
+    ? `symbols: ${n.symChecked} checked (${n.symOk} ok · ${n.symSlid} slid · ${n.symMissing} missing) · ${n.boundsOnly} bounds-only`
+    : `symbols: skipped (--no-symbols) · ${n.boundsOk} bounds-only`;
+  console.log(
+    `handoff-facts --cite: ${n.total} citations · ${n.rooted} rooted · ${n.basename} by unique basename · ` +
+      `${n.ambiguous} ambiguous · ${n.absent} absent → bounds: ${n.boundsOk} ok / ${n.boundsBad} out-of-range · ${symbolsLine}`,
+  );
+  for (const line of oks) console.log(`      ${line}`);
+
+  const sections = [
+    ["absent", "citation(s) name a file no tracked path ends in:"],
+    ["ambiguous", "citation(s) are ambiguous — more than one tracked file ends that way, so neither the reader nor this check can tell which was meant. Cite the path from the repo root:"],
+    ["range", "citation(s) point past the end of the file, or backwards:"],
+    ["slid", "citation(s) name a symbol that is still in the file but no longer on the cited line(s):"],
+    ["missing", "citation(s) name a symbol that is not in the file at all:"],
+  ];
+  let bad = 0;
+  for (const [kind, title] of sections) {
+    const list = problems[kind];
+    if (!list.length) continue;
+    bad += list.length;
+    console.log(`\nFAIL  ${list.length} ${title}`);
+    for (const p of list) console.log(`      ${p}`);
+  }
+  if (bad) {
     console.log("\n      A path that still exists pointing at a line that moved is the drift this");
     console.log("      catches: the reader follows it, lands on unrelated code, and trusts it.");
+    console.log("      `slid — now at :N` is the new line; re-read it before you retarget the citation.");
     exitCode = 1;
   } else {
-    console.log("handoff-facts --cite: every citation lands inside its file. ✅");
+    console.log(
+      symbols
+        ? "handoff-facts --cite: every citation resolves to one file, lands inside it, and every bound symbol is on its line. ✅"
+        : "handoff-facts --cite: every citation resolves to one file and lands inside it (symbols not checked). ✅",
+    );
   }
 }
 
