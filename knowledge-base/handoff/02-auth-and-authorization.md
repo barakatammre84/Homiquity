@@ -1,7 +1,7 @@
 # 02 — Authentication and authorization
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md) (it wins on conflict; the code wins over both).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md) (it wins on conflict; the code wins over both).
 
 ## The mental model
 
@@ -92,7 +92,8 @@ sequenceDiagram
   (`server/integrations/auth/routes.ts:14-18`). The client keys it as `["/api/auth/user"]`.
 - **The three gates, and the counts.** `isAuthenticated` `server/auth.ts:417` — `grep -rn "isAuthenticated" server --include='*.ts' | wc -l` → `347`;
   `isAdmin` `:443`; `requireRole(...roles)` `:452` — 40 files, 220 call sites; `requireStaff` → `0`
-  (there is none — handlers use the `shared/roles.ts` predicates, 138 sites).
+  (there is none — handlers use the `shared/roles.ts` predicates:
+  `grep -rnE "is(Staff|InternalStaff|Client|Partner)Role" server --include='*.ts' | wc -l` → 136).
 - **Object-level access has two helpers with different reach.** `server/storage/applications.ts:43`
   `getLoanApplicationWithAccess` (114 references): admin unrestricted (`:45`); internal staff **or**
   `broker`/`lender` need an active `deal_team_members` row (`:57-77`); everyone else is scoped to
