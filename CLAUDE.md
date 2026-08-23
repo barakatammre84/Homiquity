@@ -39,6 +39,13 @@ URLA, MISMO export, AUS/DU submission, edit codes, or Special Feature Codes:
    to answer from memory. 🚨 Tables flatten in extracted text — verify any threshold or matrix
    cell against the PDF page. ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it
    as an anchor and reports zero matches on text that is verbatim there.
+   **Corpus-first is mechanical, not aspirational:** a SessionStart hook verifies/materializes
+   the corpus for every session, the CI gate hard-fails on corpus drift (`guard:corpus` +
+   `guard:coverage` + a full extraction proof, always-run), and the daily Selling Guide
+   Steward re-proves the chain and watches for new editions, amendments and link rot
+   (program map: [SELLING_GUIDE_PERMANENCE.md](knowledge-base/compliance/SELLING_GUIDE_PERMANENCE.md)).
+   The onboarding treatment — how the Guide touches every part of the build — is
+   [handoff chapter 13](knowledge-base/handoff/13-selling-guide-as-the-foundation.md).
 2. **Then the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
    spec, UCD job aids, URLA documents, Special Feature Codes). See the README there for the
    expected inventory. If a document you need is missing, say so — do not proceed from memory.
