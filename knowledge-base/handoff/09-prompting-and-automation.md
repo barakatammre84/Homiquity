@@ -85,7 +85,7 @@ flowchart TD
   (`grep -l "never fix\|never fixes" .claude/agents/*.md | wc -l` → `15`); ten journey walkers
   share one browser-tool profile.
 - **The routine skeleton** (read `.claude/skills/refactor-radar/SKILL.md`, 277 lines, or
-  `doc-accuracy/SKILL.md`, 347): frontmatter with only `name` + the anti-autoload `description` →
+  `doc-accuracy/SKILL.md`, 351): frontmatter with only `name` + the anti-autoload `description` →
   a loop contract ("One run = at most ONE reviewable PR, never merged by you", `:8`; "If any rail
   below conflicts with making progress, the rail wins", `:10`) → lettered rails (R1 stop if loaded
   without invocation; R2 never the primary checkout; R3 PR-only, explicit `git add`; R4 the

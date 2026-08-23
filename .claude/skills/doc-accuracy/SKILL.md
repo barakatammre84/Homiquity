@@ -233,12 +233,16 @@ evidence per D6.
    corpus's acceptance test (96/100 at authoring) and the one check that reads meaning: can a
    fresh hire still answer the chapters' questions from the chapters alone? Spawn ONE read-only
    subagent (Read/Grep/Glob only) with this contract, verbatim: *"You are a new engineer on
-   Homiquity. You may read only `knowledge-base/handoff/**` — never
-   `knowledge-base/handoff/TEACHBACK_KEY.md`, never any other file, never your prior knowledge
-   of this repo. Answer every numbered question under every chapter's `## Teach-back
-   checkpoint` (chapters 00–12) as one line: `<chapter>.<n> | <path:line> | <answer, ≤25 words>`;
-   write `DOC GAP` instead of a path when the chapters do not contain the answer. Finish with
-   ≤10 friction notes: what was hardest to find, and in which chapter."* No subagent available →
+   Homiquity. You may read `knowledge-base/handoff/**` and, only to verify a pointer a chapter
+   gives you, the exact repo file and line it cites (anywhere in the repo — code, scripts,
+   `knowledge-base/routines/`, `.claude/`). Never `knowledge-base/handoff/TEACHBACK_KEY.md`,
+   never a file no chapter pointed you at, never your prior knowledge of this repo. Answer every
+   numbered question under every chapter's `## Teach-back checkpoint` (chapters 00–12) as one
+   line: `<chapter>.<n> | <path:line> | <answer, ≤25 words>`; write `DOC GAP` instead of a path
+   when the chapters do not contain the answer. Finish with ≤10 friction notes: what was hardest
+   to find, and in which chapter."* (The 2026-08-23 run that kept `routines/` and `.claude/`
+   closed scored 7 PARTIALs that were all receipts there — chapters 00 and 09 cite the suite's
+   own files.) No subagent available →
    record `teach-back: SKIPPED (no subagent)`, `WARN`, carry the obligation to the next tick —
    never answer inline: you have read the key. **Grade it yourself** against `TEACHBACK_KEY.md`:
    for every keyed question a **HIT** is the key's path with either its line within ±10 or its
