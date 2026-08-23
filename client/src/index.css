@@ -106,36 +106,57 @@
    * The colour is not. #FF4F40 is Monzo's single most recognisable asset, and
    * Homiquity is a mortgage broker to their bank — the same sector, where an
    * indistinguishable accent is trade dress rather than homage. So this is a true
-   * orange at hue 24deg against coral's 5deg: adjacent job, different colour.
+   * orange at hue 22deg against coral's 5deg: adjacent job, different colour.
+   *
+   * 🚨 THIS VALUE IS SAMPLED FROM THE LOGO, NOT CHOSEN. #FF5E00 is the exact ink
+   * of the founder's supplied logomark (measured off the artwork's own pixels).
+   * It was hue 24deg / 88% / 46% (#DD610E) until 2026-08-22, picked before the
+   * mark existed — close enough to the real orange that the two read side by side
+   * as a rendering fault rather than two decisions. The brand asset wins; the
+   * token follows it. If the logo is ever redrawn, re-sample and update here.
    *
    * 🚨 USAGE IS CONSTRAINED BY CONTRAST, and the same constraint binds Monzo's
    * coral (theirs is 3.26:1 on white — they never set it as text there either):
-   *   ALLOWED  flare as text ON the dark surface        4.77:1
-   *   ALLOWED  --flare-foreground text ON a flare fill  4.77:1
+   *   ALLOWED  flare as text ON the dark ground #0B1E19  5.65:1
+   *   ALLOWED  flare as text ON the sidebar #17302A      4.59:1
+   *   ALLOWED  --flare-foreground text ON a flare fill   5.65:1
    *   ALLOWED  fills, borders, illustration, focus rings on any ground
-   *   FORBIDDEN white text on a flare fill              3.63:1
-   *   FORBIDDEN flare as text on white                  3.63:1
+   *   FORBIDDEN white text on a flare fill               3.06:1
+   *   FORBIDDEN flare as text on white                   3.06:1
+   *   FORBIDDEN flare as text on mint                    2.77:1
+   *
+   * ⚠️ The sidebar row is NEW, and it is why the move was not purely cosmetic:
+   * the old table quoted only the darkest ground, so nobody had measured flare on
+   * the sidebar #17302A — at the old value that pair was 3.88:1, a silent AA FAIL
+   * for a combination the table implied was fine. #FF5E00 takes it to 4.59:1.
    */
-  --flare: 24 88% 46%;
+  --flare: 22 100% 50%;
   --flare-foreground: 165 45% 8%;
 
   /**
    * flare-ink — the same orange, dark enough to be TEXT.
    *
-   * `--flare` at 46% lightness fails AA as text on every ground this design uses:
-   * mint 3.37:1, white 3.63:1, even the dark footer 3.88:1. It is a FILL colour —
-   * logo, borders, illustration, focus rings — and treating it as a text colour is
-   * the mistake this pair exists to prevent. (Monzo's coral has exactly the same
-   * property, which is why theirs is never body text either.)
+   * `--flare` at 50% lightness fails AA as text on every LIGHT ground this design
+   * uses: white 3.06:1, mint 2.77:1. It is a FILL colour — logo, borders,
+   * illustration, focus rings — and treating it as a text colour is the mistake
+   * this pair exists to prevent. (Monzo's coral has exactly the same property,
+   * which is why theirs is never body text either.)
    *
-   * This is the text-safe sibling: 5.56:1 on mint, 5.99:1 on white. Same hue, same
-   * family, legible.
+   * This is the text-safe sibling: 5.98:1 on white, 5.40:1 on mint. Same hue,
+   * same family, legible.
    *
-   * ⚠️ Logos are EXEMPT from WCAG 1.4.3, so the wordmark may use the bright
-   * `--flare` on white even though that pair measures 3.63:1. That is an exemption,
-   * not a loophole to reuse for anything a person has to read.
+   * The lightness here is not a round number by accident — 34% is the value that
+   * reproduces the PREVIOUS flare-ink's margins (5.99 / 5.41) at the new hue, so
+   * moving --flare to the logo's orange changed the brand colour without
+   * quietly changing how legible orange text is. 38% would also have "passed",
+   * at 4.52:1 on mint — a hair over the 4.5 line and one rounding change from
+   * failing. Do not raise it.
+   *
+   * ⚠️ Logos are EXEMPT from WCAG 1.4.3, so the logomark and wordmark may use the
+   * bright `--flare` on white even though that pair measures 3.06:1. That is an
+   * exemption, not a loophole to reuse for anything a person has to read.
    */
-  --flare-ink: 24 90% 34%;
+  --flare-ink: 22 100% 34%;
   /* Layer 0-surface: pale mint app/dashboard ground #F2F8F5 that white cards sit
      ON so their shadow-card reads. Public/reading surfaces stay on the white
      --background.
