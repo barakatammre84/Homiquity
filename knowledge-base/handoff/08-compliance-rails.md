@@ -1,7 +1,7 @@
 # 08 — Compliance rails (how compliance is enforced by code shape)
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** `../L2_COMPLIANCE_AND_LOGIC.md` (the L2 overlay that overrides any feature), `CLAUDE.md` §Compliance first / §NMLS / §Reg Z, `../governance/TEAM_PRACTICES.md` §9, `../compliance/UNDERWRITING_SCENARIOS.md` (they win on conflict; the code wins over both; **nothing in this chapter is a compliance reading — readings come only from captured sources in `docs/`**).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** `../L2_COMPLIANCE_AND_LOGIC.md` (the L2 overlay that overrides any feature), `CLAUDE.md` §Compliance first / §NMLS / §Reg Z, `../governance/TEAM_PRACTICES.md` §9, `../compliance/UNDERWRITING_SCENARIOS.md` (they win on conflict; the code wins over both; **nothing in this chapter is a compliance reading — readings come only from captured sources in `docs/`**).
 
 ## The mental model
 
@@ -12,24 +12,30 @@ answer, and it is never a model.
 
 ## Explain it to a new hire
 
-Compliance in this repo is enforced by four shapes of code rather than by review discipline:
-fail-closed gates, deterministic engines, a machine-readable citation ledger, and source-text
-invariant tests. The gates are the ones you will hit first — the server will not boot without the
-encryption keys, a borrower's Loan Estimate is 403'd until the ESIGN consent exists, any
-soliciting surface 404s while the company's NMLS id is pending, a subject property outside the
-licensed footprint is refused, a credit pull needs an active consent whose type *exactly* covers
-the pull type, and a denial cannot be recorded before its ECOA adverse-action notice exists. The
-determinism rail is the underwriting engine, documented as "intentionally isolated from any
-external/AI decisioning path (Fair Lending / Reg B)" with "no hardcoded fallbacks" — every
-threshold comes from `lookupResolver.resolveMatrixValue`, which throws when nothing matches,
-while its non-throwing twin is reserved, in writing, for display surfaces. The citation rail is
-`data/regulatory/regulatory-ledger.json` — 59 entries, each naming its rule, value, citation,
-source, code location and last-verified date — under the contract "No citation → not
-implemented", with staleness a CI failure; and the source rail is that a reading counts only when
-checked against a *captured* copy in `docs/` this run, never from memory or a live fetch. The
-whole thing is pinned by `tests/complianceInvariants.test.ts` — 16 describes, 54 its, most of them
-grepping source files — whose header says: "If one of these fails, treat it as a compliance
-incident, not a flaky test."
+Compliance in this repo is a property of the code's shape, not a review step at the end: the
+question "who decided this?" must always have an answer at a file and line, and that answer is
+never a model. Four shapes carry it, and the first is gates that refuse rather than degrade — the
+server will not boot without its encryption keys (`assertEncryptionConfig`, called at
+`server/routes.ts:95`), a borrower's Loan Estimate (the early cost disclosure required by TRID, the
+TILA-RESPA Integrated Disclosure rule) is answered 403 until an electronic-consent record under
+ESIGN (the Electronic Signatures in Global and National Commerce Act) exists (`requireConsent`,
+`server/consentGate.ts:177`, mounted at `server/routes/underwriting/delivery.ts:81`), any
+soliciting surface answers 404 while the company's NMLS (Nationwide Multistate Licensing System)
+license is pending (`server/services/prelaunchGate.ts:37`), and a denial cannot be recorded before
+the adverse-action notice that ECOA (the Equal Credit Opportunity Act, implemented by Regulation B)
+and FCRA (the Fair Credit Reporting Act) require has been generated (`ensureAdverseActionForDenial`,
+`server/routes/lending/statusDecisions.ts:235-244`). The second is engines that never guess: every
+underwriting threshold is read at run time from a database matrix through `resolveMatrixValue`
+(`server/services/lookupResolver.ts:120`), which throws when no cell matches, because a hard-coded
+fallback would be a decision nobody cited — a Fair Lending (equal-treatment) liability the engine's
+own header names (`server/underwritingEngine.ts:235-239`). The third is a citation ledger a script
+can fail: `data/regulatory/regulatory-ledger.json` holds 59 entries, each naming its rule, value,
+citation, source, the code it governs (`codeRef`) and the date a human last verified it, and
+`scripts/regulatory-freshness.cjs` fails when any is overdue — the rule behind all four shapes is
+*no citation, no code*. The fourth is tests that read the source as text — 63 of the 239 unit test
+files open a file with `readFileSync` and grep it — and the header of
+`tests/complianceInvariants.test.ts:16` says what a red run means: treat it as a compliance
+incident, not a flaky test.
 
 ## Mechanism
 
@@ -45,7 +51,7 @@ flowchart TD
     G2{"unlicensedStateRejection - Illinois only"} -- outside --> G2X["reject the write"]
     G3{"requireConsent e_disclosure - consentGate.ts:177"} -- no affirmative consent --> G3X["403 CONSENT_REQUIRED + friction log"]
     G4{"consentCoversPullType - creditConsents.ts:37 - deny by default, exact match"} -- no --> G4X["throw"]
-    G5{"ensureAdverseActionForDenial - statusDecisions.ts:215 - BEFORE the flip"} -- cannot --> G5X["422, denial does not proceed"]
+    G5{"ensureAdverseActionForDenial - statusDecisions.ts:235 - BEFORE the flip"} -- cannot --> G5X["422, denial does not proceed"]
     G6{"simulation guards - creditPulls.ts:179, :192"} -- prod without CREDIT_VENDOR_MODE=simulation --> G6X["throw"]
   end
   subgraph DET["determinism"]
@@ -78,14 +84,14 @@ flowchart TD
   is not implemented." I8 (`:42`): no prohibited-basis variable or proxy is a model input;
   four-fifths disparate impact tested quarterly. And L2 names its own weakness: "F-014:
   `complianceInvariants` is grep-only — a green run there ≠ proven determinism" (`:35`).
-- **The source rule.** `CLAUDE.md:117-121` — a reading is verified only when checked against a
+- **The source rule.** `CLAUDE.md:120-123` — a reading is verified only when checked against a
   captured source *this run*; everything else stays flagged in the ledger. Reg Z is captured and
   pinned (the whole of 12 CFR 1026 plus Supplement I at eCFR `latest_amended_on` 2026-08-06,
   `docs/reg-z/README.md:16`; cite by section **and line**): "A reading fetched live is unrepeatable
-  and drifts silently … Re-capture, do not re-fetch ad hoc" (`CLAUDE.md:79-81`). NMLS answers come
-  only from `docs/nmls/` (`CLAUDE.md:60-63`). The one source CLAUDE.md tells you to fetch — the
+  and drifts silently … Re-capture, do not re-fetch ad hoc" (`CLAUDE.md:82-84`). NMLS answers come
+  only from `docs/nmls/` (`CLAUDE.md:63-66`). The one source CLAUDE.md tells you to fetch — the
   Fannie Loan Delivery job aid — returns 403, so `docs/fannie-mae/` is the only Fannie authority
-  (`CLAUDE.md:111-115`); `docs/fannie-mae/README.md:13-15` puts the Selling/Servicing Guides above
+  (`CLAUDE.md:114-118`); `docs/fannie-mae/README.md:13-15` puts the Selling/Servicing Guides above
   any job aid and says escalate, never pick. `docs/` and `data/regulatory/` are off limits to every
   owner agent except to *add* a ledger entry (`.claude/agents/_OWNER_RAILS.md:37`).
 - **The invariant test.** `tests/complianceInvariants.test.ts:16`; `grep -c "^describe("` → `16`;
@@ -134,10 +140,10 @@ flowchart TD
   determinism)"; `:219-224` `tryResolveMatrixValue` "for NON-DECISION display surfaces only".
   `shared/schema/decisions.ts:42-46` `resolvedPolicy` + `policyFingerprint` reconstruct a decision
   after a matrix edit.
-- **The ECOA chokepoint is visible in the route.** `server/routes/lending/statusDecisions.ts:210-231`
+- **The ECOA chokepoint is visible in the route.** `server/routes/lending/statusDecisions.ts:230-251`
   — "a denial must carry an adverse-action notice. The shared chokepoint generates it BEFORE the
-  status flips — if it can't, the denial does not proceed"; ≥ 2 HMDA reasons (`:145-148`); only
-  underwriter/admin set outcomes (`:155`). Pinned by `tests/complianceInvariants.test.ts:299` ("EVERY
+  status flips — if it can't, the denial does not proceed"; ≥ 2 HMDA reasons (`:165-168`); only
+  underwriter/admin set outcomes (`:175`). Pinned by `tests/complianceInvariants.test.ts:299` ("EVERY
   denial route runs through the shared adverse-action chokepoint") and `:308`.
 - **TRID and ESIGN.** The six-piece §1026.2(a)(3) trigger is evaluated on every completing write
   path; only `server/services/trid.ts` writes `tridTriggeredAt`; LE timing is business-day based,
@@ -158,7 +164,7 @@ flowchart TD
   `$comment` says every statutory constant in the codebase has an entry and
   `scripts/regulatory-freshness.cjs` fails when any is overdue; 9 entries still carry a
   blocked-network note from 2026-08-04/05 (re-probing is the first step in clearing each —
-  `CLAUDE.md:134-139`). The contract in `knowledge-base/compliance/UNDERWRITING_SCENARIOS.md:5-10`:
+  `CLAUDE.md:137-142`). The contract in `knowledge-base/compliance/UNDERWRITING_SCENARIOS.md:5-10`:
   "No citation → not implemented"; even the generation prompt says "write 'NO CITATION — needs
   research' instead of guessing" (`:37`). Every `shared/fannieMae/*.ts` names its captured PDF and
   forbids extending from memory.
@@ -201,8 +207,8 @@ flowchart TD
 | `consentCoversPullType` / pull gate | `creditConsents.ts:37`; `creditPulls.ts:67` | throw; deny-by-default |
 | credit-vendor interlock | `creditPulls.ts:179` | throw on a contradictory config |
 | production simulation ban | `creditPulls.ts:189-196`; `server/mcp/vendors.ts:88-95` | throw |
-| `ensureAdverseActionForDenial` | `statusDecisions.ts:215-224` | 422 — the denial does not proceed |
-| HMDA reason minimum | `statusDecisions.ts:145-148` | 400 |
+| `ensureAdverseActionForDenial` | `statusDecisions.ts:235-244` | 422 — the denial does not proceed |
+| HMDA reason minimum | `statusDecisions.ts:165-168` | 400 |
 | `unlicensedStateRejection` | five write paths (above) | reject the write |
 | MCP footprint gate | `server/mcp/index.ts:395` | tool call fails |
 | `resolveMatrixValue` | `lookupResolver.ts:120` | throw — no silent default |
@@ -211,34 +217,34 @@ flowchart TD
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
-# → 12d7cbec @ 12d7cbec
+cd /private/tmp/claude-501/-Users-ammrebarakat-Developer-Homiquity/c5bb7f2c-ceb3-4863-9512-a8d898a1328b/scratchpad/wt-b2 && git rev-parse --short HEAD ; git rev-parse --short origin/main
+# → be1ba5e1 / 6377727e   (HEAD = origin/main + this corpus's own docs commits; none of the files below differs between the two)
 grep -c "^| \*\*I" knowledge-base/L2_COMPLIANCE_AND_LOGIC.md
-# → 10 @ 12d7cbec
+# → 10 @ 6377727e
 grep -c "^describe(" tests/complianceInvariants.test.ts ; grep -c "  it(" tests/complianceInvariants.test.ts ; sed -n '16p' tests/complianceInvariants.test.ts
-# → 16 / 54 / " * If one of these fails, treat it as a compliance incident, not a flaky test." @ 12d7cbec
+# → 16 / 54 / " * If one of these fails, treat it as a compliance incident, not a flaky test." @ 6377727e
 grep -lE 'readFileSync\(' tests/*.test.ts | wc -l
-# → 63 @ 12d7cbec
+# → 63 @ 6377727e
 grep -rn "aes-256-gcm" server --include='*.ts'
-# → server/services/encryptionService.ts:3:const ALGORITHM = "aes-256-gcm"; @ 12d7cbec
+# → server/services/encryptionService.ts:3:const ALGORITHM = "aes-256-gcm"; @ 6377727e
 grep -n "AUDIT_HASH_V1 = \|AUDIT_HASH_V2_SEQUENCED = \|AUDIT_HASH_VERSION_CURRENT = " server/services/encryptionService.ts
-# → 298 / 299 / 300 @ 12d7cbec
+# → 298 / 299 / 300 @ 6377727e
 grep -rn "logAudit(" server | wc -l ; grep -rn "logCreditAction(" server | wc -l
-# → 138 / 16 @ 12d7cbec
+# → 138 / 16 @ 6377727e
 grep -rn "_encrypted" shared/schema/*.ts | wc -l
-# → 8 @ 12d7cbec
+# → 8 @ 6377727e
 grep -rn "@anthropic-ai/sdk" server --include='*.ts' | wc -l ; grep -rln "anthropic" server --include='*.ts' | wc -l
-# → 5 / 7   (none in DECISION_PATH_MODULES) @ 12d7cbec
+# → 5 / 7   (none in DECISION_PATH_MODULES) @ 6377727e
 python3 -c "import json;e=json.load(open('data/regulatory/regulatory-ledger.json'))['entries'];print(len(e));print(len([x for x in e if 'block' in (x.get('notes','') or '').lower()]))"
-# → 59 / 9 @ 12d7cbec
+# → 59 / 9 @ 6377727e
 grep -n "assertEncryptionConfig\|initEncryption(" server/routes.ts
-# → 47 (import) / 95 / 99 @ 12d7cbec
+# → 47 (import) / 95 / 99 @ 6377727e
 grep -rn "requireConsent(" server --include='*.ts' | wc -l
-# → 3   (doc comment, definition, the single mount at server/routes/underwriting/delivery.ts:81) @ 12d7cbec
+# → 3   (doc comment, definition, the single mount at server/routes/underwriting/delivery.ts:81) @ 6377727e
 grep -rn 'CREDIT_VENDOR_MODE' server/services/creditPulls.ts | wc -l
-# → 9 @ 12d7cbec
+# → 9 @ 6377727e
 grep -n "^- \*\*" knowledge-base/governance/TEAM_PRACTICES.md | awk -F: '$1>=299 && $1<=360' | wc -l
-# → 12   (the §9 trigger categories) @ 12d7cbec
+# → 12   (the §9 trigger categories) @ 6377727e
 ```
 
 ## Where this breaks
@@ -255,7 +261,7 @@ grep -n "^- \*\*" knowledge-base/governance/TEAM_PRACTICES.md | awk -F: '$1>=299
 | W8 — `policyFingerprint` / `resolvedPolicy` are nullable; a decision written without them is unreconstructable. | `shared/schema/decisions.ts:45-46` | No `NOT NULL`, no test (a contract migration = founder-signed). |
 | W9 — the §9 guard is PR-only and skips silently on push; the no-direct-push rule is what keeps it effective. | `security-review-guard.cjs:41-42` | By design. |
 | W10 — the schema-PII trigger matches a name vocabulary: `applicant_identifier` ships with zero triggers; a new PII sub-processor is undetectable in any diff. | `security-review-guard.cjs:29-34`; `TEAM_PRACTICES.md:370-382` | Self-declared floor. |
-| W11 — the ledger's freshness check trusts a typed `lastVerified`; 8 of the blocked-network entries had their notes corrected but were never re-read. | `CLAUDE.md:134-139` | Freshness is enforced; truthfulness is not. |
+| W11 — the ledger's freshness check trusts a typed `lastVerified`; 8 of the blocked-network entries had their notes corrected but were never re-read. | `CLAUDE.md:137-142` | Freshness is enforced; truthfulness is not. |
 | W12 — `STATIC_COACH_PROMPT` byte-stability and the anti-steering template's two-option claim are enforced by comments. | `coachingPrompt.ts:26-40`; `consentGate.ts:58-65` | `complianceInvariants:104` pins the template's citation, not its option count. |
 
 ## What we do not know
@@ -302,8 +308,8 @@ rather than re-stamping the book to make it tidy.
 - Feature-map rows 34 (PII protection — `hq-pii-vault-owner`, "almost entirely hand-back"), 32
   (HMDA and fair lending — `hq-hmda-fairlending-owner`), 8 (GSE delivery), 10 (TRID/LE), 41 (CI).
   Owner agents: `.claude/agents/hq-credit-fcra-owner.md` ("No pull without a recorded permissible
-  purpose. The consent gate fails closed, always", `:31`), `hq-underwriting-owner.md` (engines
+  purpose. The consent gate fails closed, always", `:33`), `hq-underwriting-owner.md` (engines
   hand-back only), `hq-ai-coach-owner.md` ("The coach extracts and explains. It never decides",
-  `:31-33`), `compliance-auditor.md` (the read-only review agent — "Never answers from memory; flags
+  `:32-33`), `compliance-auditor.md` (the read-only review agent — "Never answers from memory; flags
   what it cannot verify"). `_OWNER_RAILS.md` §4 ends: "A `complianceInvariants` failure is a
   compliance incident, not a flaky test."
