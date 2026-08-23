@@ -84,7 +84,7 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
 | `intentTracker.ts` | Borrower intent signal capture |
 | `lookupResolver.ts` | Lookup-matrix grid resolution (unit-tested) |
 | `../propertyAnalyzer.ts` | Property affordability analysis |
-| `../storage.ts` | The `IStorage` data-access layer (~5,600 lines) used by most routes |
+| `../storage/` | The `IStorage` data-access layer — **26 domain files**, not one file; `server/storage.ts` was deleted in the split |
 
 ## Pre-flight checklist — underwriting engine & regulated math
 
@@ -105,7 +105,7 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
 
 - Start with `borrowerGraph.ts` and `ruleEngine.ts` — they encode the two big
   ideas (unified trust-tiered profile; deterministic decisions).
-- `storage.ts` is huge but mechanical — search it for the entity you care
+- `server/storage/` is mechanical — grep the directory for the entity you care
   about rather than reading linearly.
 - `server/integrations/` contains the platform adapters: `auth/` (Postgres
   sessions + Passport wiring) and `object_storage/` (GCS with signed URLs).

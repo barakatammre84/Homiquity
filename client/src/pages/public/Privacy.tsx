@@ -149,7 +149,7 @@ export default function Privacy() {
             <Shield className="h-4 w-4 text-success-subtle-foreground" />
             Your data is protected
           </div>
-          <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl" data-testid="text-privacy-title">
+          <h1 className="font-display text-3xl font-bold leading-none text-white sm:text-4xl lg:text-5xl" data-testid="text-privacy-title">
             Security & Privacy
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">

@@ -18,6 +18,8 @@ import type {
   BorrowerDeclarations,
 } from "@shared/schema";
 import { isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { isExcludedAsPaidByOtherParty } from "@shared/liabilityExclusions";
+import { liabilityKind, type LiabilityKind } from "@shared/liabilityTypes";
 import { COMPANY_CONFIG } from "./config/company";
 import { mersOrgIdApplicable } from "@shared/businessChannel";
 import {
@@ -174,6 +176,41 @@ function mapLoanPurpose(purpose: string | null | undefined): LoanPurposeType {
 }
 
 /**
+ * Maps the application's amortization type to the ULDD `LoanAmortizationType` enum.
+ *
+ * Valid values were read out of the committed schema, not recalled:
+ * `docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd` gives AdjustableRate, Fixed,
+ * GraduatedPaymentMortgage, GrowingEquityMortgage, OtherAmortizationType, GraduatedPaymentARM,
+ * RateImprovementMortgage, ReverseMortgage, Step. Nothing here is invented.
+ *
+ * F-053: this was the compile-time literal "Fixed". The rate sheet seeds a real 5/6 ARM
+ * (`server/seedMarketPricing.ts`) and the borrower's URLA captures the choice
+ * (`server/routes/borrower/urla.ts`), so an adjustable file was delivered to the wholesale
+ * lender as fixed-rate. B2-1.4 governs amortization types; A3-4-02 requires delivery data to be
+ * "complete and accurate"; and under A2-2-07 a data inaccuracy is a life-of-loan representation.
+ * It is the same defect class as F-051 in this file — a stored value discarded for a constant.
+ *
+ * An unrecognised non-empty value throws rather than defaulting, following the U-7 precedent
+ * above: fail loud rather than emit a plausible value the schema accepts and the lender believes.
+ */
+function mapAmortizationType(amortizationType: string | null | undefined): string {
+  const t = (amortizationType ?? "").toLowerCase().trim();
+  // Two vocabularies reach this field: the application enum (`fixed` | `adjustable`,
+  // shared/statusVocabularies.ts) and the rate-sheet product spelling (`FIXED` | `ARM`).
+  if (t === "adjustable" || t === "arm") return "AdjustableRate";
+  if (t === "fixed") return "Fixed";
+  if (t === "") {
+    // Unset. Fixed is the documented platform assumption — `lendingWholesale.amortizationType`
+    // defaults to "FIXED" and every ARM product sets the field explicitly — so this asserts the
+    // default rather than overriding a known value, which is what F-053 actually was.
+    return "Fixed";
+  }
+  throw new Error(
+    `MISMO LoanAmortizationType: unmapped amortization type "${amortizationType}" — not a value in the ULDD enumeration (F-053)`,
+  );
+}
+
+/**
  * Maps the stored AUS recommendation to the free-text description ULDD carries.
  *
  * `AutomatedUnderwritingRecommendationDescription` is `MISMOString` with
@@ -237,22 +274,29 @@ function mapAssetType(type: string | null | undefined): AssetType {
   return mapping[type?.toLowerCase() || ""] || "Other";
 }
 
+/**
+ * LiabilityTypeEnumerated (MISMO_3_0.xsd line 9773) from the stored type.
+ * Classifies through the shared `liabilityKind`, so the URLA picker's own
+ * labels ("Revolving (Credit Card)", "Student Loan") reach a real enum instead
+ * of falling to the default — and the default is now a value the schema
+ * enumerates. F-020: "Mortgage", "Other", "ChildSupport" and "Alimony" were
+ * emitted verbatim and none of them exist in the schema; alimony and child
+ * support are EXPENSE items in MISMO and travel as OtherLiability until an
+ * EXPENSE container is built (the remaining half of F-020).
+ */
 function mapLiabilityType(type: string | null | undefined): LiabilityType {
-  const mapping: Record<string, LiabilityType> = {
-    credit_card: "Revolving",
+  const byKind: Record<LiabilityKind, LiabilityType> = {
     revolving: "Revolving",
-    auto_loan: "Installment",
-    car_loan: "Installment",
-    student_loan: "Installment",
-    mortgage: "Mortgage",
-    home_equity: "Mortgage",
-    personal_loan: "Installment",
     installment: "Installment",
-    child_support: "ChildSupport",
-    alimony: "Alimony",
-    other: "Other",
+    student_loan: "Installment",
+    mortgage: "MortgageLoan",
+    heloc: "HELOC",
+    lease: "LeasePayments",
+    alimony: "OtherLiability",
+    child_support: "OtherLiability",
+    other: "OtherLiability",
   };
-  return mapping[type?.toLowerCase() || ""] || "Other";
+  return byKind[liabilityKind(type)];
 }
 
 interface XMLNode {
@@ -837,7 +881,7 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
         children: [
           { tag: "LoanAmortizationPeriodCount", text: String(selectedOption?.loanTerm || 30) },
           { tag: "LoanAmortizationPeriodType", text: "Year" },
-          { tag: "LoanAmortizationType", text: "Fixed" },
+          { tag: "LoanAmortizationType", text: mapAmortizationType(application.amortizationType) },
         ],
       },
     ],
@@ -1107,6 +1151,18 @@ function buildLiabilitiesNode(dto: MISMOLoanDTO): XMLNode | null {
     const liabilityDetail: XMLNode[] = [];
     if (liability.accountNumber) {
       liabilityDetail.push({ tag: "LiabilityAccountIdentifier", text: liability.accountNumber });
+    }
+    // B3-6-05, Debts Paid by Others: a payment the qualifying ratio leaves out
+    // is declared to the lender as excluded, so the package and the decision
+    // tell one story. MISMO_3_0.xsd (docs/fannie-mae/schemas/uldd-phase5-
+    // extension, line 9748): "Indicates whether the liability is to be
+    // excluded from inclusion in calculations associated with processing the
+    // loan." Emitted only when true — absent means included, the default —
+    // and in the container's alphabetical position (after AccountIdentifier,
+    // before MonthlyPaymentAmount) as the schema sequence requires. The
+    // 12-month payment history rides the file as its own condition.
+    if (isExcludedAsPaidByOtherParty(liability)) {
+      liabilityDetail.push({ tag: "LiabilityExclusionIndicator", text: "true" });
     }
     if (liability.monthlyPayment) {
       liabilityDetail.push({ 

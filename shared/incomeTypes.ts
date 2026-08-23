@@ -15,22 +15,46 @@
  * picker; all of them are one `switch` away once the type is a value.
  *
  * WHAT THIS MODULE DELIBERATELY DOES NOT DO: decide how any type qualifies.
- * `qualifyingAuthority` is `null` for every entry today, and that is the honest
- * state, not an oversight — `docs/fannie-mae/` holds reference documents for
- * self-employment (B3-3.5/B3-3.6) and rental income only. There is no Selling
- * Guide income chapter in-repo, so there is no in-repo authority for grossing up
- * non-taxable income or for a continuance requirement, and this repo's standing
- * rule is that a regulated figure with no citation is flagged, never computed
- * (CLAUDE.md; the same rule that hard-blocks the DSCR and bank-statement paths).
+ * `qualifyingAuthority` is `null` for every entry today. That is still the
+ * honest state — but as of 2026-08-22 the REASON changed, and the old reason is
+ * no longer true.
  *
- * So the catalog states the gap in a form the machine can read. Filling one in
- * is a three-part change, in this order and never fewer:
- *   1. the authority document lands under `docs/fannie-mae/`;
+ * The old reason was "there is no Selling Guide income chapter in-repo". There
+ * is now: the founder supplied the 08-05-2026 edition, and the two rules this
+ * module names are both in it —
+ *   * non-taxable gross-up — B3-3.1-01, Nontaxable Income: add "an amount
+ *     equivalent to 25% of the nontaxable income", or the actual tax amount if
+ *     a wage earner in a similar bracket would pay more than 25%;
+ *   * continuance — B3-3.1-01, Continuance of Income: income with a defined
+ *     expiration date, or dependent on depletion of an asset, must be
+ *     documented to continue at least THREE YEARS from the note date.
+ *
+ * They stay uncomputed for two different reasons, and the difference matters:
+ *   * GROSS-UP raises qualifying income, which LOOSENS the DTI gate. This
+ *     repo's rail lets a reading tighten a gate or remove a borrower charge —
+ *     never loosen one. Applying it is a founder decision, not an agent's.
+ *   * CONTINUANCE removes income, which tightens — allowed — but
+ *     `other_income_sources` carries only `income_source` and `monthly_amount`.
+ *     There is no expiration date to test against, so the rule is
+ *     unimplementable until that is captured.
+ *
+ * Both are recorded in knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
+ *
+ * Filling one in is still a three-part change, in this order and never fewer:
+ *   1. the authority is available AND the citation points at a TRACKED file;
  *   2. a `data/regulatory/regulatory-ledger.json` entry cites it;
  *   3. `qualifyingAuthority` points at the doc and section, and the calculator
  *      that consumes it ships in the same commit.
- * `tests/incomeTypes.test.ts` enforces step 3 mechanically: a citation naming a
- * file that is not on disk fails the suite.
+ * `tests/incomeTypes.test.ts` enforces step 3 mechanically with `fs.existsSync`:
+ * a citation naming a file that is not on disk fails the suite.
+ *
+ * 🚨 STEP 1 HAS A TRAP NOW. The repo went public on 2026-08-22, so the Guide PDF
+ * and its full text extraction are GITIGNORED (see .gitignore and
+ * scripts/extract-selling-guide.py). Citing
+ * `docs/fannie-mae/selling-guide/selling-guide-text.txt` would pass on your
+ * machine and FAIL in CI, where the fresh clone does not have it. Cite the
+ * tracked `docs/fannie-mae/selling-guide/section-index.tsv` — or the conformance
+ * ledger — and name the section in `section`.
  */
 
 export const OTHER_INCOME_TYPE_IDS = [

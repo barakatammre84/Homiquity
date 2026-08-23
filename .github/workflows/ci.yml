@@ -33,10 +33,17 @@ name: CI
 #         gh api repos/<owner>/<repo>/rules/branches/main --jq 'length'   # → 0
 #     Check BOTH: classic protection and rulesets are separate mechanisms, and a
 #     requirement living in one shows as empty in the other.
+#     Still [] on 2026-08-22, re-measured with the two commands above.
 #     This was REMOVED DELIBERATELY (2026-08-19) so work could continue through the
 #     GitHub Actions billing failure — a required check that cannot run blocks every
 #     PR in the repo. It is not an oversight; restore it when Actions is paying again,
-#     together with the `migrate-prod` / `verify-deploy` restores at :505 and :580.
+#     together with the `migrate-prod` / `verify-deploy` restores below.
+#     ▶️ Two of those three are DONE as of 2026-08-22: `migrate-prod` and `verify-deploy`
+#     are re-armed in this PR (Actions is billing again — runs execute rather than dying
+#     in ~2s). Branch protection is the REMAINING one and is deliberately NOT changed
+#     here: it is a repo-settings change, not a code change, so it needs the founder's
+#     hand rather than a merge. Until it lands, `gate` is advisory — a red PR can still
+#     be merged by anyone, and the pre-push hook is the only gate that actually bites.
 #     ⚠️ `enforce_admins` is still ON, which reads reassuring and means nothing while
 #     the required-check list is empty: it binds admins to zero checks.
 #     This comment previously read "✅ CONFIGURED 2026-07-17: gate required". That was
@@ -255,6 +262,15 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: pnpm check
       - name: Unit tests
+        # `pnpm test` is scripts/test-collection-guard.cjs — both unit lanes plus a
+        # COLLECTED-COUNT FLOOR. Vitest globs test files through tinyglobby -> fdir,
+        # which defaults to suppressErrors and reports a directory whose readdir
+        # FAILED as an empty one. Under load that silently shortened three runs
+        # (111/118, 214/215, 113/119), each exiting 0. The floor compares what
+        # vitest reports collecting against what is on disk and fails on a
+        # shortfall; it also fails on a test file no lane's include matches, which
+        # never runs at all. (Job `name:` above deliberately unchanged — it is the
+        # verbatim required-check string.)
         if: steps.scope.outputs.code == 'true'
         run: pnpm test
       - name: Dependency vulnerabilities (prod deps, high+)
@@ -404,6 +420,40 @@ jobs:
           CHANGED_FILES_FILE="$RUNNER_TEMP/changed_files.txt" \
           CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
             pnpm guard:security
+
+      - name: Selling Guide authority guard (TEAM_PRACTICES §10)
+        # Fails when the PR changes Guide-governed logic (underwriting, income, AUS,
+        # delivery) without naming the governing Selling Guide section, and when any
+        # added line cites a section the committed edition does not contain. The second
+        # rule is the load-bearing one: the Guide renumbers between editions and a stale
+        # cite does not announce itself — when self-employment income moved off B3-3.2 on
+        # 2026-03-04, six sites kept citing the old chapter and the URL still returned 200.
+        # Like the §9 guard it proves the citation was WRITTEN DOWN, never that the reading
+        # is correct. It is INERT until the Guide corpus lands on the branch, and says so
+        # loudly rather than passing silently. (Job `name:` above deliberately unchanged.)
+        env:
+          # Via env, never inlined into run: — the PR body is attacker-controlled text.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Own temp filenames so this step never depends on the §9 step's ordering.
+          # Explicit merge-base with a base-tip fallback, for the same reasons documented
+          # on that step: two-dot over-attributes files the PR never touched, and `A...B`
+          # shorthand kills the step outright on a branch with no common ancestor.
+          if MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null)"; then
+            DIFF_BASE="$MERGE_BASE"
+          else
+            DIFF_BASE="$BASE_SHA"
+            echo "::warning::§10 guard: no merge-base between base and head; falling back to the base tip. The changed-file list may over-report."
+          fi
+          git diff --name-only "$DIFF_BASE" "$HEAD_SHA" > "$RUNNER_TEMP/sg_changed_files.txt"
+          git diff -U0 "$DIFF_BASE" "$HEAD_SHA" > "$RUNNER_TEMP/sg_changed_lines.diff"
+          CHANGED_FILES_FILE="$RUNNER_TEMP/sg_changed_files.txt" \
+          CHANGED_LINES_FILE="$RUNNER_TEMP/sg_changed_lines.diff" \
+            pnpm guard:authority
       - name: Query-key convergence guard
         if: steps.scope.outputs.code == 'true'
         # TWO checks, both behind this one script. `invalidateQueries` is the only
@@ -530,27 +580,105 @@ jobs:
             exit 1
           fi
 
+      - name: Integration lane (HTTP, against the built bundle)
+        if: steps.scope.outputs.code == 'true'
+        # The 18-file HTTP suite has never run in CI — only `pnpm preflight` ran it, so it
+        # gated nothing and its findings arrived only when someone ran preflight by hand
+        # (HO-0822-U2). It is the only lane exercising real routing, auth, CSRF and the
+        # Postgres lookup matrices end to end; the unit lanes are hermetic by design.
+        #
+        # DEVELOPMENT mode, deliberately. The suite authenticates through /api/test-login,
+        # which hard-404s under NODE_ENV=production, and some files omit the Origin the
+        # production CSRF guard requires. Same dist bundle the step above just proved boots
+        # in production mode — only the posture differs.
+        #
+        # SEEDED, not just migrated. lookupMatrixCoverageGap and lookupMatrixLifecycle read
+        # the Postgres policy matrices, and resolveMatrixValue throws rather than guessing
+        # when a row is absent — an unseeded database would fail this lane for a reason that
+        # is not the code.
+        #
+        # RATE LIMITS. RATE_LIMIT_RELAXED lifts the AUTH limiter (20/15min, which the suite's
+        # ~30 auth calls blow through in one pass) and nothing else: generalLimiter still
+        # applies 500 requests per 15 minutes to /api and does NOT consult the flag. A fresh
+        # process per run is what keeps the suite inside that budget. If this step ever starts
+        # failing with 429s, that is the first thing to look at, not the tests.
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
+        run: |
+          set -uo pipefail
+          # GRIDS BEFORE CONTENT, and both are required — scripts/local-db.sh says why, and the
+          # first CI run of this step proved it: `db:seed` alone left FANNIE_LLPA unseeded, the
+          # content seed logged "CRITICAL COMPLIANCE ERROR: Required matrix configuration
+          # [FANNIE_LLPA]", and all ten pricing/underwriting endpoints answered 500 because
+          # resolveMatrixValue throws rather than guessing. Nothing in package.json calls
+          # seedLendingGrids, which is exactly why a fresh database cannot price a loan.
+          ./node_modules/.bin/tsx server/scripts/seedLendingGrids.ts
+          DEV_TEST_PASSWORD=test1234 pnpm db:seed
+          NODE_ENV=development PORT=4000 RATE_LIMIT_RELAXED=true \
+          DEV_TEST_PASSWORD=test1234 \
+          SESSION_SECRET="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          PII_HASH_SALT="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          CREDIT_ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))')" \
+          node dist/index.js > /tmp/integration-server.log 2>&1 &
+          SRV_PID=$!
+          CODE=000
+          for i in $(seq 1 45); do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health 2>/dev/null || true)"
+            CODE="${CODE:-000}"
+            [ "$CODE" = "200" ] && break
+            kill -0 "$SRV_PID" 2>/dev/null || break
+            sleep 1
+          done
+          if [ "$CODE" != "200" ]; then
+            echo "--- server log ---"; cat /tmp/integration-server.log
+            kill "$SRV_PID" 2>/dev/null || true
+            echo "::error::the integration server never answered /api/health — the lane did not run"
+            exit 1
+          fi
+          TEST_BASE_URL=http://localhost:4000 DEV_TEST_PASSWORD=test1234 pnpm test:integration
+          RC=$?
+          kill "$SRV_PID" 2>/dev/null || true
+          if [ "$RC" != "0" ]; then
+            echo "--- server log (last 100 lines) ---"; tail -100 /tmp/integration-server.log
+            echo "::error::the integration lane failed"
+            exit "$RC"
+          fi
+
   migrate-prod:
     name: migrate-prod (apply pending migrations)
-    # ⏸️ PAUSED 2026-08-19 — founder direction: development is local-only until the app
-    # is fully built and debugged, and the Railway production service is being taken down.
-    # There is no prod app to migrate for, so this no longer fires on a merge to `main`.
+    # ▶️ RESUMED 2026-08-22, after the pause's premise turned out to be false and cost a
+    # 35-minute total authentication outage in production.
     #
-    # What this costs, stated plainly so nobody rediscovers it the hard way: migrations
-    # merged from now on are NOT applied anywhere. The journal in `migrations/meta/` will
-    # run ahead of the production database for as long as this stays paused, and the gap
-    # is however many migrations land in the meantime.
+    # THE PAUSE, AND WHY IT ENDED. On 2026-08-19 this was paused on founder direction:
+    # development was going local-only and "the Railway production service is being taken
+    # down", so there was said to be no prod app to migrate for. The takedown never
+    # happened. Railway kept auto-deploying every merge to `main`, the site stayed public,
+    # and the journal ran ahead of the database exactly as the pause note predicted —
+    # while nothing in CI was able to say so.
     #
-    # TO RESUME when you go back to Railway — do these together, in one PR:
-    #   1. restore this line to:  github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    #   2. restore `verify-deploy`'s `if:` below,
-    #   3. FIRST run this workflow manually with dry_run=true and read the pending list —
-    #      it will be long, and a green dry-run never executes the SQL (it reconciles the
-    #      journal only), so it is not evidence the DDL will succeed,
-    #   4. re-check any contract migration in that list against real prod data before
-    #      the first apply.
-    # Manual dispatch still works throughout, so the dry-run in step 3 needs no code change.
-    if: github.event_name == 'workflow_dispatch'
+    # It came due on 2026-08-22. PR #609 merged migration 0057 (users.last_failed_login_at).
+    # This job did not fire, so the column was never created, while the deployed code
+    # selects it on EVERY query against `users`. Login, signup and password reset each
+    # returned 500 — `error: column "last_failed_login_at" does not exist`, in the Railway
+    # deploy logs — until the migration was applied by manual dispatch (run 32592906537).
+    #
+    # 🚨 THE CHECK THAT DID NOT SAVE US, so nobody reaches for it next time: `verify-deploy`
+    # below would have stayed GREEN throughout. It asserts prod serves the merged COMMIT,
+    # and prod did serve it. The process was alive and the code current; only the schema
+    # underneath was wrong. A commit check cannot see a missing column.
+    #
+    # Steps 3 and 4 of the original resume plan were honoured: dry_run=true was run first
+    # (run 32591800451) and listed exactly one pending migration, 0057, which is additive
+    # (`ADD COLUMN IF NOT EXISTS`, nullable) and therefore carries no contract-migration
+    # data risk. A green dry-run still never executes SQL — it reconciles the journal only.
+    #
+    # ⚠️ IF THE RAILWAY TAKEDOWN IS STILL THE PLAN, this is the wrong half of the fix:
+    # revert it and complete the takedown — or at minimum disable Railway's auto-deploy
+    # from `main` — instead. What must not continue is the state this incident happened in:
+    # a live, public, auto-deploying production whose migrations nothing applies. Either
+    # prod is real and gets its migrations, or it is gone and stops receiving deploys. It
+    # cannot be both.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Never run two migrations against prod at once; don't cancel one in flight.
     concurrency:
@@ -608,17 +736,22 @@ jobs:
   # ---------------------------------------------------------------------------
   verify-deploy:
     name: verify-deploy (prod is serving this commit)
-    # ⏸️ PAUSED 2026-08-19 — same founder direction as `migrate-prod` above. This job polls
-    # production's /api/health for the merged commit; with the Railway service down there is
-    # nothing to poll, so it would fail on every merge to `main` and teach everyone to ignore
-    # a red check — which is the precise habit that let prod sit eight commits stale in the
-    # first place. Better paused loudly than red permanently.
+    # ▶️ RESUMED 2026-08-22 alongside `migrate-prod`. Its own note said to restore it BEFORE
+    # the first Railway deploy, not after; Railway has been deploying every merge throughout
+    # the pause, so this restore is overdue rather than early.
     #
-    # 🚨 RESTORE THIS BEFORE THE FIRST RAILWAY DEPLOY, not after. The failure it catches is
-    # invisible without it: a failed Railway build leaves the PREVIOUS container serving, so
-    # the site stays up, /api/health answers 200, and every other check stays green while the
-    # code you merged is not running. Restore to:  github.event_name == 'push'
-    if: false
+    # 🚨 KNOW EXACTLY WHAT THIS CATCHES, AND WHAT IT CANNOT. It catches the stale-container
+    # failure: a failed Railway build leaves the PREVIOUS container serving, so the site
+    # stays up, /api/health answers 200, and every other check stays green while the code
+    # you merged is not running.
+    #
+    # It does NOT catch a schema mismatch, and on 2026-08-22 that distinction was the whole
+    # incident: prod served the correct commit with a missing column while every login
+    # 500'd, and this job would have been green for all 35 minutes. Matching commits prove
+    # the right CODE is running, never that the DATABASE underneath it agrees. Do not cite
+    # a green verify-deploy as evidence that a deploy is healthy — that is the same
+    # unearned-success shape as reading /api/health's 200 as proof a migration applied.
+    if: github.event_name == 'push'
     # 🚨 MUST NOT BLOCK THE WORKFLOW. This job and Railway's "Wait for CI"
     # setting are mutually recursive: Wait for CI holds the deploy until every
     # GitHub workflow for the commit succeeds, while this job waits for that

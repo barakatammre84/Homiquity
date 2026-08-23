@@ -124,9 +124,10 @@ false positive:
   survives the gate while soliciting, or a `<Gated>` redirect that strands state (the
   calculator→funnel sessionStorage handoff is read-and-consumed, so a redirect between write and
   read silently destroys it).
-- **Design system:** `main` is **Royal Blue Emerald** (2026-07-08 repaint #93; PageShell
-  scaffold #131). Audit artifacts referencing Obsidian Indigo or Charcoal Emerald predate it —
-  don't file color findings from them.
+- **Design system:** `main` is **"Mint & Flare"** (2026-08-20 rebuild `3cba2dae`; PageShell
+  scaffold #131) — white ground, green-black dark surfaces, one mint tint, one orange `--flare`.
+  Audit artifacts referencing **Royal Blue Emerald**, Obsidian Indigo or Charcoal Emerald all
+  predate it — don't file color findings from them.
 
 ## Severity scale
 

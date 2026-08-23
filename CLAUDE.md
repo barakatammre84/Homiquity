@@ -4,6 +4,9 @@ Guidance for Claude Code when working in this repository. The deep engineering m
 [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [knowledge-base/handbook/app-guide/](knowledge-base/handbook/app-guide/);
 session working practices (doc rules, branch lifecycle, definition of done, push policy)
 are [knowledge-base/governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
+Onboarding, or building through a Claude loop? [knowledge-base/handoff/](knowledge-base/handoff/)
+is the Feynman layer over the app-guide — every chapter proves its claims with a command you
+can run — and `handoff/prompts/` carries the loop rails and templates.
 
 ## Domain skills (loaded on demand)
 
@@ -12,7 +15,7 @@ and point to the authoritative app-guide chapter (they don't duplicate it — th
 wins). Claude Code auto-loads a skill when its work matches:
 
 - **`api-routes`** — backend endpoints under `server/routes/` (auth gating, Zod, CSRF/webhooks, PII/audit, `inArray`).
-- **`ui-components`** — client UI/theming (Royal Blue Emerald token guard, WCAG AA, Shadcn/TanStack Query).
+- **`ui-components`** — client UI/theming ("Mint & Flare" token guard, the `--flare` fill-not-text rule, WCAG AA, Shadcn/TanStack Query).
 - **`mortgage-calculations`** — affordability/pricing/underwriting math (determinism + no-citation-no-implementation).
 - **`seo-content`** — public marketing/SEO surfaces (Reg Z trigger terms, Reg N no-approval, TCPA, pre-license gate).
 
@@ -23,18 +26,31 @@ The rules below still bind every session regardless of which skill is active.
 Before building or modifying **anything** that touches Fannie Mae loan delivery, ULDD, UCD,
 URLA, MISMO export, AUS/DU submission, edit codes, or Special Feature Codes:
 
-1. **Consult the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
+1. **Start at the Selling Guide — one command makes it greppable.** Edition 08-05-2026.
+   `section-index.tsv` in [`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/)
+   is **tracked**, so `grep -n "B3-6-05" …/section-index.tsv` finds any section's page with no
+   setup. The full text is **gitignored** — this repo is public and the Guide is Fannie Mae's
+   copyrighted work — so generate it once with `python3 scripts/extract-selling-guide.py`, then
+   `grep` it freely (every page is prefixed `[[PAGE n | <section>]]`). If the script cannot
+   find the PDF it says where it looked and **stops**; that is an honest gap, not a licence to
+   answer from memory. ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an
+   anchor and reports zero matches on text that is verbatim there.
+2. **Then the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
    spec, UCD job aids, URLA documents, Special Feature Codes). See the README there for the
    expected inventory. If a document you need is missing, say so — do not proceed from memory.
-2. **Verify current terminology against the official Loan Delivery job aid**:
-   <https://singlefamily.fanniemae.com/job-aid/loan-delivery>. Fetch and search it whenever you
-   need current MISMO data point names, valid enumerations, conditionality, edit codes, or SFCs.
-3. **Never invent MISMO field names, enumerations, XML container paths, edit codes, or Special
-   Feature Codes.** If a name or value cannot be verified in the local references or the job
-   aid, stop and flag it rather than guessing.
-4. **Document hierarchy:** the Fannie Mae *Selling Guide* and *Servicing Guide* are the official
+3. **The online Loan Delivery job aid** (<https://singlefamily.fanniemae.com/job-aid/loan-delivery>)
+   is where current MISMO data point names, enumerations, conditionality, edit codes and SFCs
+   are published — but it **returns 403 from this environment**, so treat it as unavailable
+   rather than as a step you can execute. Probe if you like; report the block, don't guess past it.
+4. **Never invent MISMO field names, enumerations, XML container paths, edit codes, or Special
+   Feature Codes.** If a name or value cannot be verified in the local references, stop and flag
+   it rather than guessing.
+5. **Document hierarchy:** the Fannie Mae *Selling Guide* and *Servicing Guide* are the official
    policy statements and control over job aids in any discrepancy. When sources disagree or a
-   requirement is ambiguous, escalate to the user instead of picking an interpretation.
+   requirement is ambiguous, escalate to the user instead of picking an interpretation. The
+   *Selling* Guide half is now checkable in-repo; the *Servicing* Guide is still absent.
+   Findings from scrubbing the code against it:
+   [SELLING_GUIDE_CONFORMANCE.md](knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md).
 
 Where this code lives:
 
@@ -68,11 +84,17 @@ For anything touching loan-originator compensation, the QM points-and-fees cap, 
 finance-charge definition, or TRID fee tolerances — consult [`docs/reg-z/`](docs/reg-z/).
 Do not answer Reg Z questions from memory.
 
-⚠️ **That directory holds no authoritative source text** — only
-[`docs/reg-z/README.md`](docs/reg-z/README.md), which is the shopping list and the procedure for
-when a document arrives. **That absence — not network access — is the reason the ledger entries
-below sit unverified.** A reading fetched live is unrepeatable and drifts silently; only a captured,
-versioned copy under `docs/reg-z/` fixes that. So the blocker is **procurement**.
+✅ **The source text is now local, as of 2026-08-20.**
+[`docs/reg-z/12-cfr-1026-regulation-z.xml`](docs/reg-z/12-cfr-1026-regulation-z.xml) holds the whole
+of **12 CFR Part 1026 plus Supplement I** (the Official Interpretations — frequently the only place
+a composition question is actually answered), pinned to eCFR Title 12 `latest_amended_on`
+**2026-08-06**. A **section → line map** and a grep recipe are in
+[`docs/reg-z/README.md`](docs/reg-z/README.md). **Cite it by section and line**, e.g.
+*§1026.36(d)(2)(i)(A), line 1704ff*.
+
+A reading fetched live is unrepeatable and drifts silently — that is why the copy is captured and
+pinned rather than fetched per session. **Re-capture, do not re-fetch ad hoc**, and record the new
+amendment date in that README when you do.
 
 🚨 **Probe before you claim a source is unreachable. Do not trust this paragraph's answer — or the
 opposite one.** This file previously stated as a permanent fact that `ecfr.gov`,
@@ -102,21 +124,44 @@ grep -c "lowest total dollar amount of discount points" /tmp/regz.html   # 0 = y
 4. **`govinfo.gov` serves soft 404s** — its CFR *HTML granule* path returns `200` with 44 KB of
    `<title>Page Not Found</title>`. Use the `/pdf/` path. **A 200 is never evidence; grep the body.**
 
-🚨 **The one source this file tells you to fetch is the one actually blocked:** the Fannie Loan
-Delivery job aid (`singlefamily.fanniemae.com/job-aid/loan-delivery`) returns **403**, so the
-compliance instruction above has no executable path in-session — `docs/fannie-mae/` is the only
-Fannie authority that exists. Selling Guide **A2-2-04** and **B3-2-01/B3-2-02** are absent from it and
-have blocked verdicts.
+🚨 **The Fannie job aid is blocked; the Selling Guide no longer is.** The Loan Delivery job aid
+(`singlefamily.fanniemae.com/job-aid/loan-delivery`) returns **403**, so that instruction has no
+executable path in-session. But the claim that once followed it here — that Selling Guide
+**A2-2-04** and **B3-2-01/B3-2-02** were absent and carried blocked verdicts — **stopped being
+true on 2026-08-20**, when the founder supplied the full 08-05-2026 Guide. All three sections
+are present (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292), verified by body text and not by a page
+count. The Guide is *available*, not *committed* — the repo went public on 2026-08-22 and the
+copyrighted text is gitignored; `scripts/extract-selling-guide.py` regenerates it locally, and
+the tracked `section-index.tsv` locates any section without it. **This is the same lesson as the Reg Z paragraph above: an availability claim is a thing
+to test, not a thing to assert** — and unlike Reg Z, the fix here was procurement, and it has
+landed. Reg Z's `docs/reg-z/` still holds only a README, so its rail is unchanged.
 
-**The rail is unchanged, and its scope is wider than Reg Z.** Until a captured copy lands in
-`docs/reg-z/`, a Reg Z reading is **flagged in
+**The rail is unchanged, and its scope is wider than Reg Z.** A reading is **verified** only when
+it has been checked against a captured source *this run*, citing the locating detail; everything
+else stays **flagged in
 [`data/regulatory/regulatory-ledger.json`](data/regulatory/regulatory-ledger.json), never
-asserted** — and it must be conservative in one direction only (it may remove a borrower charge
-or tighten a gate; it may never create the violation it guards against). **11 ledger entries across
-four regimes** (Reg Z, FCRA, Reg V, CROA — plus an Illinois fee schedule) currently cite the
-2026-08-04/05 blocked-network condition in their notes; re-probing is now the first step in clearing
-any of them. **Relaxing this rail is a founder decision, not an agent's** — a rail the machine can
-relax for itself is not a rail.
+asserted**. The capture satisfies the rail's own exit condition for Part 1026 — it does not widen
+it. Two things did **not** change:
+
+- **Conservative in one direction only.** A reading may remove a borrower charge or tighten a gate;
+  it may never create the violation it guards against. A verdict that *loosens* a consent,
+  disclosure, adverse-action or FCRA gate is a founder decision even when the text supports it.
+  (Worked example: `shared/compliance/feeTolerance.ts` puts every Section C shoppable service in
+  the **zero** bucket rather than the ten-percent one. §1026.19(e)(3)(ii)(C) conditions the
+  ten-percent tier on the creditor permitting the consumer to shop per (e)(1)(vi) — and with no
+  written provider list, that condition cannot be met, so the strict bucket is both correct *and*
+  conservative. Were the written-list feature ever built, moving those lines to ten-percent would
+  **loosen** a disclosure gate, and that is a founder decision even though the text would support
+  it.)
+- **Outside Part 1026, nothing is captured.** Of the 11 ledger entries that cited the 2026-08-04/05
+  blocked-network condition, **3 are now verified** (`regz-1026-36d2-dual-compensation`,
+  `regz-1026-32b1-points-and-fees-floor`, `trid-1026-19e3-fee-tolerance`, all reset to a 180-day
+  interval). The other 8 had that now-false claim corrected in their notes but their **status is
+  untouched** — nobody has re-read them. FCRA, Reg V and CROA entries need *different* sources; the
+  CDIA Metro 2 manual is licensed and still not obtainable.
+
+**Relaxing this rail is a founder decision, not an agent's** — a rail the machine can relax for
+itself is not a rail.
 
 ## Architecture ground rules
 

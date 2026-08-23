@@ -1,0 +1,47 @@
+{
+  "$comment": "Durable queue of regulatory change signals emitted by scripts/regulatory-watch.cjs. Append-only: a row is never deleted, only moved new -> promoted | dismissed by scripts/regulatory-triage.cjs, so a dismissal stays on the record. ledgerCandidates is a deterministic host/citation match against regulatory-ledger.json — the entries a human must re-verify — never an inferred one. Promotion into the compliance registry is authored by a human or /domain-oracle, with a citation; no script writes that file.",
+  "signals": [
+    {
+      "id": "fr-2026-13939",
+      "detectedAt": "2026-08-20",
+      "source": "federal-register",
+      "sourceLabel": "Federal Register — Housing and Urban Development Department",
+      "title": "Rescission of Floodplain Management and Protection of Wetlands; Minimum Property Standards for Flood Hazard Exposure; Building to the Federal Flood Risk Management Standard",
+      "url": "https://www.federalregister.gov/documents/2026/07/10/2026-13939/rescission-of-floodplain-management-and-protection-of-wetlands-minimum-property-standards-for-flood",
+      "status": "new",
+      "ledgerCandidates": [],
+      "authorityScope": {
+        "note": "the notice names no CFR section, regulation letter or statute",
+        "entriesUnderThisAuthority": 1
+      }
+    },
+    {
+      "id": "fr-2026-13834",
+      "detectedAt": "2026-08-20",
+      "source": "federal-register",
+      "sourceLabel": "Federal Register — Consumer Financial Protection Bureau",
+      "title": "Request for Information Regarding Promoting Access to Mortgage Credit",
+      "url": "https://www.federalregister.gov/documents/2026/07/09/2026-13834/request-for-information-regarding-promoting-access-to-mortgage-credit",
+      "status": "new",
+      "ledgerCandidates": [],
+      "authorityScope": {
+        "note": "the notice names no CFR section, regulation letter or statute",
+        "entriesUnderThisAuthority": 24
+      }
+    },
+    {
+      "id": "page-va-circulars-fc0c3ef399415ef6",
+      "detectedAt": "2026-08-20",
+      "source": "va-circulars",
+      "sourceLabel": "VA Home Loans circulars",
+      "title": "VA Home Loans circulars page content changed (e08fe54a23bb0d3d → fc0c3ef399415ef6)",
+      "url": "https://www.benefits.va.gov/homeloans/resources_circulars.asp",
+      "status": "new",
+      "ledgerCandidates": [
+        "va-26-7-ch4-residual-matrix",
+        "va-26-7-ch4-residual-reduction",
+        "platform-va-residual-tax-estimate"
+      ]
+    }
+  ]
+}

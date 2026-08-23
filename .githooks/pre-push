@@ -1,17 +1,36 @@
 #!/usr/bin/env bash
 #
-# Pre-push gate — run CI's `gate` job locally so a red never costs a CI minute.
+# Pre-push gate — the CHEAP half of CI's `gate` job, run locally so the common
+# break (a type error, a guard regression) is caught in ~30 s here instead of a
+# 4-minute CI round trip. CI runs the whole gate on every PR; this is the early
+# warning, not the control.
 #
-# WHY THIS EXISTS. The repo is private, so Actions minutes are metered (roadmap
-# KTLO-2). Measured 2026-08-17: 66 CI runs over 4.85 days = ~13.6/day, one
-# billable `gate` job each at ~4-5 min = ~1,850 min/month against a 2,000-minute
-# free allowance. A red gate costs that run AND the re-run after the fix, so
-# catching one here saves roughly ten minutes, not five.
+# HOW IT GOT THIS SHAPE — three premises, each of which has since changed:
 #
-# WHAT IT RUNS. Exactly the checks CI's `gate` job runs, in the order that fails
-# fastest first — nothing more. It deliberately does NOT run `pnpm build`, the
-# audit, or the prod health probe; those live in `pnpm checkup`, which is the
-# heavier pre-PR sweep. This hook is meant to be cheap enough that you leave it on.
+#   1. 2026-08-17: the repo was private and Actions minutes were metered
+#      (roadmap KTLO-2; ~13.6 runs/day × 4-5 min ≈ 1,850 of a 2,000-minute
+#      allowance), so this hook ran the FULL unit suite too — a red caught here
+#      saved two billed runs.
+#   2. 2026-08-19: Actions billing failed and every CI run died in ~2 s with no
+#      steps. With nothing behind it, this hook became the ONLY gate, so it
+#      started BLOCKING pushes from checkouts with no node_modules (PR #608 had
+#      gone up from a fresh worktree with zero checks of any kind).
+#   3. 2026-08-22: the repo went public, Actions minutes are free, and CI's
+#      `gate` job is running again (29 steps, ~3 min). Both special cases are
+#      over. What remained was the cost of the suite itself: vitest spawns one
+#      worker per core (8 here) and the two lanes take ~1-2 GB and every core
+#      for minutes, on every push, docs-only PRs included. On the 8 GB laptop
+#      this repo is developed on, with several sessions pushing at once, that
+#      is the difference between a usable machine and a swapping one.
+#
+# WHAT IT RUNS. Typecheck, then the twelve guards — fail-fastest-first, ~30 s all
+# in. The unit suite is OPT-IN here and mandatory in CI:
+#
+#   PREPUSH_TESTS=1 git push      # also run both vitest lanes before pushing
+#
+# It deliberately does NOT run `pnpm build`, the audit, or the prod health probe;
+# those live in `pnpm preflight` / `pnpm checkup`, the heavier pre-PR sweeps.
+# This hook is meant to be cheap enough that you leave it on.
 #
 # INSTALL:  git config core.hooksPath .githooks
 # SKIP ONCE: git push --no-verify
@@ -39,45 +58,28 @@ fi
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
-# TOOLING PRE-FLIGHT — and it must WARN, never block.
+# TOOLING PRE-FLIGHT — WARN, never block.
 #
-# Found by this hook blocking its own author's push, one commit after it merged.
 # Every routine in knowledge-base/routines/CHARTER.md works in a `git worktree`,
-# and a fresh worktree has NO node_modules of its own — so `pnpm test` died with
-# "vitest: command not found" and the hook reported it as a failed gate. That is
-# wrong twice over: it is a statement about the checkout, not about the code, and
-# a hook that blocks a push for a reason the author cannot act on teaches exactly
-# one habit — `--no-verify` — which disables the control permanently.
+# and a fresh worktree has NO node_modules of its own. An uninstalled checkout is
+# a statement about the tooling, not about the code, and a hook that blocks a
+# push for a reason the author cannot act on teaches exactly one habit —
+# `--no-verify` — which disables the control permanently.
 #
-# So an uninstalled checkout gets a loud, specific warning and the push proceeds;
-# CI still gates the PR. Only real check failures block.
-# It used to SKIP here, on the reasoning above: an uninstalled checkout is a statement
-# about the tooling, not about the code, and CI would gate the PR regardless.
-#
-# The second half of that stopped being true on 2026-08-19. GitHub Actions billing
-# failed — every run now dies in ~2s before a single step — and development moved
-# local-only, so there is no second gate behind this one. A skip is no longer a
-# deferral; it is a push with nothing checked at all. It cost something immediately:
-# PR #608 went up from a fresh worktree with zero checks of any kind, carrying a test
-# this hook would have caught.
-#
-# So this BLOCKS now. The original objection — that a hook must not block for a reason
-# the author cannot act on — does not apply here: the fix is one command, about six
-# seconds in this repo. The thing that must never happen is a silent pass.
-if [ ! -d node_modules ] || ! [ -x node_modules/.bin/vitest ]; then
+# Between 2026-08-19 and 2026-08-22 this BLOCKED instead, and rightly: CI was
+# dead, so a skip here was a push with nothing checked at all. CI is back, so a
+# skip is a deferral again — the PR's gate still runs every check, including the
+# ones this hook never runs. The warning stays loud so it is never a silent pass.
+if [ ! -d node_modules ] || ! [ -x node_modules/.bin/tsc ]; then
   echo
-  echo "push BLOCKED — dependencies are not installed, so nothing can be checked"
+  echo "pre-push gate SKIPPED — dependencies are not installed in this checkout"
   echo "  $(pwd)"
   echo
-  echo "  fix (about 6s):  pnpm install --frozen-lockfile"
+  echo "  A fresh git worktree has no node_modules of its own — expected, not an error."
+  echo "  To run the local pre-check here:  pnpm install --frozen-lockfile"
+  echo "  CI's gate still runs every check on the PR; this only skips the early warning."
   echo
-  echo "  A fresh git worktree has no node_modules of its own. That is expected, but it"
-  echo "  means this gate would run zero checks — and while CI is down there is nothing"
-  echo "  behind it to catch what it missed."
-  echo
-  echo "  If this push genuinely cannot be checked (docs-only branch, rescue push), say"
-  echo "  so deliberately:  git push --no-verify"
-  exit 1
+  exit 0
 fi
 
 failed=()
@@ -95,15 +97,15 @@ step() {
   fi
 }
 
-echo "pre-push gate — mirroring CI's \`gate\` job"
+echo "pre-push gate — the cheap half of CI's \`gate\` job (typecheck + guards)"
 
-# Order is fail-fastest-first: 25s of tsc beats 3 minutes of vitest when the
-# break is a type error, which is the common case.
+# Order is fail-fastest-first: tsc catches the common break (a type error) in
+# ~25 s, and the twelve guards cost about a second and a half between them.
 step "typecheck (tsc)"          npx tsc --noEmit
 
 # The whole guard suite, added 2026-08-18. Every one of these is a REQUIRED
 # check in CI and they cost about a second between them — leaving them out meant
-# a design-token regression still burned the four billed minutes to find out.
+# a design-token regression still burned a CI run to find out.
 # Measured on this repo: 9 guards, ~1s total.
 step "schema <-> migrations"    node scripts/schema-migration-guard.cjs
 step "migration ledger"         node scripts/migration-ledger-guard.cjs
@@ -113,8 +115,31 @@ step "UI standard ratchet"      node scripts/ui-standard-guard.cjs
 step "knowledge-base index"     node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"    node scripts/doc-staleness-guard.cjs
 step "query-key convergence"    node scripts/query-key-guard.cjs
+# The gate runs all three query-key scripts and the citation ratchet; this hook ran one of
+# three and none of the latter, so a push could be locally green and red in CI for a check
+# that costs under a second here. Shape alone misses the two that matter most in practice:
+# an invalidation that matches no fetch key (reachability) and a queryFn fetching a URL its
+# key does not imply (transport).
+step "query-key reachability"    node scripts/query-key-reachability.cjs
+step "query-key transport"       node scripts/query-key-transport-guard.cjs
+step "citation ratchet"          node scripts/citation-guard.cjs
 
-step "unit tests (node+client)" pnpm test
+# UNIT TESTS — opt-in locally, mandatory in CI. See the header for why: both
+# lanes cost ~1-2 GB and every core for minutes, which on a shared 8 GB laptop
+# is what makes the machine swap, and CI runs them on every PR regardless.
+#
+# Note what `pnpm test` now is: scripts/test-collection-guard.cjs, which runs both
+# lanes AND checks that vitest actually collected every test file on disk. Three
+# times on 2026-08-20/21 it did not — 111 of 118, 214 of 215, 113 of 119 — and
+# exited 0 every time, because vitest's file glob discards readdir errors and so
+# reads a directory it could not read as an empty one. That failure is a function
+# of machine load, which is exactly what is worst on the laptop this hook is
+# skipped on; CI's `gate` job is where the floor actually binds.
+if [ "${PREPUSH_TESTS:-0}" = "1" ]; then
+  step "unit tests (node+client)" pnpm test
+else
+  printf '  %-34s%s\n' "unit tests (node+client)" "skipped — CI runs them; PREPUSH_TESTS=1 git push runs them here"
+fi
 
 if [ ${#failed[@]} -gt 0 ]; then
   echo
@@ -126,9 +151,9 @@ fi
 
 echo "all green — pushing"
 echo
-echo "  This hook is the CHEAP half — and while CI is down, the ONLY gate."
-echo "  It does not build, does not boot the bundle,"
-echo "  and does not run the integration lane — the three checks that catch a"
+echo "  This hook is the CHEAP half. It does not run the unit suite (CI does, on"
+echo "  every PR — or PREPUSH_TESTS=1 here), does not build, does not boot the"
+echo "  bundle, and does not run the integration lane — the checks that catch a"
 echo "  broken DEPLOY rather than a broken diff. Before opening a PR:"
-echo "      pnpm preflight    # all 16 gate checks, ~3 min"
+echo "      pnpm preflight    # the whole gate, ~3 min"
 exit 0
