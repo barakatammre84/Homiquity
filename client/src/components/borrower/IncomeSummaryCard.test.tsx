@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { BorrowerIncomeSummary } from "@shared/borrowerIncomeView";
 import {
   BORROWER_INCOME_DISCLAIMER,
+  BORROWER_INCOME_BREAKDOWN_UNAVAILABLE,
   INCOME_ANALYSIS_EDUCATION,
 } from "@shared/borrowerIncomeView";
 import { IncomeSummaryCard } from "./IncomeSummaryCard";
@@ -35,18 +36,19 @@ beforeEach(() => {
       {
         pathId: "agency_wage",
         label: "Employment income",
-        monthlyQualifyingIncome: 5000,
-        appliedToDti: true,
+        monthlyIncomeApplied: 5000,
+        monthlyObligationApplied: 0,
         citations: [{ doc: "Fannie Mae Selling Guide", section: "B3-3.1-01" }],
       },
       {
         pathId: "self_employment",
         label: "Business & self-employment income",
-        monthlyQualifyingIncome: 8412.34,
-        appliedToDti: true,
+        monthlyIncomeApplied: 8412.34,
+        monthlyObligationApplied: 0,
         citations: [{ doc: "Fannie Mae Selling Guide", section: "B3-3.5-01" }],
       },
     ],
+    breakdownAvailable: true,
     disclaimer: BORROWER_INCOME_DISCLAIMER,
   };
 });
@@ -71,6 +73,70 @@ describe("IncomeSummaryCard — available (post-decision)", () => {
         BORROWER_INCOME_DISCLAIMER,
       );
     });
+  });
+});
+
+
+describe("IncomeSummaryCard — the rows add up to the total above them", () => {
+  it("renders every figure the total is made of, and nothing else", async () => {
+    response = {
+      available: true,
+      evaluatedAt: "2026-08-23T12:00:00.000Z",
+      incomeBasis: "urla_line_items",
+      totalMonthlyQualifyingIncome: 7250,
+      paths: [
+        {
+          pathId: "agency_wage",
+          label: "Employment income",
+          monthlyIncomeApplied: 6000,
+          monthlyObligationApplied: 0,
+          citations: [],
+        },
+        {
+          pathId: "rental",
+          label: "Rental income",
+          monthlyIncomeApplied: 1250,
+          monthlyObligationApplied: 750,
+          citations: [],
+        },
+      ],
+      breakdownAvailable: true,
+      disclaimer: BORROWER_INCOME_DISCLAIMER,
+    };
+    renderCard();
+    await waitFor(() => {
+      expect(screen.getByTestId("card-income-summary")).toBeTruthy();
+    });
+    const rental = screen.getByTestId("row-income-path-rental");
+    // the contributed amount, not the portfolio's net (which was 500)
+    expect(rental.textContent).toContain("1,250");
+    expect(rental.textContent).not.toContain("$500");
+    // and the loss is named as a debt rather than netted away silently
+    expect(
+      screen.getByTestId("text-income-obligation-rental").textContent,
+    ).toContain("750");
+    expect(screen.getByTestId("text-income-total").textContent).toContain("7,250");
+  });
+
+  it("says the breakdown is unavailable rather than showing a partial one", async () => {
+    response = {
+      available: true,
+      evaluatedAt: "2026-08-23T12:00:00.000Z",
+      incomeBasis: "urla_line_items",
+      totalMonthlyQualifyingIncome: 7250,
+      paths: [],
+      breakdownAvailable: false,
+      breakdownUnavailable: BORROWER_INCOME_BREAKDOWN_UNAVAILABLE,
+      disclaimer: BORROWER_INCOME_DISCLAIMER,
+    };
+    renderCard();
+    await waitFor(() => {
+      expect(screen.getByTestId("text-income-breakdown-unavailable").textContent).toBe(
+        BORROWER_INCOME_BREAKDOWN_UNAVAILABLE,
+      );
+    });
+    // the total the file was decided on is still shown
+    expect(screen.getByTestId("text-income-total").textContent).toContain("7,250");
   });
 });
 

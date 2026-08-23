@@ -89,6 +89,8 @@ export function computeRentalPath(
       status: "not_indicated",
       monthlyQualifyingIncome: 0,
       appliedToDti: false,
+      appliedMonthlyIncome: 0,
+      appliedMonthlyObligation: 0,
       citations: RENTAL_CITATIONS,
       requiresManualReview: false,
       notes: [],
@@ -127,9 +129,52 @@ export function computeRentalPath(
     status: "applicable",
     monthlyQualifyingIncome: split.net,
     appliedToDti: applied,
+    // The per-property split, stated rather than left to be re-derived: the
+    // positive offsets are the income contribution (provenance-gated), the
+    // losses are the obligation contribution (always applied).
+    appliedMonthlyIncome: ctx.applyPositiveToDti ? split.positiveTotal : 0,
+    appliedMonthlyObligation: split.negativeTotal,
     citations: RENTAL_CITATIONS,
     requiresManualReview:
       split.negativeTotal > 0 || doubleCountRisk || ctx.departingResidenceIncluded === true,
     notes,
+  };
+}
+
+/**
+ * Fold the SUBJECT property's qualifying rent into the rental path.
+ *
+ * B3-3.8-01 rent from a 2–4-unit owner-occupied subject property is added to
+ * qualifying income (never netted against the subject PITIA, which stays whole
+ * in the housing expense). The orchestrator computes it separately because
+ * computeRentalPath reads the borrower's OTHER properties — with the result
+ * that, until now, the amount joined the qualifying total while belonging to no
+ * path at all, so every itemised surface omitted it silently. A duplex buyer
+ * with $6,000 of wages and $1,500 of unit rent saw one $6,000 line under a
+ * $7,125 total.
+ *
+ * It is the same citation and the same treatment, so it belongs on the same
+ * row — carried in `appliedMonthlyIncome`, which is the contributed amount,
+ * while `monthlyQualifyingIncome` keeps meaning the non-subject portfolio's
+ * informational net.
+ */
+export function withSubjectPropertyRent(
+  path: DtiIncomePathResult,
+  subjectQualifyingRentApplied: number,
+): DtiIncomePathResult {
+  if (!(subjectQualifyingRentApplied > 0)) return path;
+  return {
+    ...path,
+    // A file whose ONLY rental income is the subject property's units still has
+    // a rental path to show: "no other properties" is not "no rental income".
+    status: "applicable",
+    appliedToDti: true,
+    appliedMonthlyIncome: roundCents(
+      (path.appliedMonthlyIncome ?? 0) + subjectQualifyingRentApplied,
+    ),
+    notes: [
+      ...path.notes,
+      `Subject property (2–4 units, owner-occupied): ${roundCents(subjectQualifyingRentApplied)} qualifying rent added to income per B3-3.8-01. The subject PITIA stays whole in the housing expense — the rent is never netted against it.`,
+    ],
   };
 }

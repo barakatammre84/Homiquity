@@ -12,9 +12,9 @@ when it did not.
 
 ## Explain it to a new hire
 
-Under `.claude/` there are 25 skills and 58 agents, and they are not documentation — they are
+Under `.claude/` there are 26 skills and 58 agents, and they are not documentation — they are
 executable job descriptions Claude loads and obeys, so they are versioned, reviewed and CI-gated
-like `server/`. Nineteen of the 25 skills open with `NEVER auto-load` because the default failure
+like `server/`. Twenty of the 26 skills open with `NEVER auto-load` because the default failure
 was a heavyweight autonomous routine hijacking a two-line question; only six may load themselves
 — the four router skills (`api-routes`, `ui-components`, `mortgage-calculations`, `seo-content`),
 which `CLAUDE.md` names, plus the two journey-walk skills. Two ladders share the labels L1–L3 and
@@ -37,7 +37,7 @@ flowchart TD
   S["session starts in a worktree"] --> CM["CLAUDE.md - 262 lines - always-on rules + the 4 router skills"]
   CM --> PICK{"what kind of work?"}
   PICK -- "domain work" --> ROUTER["router skill - api-routes / ui-components / mortgage-calculations / seo-content - auto-loads"]
-  PICK -- "explicit slash command" --> ROUTINE["routine skill - 19 of 25 say NEVER auto-load - R1: STOP if loaded without invocation"]
+  PICK -- "explicit slash command" --> ROUTINE["routine skill - 20 of 26 say NEVER auto-load - R1: STOP if loaded without invocation"]
   PICK -- "area-scoped implementation" --> OWNER["hq-*-owner agent - 41 - yours-to-write / hand-back / not-yours"]
   PICK -- "review or walk" --> REVIEW["6 reviewers + 10 journey walkers - findings only, never fixes"]
   ROUTER --> RAILS
@@ -61,10 +61,10 @@ flowchart TD
 
 ## The facts, with receipts
 
-- **`CLAUDE.md` is small and delegates.** `wc -l CLAUDE.md` → `240`; the four auto-loading
+- **`CLAUDE.md` is small and delegates.** `wc -l CLAUDE.md` → `273`; the four auto-loading
   routers at `:14-17`.
-- **25 skills; 19 refuse to load themselves.** `ls -d .claude/skills/*/ | wc -l` → `25`;
-  `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l` → `19`. **The auto-loading set is
+- **26 skills; 20 refuse to load themselves.** `ls -d .claude/skills/*/ | wc -l` → `26`;
+  `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l` → `20`. **The auto-loading set is
   the stable number here** — it has stayed at six while the total grew, because every skill added
   since has opted out. That ratio, not the total, is the thing to watch: the six are the ones that
   can change a session you did not ask them to change. They are:

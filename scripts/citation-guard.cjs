@@ -86,7 +86,16 @@ const EXCLUDED = [
  * build output is gitignored by design, so `dist/index.js` is a correct citation
  * of an artifact that exists only after `pnpm build`.
  */
-const NOT_TRACKED_BY_DESIGN = [/^dist\//, /^node_modules\//, /^\.git\//];
+const NOT_TRACKED_BY_DESIGN = [
+  /^dist\//,
+  /^node_modules\//,
+  /^\.git\//,
+  // The Selling Guide's generated content layer: gitignored by design (public
+  // repo, copyrighted work — see docs/fannie-mae/selling-guide/README.md), so a
+  // citation of extracted/ or linked/ artifacts is correct the way dist/ is:
+  // it names something `python3 scripts/extract-selling-guide.py` materializes.
+  /^(?:docs\/fannie-mae\/selling-guide\/)?(?:extracted|linked)\//,
+];
 
 /** Backticked tokens that look like a repo path: a known code/doc extension. */
 const PATHISH = /`([A-Za-z0-9_@.\-/]+\.(?:ts|tsx|js|jsx|cjs|mjs|json|md|css|sql|sh|yml|yaml))`/g;

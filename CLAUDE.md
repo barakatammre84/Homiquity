@@ -26,15 +26,26 @@ The rules below still bind every session regardless of which skill is active.
 Before building or modifying **anything** that touches Fannie Mae loan delivery, ULDD, UCD,
 URLA, MISMO export, AUS/DU submission, edit codes, or Special Feature Codes:
 
-1. **Start at the Selling Guide — one command makes it greppable.** Edition 08-05-2026.
-   `section-index.tsv` in [`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/)
+1. **Start at the Selling Guide — one command materializes the whole corpus.** Edition
+   08-05-2026. `section-index.tsv` in [`docs/fannie-mae/selling-guide/`](docs/fannie-mae/selling-guide/)
    is **tracked**, so `grep -n "B3-6-05" …/section-index.tsv` finds any section's page with no
-   setup. The full text is **gitignored** — this repo is public and the Guide is Fannie Mae's
-   copyrighted work — so generate it once with `python3 scripts/extract-selling-guide.py`, then
-   `grep` it freely (every page is prefixed `[[PAGE n | <section>]]`). If the script cannot
-   find the PDF it says where it looked and **stops**; that is an honest gap, not a licence to
-   answer from memory. ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an
-   anchor and reports zero matches on text that is verbatim there.
+   setup. The text itself is **gitignored** — this repo is public and the Guide is Fannie Mae's
+   copyrighted work — so run `python3 scripts/extract-selling-guide.py` once: it recovers the
+   PDF from this repo's own git history (SHA-256-verified, no network) and generates the
+   page-marked `selling-guide-text.txt` (`[[PAGE n | <section>]]`, grep freely) **plus one
+   file per section** under `extracted/sections/<ID>.txt` (`--section B3-6-05` prints one;
+   tracked `INDEX.md`/`toc.json` navigate). Front door: that directory's README. If the script
+   can find no PDF it says where it looked and **stops**; that is an honest gap, not a licence
+   to answer from memory. 🚨 Tables flatten in extracted text — verify any threshold or matrix
+   cell against the PDF page. ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it
+   as an anchor and reports zero matches on text that is verbatim there.
+   **Corpus-first is mechanical, not aspirational:** a SessionStart hook verifies/materializes
+   the corpus for every session, the CI gate hard-fails on corpus drift (`guard:corpus` +
+   `guard:coverage` + a full extraction proof, always-run), and the daily Selling Guide
+   Steward re-proves the chain and watches for new editions, amendments and link rot
+   (program map: [SELLING_GUIDE_PERMANENCE.md](knowledge-base/compliance/SELLING_GUIDE_PERMANENCE.md)).
+   The onboarding treatment — how the Guide touches every part of the build — is
+   [handoff chapter 13](knowledge-base/handoff/13-selling-guide-as-the-foundation.md).
 2. **Then the reference documents in [`docs/fannie-mae/`](docs/fannie-mae/)** (ULDD Phase 5
    spec, UCD job aids, URLA documents, Special Feature Codes). See the README there for the
    expected inventory. If a document you need is missing, say so — do not proceed from memory.

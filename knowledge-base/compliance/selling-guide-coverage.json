@@ -1,6 +1,6 @@
 {
   "_comment": "Status data for the Selling Guide coverage map. The 423 section rows are NOT stored here — they are derived from docs/fannie-mae/selling-guide/section-index.tsv by scripts/selling-guide-coverage.cjs, which FAILS if any id below is not in that index. Anything absent from this file is `unreviewed`, which is the honest default and the whole point of the map.",
-  "edition": "2026-08-05",
+  "edition": "08-05-2026",
   "updated": "2026-08-21",
   "statuses": {
     "implemented": "A rule in the Guide is enforced by code on the decision path, named in `evidence`.",

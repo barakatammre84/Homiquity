@@ -69,6 +69,25 @@ export interface DtiIncomePathResult extends IncomePathCommon {
   monthlyQualifyingIncome: number;
   /** Whether this figure is summed into the primary DTI income fed to the engine. */
   appliedToDti: boolean;
+  /**
+   * What this path actually CONTRIBUTED to primaryMonthlyQualifyingIncome —
+   * which is not always what it is worth. Rental is the case that forced the
+   * field: B3-3.8-01 is applied per property, so a portfolio's positive
+   * offsets join qualifying income while its losses go to the obligation side,
+   * and `monthlyQualifyingIncome` carries the informational NET of the two.
+   * A surface that itemises the qualifying total must add up, so it reads this.
+   *
+   * Optional because evaluations persisted before this field existed omit it:
+   * a reader that cannot reconcile a legacy row must say so rather than render
+   * a breakdown that does not sum (see sumAppliedIncome).
+   */
+  appliedMonthlyIncome?: number;
+  /**
+   * What this path contributed to MONTHLY OBLIGATIONS — the other half of the
+   * per-property split (B3-3.8-01 rental losses, always ≥ 0). Never negative
+   * income, and never netted against the income side.
+   */
+  appliedMonthlyObligation?: number;
 }
 
 export interface CoverageRatioPathResult extends IncomePathCommon {
@@ -158,6 +177,10 @@ const dtiPathSchema = z.object({
   kind: z.literal("dti_income"),
   monthlyQualifyingIncome: z.number(),
   appliedToDti: z.boolean(),
+  // Optional on purpose: rows persisted before the applied-amount split parse
+  // unchanged. New evaluations always carry both.
+  appliedMonthlyIncome: z.number().optional(),
+  appliedMonthlyObligation: z.number().optional(),
 });
 const coveragePathSchema = z.object({
   ...commonShape,
@@ -182,7 +205,16 @@ export function canonicalizePaths(paths: IncomePathResult[]): string {
         mr: p.requiresManualReview,
       };
       if (p.kind === "dti_income") {
-        return { ...base, k: "d", v: roundCents(p.monthlyQualifyingIncome), a: p.appliedToDti };
+        return {
+          ...base,
+          k: "d",
+          v: roundCents(p.monthlyQualifyingIncome),
+          a: p.appliedToDti,
+          // The contributed amount is part of the result's identity: two files
+          // can share a net rental figure and contribute different amounts.
+          ai: p.appliedMonthlyIncome === undefined ? null : roundCents(p.appliedMonthlyIncome),
+          ao: p.appliedMonthlyObligation === undefined ? null : roundCents(p.appliedMonthlyObligation),
+        };
       }
       return {
         ...base,
@@ -192,4 +224,29 @@ export function canonicalizePaths(paths: IncomePathResult[]): string {
     })
     .sort((a, b) => a.id.localeCompare(b.id));
   return JSON.stringify(rows);
+}
+
+/**
+ * Σ of what the component paths contributed to qualifying income — the number
+ * an itemised breakdown must equal.
+ *
+ * Returns null when ANY dti path that carries a figure omits
+ * `appliedMonthlyIncome` (an evaluation persisted before the split existed).
+ * Null means "this row cannot be itemised", never "zero": a caller that
+ * silently coerced it would render exactly the breakdown-that-does-not-add-up
+ * this field was added to remove.
+ */
+export function sumAppliedIncome(paths: IncomePathResult[]): number | null {
+  let total = 0;
+  for (const p of paths) {
+    if (p.kind !== "dti_income") continue;
+    if (p.appliedMonthlyIncome === undefined) {
+      // A path with no evidence contributed nothing; only a path that could
+      // have contributed makes the set unreconcilable.
+      if (p.status === "not_indicated") continue;
+      return null;
+    }
+    total += p.appliedMonthlyIncome;
+  }
+  return roundCents(total);
 }
