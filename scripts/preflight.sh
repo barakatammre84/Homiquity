@@ -2,11 +2,11 @@
 #
 # Preflight — run the WHOLE CI gate locally, before it costs anything.
 #
-# `.githooks/pre-push` runs the typecheck and the nine guards (the unit suite is
-# opt-in there: PREPUSH_TESTS=1) and is deliberately cheap enough to leave on.
-# This runs all sixteen, including the three that only ever ran in CI and are
-# the ones that catch a broken DEPLOY rather than a broken diff: the production
-# build, the self-host boot, and the integration lane.
+# `.githooks/pre-push` runs the typecheck and the nine guard steps (the unit
+# suite is opt-in there: PREPUSH_TESTS=1) and is deliberately cheap enough to
+# leave on. This runs all nineteen, including the three that only ever ran in CI
+# and are the ones that catch a broken DEPLOY rather than a broken diff: the
+# production build, the self-host boot, and the integration lane.
 #
 # WHY IT MATTERS BEYOND MINUTES. A merge to `main` is a Railway deploy. The gate
 # is the last thing between a diff and production, and until now half of it was
@@ -86,12 +86,14 @@ step "design tokens"                  node scripts/design-token-guard.cjs
 step "UI standard ratchet"            node scripts/ui-standard-guard.cjs
 step "knowledge-base index"           node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"          node scripts/doc-staleness-guard.cjs
+step "citation ratchet"               node scripts/citation-guard.cjs
 # tsc covers the app; nothing covered scripts/*.cjs. #594 shipped a syntax error
 # in browser-probe.cjs to main green, and every probe run crashed while a sweep
 # grepping its output reported the pages clean. A parse is not a test — but it is
 # the check that would have caught it.
 step "guard scripts parse"            bash -c 'for f in scripts/*.cjs; do node --check "$f" || exit 1; done'
-step "query-key convergence"          node scripts/query-key-guard.cjs
+# CI's `guard:querykeys` is three scripts; until 2026-08-23 this ran only the first.
+step "query-key convergence"          bash -c 'node scripts/query-key-guard.cjs && node scripts/query-key-reachability.cjs && node scripts/query-key-transport-guard.cjs'
 
 # §9 needs the PR's changed-file set, which CI computes from the pull request.
 # Locally the equivalent is the diff against origin/main. If origin/main is not

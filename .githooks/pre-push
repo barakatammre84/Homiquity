@@ -23,8 +23,9 @@
 #      this repo is developed on, with several sessions pushing at once, that
 #      is the difference between a usable machine and a swapping one.
 #
-# WHAT IT RUNS. Typecheck, then the nine guards — fail-fastest-first, ~30 s all
-# in. The unit suite is OPT-IN here and mandatory in CI:
+# WHAT IT RUNS. Typecheck, then nine guard steps (eleven guard scripts — the
+# query-key step runs CI's three) — fail-fastest-first, ~30 s all in. The unit
+# suite is OPT-IN here and mandatory in CI:
 #
 #   PREPUSH_TESTS=1 git push      # also run both vitest lanes before pushing
 #
@@ -100,13 +101,15 @@ step() {
 echo "pre-push gate — the cheap half of CI's \`gate\` job (typecheck + guards)"
 
 # Order is fail-fastest-first: tsc catches the common break (a type error) in
-# ~25 s, and the nine guards cost about a second between them.
+# ~25 s, and the eleven guard scripts cost about a second between them.
 step "typecheck (tsc)"          npx tsc --noEmit
 
 # The whole guard suite, added 2026-08-18. Every one of these is a REQUIRED
 # check in CI and they cost about a second between them — leaving them out meant
-# a design-token regression still burned a CI run to find out.
-# Measured on this repo: 9 guards, ~1s total.
+# a design-token regression still burned a CI run to find out. Until 2026-08-23
+# this was eight of CI's eleven guard scripts: the citation ratchet was absent
+# and the query-key step ran one script of three. Measured on this repo
+# 2026-08-23: 11 guard scripts, 1 s wall time total.
 step "schema <-> migrations"    node scripts/schema-migration-guard.cjs
 step "migration ledger"         node scripts/migration-ledger-guard.cjs
 step "delivery-stack freeze"    node scripts/delivery-stack-freeze-guard.cjs
@@ -114,7 +117,10 @@ step "design tokens"            node scripts/design-token-guard.cjs
 step "UI standard ratchet"      node scripts/ui-standard-guard.cjs
 step "knowledge-base index"     node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"    node scripts/doc-staleness-guard.cjs
-step "query-key convergence"    node scripts/query-key-guard.cjs
+step "citation ratchet"         node scripts/citation-guard.cjs
+# CI's `guard:querykeys` is three scripts; until 2026-08-23 this ran only the
+# first, so a reachability or transport regression passed here and failed in CI.
+step "query-key convergence"    bash -c 'node scripts/query-key-guard.cjs && node scripts/query-key-reachability.cjs && node scripts/query-key-transport-guard.cjs'
 
 # UNIT TESTS — opt-in locally, mandatory in CI. See the header for why: both
 # lanes cost ~1-2 GB and every core for minutes, which on a shared 8 GB laptop
@@ -147,5 +153,5 @@ echo "  This hook is the CHEAP half. It does not run the unit suite (CI does, on
 echo "  every PR — or PREPUSH_TESTS=1 here), does not build, does not boot the"
 echo "  bundle, and does not run the integration lane — the checks that catch a"
 echo "  broken DEPLOY rather than a broken diff. Before opening a PR:"
-echo "      pnpm preflight    # all 16 gate checks, ~3 min"
+echo "      pnpm preflight    # all 19 gate checks, ~3 min"
 exit 0
