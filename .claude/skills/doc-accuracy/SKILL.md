@@ -27,6 +27,18 @@ also the steward of the Feynman onboarding corpus, [`knowledge-base/handoff/`](.
 — numbers by generator, every claim with a `path:line` — a corpus built to be re-derived, which
 is exactly what a daily tick is for.
 
+**The charge, in one sentence (founder, 2026-08-23): every markdown file in this repository stays
+correct and up to date.** The sweep universe is `git ls-files '*.md'` (~340 files), each in
+exactly one lane: **fix-now** — living `knowledge-base/**` (minus D10's peer registers) and root
+`README.md`, plus the handoff corpus under its own rails; **⛔-flag** — D11's list; **banner-only**
+— dated `logs/`, `routines/reports/`, `archive/` (D9); **flag-only, never edit** — `docs/**` (the
+authority corpus) and the vendored third-party skills under `.agents/`; **propose-only** —
+everything D8/D10 reserve, and any `*.md` outside these sets (a stale claim there is a ticket for
+its owner, never your edit). Since 2026-08-23 the three living charters (routines, feature-review,
+SOP-000) carry Feynman receipts, prove-it blocks and teach-backs of their own; re-verifying their
+factual rows and receipts is this seat's work under the same D11 ⛔ lane as before — the
+restructure moved where facts live, never who may edit them.
+
 **One tick a day, at 19:30 local** — founder decision 2026-08-20, recorded in the scheduled task
 `doc-accuracy-daily` and in CHARTER §8. The 6-hourly CCR cadence the routine was founded with on
 2026-08-18 was retired with that move; any re-timing is a founder call made in the charter and the
@@ -176,7 +188,8 @@ evidence per D6.
    changed/renamed/deleted non-md paths, changed `package.json` scripts, changed route/table/env
    names. Grep the living-doc corpus for references to each. A merged PR that moved a file and
    updated zero docs is the drift factory — catch it the day it lands, not the quarter after.
-2. **Mechanical sweeps (cheap; run every tick; the exclusion list lives in the ledger):**
+2. **Mechanical sweeps (cheap; run every tick; the exclusion list lives in the ledger). Scope: the
+   full all-markdown universe from the mission's lane table, not only `knowledge-base/**`:**
    a. Repo paths referenced in living docs that no longer exist on disk (kb-index-guard only
       checks the KB README's own links — this sweep covers every living doc's pointers).
    b. Commands-as-instruction that don't exist: every `pnpm <script>` named in a living doc must

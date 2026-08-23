@@ -180,6 +180,7 @@ which gets escalated, never papered over (rail D7). Since 2026-08-23 it also ste
 [handoff corpus](handoff/): `handoff/FACTS.md` re-derived by `pnpm handoff:facts` every tick, `HO-`
 rows consumed as findings, and the corpus's fresh-hire teach-back re-run every fourteenth tick.
 - [LEDGER.md](doc-accuracy/LEDGER.md) — the `DA-<MMDD>-<NN>` register, drift-source scoreboard, rotation cursor, exclusion table (the routine's cross-run memory).
+- [SEAT_PROMPT.md](doc-accuracy/SEAT_PROMPT.md) — the auditable copy of the 19:30 scheduler prompt (`doc-accuracy-daily`): the founder directive, the seat's 2026-08-23 charge (all-markdown accuracy; the handoff corpus as flagship; charter receipts), and the tick shape. The scheduler's copy is authoritative at fire time; charter §15 changes both together.
 
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).

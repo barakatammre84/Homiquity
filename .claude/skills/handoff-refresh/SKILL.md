@@ -19,13 +19,18 @@ between ticks, or when a tick reported the refresh deferred.
 1. **Docs only.** The only writable paths are `knowledge-base/handoff/**`. Never edit a sibling
    doc to match the corpus — a wrong claim in another file becomes an `HO-<MMDD>-<NN>` **row**,
    never a fix. That rule is what keeps this directory a reader and not an authority.
-2. **PR only, never merge.** Open one PR; hand back. A merge is a production deploy.
+2. **PR only, never merge.** Open one PR; hand back. A merge is a production deploy. Inside the
+   daily doc-accuracy tick, the refresh rides that tick's single docs-only PR instead of opening
+   its own.
 3. **Never hand-type a count.** Run `pnpm handoff:facts --write`, or paste a command's output.
    Five hand-typed numbers in the first draft were wrong, and the fresh-hire audit found every
    one. If you find yourself retyping a digit, you are doing the step wrong.
 4. **Derive on `main`, write on the branch.** `--write` refuses to run from a branch ahead of
    `origin/main`, because two rows measure `HEAD` (F-31 and the SHA stamp) and writing there would
-   stamp the branch as the verified state of `main`. Follow the refusal message's recipe.
+   stamp the branch as the verified state of `main`. Follow the refusal message's recipe — or the
+   seat's stricter form of it: derive in a clean `origin/main` worktree and copy `FACTS.md` back
+   (`.claude/skills/doc-accuracy/SKILL.md` Phase 1.4), which needs no override flag at all; the
+   scheduled routine is forbidden `--write --force` outright.
 5. **A number that changed is a prose edit.** Grep the chapters for the *old* value and fix the
    sentence in the same commit. A table that agrees with a paragraph that does not is worse than
    a stale table, because it looks maintained.
@@ -45,6 +50,7 @@ between ticks, or when a tick reported the refresh deferred.
 git fetch origin
 git rev-list --count HEAD..origin/main                       # must be ≤ 2
 gh pr list --state open --json number,files --jq '.[] | select(.files[].path | startswith("knowledge-base/handoff")) | .number'
+# (where `gh` is absent — remote sessions — the GitHub MCP `list_pull_requests` answers the same question)
 ```
 
 An open PR already touching `handoff/` means stop and say so — do not race it. Then read the
