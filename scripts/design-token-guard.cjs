@@ -2,7 +2,7 @@
 /**
  * Design-token ratchet guard (zero-dep).
  *
- * The "Royal Blue Emerald" system routes all color through semantic tokens
+ * The "Mint & Flare" system routes all color through semantic tokens
  * (bg-background, text-muted-foreground, bg-success-subtle, the <Badge>/<Alert>
  * variants, …). See client/src/index.css. Two things bypass it:
  *

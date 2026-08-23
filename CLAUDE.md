@@ -4,6 +4,9 @@ Guidance for Claude Code when working in this repository. The deep engineering m
 [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [knowledge-base/handbook/app-guide/](knowledge-base/handbook/app-guide/);
 session working practices (doc rules, branch lifecycle, definition of done, push policy)
 are [knowledge-base/governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
+Onboarding, or building through a Claude loop? [knowledge-base/handoff/](knowledge-base/handoff/)
+is the Feynman layer over the app-guide — every chapter proves its claims with a command you
+can run — and `handoff/prompts/` carries the loop rails and templates.
 
 ## Domain skills (loaded on demand)
 
@@ -12,7 +15,7 @@ and point to the authoritative app-guide chapter (they don't duplicate it — th
 wins). Claude Code auto-loads a skill when its work matches:
 
 - **`api-routes`** — backend endpoints under `server/routes/` (auth gating, Zod, CSRF/webhooks, PII/audit, `inArray`).
-- **`ui-components`** — client UI/theming (Royal Blue Emerald token guard, WCAG AA, Shadcn/TanStack Query).
+- **`ui-components`** — client UI/theming ("Mint & Flare" token guard, the `--flare` fill-not-text rule, WCAG AA, Shadcn/TanStack Query).
 - **`mortgage-calculations`** — affordability/pricing/underwriting math (determinism + no-citation-no-implementation).
 - **`seo-content`** — public marketing/SEO surfaces (Reg Z trigger terms, Reg N no-approval, TCPA, pre-license gate).
 

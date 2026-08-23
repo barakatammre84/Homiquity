@@ -143,11 +143,16 @@ export default {
           warning: "#F59E0B", // pending loan-officer review
           danger: "#EF4444", // TCPA opt-out / credit alert
         },
-        // "Royal Blue Emerald" ramp. The dark end (950/900/700) is a vivid
-        // royal-blue gradient used only for the dark hero surfaces on the
-        // persona/landing pages; the light end (500→50) stays neutral slate for
+        // "Mint & Flare" ramp (2026-08-20 rebuild — superseded "Royal Blue
+        // Emerald"). The dark end (950/900/700) is a GREEN-BLACK gradient used
+        // only for the dark hero surfaces on the persona/landing pages; the
+        // light end (500→50) is brand-tinted — NOT neutral slate — for
         // micro-copy, borders, and section fills. Prefer the semantic tokens
         // (bg-background, text-foreground, …) in components.
+        //
+        // `flare` is the single warm accent and is a FILL colour: use
+        // `flare-ink` when orange has to be read. Full contrast table lives on
+        // the --flare token in client/src/index.css.
         flare: {
           DEFAULT: "hsl(var(--flare))",
           foreground: "hsl(var(--flare-foreground))",

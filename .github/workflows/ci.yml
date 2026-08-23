@@ -262,6 +262,15 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: pnpm check
       - name: Unit tests
+        # `pnpm test` is scripts/test-collection-guard.cjs — both unit lanes plus a
+        # COLLECTED-COUNT FLOOR. Vitest globs test files through tinyglobby -> fdir,
+        # which defaults to suppressErrors and reports a directory whose readdir
+        # FAILED as an empty one. Under load that silently shortened three runs
+        # (111/118, 214/215, 113/119), each exiting 0. The floor compares what
+        # vitest reports collecting against what is on disk and fails on a
+        # shortfall; it also fails on a test file no lane's include matches, which
+        # never runs at all. (Job `name:` above deliberately unchanged — it is the
+        # verbatim required-check string.)
         if: steps.scope.outputs.code == 'true'
         run: pnpm test
       - name: Dependency vulnerabilities (prod deps, high+)

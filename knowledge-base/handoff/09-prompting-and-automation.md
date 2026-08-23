@@ -12,9 +12,9 @@ when it did not.
 
 ## Explain it to a new hire
 
-Under `.claude/` there are 24 skills and 58 agents, and they are not documentation — they are
+Under `.claude/` there are 25 skills and 58 agents, and they are not documentation — they are
 executable job descriptions Claude loads and obeys, so they are versioned, reviewed and CI-gated
-like `server/`. Eighteen of the 24 skills open with `NEVER auto-load` because the default failure
+like `server/`. Nineteen of the 25 skills open with `NEVER auto-load` because the default failure
 was a heavyweight autonomous routine hijacking a two-line question; only six may load themselves
 — the four router skills (`api-routes`, `ui-components`, `mortgage-calculations`, `seo-content`),
 which `CLAUDE.md` names, plus the two journey-walk skills. Two ladders share the labels L1–L3 and
@@ -63,8 +63,8 @@ flowchart TD
 
 - **`CLAUDE.md` is small and delegates.** `wc -l CLAUDE.md` → `240`; the four auto-loading
   routers at `:14-17`.
-- **24 skills; 18 refuse to load themselves.** `ls -d .claude/skills/*/ | wc -l` → `24`;
-  `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l` → `18`. **The auto-loading set is
+- **25 skills; 19 refuse to load themselves.** `ls -d .claude/skills/*/ | wc -l` → `25`;
+  `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l` → `19`. **The auto-loading set is
   the stable number here** — it has stayed at six while the total grew, because every skill added
   since has opted out. That ratio, not the total, is the thing to watch: the six are the ones that
   can change a session you did not ask them to change. They are:

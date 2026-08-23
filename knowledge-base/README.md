@@ -40,7 +40,7 @@ doc-drift bug to fix):
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
   - [12 — The UI ↔ Backend API Contract](handbook/app-guide/12-api-contract.md) — who owns a payload shape, the three wire states (absent / value / `null`), the error shape, and how a shape changes without dropping a borrower's answer.
 - [design/DESIGN_SYSTEM.md](handbook/design/DESIGN_SYSTEM.md) — **the single binding design standard**
-  (Royal Blue Emerald). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
+  ("Mint & Flare"). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
   elevation, the icon registry, `<Logo>`/white-label, empty states, the **capture-flow standard**
   (progressive disclosure · tunnel vision · mobile invariants), the **four-question gate**
   (provenance · explanation · agreement · honesty), and the adoption checklist. §0 is a *measured*

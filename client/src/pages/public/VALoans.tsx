@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * Military-status pre-screen: every service-connected answer routes to the
@@ -92,8 +93,8 @@ export default function VALoans() {
         <section className="bg-muted px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
-              <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-va-home">
-                homiquity
+              <Link href="/" className="touch-target inline-flex items-center" data-testid="link-va-home">
+                <Logo size="md" tone="mono" />
               </Link>
               <span className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
                 <ShieldCheck aria-hidden="true" className="h-4 w-4 text-primary" />

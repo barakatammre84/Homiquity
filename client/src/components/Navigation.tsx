@@ -17,6 +17,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { COMPANY_IDENTITY, contactPhoneTel } from "@shared/companyIdentity";
+import { Logo } from "@/components/brand/Logo";
 
 interface NavItem {
   href: string;
@@ -172,20 +173,8 @@ export function Navigation() {
       )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* shrink-0 is load-bearing. `.touch-target` sets `min-width: 44px`,
-              which REPLACES a flex item's default `min-width: auto` — so this
-              link became free to shrink below its own text. At 320px it did:
-              the box collapsed to 101px while "homiquity" needs 109px, and
-              because overflow is visible the last glyph rendered underneath the
-              adjacent Get Pre-Approved button. No guard caught it — the page
-              does not overflow, the text just sits under a sibling. */}
-          <Link href="/" className="touch-target flex shrink-0 items-center">
-            {/* One step down below sm: at 24px the wordmark needs 109px, and
-                with the CTA (135px) and the menu button (44px) that is 328px of
-                content in a 320px viewport — the brand ended up touching the
-                button with a 0px gap. At 20px the header sits exactly inside
-                its px-4 box with a 10px gap. Unchanged from sm up. */}
-            <span className="text-xl font-bold tracking-tight text-flare sm:text-2xl">homiquity</span>
+          <Link href="/" className="touch-target flex items-center">
+            <Logo size="lg" tone="brand" data-testid="logo-nav" />
           </Link>
 
           <div className="hidden items-center gap-1 lg:flex">
