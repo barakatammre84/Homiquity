@@ -82,7 +82,7 @@ Checked against the 08-05-2026 text; code agrees. Re-verify on the next edition.
 | MI coverage, 85.01–90% | B7-1-02 | `seedLendingGrids.ts` | 25% |
 | MI coverage, 90.01–95% | B7-1-02 | `seedLendingGrids.ts` | 30% |
 | MI coverage, 95.01–97% | B7-1-02 | `seedLendingGrids.ts` | 35% |
-| Max LTV by units/occupancy | B2-1.2-01 | `CONVENTIONAL_MAX_LTV` matrix | 95/85/75; 90 second; 85/75 investment |
+| ~~Max LTV by units/occupancy~~ | ~~B2-1.2-01~~ | see note below | **withdrawn 2026-08-23** |
 | Large deposit definition | B3-4.2-02 | `underwritingNuance.ts` | >50% of monthly qualifying income |
 | Personal gifts | B3-4.3-04 | `underwritingNuance.ts` cite | cite verified |
 | Allowable age of credit documents | B1-1-03 | reference only | four months on the note date |
@@ -94,6 +94,17 @@ Checked against the 08-05-2026 text; code agrees. Re-verify on the next edition.
 | Reserves, 2–4 unit primary / investment | B3-4.1-01 | `requiredReserveMonths()` | 6 months |
 | Qualifying rate, fixed-rate | B3-6-04 | `derivePricing` | note rate |
 | Association dues inside PITIA | B3-6-03 | `qualifyingPitia` | included (C-6) |
+
+🚨 **The withdrawn row is the register catching itself.** "Max LTV by units/occupancy" was listed
+as verified conforming against **B2-1.2-01** with the values 95/85/75, 90 second, 85/75 investment.
+B2-1.2-01 publishes **no maximum LTV at all**. Its two tables define how the ratio is *calculated*
+(purchase: original loan amount ÷ the lower of sales price or appraised value; refinance: ÷ current
+appraised value; plus co-op and financed-MI variants), and the section then says: "Refer to the
+Eligibility Matrix for maximum allowable LTV ratios." Verified on the PDF this time — sheets
+179–181, tables extracted rather than read out of the flattened text, which is exactly the check
+the extraction warning exists for. We do not hold the Eligibility Matrix (G-14), so those ceilings
+are **ours**, and `seedLendingGrids.ts` now says so. Nothing about the code changed; the claim that
+Fannie had blessed it is what was wrong. See C-13.
 
 Deliberate conservative overlays, already carried in
 [`data/regulatory/regulatory-ledger.json`](../../data/regulatory/regulatory-ledger.json)
@@ -439,6 +450,58 @@ The product decision recorded with it: the borrower is qualified on the ratio th
 them to with the paperwork named, not held to a ratio it says they need not carry. The
 12-month no-delinquency fact is what the documentation proves, not a self-reported field.
 
+## Corrected 2026-08-23
+
+### C-13 — A "Verified conforming" row cited a section that publishes no maximums
+
+**B2-1.2-01, Loan-to-Value (LTV) Ratios.** The row asserted our `CONVENTIONAL_MAX_LTV` grid was
+verified against this section. It cannot be: the section defines the *calculation* and routes every
+maximum to the **Eligibility Matrix**, which we do not hold (G-14). `seedLendingGrids.ts` carried
+the same attribution in a comment — "(Fannie Eligibility Matrix)" — for a document that has never
+been in the repo.
+
+Found by opening the PDF rather than the extracted text. The extraction flattens the two tables on
+sheets 179–180 into prose, and the phrase that settles it ("Refer to the Eligibility Matrix for
+maximum allowable LTV ratios") survives, but the tables that a reader might assume carry ceilings
+had to be extracted from the PDF to prove they carry calculation methods instead.
+
+No ceiling changed. The seed comment now states these are platform-conservative ceilings pending
+Matrix procurement, and the Verified-conforming row is struck rather than silently deleted, because
+the useful record is that it was checked and found unsupportable.
+
+**The lesson this page should keep:** a "verified" row is only as good as the sentence someone read
+to write it. C-8 already routed cash-out files to review for the same reason — B2-1.3-02/-03 defer
+their ratios to the same absent Matrix — so the two entries describe one gap seen from two sides.
+
+### C-14 — Borrower-facing pages stated agency facts that were wrong or unverifiable
+
+Three claims on public surfaces, none of them Selling Guide *conflicts* strictly, all of them the
+platform asserting agency facts with no citation and no test:
+
+- **A jumbo loan was defined as exceeding "the maximum Federal Housing Administration (FHA)
+  limit."** Wrong agency. The limit is the FHFA conforming loan limit — which the repo's own
+  `shared/lendingLimits.ts` attributes correctly, and which the glossary's own "Conforming loan"
+  entry three hundred lines earlier states correctly. The same paragraph then contradicted itself
+  by defining the limit as "what the conforming loan limit is for that area". A third entry,
+  "Nonconforming loan", attributed the limits to Fannie Mae and Freddie Mac — so one page gave
+  three different answers to one question. All three now say FHFA.
+  This is not merely page copy: `Glossary.tsx` feeds every definition into schema.org `DefinedTerm`
+  JSON-LD, so the wrong-agency claim was published as structured data for search engines.
+- **"PMI can be cancelled once the borrower has at least 20% equity."** Stated as an entitlement,
+  with no conditions. The Homeowners Protection Act is **not captured in this repo** — `docs/` has
+  no HPA source — so under CLAUDE.md's rail the specific threshold is *flagged, never asserted*.
+  The copy now says PMI can usually be removed later, names the HPA as what governs, and says the
+  conditions turn on the original loan amount and payment history rather than today's value. That
+  removes an unverifiable promise rather than replacing it with a different one.
+- **"Conventional loans typically require minimum 3% down payment."** This platform's own ceiling
+  is 95 LTV (`CONVENTIONAL_LTV_CAP`, ledger `platform-conv-ltv-cap-95`, which records that
+  95.01–97% programs are deliberately not offered), so the minimum here is **5%**. The note fired
+  only when the user had entered less than 3% — precisely when they were being told what to aim
+  for — and pointed them at a down payment no product here can accept.
+
+Related, fixed the same day: the rent-to-own readiness card hard-coded "a 3% down payment" while
+selecting the tier from live data; it now prints the tier's own figure.
+
 ## Open gaps — recorded, not silently assumed
 
 These are places where the Guide states a rule our stored data cannot evidence. Each is
@@ -776,6 +839,98 @@ code** and are mostly property/project/insurance surfaces we have not built yet:
 tradelines into account in its risk assessment with no additional lender investigation unless
 DU instructs otherwise. We do not model authorized-user status on tradelines; nothing in our
 code contradicts the section.
+
+### G-22 — ⛔ Seasoning is applied to three income families B3-3.5-01 does not govern
+
+`SEASONING_GOVERNED_TYPES` (`server/services/underwritingNuance.ts`) carries `self_employed`,
+`rental`, `investment` and `other`. **B3-3.5-01 governs self-employment only** — it defines a
+self-employed borrower as one holding a 25%-or-greater ownership interest in the business. It is
+not authority for `investment` or `other`, and `rental` has its own section, B3-3.8-01, which the
+same module cites correctly a few hundred lines later.
+
+So one authority is stretched across four income families, three of which it does not reach.
+Fixing the citation (C-3, extended 2026-08-23) does not fix that.
+
+**This is a founder decision, not an agent's, and it is the reason nothing was narrowed here.**
+Removing types from the set removes a flag: a borrower with 14 months of rental income stops
+being asked for anything. That is the loosening direction, and the standing rule above forbids
+taking it unilaterally even where the text supports it. The conservative state — flagging more
+income than the Guide requires — is where this is parked until the founder chooses.
+
+Related and still open: the borrower-facing copy said the 12–24-month tier needed "strong
+compensating factors". That is **B3-3.2-02's** test for employment-related income, not this
+section's; B3-3.5-01 states documentary conditions instead. The wording was corrected on
+2026-08-23 (see C-3), which is why the two sections are named together here.
+
+### G-23 — 🚨 A large deposit is flagged and never has its consequence applied (B3-4.2-02)
+
+**B3-4.2-02, Evaluating Large Deposits.** The rule does not end at documentation: "Verified funds
+must be reduced by the amount (or portion) of the undocumented large deposit… and that reduced
+amount must be used for underwriting purposes (whether the loan is underwritten manually or
+through DU)."
+
+We implement the **trigger** and not the **effect**. `detectSignificantDeposits` raises a warning
+flag; nothing anywhere reduces verified assets by an undocumented deposit — `grep -rn "reduce"`
+across the asset path finds no such haircut. A file with an unexplained $40,000 deposit is
+therefore qualified on reserves that include it.
+
+Compounding it, the denominator is wrong in the same direction. The Guide measures against "the
+total monthly **qualifying** income for the loan"; `preUnderwriting.ts` passes
+`toNumber(input.annualIncome) / 12` — self-reported gross intake income, which by construction
+includes income the seasoning rule has just declared unusable. Gross ≥ qualifying, so the
+threshold sits too high and fewer deposits trip it at all.
+
+Both legs run in the forbidden direction. Neither is fixed here because both are behaviour on the
+decision path rather than a citation, and the asset-reduction leg needs a decision about where
+the haircut lands (verified assets vs reserves) that outruns a scrub.
+
+### G-24 — The B3-4.2-02 conditions we do not model make us over-ask, not under-ask
+
+Recorded so the false asks are known to be false rather than mistaken for policy. Each is a leg of
+"Evaluating Large Deposits" that our flag ignores, and each makes us **stricter** than Fannie:
+
+- **The refinance carve-out.** "Documentation or explanation for large deposits is not required"
+  on a refinance (the lender remains responsible for borrowed funds). We have no transaction-type
+  branch — and the flag's own copy, "must be sourced", is affirmatively false on a refinance.
+  Latent today only because pre-underwriting has no refinance shape at all (G-9).
+- **"Needed to complete the purchase."** The documentation duty attaches where the funds are used
+  for down payment, closing costs or reserves. We flag every qualifying deposit.
+- **Sourced/unsourced netting.** "When a deposit has both sourced and unsourced portions, only the
+  unsourced portion must be used to calculate whether or not it must be considered a large
+  deposit." We test the gross transaction amount.
+- **The readily-identifiable-source exemption.** Payroll, SSA, IRS or state tax refunds, and
+  transfers between verified accounts need no further explanation where the statement shows the
+  source. This is the high-frequency one: a semi-monthly paycheck routinely exceeds 50% of monthly
+  income, so ordinary payroll trips the flag.
+- **The VOD path** (source of funds for accounts opened within 90 days; balances well above the
+  VOD average) and the **DU validation service** reconciliation are both unimplemented.
+- **B3-4.1-04, Virtual Currency**, is cross-referenced from the definition itself: a large deposit
+  may be exchanged virtual currency, and the lender must verify it originated from the borrower's
+  virtual-currency account. Our ask names no artifact for that path (pairs with G-3, G-20).
+
+Deliberate: `detectSignificantDeposits` is sign-agnostic and flags large **outflows** too, which
+the Guide does not require. Its own comment owns that tradeoff.
+
+### G-25 — The seasoning tier measures a field the Guide does not (B3-3.5-01)
+
+The tier keys off `source.yearsInRole` — self-reported months in role. B3-3.5-01's gate is what
+the **most recent signed personal and business returns reflect**: a full 12 months of
+self-employment income from the current business. A borrower 18 months into a role whose returns
+reflect four months of the current business is `conditional` in our code and ineligible for that
+path under the Guide. **Looser.**
+
+Two further conditions are never captured or asked for:
+
+- the **separate prior-income documentation** — income at the same (or greater) level in the same
+  field, or an occupation with similar responsibilities. The 2026-08-23 pass corrected the copy
+  that claimed the borrower's own returns satisfied this, and extended the document ask to name
+  it, but nothing verifies it;
+- the **25% ownership test** that defines a self-employed borrower at all. The trigger is a
+  free-text income `type`, so the rule is simultaneously over- and under-inclusive.
+
+Closing this is a capture change (returns-derived months, ownership share), the same shape as C-6.
+Note the one leg that runs conservative and is fine: treating under-12-months as unusable. The
+Guide states a condition rather than a prohibition, so our floor is the stricter reading.
 
 ---
 

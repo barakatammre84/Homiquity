@@ -1,6 +1,6 @@
 # Selling Guide coverage map
 
-> **Freshness:** last verified 2026-08-21 · review every 30 days
+> **Freshness:** last verified 2026-08-23 · review every 30 days
 
 **Generated — do not hand-edit.** Run `pnpm coverage:sg` after editing
 [`knowledge-base/compliance/selling-guide-coverage.json`](selling-guide-coverage.json). The section rows come from
@@ -23,8 +23,8 @@ worried about measures nothing about the rest (D1-1-01).
 
 | Status | Sections | Meaning |
 |---|---:|---|
-| ✅ implemented | 11 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
-| 🟡 partial | 13 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
+| ✅ implemented | 10 | A rule in the Guide is enforced by code on the decision path, named in `evidence`. |
+| 🟡 partial | 14 | Computed or partially encoded, but not binding on the decision, or missing a documented leg. |
 | ❌ absent | 6 | The Guide states a rule that binds us and no code implements it. |
 | ➖ n/a | 68 | The section governs a function Homiquity does not perform as a broker. Reason required. |
 | · unreviewed | 325 | Nobody has looked. The default. |
@@ -34,7 +34,7 @@ worried about measures nothing about the rest (D1-1-01).
 | Part | Sections | Reviewed | ✅ | 🟡 | ❌ | ➖ |
 |---|---:|---:|---:|---:|---:|---:|
 | Part A — Doing Business with Fannie Mae | 41 | 8 | 0 | 3 | 0 | 5 |
-| Part B — Origination Through Closing | 287 | 44 | 11 | 9 | 6 | 18 |
+| Part B — Origination Through Closing | 287 | 44 | 10 | 10 | 6 | 18 |
 | Part C — Selling, Securitizing, Delivering | 48 | 41 | 0 | 0 | 0 | 41 |
 | Part D — Quality Control | 11 | 5 | 0 | 1 | 0 | 4 |
 | Part E — Quick Reference | 36 | 0 | 0 | 0 | 0 | 0 |
@@ -62,13 +62,13 @@ the lender; we adopt its shape for our own quality program **by choice**, and sa
 | `B3-2-01` | General Information on DU | 🟡 partial | The lender must ensure delivery data matches the final DU submission and that the casefile receives an eligible recommendation. The delivered recommendation is now honest — server/mismo.ts maps the recorded AUS value via mapAusRecommendation and OMITS the whole AUTOMATED_UNDERWRITINGS container when there is none (F-051 fixed in #545; the compile-time "Approve" literal is gone). Still partial because submitToDU is a deterministic simulation: there is no real casefile, so 'matches the final DU submission' cannot yet be satisfied end to end (blocked on F6). |
 | `B3-2-02` | DU Validation Service | ❌ absent | DU validation service / Day 1 Certainty relief is parsed in ausSubmission.ts but the asset-verification-report spec is not procured, so the validation legs cannot be adjudicated. Also carries the Asset Verification Report policy that CTO_ROADMAP F14 needs. |
 | `B3-2-03` | Risk Factors Evaluated by DU | ❌ absent | Carries the positive rent-history policy DU uses (12-month third-party AVR or credit report; one borrower renting >=12 months at >=$300/mo). Nothing consumes it. This is the Selling Guide leg of CTO_ROADMAP F14, now unblocked; the DU Release Notes and AVR spec legs remain absent. |
-| `B3-3.5-01` | Underwriting Factors and Documentation for a Self-Employed Borrower | ✅ implemented | Length of Self-Employment. server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Seasoning assessed in underwritingNuance.ts assessIncomeSeasoning. |
+| `B3-3.5-01` | Underwriting Factors and Documentation for a Self-Employed Borrower | 🟡 partial | Verification of Income is implemented: server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Length of Self-Employment is only partly encoded — underwritingNuance.ts assessIncomeSeasoning tiers on self-reported yearsInRole, while the section's gate is what the most recent returns REFLECT (a full 12 months from the current business); the separate prior-income documentation and the 25%-ownership definition are neither captured nor asked for (gap G-25), and the rule is applied to three income families this section does not govern (gap G-22). Downgraded from implemented on 2026-08-23 after reading the section: the income math was implemented, the seasoning test was not. |
 | `B3-3.7-01` | Analyzing Partnership Returns for a Partnership or LLC | ✅ implemented | Partnership (Form 1065) cash-flow add-backs and subtractions x ownership share, in server/services/selfEmploymentIncome.ts, reached via the income orchestrator. |
 | `B3-3.7-02` | Analyzing Returns for an S Corporation | ✅ implemented | S-corporation (1120-S) cash flow; owner W-2 counted in addition to the K-1 share. server/services/selfEmploymentIncome.ts via the income orchestrator. |
 | `B3-3.8-01` | Rental Income | ✅ implemented | server/services/income/paths/rental.ts, reached on the decision path via computeIncomePaths (server/services/decisionEngine.ts:17 imports ./income/orchestrator). 75% of gross rent net of each property's PITIA. The most-cited section in the tree: 40 sites. |
 | `B3-4.1-01` | Minimum Reserve Requirements | 🟡 partial | server/services/preUnderwriting.ts:204 requiredReserveMonths, reached in production ONLY via runPreUnderwriting (dynamic import at server/routes/aus.ts:115 and server/services/loanAnalysis.ts:580). The resulting flags are read by NEITHER decisionEngine.ts NOR underwritingEngine.ts (0 references, verified) — computed and surfaced, not binding. CTO_ROADMAP §3.6. |
-| `B3-4.2-02` | Depository Accounts | 🟡 partial | server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. Two comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Re-cited 2026-08-21. The id resolved, so no machine could catch it — this is the F-063 class, found only by reading. |
-| `B3-4.3-04` | Personal Gifts | 🟡 partial | Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts:114, correctly). |
+| `B3-4.2-02` | Depository Accounts | 🟡 partial | server/services/underwritingNuance.ts detectSignificantDeposits, called from preUnderwriting.ts inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. SIX comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Two were re-cited on 2026-08-22 (routes/aus.ts, ausSubmission.ts:52) and the remaining four on 2026-08-23 (preUnderwriting.ts x2, ausSubmission.ts:110, autopilot/followUps.ts) — the 2026-08-21 note said 'two comments' and read as a closed cluster while four were still wrong. The id resolved, so no machine could catch it: this is the F-063 class, found only by reading. Partial, not implemented: the asset-reduction consequence and the qualifying-income denominator are gap G-23; the unmodelled conditions that make us over-ask are G-24. |
+| `B3-4.3-04` | Personal Gifts | 🟡 partial | Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts F-DEPOSIT regulations list, correctly). Named by section rather than by line: the line moved from :114 to :116 on 2026-08-23 and the pointer went stale in one edit. |
 | `B3-5.1-01` | General Requirements for Credit Scores | ✅ implemented | server/underwritingEngine.ts:342 reads the CONVENTIONAL_FICO_FLOOR policy scalar (620) on the decision path. |
 | `B3-5.3-09` | DU Credit Report Analysis | 🟡 partial | Collection thresholds ($5,000 / >=$250 / >$1,000) carried in data/regulatory/regulatory-ledger.json; tri-bureau pull is simulated. REVISED IN THIS EDITION — the change is Authorized User Tradelines plus a disputed-medical-tradeline note; re-verify before relying on the prior reading. |
 | `B3-6-02` | Debt-to-Income Ratios | ✅ implemented | server/underwriting.ts:440 reads CONVENTIONAL_STRETCH_DTI (50%). Platform runs a deliberately stricter 43% baseline overlay (ledger platform-conv-dti-cap-43). The ratio SUBMITTED TO DU previously omitted the proposed housing payment — the back-end ratio, understating every purchase file (12.5% where the real total was 50% on the worked example). Fixed 2026-08-21 (F-0818-11): server/routes/aus.ts now composes the total ratio through computeCasefileDti. |

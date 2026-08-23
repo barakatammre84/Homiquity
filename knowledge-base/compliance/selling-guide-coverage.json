@@ -1,7 +1,7 @@
 {
   "_comment": "Status data for the Selling Guide coverage map. The 423 section rows are NOT stored here — they are derived from docs/fannie-mae/selling-guide/section-index.tsv by scripts/selling-guide-coverage.cjs, which FAILS if any id below is not in that index. Anything absent from this file is `unreviewed`, which is the honest default and the whole point of the map.",
   "edition": "08-05-2026",
-  "updated": "2026-08-21",
+  "updated": "2026-08-23",
   "statuses": {
     "implemented": "A rule in the Guide is enforced by code on the decision path, named in `evidence`.",
     "partial": "Computed or partially encoded, but not binding on the decision, or missing a documented leg.",
@@ -84,8 +84,8 @@
     },
     "B3-4.2-02": {
       "status": "partial",
-      "evidence": "server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. Two comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Re-cited 2026-08-21. The id resolved, so no machine could catch it — this is the F-063 class, found only by reading.",
-      "verified": "2026-08-21"
+      "evidence": "server/services/underwritingNuance.ts detectSignificantDeposits, called from preUnderwriting.ts inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. SIX comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Two were re-cited on 2026-08-22 (routes/aus.ts, ausSubmission.ts:52) and the remaining four on 2026-08-23 (preUnderwriting.ts x2, ausSubmission.ts:110, autopilot/followUps.ts) — the 2026-08-21 note said 'two comments' and read as a closed cluster while four were still wrong. The id resolved, so no machine could catch it: this is the F-063 class, found only by reading. Partial, not implemented: the asset-reduction consequence and the qualifying-income denominator are gap G-23; the unmodelled conditions that make us over-ask are G-24.",
+      "verified": "2026-08-23"
     },
     "B3-5.1-01": {
       "status": "implemented",
@@ -144,8 +144,8 @@
     },
     "B3-4.3-04": {
       "status": "partial",
-      "evidence": "Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts:114, correctly).",
-      "verified": "2026-08-21"
+      "evidence": "Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts F-DEPOSIT regulations list, correctly). Named by section rather than by line: the line moved from :114 to :116 on 2026-08-23 and the pointer went stale in one edit.",
+      "verified": "2026-08-23"
     },
     "B3-3.8-01": {
       "status": "implemented",
@@ -153,9 +153,9 @@
       "verified": "2026-08-21"
     },
     "B3-3.5-01": {
-      "status": "implemented",
-      "evidence": "Length of Self-Employment. server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Seasoning assessed in underwritingNuance.ts assessIncomeSeasoning.",
-      "verified": "2026-08-21"
+      "status": "partial",
+      "evidence": "Verification of Income is implemented: server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Length of Self-Employment is only partly encoded — underwritingNuance.ts assessIncomeSeasoning tiers on self-reported yearsInRole, while the section's gate is what the most recent returns REFLECT (a full 12 months from the current business); the separate prior-income documentation and the 25%-ownership definition are neither captured nor asked for (gap G-25), and the rule is applied to three income families this section does not govern (gap G-22). Downgraded from implemented on 2026-08-23 after reading the section: the income math was implemented, the seasoning test was not.",
+      "verified": "2026-08-23"
     },
     "B3-3.7-01": {
       "status": "implemented",

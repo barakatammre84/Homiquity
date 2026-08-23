@@ -31,7 +31,7 @@ const NOW = Date.parse("2026-08-20T12:00:00Z");
 const LEDGER = [
   { id: "va-residual", citation: "VA Pamphlet 26-7, Chapter 4", codeRef: "server/services/underwritingNuance.ts", host: "benefits.va.gov" },
   { id: "regz-anti-steering", citation: "12 CFR 1026.36(e) (anti-steering)", codeRef: "server/services/antiSteeringOptions.ts", host: "consumerfinance.gov" },
-  { id: "fnma-seasoning", citation: "Fannie Mae Selling Guide B3-3.2", codeRef: "server/services/underwritingNuance.ts", host: "selling-guide.fanniemae.com" },
+  { id: "fnma-seasoning", citation: "Fannie Mae Selling Guide B3-3.5-01", codeRef: "server/services/underwritingNuance.ts", host: "selling-guide.fanniemae.com" },
 ];
 
 const VA_SOURCE = {
