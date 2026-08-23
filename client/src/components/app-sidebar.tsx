@@ -60,6 +60,7 @@ import {
   Bot,
   CircleUser,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 interface TeamMember {
   id: string;
@@ -285,7 +286,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="px-2 py-4">
-          <p className="text-sm font-semibold tracking-tight">homiquity</p>
+          <Logo size="sm" tone="onDark" data-testid="logo-sidebar" />
           <p className="text-xs text-muted-foreground">
             {portalLabel}
           </p>

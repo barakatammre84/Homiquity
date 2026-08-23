@@ -1,12 +1,18 @@
 import { useEffect } from "react";
 import { COMPANY_IDENTITY } from "@shared/companyIdentity";
+import { DEFAULT_OG_IMAGE } from "@shared/seo/schema";
 
 // Keep DEFAULT_TITLE in sync with the static <title> in client/index.html so the
 // title the crawler sees before hydration matches what SEOHead resets to.
 const SITE_NAME = "Homiquity";
 const DEFAULT_TITLE = "Homiquity - Clarity for Every Stage of Homeownership";
 const SITE_URL = COMPANY_IDENTITY.siteUrl;
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
+// DEFAULT_OG_IMAGE is IMPORTED, not redeclared. It used to be a second, independent
+// `${SITE_URL}/og-default.png` here — the client and the server-side prerenderer
+// each holding their own copy of the same constant, free to drift. Nothing tests
+// that they agree (tests/canonicalHost.test.ts pins the HOST, not the filename),
+// so the drift would have shipped silently: crawlers unfurling one card and
+// client-rendered pages another.
 
 type JsonLd = Record<string, unknown>;
 

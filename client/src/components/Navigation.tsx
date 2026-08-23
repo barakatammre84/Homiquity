@@ -17,6 +17,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { COMPANY_IDENTITY, contactPhoneTel } from "@shared/companyIdentity";
+import { Logo } from "@/components/brand/Logo";
 
 interface NavItem {
   href: string;
@@ -173,7 +174,7 @@ export function Navigation() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="touch-target flex items-center">
-            <span className="text-2xl font-bold tracking-tight text-flare">homiquity</span>
+            <Logo size="lg" tone="brand" data-testid="logo-nav" />
           </Link>
 
           <div className="hidden items-center gap-1 lg:flex">

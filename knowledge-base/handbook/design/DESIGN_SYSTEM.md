@@ -50,7 +50,7 @@ sites actually use it.
 | Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 22 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
-| `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
+| `Logo` + `BrandingProvider` | **BUILT · ADOPTED** | 18 call site(s) |
 | Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 34 in 25 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 9 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
@@ -103,21 +103,33 @@ on 950 measures 17.30:1; on 700, 14.07:1.* **Neutral light ramp** (`precision.50
 `500 #5A726C` muted green-grey, micro-copy (5.17:1 on white) · `300 #93A5A0` hover/disabled
 borders · `100 #E2E9E7` hairlines · `50 #F1F8F5` the single pale tint.
 
-**The warm accent — `--flare` #DD610E (hue 24deg), and it is a FILL colour, never text.** It does
+**The warm accent — `--flare` #FF5E00 (hue 22deg), and it is a FILL colour, never text.** It does
 the job Monzo's coral does (one jolt of warmth against a cold near-black, used sparingly) at a
-plainly different hue. Its usage is constrained by contrast, not taste:
+plainly different hue. **The value is SAMPLED FROM THE LOGO, not chosen** — it is the exact ink of
+the founder's logomark. Its usage is constrained by contrast, not taste:
 
 | | Pair | Ratio |
 |---|---|---|
 | ✅ ALLOWED | fills, borders, illustration, focus rings — any ground | — |
-| ✅ ALLOWED | flare as text **on the dark surface** | 4.77:1 |
-| ✅ ALLOWED | `--flare-foreground` text on a flare fill | 4.77:1 |
-| ❌ FORBIDDEN | flare as text on white | 3.63:1 |
-| ❌ FORBIDDEN | white text on a flare fill | 3.63:1 |
+| ✅ ALLOWED | flare as text on the dark ground `#0B1E19` | 5.65:1 |
+| ✅ ALLOWED | flare as text on the sidebar `#17302A` | 4.59:1 |
+| ✅ ALLOWED | `--flare-foreground` text on a flare fill | 5.65:1 |
+| ❌ FORBIDDEN | flare as text on white | 3.06:1 |
+| ❌ FORBIDDEN | white text on a flare fill | 3.06:1 |
+| ❌ FORBIDDEN | flare as text on mint | 2.77:1 |
 
-When orange must actually be **read**, use **`--flare-ink` #A54709** (5.99:1 on white, 5.56:1 on
-mint). Logos are exempt from WCAG 1.4.3, so the wordmark may carry bright `--flare` on white —
-that exemption covers the mark only, never body copy, labels or numbers.
+When orange must actually be **read**, use **`--flare-ink` #AD4000** (5.98:1 on white, 5.40:1 on
+mint). Logos are exempt from WCAG 1.4.3, so the logomark and wordmark may carry bright `--flare`
+**on white** — that exemption covers the mark only, never body copy, labels or numbers, and it was
+measured for white, **not** for mint.
+
+> ⚠️ **This block was stale for one commit and it is worth recording why.** It was written with
+> `--flare` at #DD610E (hue 24), then `client/src/index.css` moved to the logo's #FF5E00 without
+> this table following — recreating, inside the very PR that fixed the palette-name drift, exactly
+> the doc-versus-code split that PR existed to close. **The sidebar row is new**: the old table
+> quoted only the darkest ground, so flare-on-sidebar was never measured, and at the old value it
+> was **3.88:1 — a silent AA failure** for a pairing the table implied was fine. Re-derive every
+> ratio here from `index.css` on any palette commit; the code is the source, this is the mirror.
 
 **Core principles**
 
@@ -444,14 +456,28 @@ up" state and RenterHome's readiness ring are the quality bar.
 **Boundary:** private/authenticated surfaces are tenant-branded; public marketing stays
 Homiquity.
 
-- **`<Logo>`** (`components/brand/Logo.tsx`) replaces ~13 copy-pasted wordmark spans that vary in
-  weight, size and colour. Props: `size` (`sm|md|lg`), `variant` (`wordmark|mark|lockup`), `tone`
-  (`brand|onDark|mono`). Branding-aware: on a private surface with an active tenant it renders
-  the tenant logo/name; on public surfaces always Homiquity.
-- **`BrandingProvider`** (mounted on `PrivateLayout` only) is the white-label seam. It sets the
-  **brandable** vars on the layout root: `--primary`, `--accent`, `--sidebar`, `--ring`,
-  `--brand-logo`. Because components use `bg-primary`/`bg-accent` semantically, the portal
-  re-skins automatically — and stays token-guard-safe (no inline hex in components).
+- **`<Logo>`** (`components/brand/Logo.tsx`) replaces the **18** copy-pasted wordmark spans that
+  varied in weight, size and colour — the count was previously written here as "~13"; the census
+  was re-run against the tree. Props: `size` (`sm|md|lg`), `variant` (`wordmark|mark|lockup`),
+  `tone` (`brand|onDark|mono`), `mark` (`compact|primary`, default `compact`). Branding-aware: on
+  a private surface with an active tenant it renders the tenant logo/name; on public surfaces
+  always Homiquity.
+  - The logomark is a **CSS mask** (`.brand-mark` in index.css) over `client/public/brand/*.png`,
+    not an `<img>` or inline SVG — there is no vector master, and a mask takes its colour from
+    `currentColor` so one asset serves every tone and a tenant re-skin reaches it for free.
+  - `mark` defaults to `compact` because the primary artwork's outlined stem and chart columns
+    stop resolving below ~48px and every lockup here renders at 20-28px.
+- **`BrandingProvider`** is the white-label seam — and it is **currently INERT: it is mounted
+  NOWHERE.** (`grep -rn "<BrandingProvider" client/src` returns zero JSX mounts; its only consumer
+  is `Logo.tsx`, so `useBranding()` always returns the default context.) This line previously said
+  "mounted on `PrivateLayout` only", which was never true of the shipped tree. When it *is*
+  mounted it sets the **brandable** vars on the layout root: `--primary`, `--accent`, `--sidebar`,
+  `--ring`. Because components use `bg-primary`/`bg-accent` semantically, the portal re-skins
+  automatically — and stays token-guard-safe (no inline hex in components).
+  - ⚠️ `--brand-logo` was listed here as one of those vars. **No such token exists** in
+    `index.css`, `tailwind.config.ts` or `BrandingProvider.tsx`. Removed rather than implemented:
+    the mark is coloured by `currentColor` through the mask, so a tenant's `--primary` already
+    reaches it and a dedicated logo var would be a second, competing mechanism.
 - **Fixed tokens, never tenant-overridable:** the neutral ramp, `--surface` + the elevation
   scale, and all semantic status tokens. They carry meaning and AA guarantees and must stay
   constant across tenants.

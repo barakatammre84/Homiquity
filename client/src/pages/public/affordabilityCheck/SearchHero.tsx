@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/brand/Logo";
 
 export interface SearchHeroProps {
   query: string;
@@ -16,9 +17,7 @@ export function SearchHero({ query, onQueryChange, onSubmit, isPending, notFound
     <div className="bg-primary/5 dark:bg-primary/10 border-b">
       <div className="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
         <Link href="/">
-          <span className="text-2xl font-bold tracking-tight text-flare cursor-pointer" data-testid="text-brand-logo">
-            homiquity
-          </span>
+          <Logo size="lg" tone="brand" data-testid="text-brand-logo" />
         </Link>
         <h1 className="text-3xl md:text-4xl font-bold mt-6 mb-3" data-testid="text-page-title">
           Can I Afford This Home?
