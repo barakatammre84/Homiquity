@@ -1,7 +1,7 @@
 # 01 — Architecture and the request lifecycle
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 02 — Architecture](../handbook/app-guide/02-architecture.md) (it wins on conflict; the code wins over both — and on this chapter the code has moved past it in five places, listed under *Where this breaks*).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 02 — Architecture](../handbook/app-guide/02-architecture.md) (it wins on conflict; the code wins over both). The five places the code had moved past it were fixed by #694 (`3d047ce9`, 2026-08-22) — two residues remain, listed under *Where this breaks*.
 
 ## The mental model
 
@@ -119,7 +119,7 @@ flowchart TD
   `server/routes/borrower/index.ts:43-45` records that `registerLeaseRoutes` was *appended, not
   inserted*.
 - **Size.** `find server -name '*.ts' | wc -l` → `291`; `find server -name '*.ts' -exec cat {} + | wc -l`
-  → `81467`; routes 82 files / 25,806 lines; services 123 / 36,027; storage 26 / 6,311.
+  → `81487`; routes 82 files / 25,826 lines; services 123 / 36,027; storage 26 / 6,311.
   `grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l` → `579`
   registration call sites (an over-count of distinct URLs — see *What we do not know*).
 - **Dev loads `.env` explicitly; prod does not.** `server/index-dev.ts:1` `import "./load-env"`
@@ -127,7 +127,10 @@ flowchart TD
   `server/index-prod.ts` has no such import — Railway injects variables.
 - **Both entry points mount `prerenderMiddleware` ahead of the static/HMR layer.**
   `server/index-dev.ts:43`, `server/index-prod.ts:24`; the symbol is exported from
-  `server/routes/seo.ts:187` (not from `server/prerender.ts`, which the app-guide points at).
+  `server/routes/seo.ts:187`, built by `makePrerenderMiddleware` from `server/prerender.ts`
+  (`seo.ts:19`) — app-guide 02 now documents this correctly; `runbooks/CICD.md:129-131` and
+  `app-guide/10-deploy-ops.md:154-156` still point at `server/prerender.ts` as the mounted
+  middleware.
 - **Prod static: hashed assets immutable for a year, `index.html` `no-cache`, SPA fallback by
   `root:` because a dotted directory 404'd every document.** `server/index-prod.ts:32-56`.
 - **Process hardening.** `server/app.ts:581-582` (stdout/stderr `error` swallowed), `:588-605`
@@ -173,10 +176,9 @@ grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l
 
 | Trap | Where | Caught by |
 |---|---|---|
-| `app-guide/02-architecture.md` is stale on five counts: "38 route domains" (`:21`), "22 domain files" for storage (`:24`), "178 tables, 21 files" (`:29`), "22 domain route registrars" (`:82`); actual 40 registrars, 26 storage files, 188 tables in 34 files. | `knowledge-base/handbook/app-guide/02-architecture.md:21,24,29,82` | Nothing — `guard:citations` checks paths, not counts. LEDGER HO-0822-11. |
-| The same chapter says "CSP disabled" (`:58`) — it is enabled report-only in production. | `app-guide/02-architecture.md:58` vs `server/app.ts:181-188` | `tests/securityHeaders.test.ts` pins the *code* (frameguard, not CSP, blocks framing); nothing tests the doc. |
-| The same chapter describes the logger as a **denylist** ("response bodies for sensitive paths … are suppressed", `:71`). It is an allow-list of three paths, and the code forbids reverting. Acting on the doc — adding a route to a denylist — would log borrower SSNs. | `app-guide/02-architecture.md:71` vs `server/app.ts:475-487` | Nothing automated. The most dangerous stale line in the chapter. LEDGER HO-0822-12. |
-| The same chapter points at `server/prerender.ts` as the mounted middleware; the mounted symbol is `prerenderMiddleware` from `server/routes/seo.ts:187`, whose `:237` says it is deliberately not mounted in that file. | `app-guide/02-architecture.md:88`, `app-guide/10-deploy-ops.md:152`, `runbooks/CICD.md:129` | Partially — `guard:citations` passes because `server/prerender.ts` exists. |
+| *(Resolved 2026-08-22 by #694, `3d047ce9` — kept so the resolution is datable.)* Four rows stood here: app-guide 02 stale on five counts (HO-0822-11), "CSP disabled" when it is report-only in prod, the response logger described as a **denylist** when it is a three-path allow-list — the most dangerous stale line, HO-0822-12 — and the wrong prerender symbol. #694 fixed all four in the doc; the LEDGER rows await closing by the Handoff Corpus Steward. | `knowledge-base/handbook/app-guide/02-architecture.md:21,58-60,71,98-101` (now correct) | The trap this row records is historical. |
+| **Residue 1:** the #694 fix itself miscounts — app-guide 02 now says "**39** route domains" while the measured count is **40** (`grep -cE "^\s*(await )?register[A-Za-z]+Routes\(app" server/routes.ts` → 40, same at #694's own commit). | `knowledge-base/handbook/app-guide/02-architecture.md:21,91` | Nothing — `guard:citations` checks paths, not counts. |
+| **Residue 2:** two docs still name `server/prerender.ts` as the mounted middleware; the mounted symbol is `prerenderMiddleware` (`server/routes/seo.ts:187`), built by that file's factory. | `knowledge-base/runbooks/CICD.md:129-131`, `app-guide/10-deploy-ops.md:154-156` | Partially — `guard:citations` passes because `server/prerender.ts` exists. |
 | Mount-order fragility: move `/health` below the beta gate and the liveness probe 401s the instant `BETA_ACCESS_CODE` is set. | `server/app.ts:224` vs `:233` | No order test. `tests/betaGate.test.ts:115` proves `/api/*` is never gated; nothing pins `/health`'s position. |
 | The CSRF webhook carve-out is a bare prefix — a new route under `/api/webhooks/` that forgets its signature check is unauthenticated *and* un-CSRF'd. | `server/app.ts:424-429` | No central test; enforcement is per route. |
 | In development the CSRF check is bypassed after the allowlist fails, so a CSRF regression is invisible locally and in the integration lane (which runs against a dev server). | `server/app.ts:436`, `:458-460` | Nothing. |
@@ -191,7 +193,7 @@ grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l
 | Question | What resolves it |
 |---|---|
 | The number of distinct HTTP endpoints — 579 counts registration call sites across all of `server/` (sub-routers, MCP, tests included). | Scope the same grep to `server/routes` and cross-check against [app-guide 04](../handbook/app-guide/04-api-routes.md). |
-| Is `server/prerender.ts` dead code or a dependency of `server/routes/seo.ts`? | `grep -rn "prerender" server --include='*.ts'`; owner `hq-seo-content-owner`. |
+| *(Answered 2026-08-23.)* `server/prerender.ts` is not dead code — it is the factory: `server/routes/seo.ts:19` imports `makePrerenderMiddleware` from it and `:187` builds the mounted symbol. app-guide 02 documents this since #694. | — resolved; kept so the question is not re-opened. |
 | Is `CSP_ENFORCE` set in the live Railway service (i.e. is CSP enforcing in prod today)? | Railway → service → Variables (founder-only; values are never in the repo). |
 | Does any test pin middleware *order* in `server/app.ts`? Searches found only behavioural tests. | `grep -rln "app.use" tests/` and a read of each hit. |
 
@@ -217,8 +219,8 @@ be the *last* sign, or nobody ever reaches their gate.
 
 ## Go deeper
 
-- [app-guide 02](../handbook/app-guide/02-architecture.md) — with the five corrections above (last
-  updated 2026-08-06; `server/routes.ts` moved on 2026-08-20). Adjacent:
+- [app-guide 02](../handbook/app-guide/02-architecture.md) — brought back in step with the code
+  by #694 on 2026-08-22; read it with the two residues above in mind. Adjacent:
   [04 — API Surface](../handbook/app-guide/04-api-routes.md), [06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md)
   (the CSP script inventory referenced at `server/app.ts:68`), [12 — API contract](../handbook/app-guide/12-api-contract.md).
 - Runbooks: `knowledge-base/runbooks/LOCAL_DEV.md` (ports; the `serving on port 5001` line),
