@@ -526,13 +526,37 @@
   .brand-mark-primary {
     display: inline-block;
     aspect-ratio: 105 / 134;
-    background-color: currentColor;
+    /* Deliberately NOT `currentColor` here — see the @supports block below. */
+    background-color: transparent;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
     -webkit-mask-position: center;
     mask-position: center;
     -webkit-mask-size: contain;
     mask-size: contain;
+  }
+
+  /**
+   * The fill is applied ONLY where masking works, and this guard is load-bearing.
+   *
+   * Both failure modes were measured, not assumed:
+   *   mask URL 404s        -> the element renders NOTHING. Safe.
+   *   mask-image UNSUPPORTED -> the element paints as a SOLID ORANGE RECTANGLE
+   *                            next to the wordmark, because `background-color`
+   *                            applies and nothing clips it.
+   * The second is the one that matters: a coloured block where the logo should be
+   * reads as a broken image, and it is exactly the kind of thing that ships
+   * unnoticed because every dev machine supports masking. Painting the fill only
+   * inside @supports turns that into the same silent nothing as the 404 case —
+   * the wordmark still reads, and the lockup degrades to a wordmark instead of to
+   * a defect.
+   */
+  @supports ((-webkit-mask-image: url("/brand/mark-compact.png")) or
+             (mask-image: url("/brand/mark-compact.png"))) {
+    .brand-mark,
+    .brand-mark-primary {
+      background-color: currentColor;
+    }
   }
   .brand-mark {
     -webkit-mask-image: url("/brand/mark-compact.png");
