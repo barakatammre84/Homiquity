@@ -98,7 +98,7 @@ export default function RentReporting() {
             <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
               <Home className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold leading-tight text-foreground sm:text-4xl" data-testid="text-rent-reporting-title">
+            <h1 className="font-display text-3xl font-bold leading-none text-foreground sm:text-4xl" data-testid="text-rent-reporting-title">
               You've been paying a mortgage. It just wasn't yours.
             </h1>
             <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-muted-foreground">

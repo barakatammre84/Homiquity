@@ -38,6 +38,44 @@ const revealVariants: Variants = {
   shown: { opacity: 1, y: 0, transition: { duration: DURATION, ease: EASE } },
 };
 
+/**
+ * Whether it is safe to animate at all.
+ *
+ * 🚨 THESE PRIMITIVES HIDE CONTENT AND RELY ON JS TO BRING IT BACK. `initial:
+ * hidden` sets inline `opacity: 0`, so if the animation never completes, the
+ * content is never seen. That is not hypothetical — it was caught on the home
+ * page: two journey cards sat at opacity 0 and two at 0.27 and 0.78, IDENTICAL
+ * at 6s and 10s. Stalled, not slow.
+ *
+ * The cause is `document.hidden`. Browsers throttle `requestAnimationFrame` in
+ * a background tab, and framer-motion drives on rAF, so a reveal that starts
+ * while hidden can stop mid-ramp and leave the element part-transparent or
+ * invisible. A page opened in a background tab is an ordinary thing to do.
+ *
+ * So a hidden document is treated exactly like reduced motion: render plainly,
+ * no observer, no opacity ramp. Nobody is watching an animation in a tab they
+ * cannot see — the only thing that matters there is that the content EXISTS.
+ *
+ * `visibilitychange` is still observed so a tab that starts hidden and is later
+ * brought forward animates normally from then on, rather than being permanently
+ * demoted.
+ */
+function useCanAnimate(): boolean {
+  const reduced = useReducedMotion();
+  const [hidden, setHidden] = React.useState(
+    () => typeof document !== "undefined" && document.hidden,
+  );
+
+  React.useEffect(() => {
+    const sync = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", sync);
+    sync();
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+
+  return !reduced && !hidden;
+}
+
 export interface MotionProps {
   children: React.ReactNode;
   className?: string;
@@ -52,8 +90,7 @@ export interface MotionProps {
  * most common way a "designed" page becomes an irritating one.
  */
 export function Reveal({ children, className, delay = 0 }: MotionProps) {
-  const reduced = useReducedMotion();
-  if (reduced) return <div className={className}>{children}</div>;
+  if (!useCanAnimate()) return <div className={className}>{children}</div>;
 
   return (
     <motion.div
@@ -77,8 +114,7 @@ export function Reveal({ children, className, delay = 0 }: MotionProps) {
  * independently reads as noise.
  */
 export function Stagger({ children, className, delay = 0 }: MotionProps) {
-  const reduced = useReducedMotion();
-  if (reduced) return <div className={className}>{children}</div>;
+  if (!useCanAnimate()) return <div className={className}>{children}</div>;
 
   return (
     <motion.div
@@ -98,8 +134,7 @@ export function Stagger({ children, className, delay = 0 }: MotionProps) {
 
 /** A child of `Stagger`. Outside one it renders static — it inherits its parent's state. */
 export function StaggerItem({ children, className }: Omit<MotionProps, "delay">) {
-  const reduced = useReducedMotion();
-  if (reduced) return <div className={className}>{children}</div>;
+  if (!useCanAnimate()) return <div className={className}>{children}</div>;
 
   return (
     <motion.div className={cn(className)} variants={revealVariants}>

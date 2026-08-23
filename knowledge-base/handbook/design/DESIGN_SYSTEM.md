@@ -282,6 +282,31 @@ not the capture-flow container; see §12.
   supplies hover/active tints. Loading is `<Skeleton>` (`animate-skeleton-precision`), **never a
   spinner**.
 
+  🚨 **JS-driven reveals must not be the only thing that makes content visible.**
+  `Reveal`/`Stagger`/`StaggerItem` (`client/src/components/motion/`) set inline
+  `opacity: 0` and animate to 1 — so anything that stops the animation leaves the
+  content **permanently unseen**, not merely un-animated.
+
+  That is not theoretical. On 2026-08-22 the home page was measured with two of
+  four journey cards at `opacity: 0` and the other two at 0.27 and 0.78 —
+  **identical readings at 6s and 10s.** Stalled. The cause is `document.hidden`:
+  browsers throttle `requestAnimationFrame` in a background tab, and
+  framer-motion drives on rAF, so a reveal that begins while hidden can stop
+  mid-ramp. Opening a link in a background tab is an ordinary thing to do.
+
+  The primitives now gate on `useCanAnimate()` — **reduced motion OR a hidden
+  document renders plainly**, with no observer and no inline opacity to get stuck
+  at. `client/src/components/motion/hiddenTab.test.tsx` pins it.
+
+  Two things to carry forward:
+  - **`prefers-reduced-motion` is not the whole accessibility story for motion.**
+    It was handled correctly here from the first commit, and the page was still
+    broken for a different reason entirely.
+  - **Verify reveals on a FULL-PAGE capture.** This survived several rounds of
+    review because every screenshot was a partial viewport that happened to miss
+    the section. A tall viewport (e.g. 1280x2600) puts the whole page in one
+    frame.
+
 ---
 
 ## 5a. Horizontal rhythm — `OffsetBlock`

@@ -43,7 +43,8 @@ pnpm preflight --fast     # skip build + boot + integration lane (~2 min)
 ```
 
 `.githooks/pre-push` (install once: `git config core.hooksPath .githooks`) runs the cheap half
-automatically on every push — typecheck, nine guards, both test lanes. **`preflight` adds the
+automatically on every push — typecheck and the nine guards, ~30 s. The two unit-test lanes run
+in CI on every PR and are **opt-in** locally (`PREPUSH_TESTS=1 git push`). **`preflight` adds the
 three that only ever ran in CI**, and they are the ones that catch a broken *deploy* rather than
 a broken diff: the production build, the self-host boot of `dist/index.js`, and the 18-file
 integration lane against a real HTTP server.
@@ -275,7 +276,7 @@ investigate, never a build to block. Add `--verbose` to read the replies, or
 `--model=claude-haiku-4-5` to compare tiers (Haiku 4.5 rejects `output_config.effort`,
 which the script handles).
 
-### Run the gate locally — one-time setup, and why it saves money
+### Run the gate locally — one-time setup, and what the hook is for
 
 ```bash
 git config core.hooksPath .githooks
@@ -284,17 +285,32 @@ git config core.hooksPath .githooks
 That arms `.githooks/pre-push`, which runs the cheap half of CI's `gate` job —
 typecheck, then nine guards (schema↔migration, migration ledger, delivery-stack
 freeze, design tokens, UI standard, KB index, doc staleness, query-key
-convergence), then both unit suites — and **refuses the push** if any of them
-fails. Skip it once with `git push --no-verify`. For the whole gate including the
-build, the boot and the integration lane, run `pnpm preflight` (top of this file).
+convergence) — in about 30 s, and **refuses the push** if any of them fails. Skip
+it once with `git push --no-verify`. The two unit-test lanes are **opt-in** here
+and mandatory in CI:
 
-This is a cost control, not a style preference. The repo is private, so Actions
-minutes are metered (roadmap KTLO-2). Measured 2026-08-17: **66 CI runs over 4.85
-days — ~13.6/day**, one billable `gate` job each at ~4–5 min, so **~1,850
-min/month against a 2,000-minute free allowance.** A red gate costs that run *and*
-the re-run after the fix, so catching one locally saves about ten minutes of
-allowance, not five. Ordered fail-fastest-first: `tsc` is ~25 s and catches the
-common break before vitest spends three minutes proving the same thing.
+```bash
+PREPUSH_TESTS=1 git push       # also run both vitest lanes before pushing
+```
+
+For the whole gate including the build, the boot and the integration lane, run
+`pnpm preflight` (top of this file).
+
+The hook is an early warning, not the control — CI's `gate` job runs every check
+on every PR. It ran the full unit suite too until 2026-08-22, and the reason was
+money: the repo was private and Actions minutes were metered (roadmap KTLO-2;
+measured 2026-08-17, ~13.6 runs/day × 4–5 min ≈ 1,850 of a 2,000-minute
+allowance). The repo is public now and minutes are free, which left only what the
+suite cost locally: vitest spawns one worker per core (8 on the development
+laptop) and the two lanes take ~1–2 GB and every core for minutes, on every push,
+docs-only PRs included — on an 8 GB machine with several sessions pushing at
+once, that is what made it swap. Ordered fail-fastest-first: `tsc` is ~25 s and
+catches the common break.
+
+A checkout with no `node_modules` (every fresh worktree) gets a loud warning and
+the push proceeds — CI still gates the PR. Between 2026-08-19 and 2026-08-22,
+while Actions was billing-blocked and nothing stood behind this hook, it blocked
+those pushes instead; that special case ended with the public flip.
 
 The hooks live in a **tracked** `.githooks/` rather than `.git/hooks` so they
 survive a reclone, apply in every worktree, and are visible to review.

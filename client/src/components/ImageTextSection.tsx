@@ -3,10 +3,16 @@ import { cn } from "@/lib/utils";
 import { FramedPhoto } from "@/components/FramedPhoto";
 
 interface ImageTextSectionProps {
-  /** Bundled, same-origin image URL (from lifestyleImages). */
-  image: string;
-  /** Descriptive alt text — required. */
-  imageAlt: string;
+  /**
+   * A rendered illustration. Preferred over `image`: it is token-driven, so it
+   * re-skins per tenant and carries no stock-photography licence or Fair
+   * Housing representation question.
+   */
+  illustration?: ReactNode;
+  /** Bundled, same-origin photo URL. Ignored when `illustration` is given. */
+  image?: string;
+  /** Descriptive alt text — required when `image` is used. */
+  imageAlt?: string;
   /** kebab-case test id for the section, e.g. "section-afford". */
   testId: string;
   /** Small emerald label above the title. */
@@ -30,6 +36,7 @@ interface ImageTextSectionProps {
  * sections can zig-zag (image-right → image-left → …).
  */
 export function ImageTextSection({
+  illustration,
   image,
   imageAlt,
   testId,
@@ -50,13 +57,19 @@ export function ImageTextSection({
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{title}</h2>
           <div className="mt-5 space-y-4 text-lg leading-relaxed text-muted-foreground">{children}</div>
         </div>
-        <FramedPhoto
-          src={image}
-          alt={imageAlt}
-          testId={`${testId}-image`}
-          position={imagePosition}
-          className={cn(reverse && "lg:order-1")}
-        />
+        {illustration ? (
+          <div className={cn(reverse && "lg:order-1")} data-testid={`${testId}-image`}>
+            {illustration}
+          </div>
+        ) : image ? (
+          <FramedPhoto
+            src={image}
+            alt={imageAlt ?? ""}
+            testId={`${testId}-image`}
+            position={imagePosition}
+            className={cn(reverse && "lg:order-1")}
+          />
+        ) : null}
       </div>
     </section>
   );
