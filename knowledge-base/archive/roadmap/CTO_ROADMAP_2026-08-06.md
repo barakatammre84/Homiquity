@@ -325,3 +325,16 @@ Strategy: own borrower intent *before* the credit pull via first-party channels 
   matching `CRON_SECRET` (adverse-action-delivery run 32038494454 → `{"ok":true}`), closing the
   2026-08-06 `curl` exit-6 class (vendor-procurement 2026-08-17 E6). The roadmap line also carried
   "blocked on KTLO-2 (zero check-runs)" — stale since the merge.
+- [x] **§3.29 The funnel's autosave silently drops three captured answers — closed 2026-08-22 by
+  evening-triage.** [#667](https://github.com/barakatammre84/Homiquity/pull/667) merged
+  2026-08-22T23:43Z. Verified in the code on `origin/main` @ `b30eb53a`, not from the PR's claim —
+  **both** halves of the round trip, because the item explicitly said fixing one alone was worse
+  than fixing neither. Write side: `server/routes/lending/statusDecisions.ts:90` now carries
+  `"householdFamilySize", "homeSquareFootage", "avoidsInterestFinancing"` in `UPDATABLE_COLUMNS`,
+  with a comment recording that every autosave had validated them, returned 200, and written
+  nothing. Read side: `client/src/pages/lending/preApproval/useDraftRestore.ts:72,74,75` maps all
+  three back out of the draft. The two VA residual-income inputs (38 CFR 36.4340(e)) therefore
+  survive a device switch or a mid-funnel signup for the first time. The independently-written
+  client-side fix on the unpushed branch `claude/musing-kepler-ca48fc` (wiring audit, same day) is
+  superseded by this and was **not** landed; the branch is pushed to `origin` for provenance and
+  its report is on `main` at `knowledge-base/routines/reports/2026-08-22-wiring-audit.md`.

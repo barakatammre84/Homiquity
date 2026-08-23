@@ -35,13 +35,17 @@ simulated vs pending) · [feature-review/FINDINGS.md](knowledge-base/feature-rev
 These outrank every engineering item below. They are not features; they are the condition for
 anything else in this file being true.
 
-- [ ] **KTLO-1. Railway — being decommissioned, not paid for.** Founder direction 2026-08-19:
-  development is local-only until the app is fully built and debugged; the production service is
-  to be taken down deliberately rather than left to lapse unattended. CI's `migrate-prod` and
-  `verify-deploy` jobs are paused accordingly (see `.github/workflows/ci.yml`, both carry restore
-  instructions). **Blocked on one thing first:** a read-only census of the production database, so
-  the decision is made against row counts rather than a guess — and that census runs through CI,
-  which is currently dead (KTLO-2). Do not take the service down until the census answers.
+- [ ] **KTLO-1. Railway — the decommission decision is still open, and the service never stopped
+  serving.** Founder direction 2026-08-19 was to take production down deliberately rather than let
+  it lapse. **That never happened, and treating it as done cost an outage.** Re-verified
+  2026-08-23T02:39Z: `GET https://homiquity-production.up.railway.app/api/health` returns
+  `commit: b30eb53a…` — **equal to `origin/main`** — so Railway has been building and deploying
+  every merge throughout. The pause taken on that premise (CI's `migrate-prod`) let migration 0057
+  go unapplied and produced a **35-minute total authentication outage** on 2026-08-22; both jobs
+  were **re-armed the same day** by [#669](https://github.com/barakatammre84/Homiquity/pull/669)
+  (`.github/workflows/ci.yml:540,630` now carry the ▶️ RESUMED notes and the incident write-up).
+  **The blocker is gone:** the read-only prod-DB census was waiting on CI, and CI has been alive
+  and green since 2026-08-22 (KTLO-2) — so run the census, then decide against row counts.
   **Founder-held.** Superseded text follows for provenance:
 - [ ] ~~**KTLO-1. Railway billing — add a payment method; the risk is the expiring trial credit, not
   consumption.** Re-measured 2026-08-17 (#536): 7-day usage ≈ **$3.20/month** (CPU avg 0.0002 vCPU,
@@ -52,8 +56,21 @@ anything else in this file being true.
   **72 h on Hobby** — the 2026-08-18 merge round (#539/#537/#514/#536/#543) refreshed the rollback
   window, which now relapses **~2026-08-21** without another deploy
   ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1).~~
-- [ ] 🚨 **KTLO-2. GitHub Actions billing has FAILED — every merge is blocked.** Escalated
-  2026-08-19. The repo was flipped **public** on 2026-08-18, which made Actions free and *masked*
+- [ ] **KTLO-2. Actions is ALIVE again — because the repo is public, not because the bill was
+  paid.** Re-probed 2026-08-23T02:37Z: `gh api repos/barakatammre84/Homiquity` →
+  `"visibility": "public"`, and `gh run list --branch main` shows **8 consecutive `success`** runs
+  today (`b30eb53a`, `6507f404`, `ca791d72`, …). Merges are unblocked and **27 PRs merged in the
+  24 h to 2026-08-23T02:00Z**. 🚨 **This is a workaround wearing the costume of a fix.** Public
+  visibility is what makes Actions free; the underlying payment failure has never been observed
+  resolved, so **flipping the repo private again re-breaks every merge instantly** — that exact
+  flip-and-reassert happened on 2026-08-19. Two things are therefore still owed: (a) resolve the
+  Actions payment / spending limit at GitHub → Settings → Billing so visibility stops being
+  load-bearing, and (b) decide whether the repo should be public at all — `knowledge-base/feature-review/FINDINGS.md`,
+  `governance/security/`, and ~19 MB of re-hosted Fannie/NMLS PDFs are world-readable right now,
+  and secret scanning plus push protection are **disabled**. Branch protection is unchanged:
+  `required_status_checks.contexts: []` (probed the same minute), so nothing is *required* even
+  though everything is *running* — see KTLO-4. Original escalation, 2026-08-19, kept for
+  provenance: The repo was flipped **public** on 2026-08-18, which made Actions free and *masked*
   an underlying payment failure. It was flipped back to **private** on 2026-08-19 (founder
   direction — the security pack and the open-findings register were world-readable), and the
   failure immediately reasserted: every run since 14:18 UTC dies in ~2 s with `steps: []` and the
@@ -95,8 +112,16 @@ anything else in this file being true.
   record the number in [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md). Still unverified
   2026-08-17: the GitHub cron sweeps (every ~20–40 min) keep the compute warm and mask the cold
   start; the first borrower after a real idle window still pays it (#526 E6). **Founder-held.**
-- [ ] 🚨 **KTLO-4. `main` has no gate and still auto-deploys to production. Both halves verified
-  tonight, 2026-08-20T02:19Z.** (a) Branch protection on `main` now reads
+- [ ] 🚨 **KTLO-4. `main` has no *required* gate and still auto-deploys to production. Re-verified
+  2026-08-23T02:37Z — still true, with one thing better than it was.** Better: CI is running again
+  and every merge to `main` today went green before Railway built it, so the code shipping tonight
+  was in fact verified. Unchanged and still the hazard: `required_status_checks.contexts: []`, so
+  that verification is **voluntary** — a red or missing run blocks nothing, and `enforce_admins:
+  true` over zero checks binds admins to nothing (`TEAM_PRACTICES.md` §6 asserted the opposite until
+  doc-accuracy corrected it today, DA-0822-01). Prod is serving `b30eb53a`, equal to `origin/main`.
+  Now that Actions is alive (KTLO-2), **restoring the required check is a one-command fix and no
+  longer costs anything** — the command is in KTLO-2 and its separators are U+00B7 MIDDLE DOTs.
+  Original verification, 2026-08-20T02:19Z: (a) Branch protection on `main` now reads
   `required_status_checks.contexts: []` — the `gate` check was deliberately removed today so work
   could continue through the Actions billing failure (rationale and the restore command are in
   KTLO-2 as rewritten by [#608](https://github.com/barakatammre84/Homiquity/pull/608), unmerged).
@@ -401,6 +426,18 @@ anything else in this file being true.
   evidence, and have triage compare `lastRunAt` against the report set rather than reading the
   report set alone — **triage already does the second half; only the stub is missing.** It is the
   §0 lesson ("a routine that cannot be shown to have run is not a control") one level deeper.
+  **Fourth, fifth and sixth data points, 2026-08-22 (evening-triage).** Scheduler `lastRunAt` says
+  `primary-engineer` (10:21:33Z), `launch-gate`/Trunk Health (10:48:25Z) and
+  `workflow-completion-engine` (14:19:33Z) all dispatched today; `git ls-tree` over every remote
+  **and local** ref finds **no report for any of them**, on any branch, and no worktree holds an
+  uncommitted one. Two more routines *did* write reports and still left no trace anybody could
+  see — the Capture Path Engineer and the Client Journey Walk both committed to **unpushed local
+  branches**, which is the same outcome by a different route. Evening Triage recovered both onto
+  `main` tonight and pushed the branches, but recovery is not a control. **Two fixes now, not
+  one:** (a) the `STATUS: STARTED` stub at orient time, unchanged; and (b) **every routine pushes
+  its report branch before it exits** — a report that exists only on the laptop is
+  indistinguishable from a routine that never ran, and three of the five routines that produced
+  anything today failed exactly that way.
 - [ ] **3.25 The denial chokepoint fails open, and a green test pins it that way** (qa-sweep
   F-0819-01, P1 — **the control ECOA compliance on the denial path rests on**).
   `ensureAdverseActionForDenial` (`server/routes/underwriting/creditAdverseActions.ts:556-561`)
@@ -439,18 +476,6 @@ anything else in this file being true.
   `DashboardView.tsx:50-51` mounts the two broken sections for **every** profile. Fix: validate
   `POST /api/homeowner/profile` through `insertHomeownerProfileSchema` and supply `snapshotDate`
   plus the two rates server-side.
-- [ ] **3.29 The funnel's autosave silently drops three captured answers, and the restore path reads
-  one of them back off a column nothing writes** (wiring-audit 2026-08-19, Break 2). The client
-  sends them, `loanApplicationIntakeUpdateSchema` **validates** them, then the
-  `UPDATABLE_COLUMNS` whitelist in `server/routes/lending/statusDecisions.ts:78-84` discards them —
-  no 400, no log. Two are the VA residual-income inputs; the third,
-  `avoidsInterestFinancing`, is read back by `draftToFormValues`, so the two sides of that wire
-  provably disagree. Fix (patch already written out in the wiring-audit report, with its `parseInt`
-  note): add the three columns, plus a route test that PATCHes all three and reads them back. Then
-  restore the two VA fields in `draftToFormValues` — **or, if the whitelist addition is rejected,
-  delete the `avoidsInterestFinancing` read**, because a line that reads a column nothing writes is
-  worse than an absent one: it makes the round-trip look closed. Owner: Backend Data Engineer
-  (§6b); the client half is the wiring audit's.
 - [ ] **3.30 Adverse-action notices name the wrong federal agency** (qa-sweep F-0819-04, P2 —
   mechanical half of §1.7's new counsel question). Every notice we generate names the **CFPB**;
   Reg B Appendix A item 9 assigns the **FTC** to a non-depository originator, and the Appendix
@@ -461,11 +486,73 @@ anything else in this file being true.
   FCRA attribution are all still correct, and the misdirection is toward an agency that does take
   mortgage complaints.
 - [ ] **3.31 `feature-review/FINDINGS.md` overstates its own backlog, and every coverage read is
-  distorted by it** (qa-sweep D-0819-04). Ten rows whose status cells say `**FIXED**` sit under
-  `## Open findings`; the visible consequence is that **open P0 read 3 when it is 0**, and three
-  P1 rows still read `open` while their fixes merged 2026-08-18. Move them to `## Closed` in one
+  distorted by it** (qa-sweep D-0819-04). **Re-measured 2026-08-23 (evening-triage): it is now 18 rows, not ten** — the drift grew while
+  the item sat (`sed -n '/^## Open findings/,/^## Refuted/p' … | grep -iE '\| *\*{0,2}fixed'` → 18:
+  F-051, F-034, F-035, F-036, F-044, F-045, F-038, F-046, F-039, F-047, F-049, F-008, F-027,
+  ux-30, D-0818-01, F-0819-03, F-0819-10, D-0819-02). The `## Open findings` section holds **255**
+  rows against **36** in `## Closed`; the visible consequence is that **open P0 read 3 when it is 0**. Move them to `## Closed` in one
   pass. Pure hygiene — but CHARTER §1 names exactly this hazard, and it cost this run a
   re-verification to catch. Owner: QA Sweep (it owns that register).
+
+- [ ] **3.32 One client, three affordability answers, ending in a congratulation 46% above the
+  first** (journey-walk 2026-08-22, `J-0822-01`; same defect family as `J-0820-03`). A W-2 buyer at
+  $145k income / $500 debts / $50k down is quoted **$415–455k** by the Landing estimator, then
+  **$391–460k** in the funnel's live analysis, then **"Congratulations! You're pre-approved for
+  $607,000"** on `/loan-options` — and the dashboard calls that last figure a *"pre-approved loan
+  amount"* when it is a **maximum qualifying purchase price at the 43% DTI cap**. Four different
+  rate assumptions are in play across those surfaces (6.75 / 6.5 / 6.375 / `baseRateFor`). Three
+  separable fixes, ordered: **(a)** label the $607,000 correctly on `/dashboard` and
+  `/loan-options` and name the DTI cap it assumes; **(b)** `FunnelChrome.tsx:105-107` — render the
+  PITI at the client's *target* price or say which price it describes; **(c)** reconcile the four
+  rate assumptions onto one source, or make every surface state the rate it used. DESIGN_SYSTEM §13
+  Agreement. Owner: Primary Engineer.
+- [ ] **3.33 The `aspiring_owner → active_buyer` promotion never reaches the navigation**
+  (journey-walk 2026-08-22, `J-0822-02` = `J-0820-11`, re-confirmed on a newer commit). The role
+  flips server-side on funnel submit; the sidebar keeps saying **"Aspiring Owner"** and offering
+  **"Get Pre-Approved"** while the client stands on their own pre-approval page, until a full
+  reload. One-line fix with a named acceptance test: invalidate `["/api/auth/user"]` in
+  `PreApproval.tsx:204-207`'s `onSuccess`. Owner: Capture Path Engineer.
+- [ ] **3.34 A required-disclosures to-do that can never be cleared** (journey-walk 2026-08-22,
+  `J-0822-04` = `J-0820-02`). `dashboard.ts:306` requires `["credit_pull","disclosure",
+  "privacy_policy"]`; two of those types have **no active `consent_templates` row**, so signing all
+  six consents on `/e-consent` leaves *"Sign Required Disclosures"* standing forever, and the
+  action-item count disagrees with `/e-consent`'s own Pending count. Fix both halves together:
+  require only types a live template can satisfy (with a unit test asserting that invariant), and
+  make the count and the page read one list. Owner: Workflow Completion Engine.
+- [ ] **3.35 Two disclosure surfaces throw away the server's honest explanation** (journey-walk
+  2026-08-22 `J-0822-06` = `J-0820-08`, plus F-061). The server returns a 409 naming the missing
+  pricing-setup step and a 422 naming the verify-first reason; `LoanEstimate.tsx:160-176` and
+  `LoanLetterButton.tsx:96-98` both render *"Please try again"* instead. The borrower is told to
+  retry an action that cannot succeed until staff act. Owner: Feature Completion Engine.
+- [ ] **3.36 Self-reported debts attributed to a credit check that never ran** (journey-walk
+  2026-08-22, `J-0822-05` = `J-0820-04`). `ApplicationSummary.tsx:164` hard-codes *"From your soft
+  credit check"* under the Debts figure on files with **no `credit_pulls` row**. Derive the note
+  from the figure's real provenance (`shared/dataProvenance.ts` — the three real states, no fourth
+  enum). DESIGN_SYSTEM §13 Provenance; FCRA-flagged, not ruled. Owner: Feature Completion Engine.
+- [ ] **3.37 `/apply` promises a *verified pre-approval letter in about 3 minutes* and the product
+  correctly refuses to issue one** (journey-walk 2026-08-22, `J-0822-01e`). What it issues in three
+  minutes is a **pre-qualification** letter; a pre-approval waits on document verification, which
+  is the right behaviour. So the defect is the promise, not the engine. **Founder call on which
+  side moves** (copy vs positioning), then a one-line copy change. Related and separable:
+  `ux-51` — five sub-44px controls inside the Landing's `BuyingPowerEstimator` compact branch
+  (`:59-61`), invisible to `guard:ui` because it has no layout engine; and `ux-52` — `/signup`
+  links to neither the Terms of Use nor the Privacy Policy.
+- [ ] **3.38 `docs/fannie-mae/README.md` tells every session the PDFs are readable, and they are
+  not** (doc-accuracy 2026-08-22, **DA-0822-03** — proposed, not made: `docs/**` is off limits to
+  that routine). The documented path — *"Claude's Read tool renders them directly"* — fails with
+  `pdftoppm is not installed`, because poppler is absent on this machine. A session that tries it
+  concludes the corpus is unavailable **and stops on a document sitting right there**, which is
+  exactly the failure CLAUDE.md's compliance-first rule exists to prevent. `pypdf` (6.14.2) and
+  `pymupdf` are installed and work. Replacement wording is written out verbatim in
+  [the report](knowledge-base/routines/reports/2026-08-22-doc-accuracy.md) §1. Owner: founder (or
+  anyone the founder authorizes to write under `docs/`); one file, ~8 lines.
+- [ ] **3.39 Dead paths in two registers this file points at** (doc-accuracy 2026-08-22,
+  DA-0822-04/-05). `FINDINGS.md` cites `server/routes/lending.ts` (:344 — now a directory),
+  `tests/loanDeliveryReadiness.test.ts` (:130 — absent) and `docs/hmda/` (:320 — absent); this
+  roadmap cites `docs/freddie-mac/`, which does not exist. Prevention, and the better half of the
+  ticket: fold doc-accuracy's dead-path sweep into `scripts/doc-staleness-guard.cjs` as a
+  `deadRepoPaths` metric, reusing its four noise filters (without them 764 of 785 hits are noise).
+  Owner: engineering.
 
 ---
 
