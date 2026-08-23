@@ -110,7 +110,14 @@ describe("ESIGN / Reg Z: disclosure gates stay wired", () => {
 describe("Guideline traceability: underwriting rules cite their sources", () => {
   it("underwritingNuance cites every governing guideline", () => {
     const source = read("server/services/underwritingNuance.ts");
-    expect(source).toContain("B3-3.2"); // income seasoning
+    // 2026-08-20: was "B3-3.2". The rule assessIncomeSeasoning implements is
+    // Length of Self-Employment — a two-year earnings history, or under two
+    // years where the returns show a full 12 months in the current business.
+    // That lives in B3-3.5-01. B3-3.2-01 is a different topic (verbal VOE and
+    // verifying business existence within 120 days) and never stated this rule,
+    // so the old cite pointed auditors at text that does not contain it.
+    // Verified against docs/fannie-mae/selling-guide/ (08-05-2026 edition).
+    expect(source).toContain("B3-3.5-01"); // income seasoning / length of self-employment
     expect(source).toContain("B3-6-05"); // deferred student loans
     expect(source).toContain("B3-4.2-02"); // large-deposit sourcing (depository accounts)
     expect(source).toContain("B3-4.3-04"); // gift funds resolution path
@@ -120,6 +127,24 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
   it("the deferred-student-loan factor remains exactly 1%", () => {
     const source = read("server/services/underwritingNuance.ts");
     expect(source).toMatch(/DEFERRED_STUDENT_LOAN_FACTOR\s*=\s*0\.01/);
+  });
+
+  // B3-6-05, Debts Paid by Others (08/05/2026 edition): one shared predicate,
+  // read by every DTI path. Two implementations of a regulated exclusion is the
+  // drift the VA-residual case above already paid for once.
+  it("the Debts-Paid-by-Others rule cites B3-6-05 and is the single predicate every DTI path reads", () => {
+    const rule = read("shared/liabilityExclusions.ts");
+    expect(rule).toContain("B3-6-05");
+    expect(rule).toContain("Debts Paid by Others");
+    expect(rule).toContain("12 months");
+    for (const [file, symbol] of [
+      ["server/services/decisionEngine.ts", "isExcludedAsPaidByOtherParty"],
+      ["server/underwriting.ts", "assessPaidByOtherParty"],
+      ["server/mismo.ts", "isExcludedAsPaidByOtherParty"],
+      ["server/services/preUnderwriting.ts", "assessPaidByOtherParty"],
+    ] as const) {
+      expect(read(file), `${file} must read the shared B3-6-05 predicate`).toContain(symbol);
+    }
   });
 
   it("the VA utility rate remains the statutory $0.14/sqft", () => {

@@ -249,10 +249,24 @@ const CHECKS = `(() => {
   // overflow (336 ≤ 336)" while the page genuinely overflowed by 16px. That is a
   // guard reporting green on the exact defect it exists to catch.
   //
-  // The reference must be the width we ASKED for, which under CDP emulation is
-  // window.screen.width. Math.min keeps un-emulated (desktop) runs behaving
-  // exactly as before, where innerWidth is the narrower of the two.
-  const viewportWidth = Math.min(window.innerWidth, window.screen.width);
+  // FIXED 2026-08-22: that fix's conclusion was right — the reference must be
+  // the width we ASKED for — but window.screen.width is not a reliable way to
+  // read it back. CDP only overrides screen.width when the metrics are applied
+  // in MOBILE mode, and this probe sets mobile only for WIDTH <= 480. Above
+  // that, screen.width stays at the headless default (800), so
+  // Math.min(innerWidth, 800) pinned the reference at 800 and EVERY run wider
+  // than 800px reported a phantom overflow. Measured on / at --width 1280:
+  // innerWidth 1280, clientWidth 1280, scrollWidth 1280 — the page does not
+  // overflow — reported as "scrollWidth 1280 > viewport 800". A guard that
+  // fails on a healthy page is as useless as one that passes on a broken one,
+  // and it is worse than useless in CI, where this exits 1.
+  //
+  // Neither value the page can report is trustworthy: innerWidth widens WITH
+  // the overflow (the 2026-08-18 defect), and screen.width ignores the
+  // emulation (this one). So stop asking the page. The probe already knows the
+  // width — it is the --width it just handed to setDeviceMetricsOverride — and
+  // it is substituted in below before this source is evaluated.
+  const viewportWidth = __PROBE_VIEWPORT_WIDTH__;
   const overflow = {
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: window.innerWidth,
@@ -391,7 +405,12 @@ const CHECKS = `(() => {
     // The app is a React SPA — load fires before the first render commits.
     await new Promise((r) => setTimeout(r, 1200));
 
-    const { result } = await call("Runtime.evaluate", { expression: CHECKS, returnByValue: true });
+    // The overflow check's reference width comes from here, not from the page —
+    // see the note at the top of CHECKS for why both window readings lie.
+    const { result } = await call("Runtime.evaluate", {
+      expression: CHECKS.replace(/__PROBE_VIEWPORT_WIDTH__/g, String(WIDTH)),
+      returnByValue: true,
+    });
     const checks = result.value;
 
     console.log(`\nbrowser-probe — ${URL_ARG} @ ${WIDTH}×${HEIGHT}${MOBILE ? " (mobile)" : ""}`);

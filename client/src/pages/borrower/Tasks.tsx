@@ -84,6 +84,7 @@ function getDocumentCategoryLabel(category: string) {
     profit_loss: "Profit & Loss Statement",
     business_license: "Business License",
     reserves_proof: "Proof of Reserves",
+    third_party_payment_history: "12-Month Third-Party Payment History",
     social_security_award: "Social Security Award Letter",
     pension_statement: "Pension Statement",
     letter_of_explanation: "Letter of Explanation",
