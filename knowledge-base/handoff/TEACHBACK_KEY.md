@@ -113,7 +113,7 @@
 5. No. Merging is L3 — "a merge to `main` is a production deploy" (`knowledge-base/routines/CHARTER.md:129`); `_OWNER_RAILS.md:13-15` — an `--auto` armed now fires when Actions recovers, "a deploy nobody watched"; and green is not shipped (`:92`).
 6. No, and the repo says so twice: `knowledge-base/routines/CHARTER.md:833` "A guard only answers its own question. Green guards are not a clean bill of health"; `.claude/skills/doc-accuracy/SKILL.md:31-32` — "a doc can be green on both while telling readers to run commands that no longer exist."
 7. Only if the code's state is intended: `.claude/skills/doc-accuracy/SKILL.md:77-82` D7 — file `regression-suspect` and do not touch the doc; "editing the doc to match broken code launders the regression". And the steward may not fix the code either (`:342-343`).
-8. Date-qualified ids — `knowledge-base/routines/CHARTER.md:521-522` `F-<MMDD>-<NN>`, "Never a bare next-free integer"; `:512-517` nine audits that could not see each other minted six different `F-20`s. This corpus uses `HO-<MMDD>-<NN>`.
+8. Date-qualified ids — `knowledge-base/routines/CHARTER.md:525-526` `F-<MMDD>-<NN>`, "Never a bare next-free integer"; `:528-533` nine audits that could not see each other minted six different `F-20`s. This corpus uses `HO-<MMDD>-<NN>`.
 
 ## 10 — Deploy, environments and migrations
 

@@ -9,8 +9,12 @@
 > not been re-timed since; a runtime you did not measure is a guess.
 
 > **Dated status box (re-verify on every refresh — this one is as of 2026-08-23):** `main`
-> requires **no** status checks (`gh api …/branches/main/protection` → `contexts: []`,
-> `enforce_admins: true`, `strict: false`, measured 2026-08-23); `migrate-prod` and `verify-deploy`
+> **does** require the `gate` status check again, with `strict` on — re-armed 2026-08-23 and
+> proved by behaviour, since `…/branches/main/protection` answers 403 to a non-admin token:
+> merging #708/#647 returned `405 Required status check "gate (typecheck · tests · schema
+> guard)" is expected`, and #647 merged only once brought current with `main`. (This box read
+> `contexts: []` earlier the same day — the claim was true when written and false hours later,
+> which is what "re-verify on every refresh" is for.) `migrate-prod` and `verify-deploy`
 > were re-armed on 2026-08-22 (`76c96751`, #669), but `verify-deploy` is `continue-on-error: true`
 > (`.github/workflows/ci.yml:770`) and nothing requires it, so its red blocks nothing; the
 > test-collection guard **merged 2026-08-23** (`fd4a22c5`, #670) — `pnpm test` is now
@@ -76,7 +80,7 @@ flowchart TD
   Tm1 --> T0 --> T1 --> T2 --> T3 --> T4 --> T5
   B1["blind spot 1 - the integration lane never runs in CI - CICD.md:357"]:::blind -.-> T3
   B2["blind spot 2 - T4 never runs automatically - a human pastes the probe output"]:::blind -.-> T4
-  B3["blind spot 3 - T5 cannot fail a merge - verify-deploy is continue-on-error and main requires zero checks"]:::blind -.-> T5
+  B3["blind spot 3 - T5 cannot fail a merge - verify-deploy is continue-on-error so a stale prod never blocks"]:::blind -.-> T5
   classDef blind stroke-dasharray: 5 5
 ```
 
@@ -349,7 +353,7 @@ skipped, trusted, or asked a question adjacent to the one that mattered.
 |---|---|---|
 | The integration lane never ran in CI — until 2026-08-23. | For the life of the repo a green gate proved typecheck + unit lanes + a boot to 200 and nothing more; the gate's Postgres served the boot probe only. `knowledge-base/runbooks/CICD.md:357-362` still says so (LEDGER HO-0823-05). | Since #704 (`d9e8f79d`) the gate re-boots the built bundle in development mode, seeds the grids and runs the 18 files (`.github/workflows/ci.yml:583-646`) — only when the change-scope step says code changed; T3 locally, only when a database answers. Ticket 4, closed. |
 | T4 never runs automatically. | A rendered regression ships behind a green workflow; the probe answers four questions and no contrast ratio (`knowledge-base/routines/CHARTER.md:838-847`). | A human pasting `browser-probe.cjs` output; the journey walkers, findings only. |
-| T5 cannot fail a merge. | Nine consecutive failed deploys behind a green check (`CICD.md:221-226`); a 35-minute auth outage from a migration the paused applier never ran, during which `verify-deploy` would have been **green throughout** because it compares commits (`.github/workflows/ci.yml:748-750`). | `verify-deploy` reddens without failing the workflow (`:770`); `main` requires zero checks. Ticket 1. |
+| T5 cannot fail a merge. | Nine consecutive failed deploys behind a green check (`CICD.md:221-226`); a 35-minute auth outage from a migration the paused applier never ran, during which `verify-deploy` would have been **green throughout** because it compares commits (`.github/workflows/ci.yml:748-750`). | `verify-deploy` reddens without failing the workflow (`:770`), so a prod that never advanced still leaves a green run. The `gate` check IS required on `main` again (2026-08-23), so T0–T3 now bind a merge — but T5 still does not. Ticket 1. |
 | A stranded test. | `tests/changeOfCircumstance.test.ts` sat in neither config (`vitest.config.ts:145-146`); `tests/maintenanceMode.test.ts` — the intake kill switch — had five assertions that never ran until 2026-08-23. | The orphan floor in `scripts/test-collection-guard.cjs:462-469` — zero, no baseline. Closed. |
 | A collection that silently dropped files. | 36 of 118 client files dropped with no signal under load; `Test Files 111 passed (111)` with 118 on disk (`scripts/test-collection-guard.cjs:6-19`). | `SHORT BY N` with the names (`:406-415`). Closed — but only through `pnpm test`; `test:raw`, `test:unit`, `test:client` and any argument bypass it (`:354`). |
 | A guard that could not run and whose silence read as CLEAN. | A syntax error in a guard shipped to `main` green (`.github/workflows/ci.yml:481-490`). | `node --check` on every `scripts/*.cjs` in T0 and preflight (`scripts/preflight.sh:95`). |
@@ -358,8 +362,13 @@ skipped, trusted, or asked a question adjacent to the one that mattered.
 
 ### 6. Harness gaps → proposed tickets (ranked by value ÷ effort; none implemented here)
 
-1. **Re-arm the required `gate` check on `main`** (`contexts: []` today; the verbatim name with
-   U+00B7 separators; `strict: true`). A founder click; highest value. ⛔
+1. ~~**Re-arm the required `gate` check on `main`**~~ — **DONE 2026-08-23.** The check is
+   required again and `strict` is on: merging #708/#647 returned `405 Required status check
+   "gate (typecheck · tests · schema guard)" is expected`, and #647 merged only after being
+   brought current. The successor ticket is smaller: `…/branches/main/protection` is 403 to a
+   non-admin token, so no session can *read* this state — only infer it from a refused merge.
+   Anything asserting it in prose is a dated claim, and this corpus has now been wrong about it
+   in both directions.
 2. ~~**Land the re-arm of `migrate-prod` and `verify-deploy`**~~ — **DONE** 2026-08-22, `76c96751`
    (#669). LEDGER HO-0822-14 closed. **The successor ticket is smaller and still open:** nothing
    makes `verify-deploy`'s red matter. It is `continue-on-error: true` on purpose (`ci.yml:770` —
