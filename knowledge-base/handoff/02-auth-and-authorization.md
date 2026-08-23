@@ -104,7 +104,7 @@ sequenceDiagram
 - **External partners see masked PII.** `server/routes/borrower/access.ts:42-52`
   `maskUrlaPersonalInfo` reduces SSN to `•••-••-1234` and nulls DOB; applied at
   `server/routes/borrower/urla.ts:40-44` when the requester is staff-typed but not internal. The
-  full-SSN reveal endpoint allows `["admin","underwriter","processor"]` (`urla.ts:79`) and audits
+  full-SSN reveal endpoint allows `["admin","underwriter","processor"]` (`server/routes/borrower/urla.ts:79`) and audits
   `urla.ssn_reveal` (`:89`).
 - **Promotion happens once, guarded, audited, best-effort.** `server/routes/lending/applications.ts:129-145`:
   `aspiring_owner` → `active_buyer` on first application; the comment states both are
@@ -148,6 +148,61 @@ sequenceDiagram
   request (`tests/roleSeparation.test.ts:31,38`) — and `knowledge-base/runbooks/TEST_ACCOUNTS.md:45-51`
   notes the proto header is unnecessary against a `pnpm dev` server (the cookie is not secure-only
   there); roughly ten files send it anyway.
+- **Who reaches which surface, as a grid.** Twelve roles (`shared/roles.ts:14-43`: eight
+  `STAFF_ROLES`, two `CLIENT_ROLES`, two self-registering `PARTNER_ROLES` that are deliberately
+  *not* staff, `:31-39`) against the ten gates of `client/src/lib/routeGates.ts:33-109`, read off
+  the object itself (`sed -n '33,109p' client/src/lib/routeGates.ts | grep -vE '^\s*(/\*\*|\*|\*/)'`, in the prove-it block):
+
+  | gate | admin | lo | loa | processor | underwriter | closer | broker | lender | cpa | realtor | aspiring_owner | active_buyer | App.tsx wrapper · routes |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | `borrower` = `CLIENT_ROLES` | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | `BorrowerPage` · 17 |
+  | `staff` = `STAFF_ROLES` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | · | `StaffPage` · 13 |
+  | `internalStaff` = `INTERNAL_STAFF_ROLES` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | · | `InternalStaffPage` · 2 |
+  | `underwriterOps` | ✓ | · | · | · | ✓ | · | · | · | · | · | · | · | `UnderwriterOpsPage` · 3 |
+  | `disclosure` = clients + staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | inlined `PrivateLayout` · 1 (`App.tsx:475-485`) |
+  | `marketData` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | `MarketDataPage` · 1 |
+  | `loTeam` | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · | `LoTeamPage` · 1 |
+  | `cpaPortal` | ✓ | · | · | · | · | · | · | · | ✓ | · | · | · | `CpaPage` · 1 |
+  | `partnerHub` | ✓ | · | · | · | · | · | · | · | · | ✓ | · | · | `PartnerPage` · 1 |
+  | `adminOnly` | ✓ | · | · | · | · | · | · | · | · | · | · | · | `AdminPage` · 12 |
+  | *(any signed-in role)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `AnyAuthPage` · 8 |
+  | *(no session)* | | | | | | | | | | | | | `PublicPage` · 27, plus bare/`BareLayout` routes |
+
+  Route counts are `for w in PublicPage BorrowerPage StaffPage InternalStaffPage UnderwriterOpsPage MarketDataPage LoTeamPage CpaPage PartnerPage AdminPage AnyAuthPage; do printf '%s %s\n' $w $(grep -c "<$w>" client/src/App.tsx); done`
+  → `27 17 13 2 3 1 1 1 1 12 8` of `grep -c "<Route" client/src/App.tsx` → `121` (the rest are
+  `BareLayout` pages, redirects and the 404). Each wrapper is one line, `App.tsx:189-223`, and the
+  sidebar reads the same object. The test accounts (`server/auth.ts:358-368`) cover eleven of the
+  twelve columns — `realtor` has none. And the header of the gate file says what this grid is:
+  "Client gates are a UX affordance, never the security boundary. The server's own role checks are
+  what actually protect the data; these only keep users out of pages that would fail for them
+  anyway" (`client/src/lib/routeGates.ts:29-31`) — the boundary is `requireRole(`/`isAuthenticated`
+  on the route (`grep -rn "requireRole(" server --include='*.ts' | wc -l` → `220`;
+  `isAuthenticated` → `347`).
+- **The cookie, end to end — and why there is no CSRF token.** (1) Login calls `req.login`
+  (`server/auth.ts:107,185,389`); Passport's serializer is the identity function, so the whole user
+  object — role included — is the session row in Postgres (`server/integrations/auth/session.ts:65-68`,
+  store `:28-34`, table `sessions`). (2) The cookie is `httpOnly`, `secure` only under
+  `NODE_ENV=production` ("Local dev runs plain http; a secure-only cookie would never be stored"),
+  `sameSite: "lax"` (OAuth redirects must carry it back), 12-hour `maxAge` and **rolling**, so an
+  active user never expires and an abandoned session does (`:9-14`, `:40-49`). (3) The client sends
+  it with `credentials: "include"` on every `apiRequest` and every default `queryFn`
+  (`client/src/lib/queryClient.ts:84`, `:167`) and deliberately **not** on `getPublicQueryFn`
+  (`:150-156` — "these endpoints are public, so there is no reason to attach the session cookie").
+  (4) On every gated request the role is re-read from `users`, so a demotion or deletion takes
+  effect on the next request, not at expiry (`server/auth.ts:427-439`). (5) Every state-changing
+  `/api` request must carry an `Origin` or `Referer` whose hostname is the request's own `Host`
+  (`server/app.ts:404-469`); the carve-outs are OAuth callbacks (`:416-422`, protected by `state`)
+  and `/api/webhooks/` (`:424-429`, signature-checked per route); anything else is **403**
+  `CSRF validation failed` (`:462-468`) — except in `development`, where the check is skipped
+  outright (`:457-459`). (6) `secure` and `req.protocol` resolve through one hop count,
+  `trustProxyHops()` (`server/app.ts:36`, re-set at `session.ts:60`; `server/trustProxy.ts:22-27`,
+  default 1, `TRUST_PROXY_HOPS` overrides) — get it wrong and production never sets the cookie.
+  Put together: `sameSite=lax` withholds the cookie from a cross-site POST, and a same-site forged
+  request cannot forge the browser-set `Origin`, so **the Origin check is the CSRF control** and the
+  client carries no token code at all — `grep -rin csrf client/src | wc -l` → `0`. That is also why
+  the integration lane sends `X-Forwarded-Proto: https` (so a production-mode server will set the
+  secure cookie) and `Origin: <BASE_URL>` (so the check passes) on every request
+  (`tests/roleSeparation.test.ts:24-31`).
 
 ## Prove it yourself
 
@@ -176,6 +231,12 @@ grep -oE "^  [a-zA-Z]+:" client/src/lib/routeGates.ts | wc -l
 # → 10 @ 6377727e
 grep -rn "maskUrlaPersonalInfo" server --include='*.ts' | wc -l
 # → 4   (definition, import, two call sites — all in two files) @ 6377727e
+sed -n '33,109p' client/src/lib/routeGates.ts | grep -vE '^\s*(/\*\*|\*|\*/)' | grep -v '^\s*$' | sed -E 's/^ +//' | tr '\n' ' '
+# → export const ROUTE_GATES = { borrower: CLIENT_ROLES, staff: STAFF_ROLES, internalStaff: INTERNAL_STAFF_ROLES, underwriterOps: ["admin", "underwriter"], disclosure: [...CLIENT_ROLES, ...STAFF_ROLES], marketData: ["admin", "lo", "loa", "processor", "underwriter"], loTeam: ["admin", "lo", "loa"], cpaPortal: ["cpa", "admin"], partnerHub: ["realtor", "admin"], adminOnly: ["admin"], } as const satisfies Record<string, readonly UserRole[]>; @ 6377727e
+for w in PublicPage BorrowerPage StaffPage InternalStaffPage UnderwriterOpsPage MarketDataPage LoTeamPage CpaPage PartnerPage AdminPage AnyAuthPage; do printf '%s %s\n' $w $(grep -c "<$w>" client/src/App.tsx); done | tr '\n' ' ' ; grep -c "<Route" client/src/App.tsx
+# → PublicPage 27 BorrowerPage 17 StaffPage 13 InternalStaffPage 2 UnderwriterOpsPage 3 MarketDataPage 1 LoTeamPage 1 CpaPage 1 PartnerPage 1 AdminPage 12 AnyAuthPage 8 / 121 @ 6377727e
+grep -rin csrf client/src | wc -l ; grep -rhoE 'process\.env\.TWILIO[A-Z_]*' server | sort -u | tr '\n' ' '
+# → 0 / process.env.TWILIO_AUTH_TOKEN process.env.TWILIO_STATUS_CALLBACK_URL process.env.TWILIO_WEBHOOK_URL @ 6377727e
 ```
 
 ## Where this breaks

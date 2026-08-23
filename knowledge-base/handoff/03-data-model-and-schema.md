@@ -70,6 +70,87 @@ erDiagram
   2026-07-17; new tables go in the domain file, never the shim). 21 barrel entries + 2 shims + 11
   shim-covered = 34.
 - **Exactly one `pgEnum`.** `grep -o "pgEnum(" shared/schema/*.ts | wc -l` → `1`
+- **The 188 tables by file.** `grep -c "pgTable(" shared/schema/*.ts | awk -F: '{s+=$2} END {print s}'`
+  → `188`, and per file, `grep -c "pgTable(" shared/schema/*.ts | sort -t: -k2 -rn`:
+
+  | file | `pgTable(` |
+  |---|---|
+  | `shared/schema/admin.ts` | 29 |
+  | `shared/schema/compliance.ts` | 17 |
+  | `shared/schema/underwritingCore.ts` | 15 |
+  | `shared/schema/intelligence.ts` | 12 |
+  | `shared/schema/documents.ts` | 12 |
+  | `shared/schema/lendingLetters.ts` | 11 |
+  | `shared/schema/lendingWholesale.ts` | 9 |
+  | `shared/schema/lendingRatesOps.ts` | 8 |
+  | `shared/schema/underwritingTasks.ts` | 7 |
+  | `shared/schema/underwritingConditions.ts` | 7 |
+  | `shared/schema/lendingUrla.ts` | 7 |
+  | `shared/schema/property.ts` | 6 |
+  | `shared/schema/lendingCore.ts` | 6 |
+  | `shared/schema/core.ts` | 5 |
+  | `shared/schema/underwritingPolicy.ts` | 4 |
+  | `shared/schema/lendingComms.ts` | 4 |
+  | `shared/schema/underwritingFinancials.ts` | 3 |
+  | `shared/schema/rent.ts` | 3 |
+  | `shared/schema/marketData.ts` | 3 |
+  | `shared/schema/coach.ts` | 3 |
+  | `shared/schema/review.ts` | 2 |
+  | `shared/schema/partners.ts` | 2 |
+  | `shared/schema/lookup.ts` | 2 |
+  | `shared/schema/delivery.ts` | 2 |
+  | `shared/schema/cpaPartners.ts` | 2 |
+  | `shared/schema/taxInsights.ts` | 1 |
+  | `shared/schema/scenarioRuns.ts` | 1 |
+  | `shared/schema/leads.ts` | 1 |
+  | `shared/schema/incomePathEvaluations.ts` | 1 |
+  | `shared/schema/decisions.ts` | 1 |
+  | `shared/schema/autopilot.ts` | 1 |
+  | `shared/schema/ai.ts` | 1 |
+  | `shared/schema/underwriting.ts` | 0 |
+  | `shared/schema/lending.ts` | 0 |
+
+  The two zero-count files, `shared/schema/lending.ts` and `shared/schema/underwriting.ts`, are the
+  re-export shims above; a new table never goes in them. The table **names** per file, from
+  `for f in shared/schema/*.ts; do printf '%s: ' "${f##*/}"; tr '\n' ' ' < "$f" | grep -oE 'pgTable\( *"[a-z_]+"' | sed -E 's/.*"([a-z_]+)"/\1/' | tr '\n' ' '; echo; done`
+  (long lines on purpose — this is the inventory the app-guide's domain table approximates):
+
+  ```
+admin.ts: content_categories articles faqs broker_commissions calculator_results calculator_profiles partner_providers partner_orders kba_sessions kyc_screenings onboarding_profiles onboarding_feedback co_brand_profiles deal_desk_threads deal_desk_messages dpa_programs agent_pipeline_access deal_rescue_escalations strategy_sessions accelerator_enrollments accelerator_milestones closing_guarantees notifications staff_invites audit_logs user_activities email_captures partner_waitlist agent_referral_requests 
+ai.ts: ai_interactions 
+autopilot.ts: autopilot_config 
+coach.ts: coaching_sessions coach_conversations coach_messages 
+compliance.ts: credit_consents draft_consent_progress credit_pulls adverse_actions credit_audit_log credit_audit_chain_tips homeownership_goals credit_actions savings_transactions journey_milestones consent_templates borrower_consents hmda_demographics verification_reports change_of_circumstances loan_estimate_disclosures loan_cost_entries 
+core.ts: sessions users auth_tokens sms_opt_outs user_phones 
+cpaPartners.ts: cpa_partners cpa_referrals 
+decisions.ts: decision_snapshots 
+delivery.ts: loan_delivery_data lender_submissions 
+documents.ts: document_packages document_package_items document_uploads document_pages page_classifications logical_documents logical_document_pages extracted_fields completeness_checks tax_extraction_runs borrower_business_entities situation_profiles 
+incomePathEvaluations.ts: income_path_evaluations 
+intelligence.ts: borrower_profiles real_estate_owned lender_products borrower_state_history readiness_checklist intent_events lender_match_results anonymized_borrower_facts analytics_events loan_outcomes document_confidence_scores predictive_snapshots 
+leads.ts: leads 
+lending.ts: 
+lendingComms.ts: team_messages loan_milestones plaid_link_tokens verifications 
+lendingCore.ts: loan_applications deal_team_members application_properties loan_options documents deal_activities 
+lendingLetters.ts: disclaimer_versions pre_approval_letters pre_approval_conditions pre_qualification_letters letter_generation_logs expiration_policies credit_refresh_decisions lender_pre_approval_formats agent_confidence_views document_expirations lender_data_packages 
+lendingRatesOps.ts: mortgage_rate_programs mortgage_rates application_invites rate_locks application_milestones sla_configurations analytics_snapshots platform_fee_schedules 
+lendingUrla.ts: urla_personal_info employment_history other_income_sources urla_assets urla_liabilities urla_property_info borrower_declarations 
+lendingWholesale.ts: wholesale_lenders rate_sheets rate_sheet_products lender_pricing_adjustments lender_offers lock_requests broker_offer_controls offer_selection_events offer_comparison_sessions 
+lookup.ts: lookup_matrices lookup_matrix_cells 
+marketData.ts: hmda_competitor_loans competitor_rate_benchmarks loan_performance_profiles 
+partners.ts: partner_profiles partner_progress_consents 
+property.ts: agent_profiles properties saved_properties homeowner_profiles refi_alerts equity_snapshots 
+rent.ts: leases rent_payments rent_furnishing_queue 
+review.ts: review_items bank_statement_analyses 
+scenarioRuns.ts: scenario_runs 
+taxInsights.ts: tax_insights 
+underwriting.ts: 
+underwritingConditions.ts: rule_execution_log loan_conditions document_requirement_rules materiality_rule_sets materiality_rules change_events materiality_evaluations 
+underwritingCore.ts: underwriting_event_rules underwriting_event_log underwriting_snapshots underwriting_results anomalies audit_events seasoning_rules cash_flow_adjustments portfolio_stress_tests product_rules underwriting_explanations confidence_breakdowns what_if_scenarios underwriting_decisions underwriting_rules_dsl 
+underwritingFinancials.ts: income_streams canonical_assets canonical_liabilities 
+underwritingPolicy.ts: policy_profiles policy_thresholds policy_approval_workflow policy_lender_overlays 
+underwritingTasks.ts: tasks task_documents task_events task_audit_log sla_class_configs task_type_sla_mapping escalation_actions 
+  ```
   (`shared/schema/lookup.ts:24` `lifecycleStatusEnum`, `policy_lifecycle_status`). Every other
   status is `varchar` + an `as const` array + a `z.enum` re-pin.
 - **The spine.** `grep -rn "references(() => loanApplications.id)" shared/schema/*.ts | wc -l` → `91`;
@@ -107,7 +188,7 @@ erDiagram
 - **A compliance column with no default, on purpose.** `shared/schema/compliance.ts:232-244`
   `adverse_actions.basedOnConsumerReport` — "a backfilled guess on a compliance record would be a
   falsified record"; `fcraCompliant` is computed per notice, never defaulted.
-- **The hash chain.** `compliance.ts:270` `credit_audit_log` (`entryHash`, `previousEntryHash`,
+- **The hash chain.** `shared/schema/compliance.ts:270` `credit_audit_log` (`entryHash`, `previousEntryHash`,
   `sequenceNumber`, `hashVersion`) and `:329` `credit_audit_chain_tips` — the schema header says
   plainly it is tamper-*evident*, not a cryptographic guarantee (same database as the log).
 - **Delivery is one row per application.** `shared/schema/delivery.ts:100`
@@ -116,11 +197,11 @@ erDiagram
 - **Rent furnishing performs no I/O by design.** `shared/schema/rent.ts:22-29` — "Nothing here
   transmits anything to a credit bureau … The queue accumulates state and performs no I/O."
 - **Encrypted-at-rest columns: 8 sites, 3-column pattern each.** `grep -rn "_encrypted" shared/schema/*.ts | wc -l`
-  → `8`: `documents.ts:302` (`raw_response_encrypted`), `:462` (`classification_raw_encrypted`),
+  → `8`: `shared/schema/documents.ts:302` (`raw_response_encrypted`), `:462` (`classification_raw_encrypted`),
   `lendingCore.ts:417` (`extraction_raw_encrypted`), `lendingUrla.ts:40` (`ssn_encrypted`), `:354`
   and `:383` (`account_number_encrypted` on assets and liabilities), `rent.ts:107`
   (`landlord_email_encrypted`), `:110` (`property_address_encrypted`). Plus `credit_pulls`'
-  `encryptedRawResponse` (`compliance.ts:158-160`) which the grep's naming misses. Chapter 08 has
+  `encryptedRawResponse` (`shared/schema/compliance.ts:158-160`) which the grep's naming misses. Chapter 08 has
   the vaults.
 - **Validation pattern.** `grep -rn "createInsertSchema(" shared server | wc -l` → `177`;
   `grep -rn "z.enum(" shared/schema | wc -l` → `22`. Shape: `createInsertSchema(table).omit({id,
@@ -138,8 +219,10 @@ erDiagram
   block `db:generate` and `db:push` with an explaining `echo … && exit 1`.
   `scripts/schema-migration-guard.cjs:5-18` exists because of the 2026-07-13 outage and runs schema
   → migrations only; `scripts/migration-ledger-guard.cjs:18-24` runs six hard checks.
-- **Stale counts in the wild.** `knowledge-base/handbook/app-guide/03-database.md:7` "21 schema
-  files, 178 tables"; "174 Drizzle tables" in `shared/loanApplicationStatus.ts:9`,
+- **Stale counts in the wild.** `knowledge-base/handbook/app-guide/03-database.md:7` said "21 schema
+  files, 178 tables" until `3d047ce9` corrected it to 34 / 188 — but its per-file table (`:40-56`)
+  still lists 17 of the 34 files (`grep -cE '^\| .[a-zA-Z]+\.ts. \| [0-9]' knowledge-base/handbook/app-guide/03-database.md` → `17`) and four counts the inventory above contradicts (`admin.ts` 28 →
+  29, `compliance.ts` 13 → 17, `documents.ts` 9 → 12, `core.ts` 4 → 5); "174 Drizzle tables" in `shared/loanApplicationStatus.ts:9`,
   `shared/statusVocabularies.ts:8`, `client/src/pages/lending/preApproval/useServerDraftAutosave.ts:24`,
   `tests/clientSchemaImports.test.ts:15` — all history inside rationale comments (LEDGER HO-0822-01/02).
 - **The status machine.** `shared/loanApplicationStatus.ts:29-48` — 16 states, 4 terminal
@@ -224,8 +307,9 @@ the table of contents.
 
 ## Go deeper
 
-- [app-guide 03](../handbook/app-guide/03-database.md) (line 7 and the domain table at 40-54 are
-  stale), `knowledge-base/runbooks/DB_MIGRATIONS.md` (the authoritative *how*; CLAUDE.md §Database
+- [app-guide 03](../handbook/app-guide/03-database.md) for the narrative of what each domain is
+  for — its per-file table (`:40-56`) is still partly stale (LEDGER HO-0822-01), so take the
+  counts and names from *The 188 tables by file* above; `knowledge-base/runbooks/DB_MIGRATIONS.md` (the authoritative *how*; CLAUDE.md §Database
   is the binding rule), `knowledge-base/runbooks/ROLLBACK.md` §3, `knowledge-base/runbooks/NEON_PREVIEW_DB.md`.
 - Feature-map rows for the schema files: URLA (`:95`), intake + `lendingCore` (`:110`), rates /
   wholesale / lookup (`:125`), underwriting + decisions (`:156`), income / review (`:172`),

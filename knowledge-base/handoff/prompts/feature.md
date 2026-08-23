@@ -34,7 +34,8 @@ MAX_ITER: 10
 4. Implement inside WRITE. Server: Zod intake → gate → storage → `logAudit`. Client: query keys
    from the factories in `client/src/lib/queryClient.ts`, gate from
    `client/src/lib/routeGates.ts`, tokens only, icons from `client/src/lib/icons.ts`.
-5. **T0** → **T1** (both test names in the log; counts equal) → commit (explicit `git add`).
+5. **T0** → **T1** (both test names in the log; the guard's `all lanes ran every file on disk` last
+   line) → commit (explicit `git add`).
 6. **T2**; a §9 trigger → draft PR + ⛔, stop editing.
 7. **T3** for server/shared layers; **T4** (`scripts/browser-probe.cjs` at 320 on the route) for
    client layers — paste the probe output.

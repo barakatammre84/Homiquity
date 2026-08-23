@@ -11,7 +11,7 @@
 > ahead of the production database exactly as the pause note predicted". **Two things did not
 > change:** `verify-deploy` is `continue-on-error: true` by design (`:672` — it and Railway's "Wait
 > for CI" would otherwise deadlock into a permanent silent deploy freeze, observed live 2026-08-06),
-> and `main` still has **no required status checks** (`:30-41`). So the deploy check calls out a
+> and `main` still has **no required status checks** (`:30-48`). So the deploy check calls out a
 > stale prod, and nothing makes anyone answer. Production answered live during this survey with
 > `commit` equal to `origin/main`.
 
@@ -74,13 +74,13 @@ flowchart TD
   `knowledge-base/runbooks/CICD.md:146-152` records that `"24.x"` is npm range syntax Railpack's
   version resolver cannot parse, so every build failed while CI (which resolves `24.x` fine) stayed
   green.
-- **CI has three jobs.** `grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml` → `87: push` (a trigger key the pattern also matches, not a job), `100: gate`,
-  `533: migrate-prod`, `609: verify-deploy`. `gate` runs on pull requests only, skips drafts and
-  title-only edits (`:135-140`).
-- **The change-scope step fails closed.** `.github/workflows/ci.yml:203` (`id: scope`), rationale
-  `:210-213`: "The cost of a wrong code=false is a COMPLETELY UNGATED PR, so every uncertainty — an
+- **CI has three jobs.** `grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml` → `94: push` (a trigger key the pattern also matches, not a job), `107: gate`,
+  `549: migrate-prod`, `639: verify-deploy`. `gate` runs on pull requests only, skips drafts and
+  title-only edits (`:142-147`).
+- **The change-scope step fails closed.** `.github/workflows/ci.yml:203-204` (`id: scope`), rationale
+  `:217-220`: "The cost of a wrong code=false is a COMPLETELY UNGATED PR, so every uncertainty — an
   empty diff, a missing sha, a git failure — resolves to code=true." One markdown file is on the
-  code path because a test reads it: `:228` `TEST_BEARING_RE` names
+  code path because a test reads it: `:235` `TEST_BEARING_RE` names
   `knowledge-base/compliance/UNDERWRITING_SCENARIOS.md`, pinned by `tests/ciTriggers.test.ts:251`.
 - **The boot probe exists because "build success ≠ boot success".** `:494-512`: after
   `pnpm db:migrate` against the job's Postgres service, boot `dist/index.js` with generated 48-byte
@@ -98,7 +98,7 @@ flowchart TD
   `knowledge-base/runbooks/DB_MIGRATIONS.md:160-164`: it "answers *is the ledger in sync?*, never
   *will this DDL succeed?*" — the 2026-07-13 outage class.
 - **The ledger guard runs twice — and the second run is the only one that ever sees `main`.**
-  `.github/workflows/ci.yml:287` (gate) and `:567-573` (`migrate-prod`'s first step: "the gate job
+  `.github/workflows/ci.yml:287` (gate) and `:597-603` (`migrate-prod`'s first step: "the gate job
   is if: pull_request, so nothing validates the ledger on the push that actually triggers an
   apply"). Six checks (`scripts/migration-ledger-guard.cjs:18-24`); born of two branches authoring
   `0038` on the same day (`:12-16`).
@@ -111,21 +111,64 @@ flowchart TD
   `db:push` and `db:generate` are blocked in `package.json:26,29`.
 - **A copy-pasted journal `when` makes prod silently skip a migration.** `DB_MIGRATIONS.md:145-150`;
   mechanism `scripts/migrate-prod.cjs:71,81`. Green job, missing DDL.
-- **Environment shape.** `.env.example` has 9 uncommented keys and 65 documented keys
-  (`grep -cE '^[A-Z][A-Z0-9_]*=' .env.example` → `9`). The three secrets production refuses to boot
-  without, by name only: `SESSION_SECRET` (≥ 32 chars), `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`
-  (`.env.example:14-32`), plus `DATABASE_URL`. `SESSION_SECRET` is mandatory in dev too and fails
-  *silently* there — the boot guard is production-only, so the dev server starts and every login
-  500s (`.env.example:18-21`).
+- **Environment variables, in three tiers — every list derived, not typed.** `.env.example` has
+  9 uncommented keys (`grep -cE '^[A-Z_]+=' .env.example` → `9`) and documents 65
+  (`grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u | wc -l`
+  → `65`); the code reads 65 names directly
+  (`grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u | wc -l`
+  → `65`) — the same number by coincidence, not the same set. `comm -13` of the two sorted lists
+  (read but **undocumented**, 10): `FREDDIE_LPA_API_KEY INTAKE_PAUSED RAILWAY_GIT_COMMIT_SHA
+  RAILWAY_REPLICA_REGION RATE_LIMIT_RELAXED SEED_LO_ID SENDGRID_API_KEY1 SENTRY_RELEASE
+  TRUST_PROXY_HOPS UWM_EASE_CLIENT_ID` — three of them are operator switches a new hire needs
+  (`INTAKE_PAUSED` is the kill switch, `RATE_LIMIT_RELAXED` is what the integration lane runs
+  under, `TRUST_PROXY_HOPS` decides whether the secure cookie ever reaches a browser) and
+  `SENDGRID_API_KEY1` is a fallback name read at `server/services/emailService.ts:5` that nothing
+  documents (LEDGER HO-0823-03). `comm -23` (documented but **not read directly**, 10):
+  `CREDIT_ENCRYPTION_KEY_V2 GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET LINKEDIN_CLIENT_ID
+  LINKEDIN_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_API_KEY_SECRET TWILIO_API_KEY_SID
+  TWILIO_PHONE_NUMBER VITE_PRELAUNCH_GATED` — four are read dynamically (`CREDIT_ENCRYPTION_KEY_V${v}`
+  at `server/services/encryptionService.ts:72`; the social `*_CLIENT_ID`/`*_CLIENT_SECRET` through
+  `process.env[config.clientIdEnv]` at `server/socialAuth.ts:211,276-277`), one through
+  `import.meta.env` (`VITE_PRELAUNCH_GATED`, `client/src/lib/prelaunch.ts:17-19`), and the four
+  Twilio *sender* keys are read by nothing — only `TWILIO_AUTH_TOKEN`, `TWILIO_WEBHOOK_URL` and
+  `TWILIO_STATUS_CALLBACK_URL` are (`grep -rhoE 'process\.env\.TWILIO[A-Z_]*' server | sort -u`),
+  which is the inbound-only picture LEDGER HO-0822-U3 describes.
+  - **Tier 1 — production refuses to boot without them** (four): `DATABASE_URL` (`server/db.ts:11-15`,
+    throws in every environment); `SESSION_SECRET` ≥ 32 chars (`server/integrations/auth/session.ts:19-26`,
+    production only — in dev the server starts and "every login 500s with `secret option required
+    for sessions`", `.env.example:18-21`); `CREDIT_ENCRYPTION_KEY` + `PII_HASH_SALT`
+    (`assertEncryptionConfig`, `server/services/encryptionService.ts:197-215`, production only — dev
+    falls back to a key derived from `SESSION_SECRET || "default-dev-key"`, `:61-65`).
+  - **Tier 2 — what `scripts/dev-up.sh` writes for you** (eight, `scripts/dev-up.sh:139-150`):
+    `DATABASE_URL NODE_ENV PORT SESSION_SECRET PII_HASH_SALT CREDIT_ENCRYPTION_KEY DEV_TEST_PASSWORD
+    EXTRACTION_SIMULATE` — the Tier-1 four generated with `crypto.randomBytes`, plus the dev login
+    password and the switch that keeps document extraction simulated.
+  - **Tier 3 — optional, grouped by `.env.example`'s own section headers** (`grep -nE '^# --- '
+    .env.example`): Key rotation & Cloud KMS (`:34`: `CREDIT_ENCRYPTION_KEY_V2 ENCRYPTION_ACTIVE_KEY_ID
+    PII_KMS_KEY_NAME PII_KMS_WRAPPED_DEKS`) · AI (`:50`, `:149`, `:156`: `ANTHROPIC_API_KEY
+    EXTRACTION_SIMULATE AI_INTEGRATIONS_ANTHROPIC_API_KEY`) · Local dev conveniences (`:56`:
+    `APP_BASE_URL DEV_TEST_PASSWORD NODE_ENV PORT`) · Credit vendor (`:67`: `CREDIT_VENDOR_API_KEY
+    CREDIT_VENDOR_MODE`) · Private beta gate (`:96`: `BETA_ACCESS_CODE`) · CSP (`:104`: `CSP_ENFORCE`)
+    · Pre-license launch gate (`:110`: `PRELAUNCH_GATED VITE_PRELAUNCH_GATED`) · Scheduled jobs
+    (`:127`: `CRON_SECRET`, uncommented) · Object storage (`:138`: `GCS_SERVICE_ACCOUNT_KEY
+    PRIVATE_OBJECT_DIR PUBLIC_OBJECT_SEARCH_PATHS`) · Webhooks (`:160`: `PLAID_WEBHOOK_SECRET`) ·
+    Twilio / SMS (`:166`, seven keys) · Vendor integrations (`:220`: `CRS_API_KEY FANNIE_DU_API_KEY
+    GOOGLE_MAPS_API_KEY HOUSECANARY_API_KEY ISOFTPULL_API_KEY PLAID_CLIENT_ID PLAID_ENV PLAID_SECRET
+    RAPIDAPI_KEY`) · Email (`:231`: `FROM_EMAIL FROM_NAME SENDGRID_API_KEY SMTP_HOST SMTP_PASS
+    SMTP_PORT SMTP_USER`) · Social login (`:246`, eight keys) · Error monitoring (`:269`:
+    `SENTRY_DSN`) · AI risk brief (`:274`: `RISK_BRIEF_DISABLED`) · Misc tuning (`:279`:
+    `AUS_TIMEOUT_MS LOOKUP_MATRIX_STAMP_WINDOW_MS MCP_VENDOR_TIMEOUT_MS PRICING_MARGIN_BASE_BPS
+    PUBLIC_BASE_URL`). `TEAM_PRACTICES.md` §5 says a new env var lands in `.env.example` **and**
+    `CICD.md`; the ten undocumented names above are the measure of how well that has held.
 - **The driver split.** `server/db.ts:23-24` `useLocalPg = USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url)`
   → node-postgres (`:30-33`) else Neon serverless over WebSocket (`:35-37`); both cast to one type so
   hundreds of `db.select()` call sites never see a union.
 - **Ports.** `.env.example:59` `PORT=5001`; `server/app.ts:657` falls back to 5000; worktree
   servers 5002+ (`knowledge-base/runbooks/LOCAL_DEV.md:187`); preflight `BOOT_PORT 3999`,
-  `INT_PORT 4000` (`scripts/preflight.sh:37-38`); `scripts/local-db.sh:31` private cluster on 5433
+  `INT_PORT 4000` (`scripts/preflight.sh:38-39`); `scripts/local-db.sh:31` private cluster on 5433
   — it seeds and **wipes the pricing matrices**, so it must never point at a shared DB (`:23-27`).
 - **`scripts/dev-up.sh` is the one-command cold start** and never overwrites an existing `.env`
-  value (`:17-27`); `scripts/preflight.sh:3-8` runs "all sixteen" checks including the three that
+  value (`:17-27`); `scripts/preflight.sh:3-9` runs "all sixteen" checks including the three that
   only ever ran in CI and "catch a broken DEPLOY rather than a broken diff".
 - **The 2026-08-06 incident is written down in at least nine places.**
   `grep -rln "nine consecutive" --include='*.md' . --exclude-dir=node_modules` → seven runbooks and
@@ -138,9 +181,9 @@ flowchart TD
 - **`verify-deploy` must poll the Railway origin, never `www`.** `.github/workflows/ci.yml:696-704`
   — Squarespace DNS, a redirect or a cached edge response "can all make it answer for something
   other than the Railway service"; pinned by `tests/ciTriggers.test.ts:153`. It is
-  `continue-on-error: true` (`:635`) to break a deadlock with Railway's "Wait for CI" that otherwise
-  marks a deployment SKIPPED, terminally (`:622-634`). Its window was cut from 20 to 6 minutes on
-  measured data (125 runs, median 84 s; `:648-657`).
+  `continue-on-error: true` (`:672`) to break a deadlock with Railway's "Wait for CI" that otherwise
+  marks a deployment SKIPPED, terminally (`:657-671`). Its window was cut from 20 to 6 minutes on
+  measured data (125 runs, median 84 s; `:683-695`).
 - **The charter records the pause and its accepted exposure.** `knowledge-base/routines/CHARTER.md:685-693`
   — "Prod-commit drift, the rollback window and RELEASABLE are no longer daily checks … Whoever
   un-pauses the deploy pipeline restores this check in the same change."
@@ -156,9 +199,10 @@ git rev-parse origin/main
 # → 6377727ea064fdb46b1a97470bf62b7ff504894d — whether prod matches could not be re-probed on 2026-08-23 (the session's proxy blocks the host); prod was CURRENT at `12d7cbec` when last probed, 2026-08-22
 grep -nE '^  [a-z-]+:$' .github/workflows/ci.yml
 # → 94: push (a trigger key, not a job) / 107: gate / 549: migrate-prod / 639: verify-deploy @ 6377727e
-sed -n '553p;621p' .github/workflows/ci.yml
+sed -n '583p;656p;672p' .github/workflows/ci.yml
 # → if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-#   if: github.event_name == 'push'   ·   continue-on-error: true @ 672   @ 6377727e
+#   if: github.event_name == 'push'
+#   continue-on-error: true @ 6377727e
 git log --format="%h %ad %s" --date=short -1 76c96751
 # → 76c96751 2026-08-22 ci: re-arm migrate-prod and verify-deploy — the pause outlived its premise (#669)
 # → (no matches — the runbooks do not record the pause) @ 6377727e
@@ -170,8 +214,12 @@ sed -n '83,88p' scripts/migrate-prod.cjs
 # → if (DRY_RUN) { console.log(`pending  ${entry.tag}`); continue; }   ← a dry run executes nothing @ 6377727e
 grep -c 'when' scripts/migration-ledger-guard.cjs
 # → 1   (one mention, in a comment — the guard does not check duplicate `when` values) @ 6377727e
-grep -cE '^[A-Z][A-Z0-9_]*=' .env.example ; grep -oE '^#? ?[A-Z][A-Z0-9_]{2,}=' .env.example | tr -d '#= ' | sort -u | wc -l
-# → 9 / 65 @ 6377727e
+grep -cE '^[A-Z_]+=' .env.example ; grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u | wc -l ; grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u | wc -l
+# → 9 / 65 / 65 @ 6377727e
+comm -13 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u) <(grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u) | tr '\n' ' '
+# → FREDDIE_LPA_API_KEY INTAKE_PAUSED RAILWAY_GIT_COMMIT_SHA RAILWAY_REPLICA_REGION RATE_LIMIT_RELAXED SEED_LO_ID SENDGRID_API_KEY1 SENTRY_RELEASE TRUST_PROXY_HOPS UWM_EASE_CLIENT_ID   (read, undocumented — 10) @ 6377727e
+comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | sed -E 's/^#? ?//; s/=$//' | sort -u) <(grep -rhoE 'process\.env\.[A-Z][A-Z0-9_]+' server shared client --include='*.ts' --include='*.tsx' | sed 's/process.env.//' | sort -u) | tr '\n' ' '
+# → CREDIT_ENCRYPTION_KEY_V2 GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET LINKEDIN_CLIENT_ID LINKEDIN_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_API_KEY_SECRET TWILIO_API_KEY_SID TWILIO_PHONE_NUMBER VITE_PRELAUNCH_GATED   (documented, not read directly — 10) @ 6377727e
 sed -n '23,24p' server/db.ts
 # → const useLocalPg = process.env.USE_LOCAL_PG === "true" || /@(localhost|127\.0\.0\.1)[:/]/.test(url); @ 6377727e
 sed -n '38,39p' scripts/preflight.sh ; grep -nF 'PORT="${PORT:-5001}"' scripts/dev-up.sh   # -F: BSD grep mis-parses the $ inside the pattern
@@ -185,15 +233,15 @@ git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/work
 
 | Trap | Where | Caught by |
 |---|---|---|
-| `verify-deploy` is live again but `continue-on-error: true` (`ci.yml:672`), so its red is advisory. With `contexts: []` on `main`, a failed deploy check blocks nothing. The four runbooks describe it as live, which is now true but incomplete — none records that it cannot fail a merge. | `.github/workflows/ci.yml:656,663` | `tests/ciTriggers.test.ts:106-118` accepts LIVE **or** PAUSED for both jobs — it could not have told you the pause happened, and cannot tell you it ended. LEDGER HO-0822-14. |
-| Migrations merged now reach no database; the journal runs ahead of prod for as long as the pause lasts (stated at `ci.yml:546-549`), while `DB_MIGRATIONS.md:19-39` still diagrams an automatic apply on push. | `.github/workflows/ci.yml:562` | Nothing — `guard:migrations` validates the ledger, not whether it was applied. |
-| `ci.yml:545` says the Railway service "is being taken down"; it is up and serving this exact commit. | `.github/workflows/ci.yml:544-545` vs the live curl | Nothing — CHARTER §11 retired the prod-commit-drift check with the pause. |
-| `main` requires no status checks; `enforce_admins` binds admins to an empty list. Four docs still say direct pushes are "blocked by branch protection" (`README.md:110`, `app-guide/10-deploy-ops.md:19`, `app-guide/01-start-here.md:62-63`, `LOCAL_DEV.md:309`). | `.github/workflows/ci.yml:30-41` | Nothing automated. LEDGER HO-0822-15. |
+| `verify-deploy` is live again but `continue-on-error: true` (`ci.yml:672`), so its red is advisory. With `contexts: []` on `main`, a failed deploy check blocks nothing. The four runbooks describe it as live, which is now true but incomplete — none records that it cannot fail a merge. | `.github/workflows/ci.yml:656,672` | `tests/ciTriggers.test.ts:106-118` accepts LIVE **or** PAUSED for both jobs — it could not have told you the pause happened, and cannot tell you it ended. LEDGER HO-0822-14. |
+| A pause on `migrate-prod` makes the journal run ahead of prod, and nothing in CI can say so. The 2026-08-19/22 pause did exactly that and cost a 35-minute authentication outage (migration 0057); the job's own account is at `ci.yml:551-560`. `DB_MIGRATIONS.md:19-39` diagrams the automatic apply and is right again — it does not say what the next pause would cost. | `.github/workflows/ci.yml:583` | Nothing — `guard:migrations` validates the ledger, not whether it was applied; `tests/ciTriggers.test.ts:110` accepts LIVE **or** PAUSED. |
+| The pause's premise — "the Railway production service is being taken down" (`ci.yml:555-556`, quoted in the resume note) — expired silently while the pause held: prod was up and auto-deploying every merge the whole time. Whether the takedown is still planned is an open question (`:577-582`). | `.github/workflows/ci.yml:551-560` vs the live curl | Nothing — CHARTER §11 retired the prod-commit-drift check with the pause. |
+| `main` requires no status checks; `enforce_admins` binds admins to an empty list. Four docs said direct pushes are "blocked by branch protection"; `3d047ce9` corrected those four. `grep -rn "blocked by branch protection" README.md knowledge-base/ --include='*.md'` still finds the phrase in `knowledge-base/runbooks/CICD.md:96` and `knowledge-base/handbook/DEVELOPER_PLAYBOOK.md:303`, both hedged with "while it is live" (and in `ROLLBACK.md:92`, about force-pushes, which `allow_force_pushes: false` really does block — live probe 2026-08-23). The check itself is still not required. | `.github/workflows/ci.yml:30-48` | Nothing automated. LEDGER HO-0822-15 (the re-arm half is still open). |
 | A copy-pasted journal `when` silently skips a migration in prod. The ledger guard checks duplicate `idx` and `tag` but **not** duplicate `when`. | `scripts/migrate-prod.cjs:71,81`; `scripts/migration-ledger-guard.cjs:19-20` | Partially — a real hole in an otherwise six-check guard. Proposed ticket in chapter 12. |
 | A dry run is not a pre-flight for a contract migration. | `scripts/migrate-prod.cjs:84-87` | Documented, not enforced — the read-only prod probe in `DB_MIGRATIONS.md:171-205` is manual. |
 | `/api/health` 200 proves reachability, not identity; a wrong-branch `DATABASE_URL` passes the Railway healthcheck and 500s every data route. | `server/routes.ts:78`; `CICD.md:205-210` | Nothing — also hit `/api/articles` and `/sitemap.xml` by hand. |
-| `engines.node` range syntax kills every Railway build while CI stays green: CI's `setup-node` uses `24.x` (`ci.yml:187`), which resolves fine there. | `package.json:7` | Only `verify-deploy` — which is off. |
-| Turning on Railway "Wait for CI" makes `verify-deploy` decorative and can freeze deploys terminally. | `app-guide/10-deploy-ops.md:58-69`; `ci.yml:657-643` | Nothing — a dashboard setting. |
+| `engines.node` range syntax kills every Railway build while CI stays green: CI's `setup-node` uses `24.x` (`ci.yml:200`), which resolves fine there. | `package.json:7` | Only `verify-deploy` — live again, but `continue-on-error`, so its red blocks nothing. |
+| Turning on Railway "Wait for CI" makes `verify-deploy` decorative and can freeze deploys terminally. | `app-guide/10-deploy-ops.md:58-69`; `ci.yml:657-671` | Nothing — a dashboard setting. |
 | `.githooks` are opt-in (`git config core.hooksPath .githooks`); a fresh clone pushes ungated. | `LOCAL_DEV.md:281-283` | Nothing — and with no required check on `main`, a red PR can still merge. |
 | `scripts/local-db.sh` seeds and `seedLendingGrids` wipes pricing matrices — destructive against a shared DB. | `scripts/local-db.sh:23-27` | Nothing but the comment and the non-default port 5433. |
 
@@ -201,7 +249,7 @@ git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/work
 
 | Question | What resolves it |
 |---|---|
-| Whether the production database caught up on the first push after the re-arm, and whether anything was pending when it did. | A `workflow_dispatch` of `ci.yml` with `dry_run=true` (`ci.yml:554`), then read the `pending <tag>` list — remembering the dry run reconciles the **journal** and never executes a migration's SQL. Needs repo write access; not run here. |
+| Whether the production database caught up on the first push after the re-arm, and whether anything was pending when it did. | A `workflow_dispatch` of `ci.yml` with `dry_run=true` (the input at `ci.yml:98`, honoured at `:612`), then read the `pending <tag>` list — remembering the dry run reconciles the **journal** and never executes a migration's SQL. Needs repo write access; not run here. |
 | Whether the Railway takedown is still planned at all. `ci.yml:577-582` still carries the warning that if it is, re-arming was "the wrong half of the fix" and prod should stop receiving deploys instead. Prod kept auto-deploying throughout the pause, which is how it reached `12d7cbec` with `verify-deploy` off. | The founder, or Railway → service → Deployments and Settings → Source. |
 | Whether GitHub Actions billing has fully recovered (the protection was removed 2026-08-19 because of a billing failure, `ci.yml:37-39`). | `gh run list --branch main`; CHARTER §11 warns that zero check-runs can mean an outage rather than a change. |
 | Whether `CSP_ENFORCE`, `BETA_ACCESS_CODE`, `VITE_PRELAUNCH_GATED` are set in the live service. | Railway Variables (founder-only). The live health body shows `email.configured: true`, so the email secret at least is set. |
@@ -216,7 +264,7 @@ the sprinklers and the detector were found triggering each other into a lock-up 
 So it chirps, and someone has to be listening. That is the 2026-08-06 shape one level up: not a
 failed deploy nobody noticed, but a deploy *verifier* whose warning nothing is obliged to act on. And the journal is the ship's logbook:
 `migrate-prod` is the navigator who reconciles it with the ship's real position on every merge —
-currently on shore leave — and a dry run reads the logbook back to you without looking out the
+back from a two-day shore leave as of `76c96751` — and a dry run reads the logbook back to you without looking out the
 window.
 
 ## Teach-back checkpoint
@@ -232,9 +280,10 @@ window.
 
 ## Go deeper
 
-- [app-guide 10](../handbook/app-guide/10-deploy-ops.md) — the operator's summary (read knowing
-  `verify-deploy` is off; its lines 13 and 33-37 describe the job as live).
-- Runbooks, all authoritative and all silent on the pause: `knowledge-base/runbooks/CICD.md`
+- [app-guide 10](../handbook/app-guide/10-deploy-ops.md) — the operator's summary (its lines 13 and
+  33-37 describe the job as live, true again since `76c96751` — but not that its red cannot block a
+  merge; LEDGER HO-0822-14).
+- Runbooks, all authoritative and all silent on what a pause costs: `knowledge-base/runbooks/CICD.md`
   (§Shipping `:75`, §Railway deploy `:121`, §Post-deploy health binding `:212`, §Checks `:315`),
   `knowledge-base/runbooks/DB_MIGRATIONS.md` (§pipeline `:19`, §adding a migration `:137`, §contract
   migrations + the read-only prod probe `:153`, `:171`, §break-glass `:213`),
@@ -243,7 +292,7 @@ window.
   `knowledge-base/runbooks/CHANGE_LEDGER.md:30` (the Railway-cutover ledger row),
   `knowledge-base/logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md` (the "build success ≠
   boot success" postmortem behind the boot probe).
-- Charter: `knowledge-base/routines/CHARTER.md` §11 (`:666-693`) — the only in-repo doc that both
+- Charter: `knowledge-base/routines/CHARTER.md` §11 (`:766-801`) — the only in-repo doc that both
   records the pause and names the accepted exposure.
 - Feature-map rows: area 41 (CI, the guard fleet and repository tooling) and area 39 (background
   jobs and scheduled sweeps). Owner: `.claude/agents/hq-ci-guards-owner.md` — its trap list (`:90-95`)

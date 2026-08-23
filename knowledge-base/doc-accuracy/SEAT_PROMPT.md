@@ -25,8 +25,8 @@ Everything between the rules below is the paste — one block, verbatim.
 > the 21:00 Evening Triage, which consumes your report the same night — write the report for
 > that reader.
 
-Run the **doc-accuracy** routine for Homiquity (GitHub `barakatammre84/Homiquity` — the repo was
-formerly named MortgageStream; NEVER use the old name in API calls). You are a fresh session with
+Run the **doc-accuracy** routine for Homiquity (GitHub `barakatammre84/Homiquity` — NEVER address the repo
+by its banned former name in API calls; root `CLAUDE.md` and `runbooks/CICD.md` record it). You are a fresh session with
 no memory of any prior run. This is the scheduled invocation rail D1 requires — an explicit
 scheduled prompt naming **/doc-accuracy** — and this prompt names it.
 

@@ -114,12 +114,12 @@ flowchart TD
   `/login` but not `/`, so the homepage would 404 (`:5-8`).
 - **Five route directories, four of which are sub-registrars.** `ls -d server/routes/*/` →
   `admin/ agent-broker/ borrower/ lending/ underwriting/`; `ls server/routes/*/index.ts` → four
-  files (`admin/` holds one file wired directly from `routes.ts:114`). Each `index.ts` pins "the
+  files (`admin/` holds one file wired directly from `server/routes.ts:114`). Each `index.ts` pins "the
   ORIGINAL registration order, so Express route matching is unchanged", and
   `server/routes/borrower/index.ts:43-45` records that `registerLeaseRoutes` was *appended, not
   inserted*.
 - **Size.** `find server -name '*.ts' | wc -l` → `291`; `find server -name '*.ts' -exec cat {} + | wc -l`
-  → `81467`; routes 82 files / 25,806 lines; services 123 / 36,027; storage 26 / 6,311.
+  → `81487`; routes 82 files / 25,806 lines; services 123 / 36,027; storage 26 / 6,311.
   `grep -rhoE "(app|router)\.(get|post|put|patch|delete|all)\(" server | wc -l` → `579`
   registration call sites (an over-count of distinct URLs — see *What we do not know*).
 - **Dev loads `.env` explicitly; prod does not.** `server/index-dev.ts:1` `import "./load-env"`

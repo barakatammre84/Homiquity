@@ -93,7 +93,7 @@ next.
 | Fact | Receipt |
 |---|---|
 | pnpm is pinned at 10.34.4; Node target is 24 (advisory) | `package.json:6-9` |
-| Primary checkout serves **5001**; worktrees **5002**; the staff-journey walker claims 5003; the app's own default with `PORT` unset is 5000 | `scripts/dev-up.sh:27`; `LOCAL_DEV.md`; routines charter §8 |
+| Primary checkout serves **5001**; worktrees **5002**; the staff-journey walker claims 5003; the app's own default with `PORT` unset is 5000 | `scripts/dev-up.sh:27`; `LOCAL_DEV.md`; routines charter §12 |
 | The pre-push hook is 9 steps (tsc + 8 guards); unit lanes run only under `PREPUSH_TESTS=1` | `.githooks/pre-push`; chapter 07 |
 | The CI `gate` job runs 18 named steps; `pnpm preflight` mirrors them locally (18 steps) | `ci.yml:107-548`; `scripts/preflight.sh` |
 | `main` requires **zero** status checks (measured 2026-08-22); doctrine, not the platform, forbids direct pushes | FACTS F-44; chapter 07's status box |

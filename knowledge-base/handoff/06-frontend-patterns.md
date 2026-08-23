@@ -93,7 +93,7 @@ flowchart TD
 - **`<Gated>` is the pre-license redirect.** `client/src/App.tsx:238-239`; used on 24 route
   sites; `client/src/lib/prelaunch.ts:17-19` `PRELAUNCH_GATED = VITE_PRELAUNCH_GATED === "true" || (PROD && VITE_PRELAUNCH_GATED !== "false")`
   — gated by default in a production build.
-- **Ten gates, one source.** `client/src/lib/routeGates.ts:32-109`: `borrower`, `staff`,
+- **Ten gates, one source.** `client/src/lib/routeGates.ts:33-109`: `borrower`, `staff`,
   `internalStaff`, `underwriterOps`, `disclosure`, `marketData`, `loTeam`, `cpaPortal`,
   `partnerHub` (a deliberate literal — `cpa` removed on RESPA §8(a) grounds, `:90-105`),
   `adminOnly`. Header `:29-31`: "Client gates are a UX affordance, never the security boundary."
@@ -178,21 +178,24 @@ flowchart TD
   6 gated. `tests/seoPrerender.test.ts` pins the bot-prerender regex and the middleware's four
   guards — not the mirror.
 - **Client tests.** `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l`
-  → `120` (90 `.tsx`, 30 `.ts`); `vitest.client.config.ts:37` is a **glob** "so a colocated
-  `*.test.tsx` can never be silently stranded" (`:11-13`); `happy-dom` (`:18`); the `@assets`
-  alias exists because without it a component test reports "0 tests" rather than a failure
-  (`:44-47`). Every lane is `--config`-explicit (`package.json:15-19`) — a bare `vitest run <file>`
-  resolves no client config.
+  → `123` (91 `.tsx`, 32 `.ts`); `vitest.client.config.ts:37` is a **glob** (`:11-13`) — which
+  protects against a colocated file being *forgotten*, not against the crawl being *truncated*: a
+  `readdir` that fails under load reads as an empty directory and the lane exits 0 short (chapter
+  07; `CICD.md` said "can never be stranded" and was corrected in 2026-08-23's collection-guard
+  change, which is now what `pnpm test` runs). `happy-dom` (`:18`); the `@assets` alias exists
+  because without it a component test reports "0 tests" rather than a failure (`:44-47`). Every
+  vitest lane is `--config`-explicit (`package.json:16-19`; `:15` `pnpm test` is the collection guard
+  that runs both) — a bare `vitest run <file>` resolves no client config.
 - **Bundle.** `tests/clientSchemaImports.test.ts:7-17` — types only from `@shared/schema`, never
   values ("the browser bundle shipped 174 table definitions with their column names … No data was
   exposed; the map of the database was"); `scripts/bundle-size-guard.cjs` gates the eager entry
-  graph in raw bytes against `scripts/bundle-size-baseline.json` `{eagerRawBytes: 525144}`; lazy
+  graph in raw bytes against `scripts/bundle-size-baseline.json` `{eagerRawBytes: 526640}`; lazy
   chunks are reported, never gated.
 - **Accessibility substrate.** `DESIGN_SYSTEM.md:424` §11 (SkipLink first focusable, `<main
   id="main" tabIndex={-1}>`, `FormMessage role="alert"`, visible labels, ≥ 44 px targets — drifted to
   233 before `subMinTouchTarget` ratcheted it, `:432-441`); the four-question gate `:532`
   (provenance · explanation · agreement · honesty). `grep -rho 'data-testid="[^"]*"' client/src | wc -l`
-  → `2206` (1,970 distinct) — the substrate the happy-dom lane drives.
+  → `2223` (1,984 distinct, `| sort -u | wc -l`) — the substrate the happy-dom lane drives.
 - **Two error boundaries at two altitudes.** `client/src/main.tsx:10` (root, backstops the
   providers) and `client/src/App.tsx:626` (inner — a failed lazy chunk is contained so the Toaster
   and providers stay mounted).
@@ -217,7 +220,7 @@ grep -n "staleTime\|refetchOnWindowFocus\|refetchInterval\|retry:" client/src/li
 grep -rin csrf client/src | wc -l
 # → 0 @ 6377727e
 grep -n '"guard:querykeys"' package.json
-# → 37: three scripts chained @ 6377727e
+# → 38: three scripts chained @ 6377727e
 cat scripts/design-token-baseline.json ; cat scripts/ui-standard-baseline.json ; cat scripts/bundle-size-baseline.json
 # → rawColorOccurrences 0 / whiteBlackLiterals 97 ; nine metrics ; eagerRawBytes 526640 @ 6377727e
 git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l ; grep -n 'include:' vitest.client.config.ts
@@ -257,7 +260,7 @@ grep -rho 'data-testid="[^"]*"' client/src | wc -l
 
 | Question | What resolves it |
 |---|---|
-| Do the guards currently pass on `6377727e`? Only committed baselines are quoted here — the token/bundle guards write files on a shrink, so they were not run. | `pnpm guard:tokens && pnpm guard:ui` then `git status` (stage any tightened baseline); `pnpm build && pnpm guard:bundle`. |
+| Do the guards currently pass on 12d7cbec? Only committed baselines are quoted here — the token/bundle guards write files on a shrink, so they were not run. | `pnpm guard:tokens && pnpm guard:ui` then `git status` (stage any tightened baseline); `pnpm build && pnpm guard:bundle`. |
 | Is dark mode reachable at all? `tailwind.config.ts:4` is `darkMode: ["class"]` and `index.css:265` defines `.dark {}`, but `next-themes` is not in `package.json` and nothing under `client/src` toggles the class. | `grep -rn "classList.*dark\|ThemeProvider\|useTheme" client/src`; the design owner. |
 | Are there undocumented route-order dependencies beyond `:300` (e.g. `/redeem-invite` vs `/redeem-invite/:code` at `:260-261`)? | A read of adjacent `<Route>` pairs. |
 | Do the 7 remaining raw `fetch(` sites equal the `ALLOWED_RAW_FETCH` map exactly? | `tests/apiRequestConvergence.test.ts:25` vs the grep. |
@@ -286,10 +289,10 @@ ratchet straps over the cargo: they only tighten.
 
 ## Go deeper
 
-- [app-guide 07](../handbook/app-guide/07-frontend.md) — its headline drift (React 18, the
-  `next-themes` listing, the stale line/route figures) was fixed by #694 on 2026-08-23; still open
-  at `6377727e`: the page-map table is stale across the board, and it quotes adoption figures the
-  generated table in `DESIGN_SYSTEM.md:42` has since replaced. Still accurate:
+- [app-guide 07](../handbook/app-guide/07-frontend.md) — with measured drift at 12d7cbec: `:3`
+  "React 18" (19.2.8); `:12-13` "~420 lines … 160+ routes" (635 / 121); `:9` lists `next-themes`
+  (absent); the page-map table at `:16-37` is stale across the board; `:56-58` and `:75` quote
+  adoption figures the generated table in `DESIGN_SYSTEM.md:42` has since replaced. Still accurate:
   the alias table, the `dist/public` static story, the `VITE_*` build-time warning.
   [app-guide 12](../handbook/app-guide/12-api-contract.md) — `:27` client ownership, `:52-64` the
   error shape and the 401 latch, `:77-79` "Query keys are the client's half of the contract."
