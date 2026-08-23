@@ -1,9 +1,11 @@
 import { eq, desc } from "drizzle-orm";
+import type { BorrowerDeclarations } from "@shared/schema";
 import { storage } from "../storage";
 import { db } from "../db";
 import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
 import { computePaymentProjection } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
+import { isExcludedAsPaidByOtherParty, type PaidByOtherPartyFacts } from "@shared/liabilityExclusions";
 import { decisionSnapshots, incomePathEvaluations, type LoanApplication, type IncomeSourceEntry } from "@shared/schema";
 import {
   computeIncomePaths,
@@ -158,13 +160,21 @@ export function describeEngineGap(err: unknown): string[] {
  * simulator so the two can never quote different debt pictures.
  */
 export function sumOpenMonthlyLiabilities(
-  liabilities: Array<{ toBePaidOff: boolean | null; monthlyPayment: unknown }>,
+  liabilities: Array<{ toBePaidOff: boolean | null; monthlyPayment: unknown } & PaidByOtherPartyFacts>,
   fallbackMonthlyDebts: unknown,
 ): number {
   if (liabilities.length === 0) return safe(fallbackMonthlyDebts);
   let total = 0;
   for (const liability of liabilities) {
     if (liability.toBePaidOff) continue;
+    // B3-6-05, Debts Paid by Others: a payment another party actually makes
+    // leaves the recurring obligations once the borrower's answers satisfy the
+    // rule (shared/liabilityExclusions.ts — the same predicate the staff
+    // calculations engine and the MISMO export read). The 12-month payment
+    // history the Guide requires rides as an auto-generated condition; the
+    // borrower is qualified on the ratio the Guide entitles them to, with the
+    // paperwork named, rather than on one it says they need not carry.
+    if (isExcludedAsPaidByOtherParty(liability)) continue;
     total += safe(liability.monthlyPayment);
   }
   return total;
@@ -188,6 +198,8 @@ interface AggregatedFinancials {
   income: IncomeOrchestrationResult;
   incomeInputsFingerprint: string;
   incomeEvaluationFingerprint: string;
+  /** B3-5.3-07 events declared on URLA Section 5, across all borrowers. */
+  declaredDerogatoryEvents: string[];
 }
 
 /**
@@ -197,8 +209,43 @@ interface AggregatedFinancials {
  * are not being paid off at closing. Falls back to the application-level summary
  * figures when line items haven't been captured yet.
  */
+/**
+ * URLA Section 5 declarations that carry a B3-5.3-07 waiting period, collapsed to
+ * human-readable labels across ALL borrowers.
+ *
+ * Read across every borrower on purpose. Income is already aggregated across
+ * `borrowerSequenceNumber`, so scoping a co-borrower's foreclosure to the
+ * primary would repeat the asymmetry recorded as G-15 — counting a co-borrower's
+ * benefit while ignoring their risk.
+ *
+ * These are declarations, not verified events; the engine routes them to a human
+ * rather than declining, because B3-5.3-07's waiting periods run from discharge /
+ * dismissal / completion dates that `borrower_declarations` does not store.
+ */
+export function summarizeDeclaredDerogatoryEvents(
+  declarations: Array<Partial<BorrowerDeclarations>>,
+): string[] {
+  const events: string[] = [];
+  const seen = new Set<string>();
+  const add = (label: string) => {
+    if (!seen.has(label)) { seen.add(label); events.push(label); }
+  };
+  for (const d of declarations) {
+    if (d.hasDeclaredBankruptcy) {
+      const types = (d.bankruptcyTypes ?? "").trim();
+      add(types ? `bankruptcy (${types})` : "bankruptcy");
+    }
+    if (d.hasBeenForeclosed) add("foreclosure");
+    if (d.hasConveyedTitleInLieuOfForeclosure) add("deed-in-lieu of foreclosure");
+    if (d.hasCompletedShortSale) add("preforeclosure / short sale");
+    if (d.hasOutstandingJudgments) add("outstanding judgments");
+    if (d.isDelinquentOnFederalDebt) add("delinquency on federal debt");
+  }
+  return events;
+}
+
 async function aggregateBorrowerFinancials(app: LoanApplication): Promise<AggregatedFinancials> {
-  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis, propertyInfo] =
+  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis, propertyInfo, declarations] =
     await Promise.all([
       storage.getEmploymentHistory(app.id),
       storage.getOtherIncomeSources(app.id),
@@ -206,6 +253,8 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
       storage.getUrlaAssets(app.id),
       loadLatestBankStatementAnalysis(app.id),
       storage.getUrlaPropertyInfo(app.id),
+      // B3-5.3-07 — across ALL borrowers, not just the primary (see G-15).
+      storage.getAllBorrowerDeclarations(app.id),
     ]);
 
   // Assets across all borrowers, bucketed for the engine's reserve haircuts.
@@ -272,6 +321,7 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     totalMonthlyIncome: income.primaryMonthlyQualifyingIncome,
     monthlyDebts,
     borrowerCount: Math.max(borrowerSeqs.size, 1),
+    declaredDerogatoryEvents: summarizeDeclaredDerogatoryEvents(declarations),
     incomeBasis: income.incomeBasis,
     assets,
     income,
@@ -347,7 +397,41 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   let monthlyPiti: number;
   try {
     const projection = await computePaymentProjection(applicationId);
-    monthlyPiti = projection.estimatedMonthlyTotal;
+
+    // B3-6-03: owners' association and co-op dues belong inside the qualifying
+    // housing expense. On a condo, co-op, PUD or townhouse we cannot treat an
+    // uncaptured figure as zero — that qualifies the borrower on a housing
+    // expense we know to be incomplete, and understates the DTI by an unknown
+    // amount. A NULL is an honest gap; a fabricated zero is a falsified record.
+    if (projection.associationDuesUncaptured) {
+      return {
+        status: "NEEDS_MORE_INFO",
+        decision: null,
+        reasons: [],
+        missingItems: ["Monthly homeowners association (HOA) or co-op dues for the property"],
+        metrics: null,
+        resolvedPolicy: null,
+        ...base,
+      };
+    }
+
+    // B3-6-03: the DTI is built on the QUALIFYING housing expense, which
+    // includes association dues. estimatedMonthlyTotal deliberately excludes
+    // them to hold Loan Estimate parity — it is not the qualifying figure.
+    //
+    // Fail loudly on a missing figure rather than decisioning on it. An
+    // undefined PITI does not blow up downstream: it propagates into the DTI
+    // and reserve math and comes out as a plausible-looking decision with zero
+    // months of reserves — a decision computed on nothing, which is the exact
+    // silent-success shape this codebase keeps paying for. Deliberately NOT
+    // falling back to estimatedMonthlyTotal: that would quietly resurrect the
+    // dues-omission defect this field exists to fix.
+    if (typeof projection.qualifyingPitia !== "number" || !Number.isFinite(projection.qualifyingPitia)) {
+      throw new Error(
+        "CRITICAL DECISIONING ERROR: qualifying PITIA (B3-6-03) is unavailable — refusing to decision on an incomplete housing expense.",
+      );
+    }
+    monthlyPiti = projection.qualifyingPitia;
   } catch (err) {
     // A database/system fault must never masquerade as a borrower-info gap —
     // the underwriting catch below already rethrows faults; this catch must
@@ -381,6 +465,18 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
     // intake is the remaining piece to catch a consistent misstatement.
     propertyType: app.propertyType ?? undefined,
+    // B2-1.3-02 / B2-1.3-03: refinance LTV ceilings differ from purchase and
+    // live in the Eligibility Matrix. Passing the purpose lets the engine route
+    // a non-purchase file to review instead of measuring it against a purchase
+    // ceiling it was never entitled to.
+    loanPurpose: app.loanPurpose ?? undefined,
+    // B3-6-04: an ARM is not qualified at its note rate. The URLA offers
+    // "Adjustable Rate (ARM)" and this column stores it, so the engine must see
+    // it rather than price every file as a 30-year fixed.
+    amortizationType: app.amortizationType ?? undefined,
+    // B3-5.3-07: a declared bankruptcy/foreclosure must reach the decision.
+    // Before this the whole declarations table stopped at document generation.
+    declaredDerogatoryEvents: fin.declaredDerogatoryEvents,
     householdFamilySize: app.householdFamilySize ?? undefined,
     homeSquareFootage: app.homeSquareFootage ?? undefined,
   };

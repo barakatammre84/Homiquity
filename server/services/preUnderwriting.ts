@@ -3,6 +3,13 @@ import { db } from "../db";
 import { creditPulls, loanApplications, verificationReports } from "@shared/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { storage } from "../storage";
+import {
+  PAID_BY_OTHER_PARTY_CONDITION_RULE,
+  THIRD_PARTY_PAYMENT_HISTORY_DOCUMENT_TYPE,
+  THIRD_PARTY_PAYMENT_HISTORY_MONTHS,
+  assessPaidByOtherParty,
+  type PaidByOtherPartyFacts,
+} from "@shared/liabilityExclusions";
 import { sendEmail } from "./emailService";
 
 /**
@@ -49,6 +56,46 @@ import {
 
 export const RESERVES_MONTHS_THRESHOLD = 2;
 
+/**
+ * Fannie Mae Selling Guide B3-4.1-01, Minimum Reserve Requirements (08/07/2024)
+ * — Determining Required Minimum Reserves. For DU loan casefiles DU requires:
+ *
+ *   · two months' reserves for a second home transaction;
+ *   · six months' reserves for a two- to four-unit principal residence, an
+ *     investment property, and a cash-out refinance with a DTI over 45%.
+ *
+ * A one-unit principal residence purchase has no stated DU minimum — the two
+ * months we warn at there is a PLATFORM advisory, not an agency figure, and the
+ * copy says so. The flat two-month threshold that used to apply to every
+ * transaction was the problem in the other direction: it stayed silent for a
+ * two-to-four-unit or investment borrower who was four months short of what
+ * Fannie actually requires.
+ *
+ * The cash-out-refinance leg is not implemented: this function runs on the
+ * purchase intake, which carries a purchase price and down payment and has no
+ * refinance shape. Recorded in SELLING_GUIDE_CONFORMANCE.md (gap G-9).
+ */
+export const RESERVES_MONTHS_MULTI_UNIT_OR_INVESTMENT = 6;
+
+export function requiredReserveMonths(
+  subjectProperty: { numberOfUnits: number | null; occupancyType: string | null } | null | undefined,
+): { months: number; agencyRequired: boolean } {
+  const occupancy = (subjectProperty?.occupancyType ?? "").toLowerCase();
+  const units = subjectProperty?.numberOfUnits ?? 1;
+
+  if (occupancy === "investment" || occupancy === "investment_property") {
+    return { months: RESERVES_MONTHS_MULTI_UNIT_OR_INVESTMENT, agencyRequired: true };
+  }
+  if ((occupancy === "primary_residence" || occupancy === "primary") && units >= 2 && units <= 4) {
+    return { months: RESERVES_MONTHS_MULTI_UNIT_OR_INVESTMENT, agencyRequired: true };
+  }
+  if (occupancy === "second_home") {
+    return { months: RESERVES_MONTHS_THRESHOLD, agencyRequired: true };
+  }
+  // One-unit principal residence, or occupancy not yet declared.
+  return { months: RESERVES_MONTHS_THRESHOLD, agencyRequired: false };
+}
+
 // Assumption used for the reserves estimate before a rate is locked. Matches
 // the funnel's advisory math: 30-year amortization + 1.25%/yr tax & insurance.
 const ASSUMED_ANNUAL_RATE = 0.07;
@@ -62,7 +109,8 @@ export type PreUwFlagCode =
   | "LARGE_DEPOSIT_SOURCING"
   | "RENTAL_INCOME_OFFSET"
   | "SUBJECT_PROPERTY_RENTAL_OFFSET"
-  | "RENTAL_CONVERSION_OFFSET";
+  | "RENTAL_CONVERSION_OFFSET"
+  | "THIRD_PARTY_PAID_DEBT";
 
 export interface PreUwRequiredDoc {
   documentType: string;
@@ -84,7 +132,7 @@ export interface PreUwInput {
   employmentType: string | null;
   /** Total balance from the latest completed VOA report; null = not yet verified. */
   verifiedAssetsTotal: number | null;
-  /** Supplementary income sources from intake (seasoning check, B3-3.2). */
+  /** Supplementary income sources from intake (seasoning check, B3-3.5-01). */
   incomeSources?: IncomeSourceEntry[] | null;
   /** Verified liability ledger from the latest soft pull (B3-6-05 math). */
   tradelines?: Tradeline[] | null;
@@ -102,6 +150,36 @@ export interface PreUwInput {
     estimatedMarketRent: string | number | null;
     monthlyPitia: string | number | null;
   } | null;
+  /**
+   * URLA Section 2c rows with the borrower's "someone else pays this" answers
+   * (B3-6-05, Debts Paid by Others). The ELIGIBLE ones are excluded from the
+   * DTI by both engines and need the Guide's 12-month payment history.
+   */
+  declaredLiabilities?: DeclaredLiability[] | null;
+}
+
+export interface DeclaredLiability extends PaidByOtherPartyFacts {
+  id: string;
+  creditorName: string | null | undefined;
+  monthlyPayment: string | number | null | undefined;
+  otherPartyRelationship?: string | null;
+}
+
+/** The liabilities B3-6-05 lets out of the ratio, each owing a 12-month history. */
+export function excludableThirdPartyPaidDebts(
+  liabilities: DeclaredLiability[] | null | undefined,
+): DeclaredLiability[] {
+  return (liabilities ?? []).filter((l) => assessPaidByOtherParty(l).status === "excludable");
+}
+
+function relationshipPhrase(relationship: string | null | undefined): string {
+  switch (relationship) {
+    case "family_member": return "the family member who pays it";
+    case "former_spouse": return "your former spouse or partner";
+    case "employer": return "your employer";
+    case "business": return "the business that pays it";
+    default: return "the person who makes the payments";
+  }
 }
 
 
@@ -161,12 +239,17 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
       purchasePrice: price,
       downPayment: down,
     });
-    if (months !== null && months < RESERVES_MONTHS_THRESHOLD) {
+    const reserveRule = requiredReserveMonths(input.subjectProperty);
+    if (months !== null && months < reserveRule.months) {
       const piti = estimateMonthlyPITI(price, down);
       flags.push({
         code: "LOW_RESERVES_WARNING",
         severity: "warning",
-        reason: `Verified assets cover ${months < 0 ? 0 : months.toFixed(1)} months of the estimated housing payment after the down payment — below the ${RESERVES_MONTHS_THRESHOLD}-month reserve guideline.`,
+        reason:
+          `Verified assets cover ${months < 0 ? 0 : months.toFixed(1)} months of the estimated housing payment after the down payment — below the ${reserveRule.months}-month reserve ` +
+          (reserveRule.agencyRequired
+            ? "requirement for this transaction type (Fannie Mae Selling Guide B3-4.1-01)."
+            : "level we look for. Fannie Mae sets no fixed minimum for a one-unit principal residence; this is our own readiness guideline."),
         requiredDocs: [
           {
             documentType: "bank_statement",
@@ -217,7 +300,8 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     });
   }
 
-  // --- Sleeper debt (Fannie B3-6-05): deferred student loans at 1% of balance
+  // --- Sleeper debt (Fannie B3-6-05): deferred student loans at 1% of balance,
+  // revolving lines reporting no minimum payment at the greater of $10 or 5%,
   // plus newly opened tradelines, recomputed against the 43% DTI ceiling. ----
   const income = toNumber(input.annualIncome);
   if (input.tradelines && input.tradelines.length > 0 && !isNaN(income) && income > 0) {
@@ -225,8 +309,23 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     const grossMonthly = income / 12;
     const piti = !isNaN(price) && !isNaN(down) ? estimateMonthlyPITI(price, down) : 0;
     const dti = computeDti(adjustment.adjustedMonthlyDebt, piti, grossMonthly);
-    const hasHiddenDebt =
-      adjustment.deferredStudentLoanImputed > 0 || adjustment.newTradelines.length > 0;
+    // Every contributor that makes the qualifying debt exceed what the borrower
+    // sees on their own statements. Revolving imputation belongs here: it is
+    // already inside adjustedMonthlyDebt (and so inside `dti`), so omitting it
+    // would push a file over the ceiling and then decline to explain why.
+    const hiddenDebtCauses: string[] = [];
+    if (adjustment.deferredStudentLoans.length > 0) {
+      hiddenDebtCauses.push("deferred student loans (qualified at 1% of balance)");
+    }
+    if (adjustment.imputedRevolvingLines.length > 0) {
+      hiddenDebtCauses.push(
+        "revolving lines that report no minimum payment (qualified at 5% of balance)",
+      );
+    }
+    if (adjustment.newTradelines.length > 0) {
+      hiddenDebtCauses.push("recently opened credit lines");
+    }
+    const hasHiddenDebt = hiddenDebtCauses.length > 0;
     if (hasHiddenDebt && dti > STANDARD_DTI_CEILING) {
       const whatIf = computeWhatIfPayoff(
         input.tradelines,
@@ -238,9 +337,7 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
         code: "VERIFIED_DEBT_DTI",
         severity: "warning",
         reason:
-          `Your verified credit file includes ${adjustment.deferredStudentLoans.length > 0 ? "deferred student loans (qualified at 1% of balance)" : ""}` +
-          `${adjustment.deferredStudentLoans.length > 0 && adjustment.newTradelines.length > 0 ? " and " : ""}` +
-          `${adjustment.newTradelines.length > 0 ? "recently opened credit lines" : ""}` +
+          `Your verified credit file includes ${formatList(hiddenDebtCauses)}` +
           ` that raise your qualifying debt-to-income to ${(dti * 100).toFixed(1)}% — above the ${(STANDARD_DTI_CEILING * 100).toFixed(0)}% standard ceiling.` +
           (whatIf
             ? ` Paying off your ${whatIf.creditor} balance of $${Math.round(whatIf.balance).toLocaleString()} before closing would bring it back to ${(whatIf.dtiAfterPayoff * 100).toFixed(1)}%.`
@@ -252,6 +349,8 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
           adjustedDti: Number((dti * 100).toFixed(2)),
           adjustedMonthlyDebt: Number(adjustment.adjustedMonthlyDebt.toFixed(2)),
           deferredImputed: Number(adjustment.deferredStudentLoanImputed.toFixed(2)),
+          revolvingImputed: Number(adjustment.revolvingImputed.toFixed(2)),
+          imputedRevolvingLines: adjustment.imputedRevolvingLines.length,
           newTradelines: adjustment.newTradelines.length,
           ...(whatIf ? { whatIfPayoffBalance: whatIf.balance, whatIfDti: Number((whatIf.dtiAfterPayoff * 100).toFixed(2)) } : {}),
         },
@@ -388,7 +487,43 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
+  // B3-6-05, Debts Paid by Others. Each eligible debt has already left the
+  // qualifying ratio (shared/liabilityExclusions.ts); what the Guide still
+  // requires is "the most recent 12 months' canceled checks (or bank
+  // statements) from the other party making the payments". One flag per file,
+  // one document line per debt, so the borrower sees exactly which checks to
+  // gather — and runPreUnderwriting turns each into its own condition.
+  const thirdPartyPaid = excludableThirdPartyPaidDebts(input.declaredLiabilities);
+  if (thirdPartyPaid.length > 0) {
+    const monthly = thirdPartyPaid.reduce((sum, l) => sum + toMoney(l.monthlyPayment), 0);
+    const creditors = thirdPartyPaid.map((l) => l.creditorName || "a debt");
+    flags.push({
+      code: "THIRD_PARTY_PAID_DEBT",
+      severity: "warning",
+      reason:
+        `You told us someone else makes the payments on ${formatList(creditors)}, so we left ` +
+        `$${Math.round(monthly).toLocaleString()}/month out of your debt ratio — the way Fannie Mae allows. ` +
+        `To keep it out, we need the most recent ${THIRD_PARTY_PAYMENT_HISTORY_MONTHS} months of cancelled checks or bank statements ` +
+        `from the person who pays, showing every payment made on time.`,
+      requiredDocs: thirdPartyPaid.map((l) => ({
+        documentType: THIRD_PARTY_PAYMENT_HISTORY_DOCUMENT_TYPE,
+        description:
+          `${THIRD_PARTY_PAYMENT_HISTORY_MONTHS} months of cancelled checks or bank statements from ` +
+          `${relationshipPhrase(l.otherPartyRelationship)} showing on-time payments to ${l.creditorName || "the creditor"}`,
+      })),
+      metrics: {
+        thirdPartyPaidDebts: thirdPartyPaid.length,
+        monthlyExcluded: Number(monthly.toFixed(2)),
+      },
+    });
+  }
+
   return flags;
+}
+
+function toMoney(value: string | number | null | undefined): number {
+  const n = typeof value === "string" ? parseFloat(value) : value ?? 0;
+  return Number.isFinite(n) ? (n as number) : 0;
 }
 
 /** The "frictionless fix": one personalized message instead of an LO email chain. */
@@ -412,6 +547,7 @@ export function buildFlagOutreach(
       case "RENTAL_INCOME_OFFSET":
       case "SUBJECT_PROPERTY_RENTAL_OFFSET":
       case "RENTAL_CONVERSION_OFFSET":
+      case "THIRD_PARTY_PAID_DEBT":
         // These reasons are already written borrower-first with the specific
         // numbers and the resolution path baked in.
         return f.reason;
@@ -464,13 +600,72 @@ function flagsHash(flags: PreUwFlag[]): string {
     .slice(0, 16);
 }
 
+/** "a", "a and b", "a, b and c" — used in borrower-facing flag copy. */
+/**
+ * Keep the per-liability B3-6-05 documentation conditions in step with the
+ * borrower's current declarations: create for newly eligible debts, re-open a
+ * retired one if the claim returns, retire (not_applicable) an open one whose
+ * debt is no longer excludable. A cleared condition is history and is left
+ * alone. Exported for its test.
+ */
+export async function reconcileThirdPartyPaidDebtConditions(
+  applicationId: string,
+  declaredLiabilities: DeclaredLiability[] | null | undefined,
+): Promise<void> {
+  const prefix = `${PAID_BY_OTHER_PARTY_CONDITION_RULE}:`;
+  const wanted = new Map<string, DeclaredLiability>(
+    excludableThirdPartyPaidDebts(declaredLiabilities).map((d) => [`${prefix}${d.id}`, d]),
+  );
+  const existing = await storage.getLoanConditionsByApplication(applicationId);
+  for (const c of existing) {
+    if (!c.sourceRule?.startsWith(prefix)) continue;
+    if (wanted.has(c.sourceRule)) {
+      if (c.status === "not_applicable") {
+        await storage.updateLoanCondition(c.id, { status: "outstanding", clearanceNotes: null });
+      }
+      wanted.delete(c.sourceRule);
+    } else if (c.status === "outstanding" || c.status === "submitted") {
+      await storage.updateLoanCondition(c.id, {
+        status: "not_applicable",
+        clearanceNotes:
+          "The borrower withdrew the third-party payment claim on this liability (or the answers no longer qualify " +
+          "under B3-6-05), so the payment is back in the qualifying ratio — no payment history is needed.",
+      });
+    }
+  }
+  for (const [sourceRule, debt] of wanted) {
+    await storage.createLoanCondition({
+      applicationId,
+      category: "credit",
+      title: `Third-party payment history — ${debt.creditorName || "liability"}`,
+      description:
+        `The borrower reports that ${relationshipPhrase(debt.otherPartyRelationship)} makes the payments on this ` +
+        `${debt.creditorName || "debt"}, and the payment has been excluded from the qualifying DTI under ` +
+        `Selling Guide B3-6-05, Debts Paid by Others. To sustain the exclusion, obtain the most recent ` +
+        `${THIRD_PARTY_PAYMENT_HISTORY_MONTHS} months' cancelled checks (or bank statements) from that party ` +
+        `documenting a ${THIRD_PARTY_PAYMENT_HISTORY_MONTHS}-month payment history with no delinquent payments. ` +
+        `If the history cannot be documented, uncheck "someone else pays this" on the liability so the payment returns to the ratio.`,
+      priority: "prior_to_docs",
+      status: "outstanding",
+      requiredDocumentTypes: [THIRD_PARTY_PAYMENT_HISTORY_DOCUMENT_TYPE],
+      isAutoGenerated: true,
+      sourceRule,
+    });
+  }
+}
+
+function formatList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 /**
  * Evaluate an application, persist the flags, materialize conditions that
  * need teeth, and notify the borrower once per distinct flag set.
  */
 export async function runPreUnderwriting(
   applicationId: string,
-  trigger: "intake" | "voa_received",
+  trigger: "intake" | "voa_received" | "liability_declared",
 ): Promise<{ flags: PreUwFlag[]; notified: boolean }> {
   const [application] = await db
     .select()
@@ -479,7 +674,7 @@ export async function runPreUnderwriting(
     .limit(1);
   if (!application) throw new Error(`Application ${applicationId} not found`);
 
-  const [[voa], [pull], propertyInfo] = await Promise.all([
+  const [[voa], [pull], propertyInfo, declaredLiabilities] = await Promise.all([
     db
       .select({ totalBalance: verificationReports.totalBalance, rawPayload: verificationReports.rawPayload })
       .from(verificationReports)
@@ -514,6 +709,7 @@ export async function runPreUnderwriting(
       .orderBy(desc(creditPulls.completedAt))
       .limit(1),
     storage.getUrlaPropertyInfo(applicationId),
+    storage.getUrlaLiabilities(applicationId),
   ]);
 
   const flags = derivePreUnderwritingFlags({
@@ -535,6 +731,7 @@ export async function runPreUnderwriting(
           estimatedMarketRent: propertyInfo.estimatedMarketRent,
         }
       : null,
+    declaredLiabilities,
     currentPropertyDisposition: application.currentPropertyDisposition,
     departingResidence:
       (application.departingResidence as {
@@ -559,7 +756,7 @@ export async function runPreUnderwriting(
         applicationId,
         category: "assets",
         title: "Reserve Funds Verification",
-        description: `Verified assets fall below the ${RESERVES_MONTHS_THRESHOLD}-month reserve guideline. Provide additional asset statements or gift documentation.`,
+        description: `Verified assets fall below the reserve level required for this transaction. Provide additional asset statements or gift documentation.`,
         priority: "prior_to_docs",
         status: "outstanding",
         requiredDocumentTypes: ["reserves_proof"],
@@ -568,6 +765,17 @@ export async function runPreUnderwriting(
       });
     }
   }
+
+  // B3-6-05, Debts Paid by Others: one outstanding condition per excluded
+  // debt, keyed by liability id so a re-run never duplicates it, and so the
+  // staff clearing workflow on the conditions tab IS the Guide's verification
+  // of the 12-month payment history — no staff-only column on the liability
+  // row for a borrower to self-set. Reconciled on every run, regardless of the
+  // Autopilot kill switch (like the reserves condition above): the exclusion
+  // is live in the ratio the moment it is claimed, so the paperwork must be
+  // live with it — and retired the moment the claim is withdrawn, so no one
+  // is chasing cancelled checks for a payment that is back in the ratio.
+  await reconcileThirdPartyPaidDebtConditions(applicationId, declaredLiabilities);
 
   // Autopilot: give the remaining flags teeth. runPreUnderwriting only
   // materializes LOW_RESERVES above; when Autopilot is active this converts the
