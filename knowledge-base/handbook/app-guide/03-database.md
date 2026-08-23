@@ -4,7 +4,7 @@
 
 - **PostgreSQL**, accessed through **Drizzle ORM**.
 - Schema is defined in TypeScript under [`shared/schema/`](../../../shared/schema/)
-  (21 schema files, **178 tables** as of 2026-07-12), re-exported through
+  (34 schema files, **188 tables** as of 2026-08-22), re-exported through
   [`shared/schema.ts`](../../../shared/schema.ts). Because it lives in `shared/`,
   the client gets the same types and Zod validators (via `drizzle-zod`).
 - **Driver selection** ([`server/db.ts`](../../../server/db.ts)): a
@@ -38,8 +38,8 @@
 
 | File (`shared/schema/`) | Tables | What it covers |
 |---|---|---|
-| `lending.ts` | 44 | The core origination domain: `loan_applications`, `loan_options`, URLA form data (`urla_personal_info`, `employment_history`, `urla_assets`, `urla_liabilities`, `urla_property_info`, `borrower_declarations`), `rate_locks`, `mortgage_rates`/`mortgage_rate_programs`, pre-approval/pre-qualification letters & conditions, milestones, SLAs, deal teams/activities |
-| `underwriting.ts` | 36 | Deterministic underwriting: rules DSL, decision records, lookup grids, rate sheets, pricing adjustments, wholesale lenders |
+| `lending.ts` | 0 (re-export shim) | The core origination domain: `loan_applications`, `loan_options`, URLA form data (`urla_personal_info`, `employment_history`, `urla_assets`, `urla_liabilities`, `urla_property_info`, `borrower_declarations`), `rate_locks`, `mortgage_rates`/`mortgage_rate_programs`, pre-approval/pre-qualification letters & conditions, milestones, SLAs, deal teams/activities |
+| `underwriting.ts` | 0 (re-export shim) | Deterministic underwriting: rules DSL, decision records, lookup grids, rate sheets, pricing adjustments, wholesale lenders |
 | `admin.ts` | 28 | Staff/admin: roles & invites, task engine, notifications, audit logs, policy ops, automation config |
 | `intelligence.ts` | 12 | Borrower graph & intelligence layer: borrower profiles, state history, readiness checklist, intent events, lender match results, analytics events, outcomes, predictions |
 | `compliance.ts` | 13 | Consents (credit/communications), credit pulls (FICO + VantageScore 4.0), adverse actions, hash-chained credit audit log, disclosure versions, data-retention, third-party verification reports (Plaid/Truv GSE report IDs) |

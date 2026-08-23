@@ -19,7 +19,7 @@ pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
 
 | Layer | Technology | Where |
 |-------|-----------|-------|
-| Frontend | React 18 + TypeScript + Vite, Wouter (routing), TanStack Query, Shadcn/Radix UI, Tailwind | `client/` |
+| Frontend | React 19 + TypeScript + Vite, Wouter (routing), TanStack Query, Shadcn/Radix UI, Tailwind | `client/` |
 | Backend | Node.js + Express + TypeScript (run with `tsx` in dev, esbuild bundle in prod) | `server/` |
 | Database | PostgreSQL — Neon in prod, local Postgres in dev — via Drizzle ORM | `shared/schema/`, `server/db.ts` |
 | Shared types | Zod + drizzle-zod schemas shared by client and server | `shared/` |
@@ -59,7 +59,7 @@ pnpm db:migrate         # apply versioned migrations (hand-authored SQL in migra
 
 Landing work: branch → PR → `gate` check green → squash merge → Railway builds
 and deploys `main` ([CICD.md](../../runbooks/CICD.md) §Shipping). Direct pushes
-to `main` are blocked by branch protection and barred by doctrine — and verify
+to `main` are barred by doctrine. 🚨 **verified 2026-08-22: protection exists but blocks almost nothing** — `allow_force_pushes:false` and `enforce_admins:true`, but **0 required status checks, no required review, no push restriction**. A direct push to `main` is therefore *not* blocked; only doctrine stops it, and a red `gate` cannot hold a merge. Re-arming the required check is a founder action. Verify
 protection is live before trusting `--auto`
 ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §6); the old
 `pnpm save`/`pnpm sync` scripts were removed.
