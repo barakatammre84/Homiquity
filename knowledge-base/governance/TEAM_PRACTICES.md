@@ -14,7 +14,7 @@ Each rule below names the failure it prevents.
 
 Open-PR numbers, branch names, session names, and merge-queue status appear **only** in
 [CTO_ROADMAP.md](../../CTO_ROADMAP.md) §0–§3 (maintained nightly by Evening Triage, which holds
-exclusive §0–§3 authority — [routines/CHARTER.md](../routines/CHARTER.md) §4) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
+exclusive §0–§3 authority — [routines/CHARTER.md](../routines/CHARTER.md) §3) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
 kb doctrine, app-guide) state durable facts and link to the roadmap for "what's in
 flight." *(Prevents: "Open PR #45 — verify on merge" surviving in a fact register hours
 after the PR merged.)*

@@ -6,7 +6,7 @@ description: Use ONLY when the user explicitly invokes /primary-engineer or expl
 # Primary Engineer — the company's builder, up to three PRs a day
 
 **Cadence:** daily, 07:15 — the first routine of the day.
-**Writes code:** yes — company-wide lane (L1/L2 per CHARTER §1b).
+**Writes code:** yes — company-wide lane (L1/L2 per CHARTER §6).
 **Produces:** up to **3 launch-ranked PRs** + one report.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
@@ -15,10 +15,10 @@ wins over this file on any conflict; say so in the report rather than following 
 
 It absorbed Sprint Blitz on 2026-08-17 and widened the job: not one roadmap item a day, but the
 company's whole execution layer — roadmap queue, verified QA findings, its own ledger, and
-self-found defects — ranked by CHARTER §1's acceptance questions with the §1a Illinois-launch
+self-found defects — ranked by CHARTER §4's acceptance questions with the §5 Illinois-launch
 tiebreak. The founder is launching an end-to-end brokerage state by state; this routine is the
 engineering throughput that launch runs on. The founder merges — every merge to `main` deploys to
-production, so merging stays human (CHARTER §1b, L3).
+production, so merging stays human (CHARTER §6, L3).
 
 ### What it catches that no other control does
 
@@ -33,7 +33,7 @@ moves only when the founder has a free evening.
 - **R1 — Invocation.** Run only on an explicit `/primary-engineer` or a scheduled-task prompt
   naming this routine. Never self-start from a passing mention.
 - **R2 — Lane.** Company-wide code (`client/**`, `server/**`, `shared/**`, `tests/**`) **within
-  CHARTER §6's always-off-limits list**, plus `knowledge-base/primary-engineer/**` and your
+  CHARTER §10's always-off-limits list**, plus `knowledge-base/primary-engineer/**` and your
   report. Never: capture-path files under an active Wiring Audit claim (check REGISTER.md);
   files with open rows in `knowledge-base/refactor-radar/LEDGER.md` (2026-08-17: `RR-003 =
   client/src/pages/admin/AdminUsers.tsx`); the deferred-lender API/UI — **no client surface for**
@@ -81,7 +81,7 @@ moves only when the founder has a free evening.
   worktree** (shared dev DB — it drops other branches' columns). **Never backfill a guessed value
   onto a provenance or audit column** — a NULL is an honest gap, a wrong value is a falsified
   record.
-- **R8 — CHARTER §8, verbatim.** Never push to `main`, merge a PR, enable auto-merge, flip a
+- **R8 — CHARTER §12, verbatim.** Never push to `main`, merge a PR, enable auto-merge, flip a
   production variable, rotate a credential, or apply a migration to prod. The report plus its task
   notification **is** the page. `git add` explicit paths only — never `git add .` or `-A`.
 - **R9 — Date every standing claim.** Re-verify any roadmap/FINDINGS/ledger row against
@@ -109,7 +109,7 @@ unreachable — report exactly what you saw and stop).
    branch and its PR; every later guard run appends its report there (one guard PR total, never
    one per day). If the file exists on `origin/main` but
    not in the current checkout, follow the `git show origin/main:...` copy.
-2. Read CHARTER.md (§1, §1a, §1b, §5, §6, §8–§11), REGISTER.md, SESSION_CLAIMS.md,
+2. Read CHARTER.md (§4, §5, §6, §9, §10, §12–§15), REGISTER.md, SESSION_CLAIMS.md,
    `knowledge-base/refactor-radar/LEDGER.md`. `ListAgents` (fallback per R4 if absent).
 3. Read upstreams: the most recent `launch-gate` report, yesterday's `deliverable-qa-sweep` and
    `evening-triage` reports. Reports often live on unmerged `routine/*` PR branches — check
@@ -120,17 +120,17 @@ unreachable — report exactly what you saw and stop).
 
 ## Phase 1 — Pick up to three items
 
-The source order below is the **scan** order. The final slate is ranked by CHARTER §1 (question A
-before B), then the §1a Illinois tiebreak, then — inside the same roadmap section — the roadmap's
+The source order below is the **scan** order. The final slate is ranked by CHARTER §4 (question A
+before B), then the §5 Illinois tiebreak, then — inside the same roadmap section — the roadmap's
 own listed order. Scan in this order:
 
 **(a) A red gate outranks everything.** If the most recent Launch Gate report says `STATUS: FAIL`,
 or your own orient-time `pnpm check` + `pnpm test` on fresh `origin/main` is red (reinstall first;
 confirm with `gh run list --branch main` before believing it), **the failure is item one. No
 exceptions, no features first.**
-**(b) `CTO_ROADMAP.md`** ranked by CHARTER §1 — §0 keep-the-lights-on that is *engineering*, then
+**(b) `CTO_ROADMAP.md`** ranked by CHARTER §4 — §1 keep-the-lights-on that is *engineering*, then
 §2 launch-blocking, then §3 — **skipping founder-held items** (NMLS, contracts, vendor paperwork,
-Railway variables), Illinois tiebreak per §1a.
+Railway variables), Illinois tiebreak per §5.
 **(c) Verified rows in `knowledge-base/feature-review/FINDINGS.md`** not already fixed (R9). A
 row you verify as already fixed on `origin/main` is closed via a proposed ticket for QA
 Sweep/Evening Triage — never by editing `FINDINGS.md` yourself (not your territory).
@@ -179,7 +179,7 @@ why · evidence (test counts, real output) · compliance rails touched · §1 ra
 note · any ⛔ question for the founder. Check off a roadmap item in the same commit **only if
 genuinely complete**; roadmap *edits* beyond that checkbox belong to Evening Triage. Release each
 REGISTER row. Then one report,
-`knowledge-base/routines/reports/<YYYY-MM-DD>-primary-engineer.md`, CHARTER §9 order — STATUS ·
+`knowledge-base/routines/reports/<YYYY-MM-DD>-primary-engineer.md`, CHARTER §13 order — STATUS ·
 ⛔ human actions (hardest first) · Summary ≤5 sentences · Evidence for every claim · Proposed
 tickets (≤3, for Evening Triage) — committed `docs(routine): primary-engineer <date>` on the last
 item's branch (or its own branch on an observe day), PR'd, never pushed to `main`. Update ledger

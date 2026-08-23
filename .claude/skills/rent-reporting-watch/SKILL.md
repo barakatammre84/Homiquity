@@ -141,7 +141,7 @@ overdue entry is a `WARN` addressed to the founder — **never** edit `data/regu
 
 ## Phase 5 — What is buildable next
 
-Rank by CHARTER §1's acceptance questions and propose at most **three** tickets. Known open work as
+Rank by CHARTER §4's acceptance questions and propose at most **three** tickets. Known open work as
 of 2026-08-12 — verify each still applies before repeating it (R9):
 
 - `rent_payments` has a schema and a furnishing gate but **no writer** — the same
@@ -156,7 +156,7 @@ of 2026-08-12 — verify each still applies before repeating it (R9):
 
 ## Phase 6 — Report
 
-Write `knowledge-base/routines/reports/<YYYY-MM-DD>-rent-reporting-watch.md` in CHARTER §9 order:
+Write `knowledge-base/routines/reports/<YYYY-MM-DD>-rent-reporting-watch.md` in CHARTER §13 order:
 `STATUS` line, ⛔ human actions (hardest first), ≤5-sentence summary, evidence for **every** claim,
 proposed tickets. Commit on a branch as `docs(routine): rent-reporting-watch <date>` and open a PR.
 Never push to `main` (R8). Final line: `STATUS: OK|WARN|FAIL`.

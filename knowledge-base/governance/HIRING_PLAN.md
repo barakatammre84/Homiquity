@@ -1,7 +1,7 @@
 # Hiring Plan — the team that gets Homiquity originating
 
 **Status:** binding on how we open, run and close a role. **Owner:** founder (Amr).
-**Authority:** subordinate to [`CHARTER.md`](../routines/CHARTER.md) §1b (the decision-authority
+**Authority:** subordinate to [`CHARTER.md`](../routines/CHARTER.md) §6 (the decision-authority
 matrix) and [`TEAM_PRACTICES.md`](TEAM_PRACTICES.md) (how work lands). Where this file and either
 of those disagree, they win and this file is the bug.
 **Last verified against the code:** 2026-08-18.
@@ -47,7 +47,7 @@ Two facts shape every role below:
 
 ## 1. Hire order, and the org at first funded Illinois loan
 
-Ranking follows [`CHARTER.md`](../routines/CHARTER.md) §1a: Illinois first, California second,
+Ranking follows [`CHARTER.md`](../routines/CHARTER.md) §5: Illinois first, California second,
 national on performance. A role earns its slot by how directly it unblocks an Illinois file.
 
 | # | Role | Shape | Unblocks |
@@ -189,7 +189,7 @@ What is safe to state, and what a candidate is entitled to know up front:
 
 ## 5. Operating routines each role runs
 
-**These are human routines, written in the shape of [`CHARTER.md`](../routines/CHARTER.md) §3 so the
+**These are human routines, written in the shape of [`CHARTER.md`](../routines/CHARTER.md) §8 so the
 two fleets read alike. None of them is registered as a scheduled task** — registration is a standing
 configuration change and stays a founder action.
 
@@ -223,7 +223,7 @@ new work invented for a new hire.
    Engineer and Refactor Radar all write to `client/src/**`.
 2. **Report what did not happen.** A routine that cannot be shown to have run is not a control.
    That is why the previous five-routine suite went dark for five weeks unnoticed.
-3. **Authority is per [`CHARTER.md`](../routines/CHARTER.md) §1b, and a hire does not raise it.**
+3. **Authority is per [`CHARTER.md`](../routines/CHARTER.md) §6, and a hire does not raise it.**
    Merging to `main`, contract migrations, license filings, production variables, outbound
    regulator communication and each state's go/no-go stay L3 — prepared by anyone, signed by the
    founder. A new title does not move a rail; only the founder does, knowingly.
@@ -273,7 +273,7 @@ discoverable from the code alone:
 6. Never invent a MISMO field name, enumeration, edit code or SFC. If it cannot be verified in
    [`docs/fannie-mae/`](../../docs/fannie-mae/) or the official job aid, stop and flag it.
 7. **The demo seed is not an organic file.** A delivery suite green against the seed has proven
-   very little ([`CHARTER.md`](../routines/CHARTER.md) §1, question A) — the fixture being the seed
+   very little ([`CHARTER.md`](../routines/CHARTER.md) §4, question A) — the fixture being the seed
    is precisely what hides the defect class that matters most.
 
 **Day 30 definition of ramped:** three merged PRs, one mutation-proven fix, one

@@ -9,7 +9,7 @@ rows sourced from `CTO_ROADMAP.md` may be landed first by another session — re
 starting; a row fixed elsewhere is closed with a pointer, never rebuilt. Status vocabulary:
 `open` · `done (PR #)` · `blocked-human (why)` · `superseded (by what)`.
 
-| id | target | source | rank note (§1 / §1a) | status |
+| id | target | source | rank note (§4 / §5) | status |
 |---|---|---|---|---|
 | PE-001 | Internal data-lineage view for masked wholesale-lender identity — compliance/staff need the unmasked chain somewhere | `CTO_ROADMAP.md:150-152` (§3.3) | A-adjacent (lender package traceability); IL tiebreak neutral | open |
 | PE-002 | Surface platform-fee charged-vs-collected variance in FinancialReports | `CTO_ROADMAP.md:186-195` (§3.14, audit F-22) | A-adjacent (fee/QM budget honesty); likely §9-trip if a new endpoint → draft-PR path (R5) | open |

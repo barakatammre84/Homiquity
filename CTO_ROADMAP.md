@@ -118,7 +118,7 @@ anything else in this file being true.
 > **Framing note, 2026-08-19 (evening-triage).** Founder direction that day: **development is
 > local-only until the app is fully built and debugged; there is no live launch.** So "blocks
 > go-live" in this section's title now describes a *deferred* event, not this week's deadline —
-> the items are still real, their urgency is not. Ranking below therefore follows CHARTER §1
+> the items are still real, their urgency is not. Ranking below therefore follows CHARTER §4
 > (lender package / borrower experience) rather than proximity to a flip date. §0 still outranks
 > everything: the site is still up and still auto-deploying (KTLO-4).
 
@@ -316,7 +316,7 @@ anything else in this file being true.
 
 - [ ] **3.15 Register `reg:watch:save` on a schedule — or delete it and declare Tier 2 human-only**
   (#526 E5). `data/regulatory/regulatory-watch-state.json` last ran **2026-07-04** while
-  `REGULATORY_MONITORING.md` still calls the tier "automated, live" — the CHARTER §0 fossil
+  `REGULATORY_MONITORING.md` still calls the tier "automated, live" — the CHARTER §1 fossil
   pattern. Cheapest honest fix: a weekly CI step + a `lastRun` age assertion in `pnpm checkup`.
 - [ ] **3.16 Un-red `pnpm checkup`: record an accepted-risk its dependency check can read**
   (launch-gate LG-3, 2026-08-17). 1 low + 4 moderate advisories, all in
@@ -382,7 +382,7 @@ anything else in this file being true.
   15-day-old code and reported a live pass. Evening triage re-probed it
   (`ps` START `Wed Aug 5 16:08:46 2026`, `--import …/launch-hygiene/node_modules/…`), **killed it,
   and confirmed the port refuses connections** (`curl` exit 7). Nothing else on 5001/5002 was
-  touched. *Deviation noted: this is ops, not a file edit, so it is outside CHARTER §6's "never
+  touched. *Deviation noted: this is ops, not a file edit, so it is outside CHARTER §10's "never
   edits code paths" rather than against it — recorded here because acting is more honest than
   re-flagging a defect a fourth time.* **What remains is the durable half:** decide whether a
   `/api/health` without `commit` should be a startup error, since the deploy rail's entire proof is
@@ -412,7 +412,7 @@ anything else in this file being true.
   the bypass is traceless. Fix: scope the de-dup by `actionType`, and **re-fixture
   `tests/adverseActionFcraChokepoint.test.ts:225-233`**, which today fixtures
   `[{ id: "aa-preexisting" }]` with no `actionType` and asserts `{ok:true, created:false}` — 12/12
-  green over the bug. Owner: Backend Data Engineer (§6b).
+  green over the bug. Owner: Backend Data Engineer (§10b).
 - [ ] **3.26 A co-applicant's protected-class record can be overwritten with the primary's answers,
   and the co-borrower is never asked at all** (qa-sweep F-0819-02, P1 — question A *and* the
   fair-lending join). `server/routes/underwriting/compliance.ts:1310-1312` and `:1348-1350` both
@@ -423,7 +423,7 @@ anything else in this file being true.
   prompted. Fix: key GET+POST by `borrowerSequenceNumber`, make the completeness check
   per-borrower, add the missing unique constraint (expand-only, same-PR migration). This is the
   same single-row-per-application trap that `mismo-coapplicant-model` already documents — **never
-  match by array position.** Owner: Backend Data Engineer (§6b).
+  match by array position.** Owner: Backend Data Engineer (§10b).
 - [ ] **3.27 The §1002.9(a)(1)(i) 30-day clock is not computable — there is no completed-application
   timestamp** (qa-sweep F-0819-05, P1). Two sites anchor the deadline on the wrong event
   (`server/services/adverseActionDelivery.ts:148-166`, `server/services/taskEventEmitter.ts:143-151`);
@@ -431,7 +431,7 @@ anything else in this file being true.
   platform records no "application became complete" moment at all, so the fix needs a column, not a
   formula. 🚨 **Do not backfill a guessed value onto a compliance/provenance column** — a NULL is an
   honest gap, a wrong value is a falsified record; if existing rows cannot be anchored truthfully,
-  leave them NULL and report the coverage. Owner: Backend Data Engineer (§6b).
+  leave them NULL and report the coverage. Owner: Backend Data Engineer (§10b).
 - [ ] **3.28 Every write on the Homeowner Hub returns 500** (qa-sweep F-0819-03, P1 — the Hub's
   entire write half). `server/routes/guaranteesHomeowner.ts:134-145` / `:230-243` / `:178-190`;
   nine live probes: dates-filled → 500, dates-blank → 500, keys-omitted → 201; equity snapshot 500s
@@ -450,7 +450,7 @@ anything else in this file being true.
   restore the two VA fields in `draftToFormValues` — **or, if the whitelist addition is rejected,
   delete the `avoidsInterestFinancing` read**, because a line that reads a column nothing writes is
   worse than an absent one: it makes the round-trip look closed. Owner: Backend Data Engineer
-  (§6b); the client half is the wiring audit's.
+  (§10b); the client half is the wiring audit's.
 - [ ] **3.30 Adverse-action notices name the wrong federal agency** (qa-sweep F-0819-04, P2 —
   mechanical half of §1.7's new counsel question). Every notice we generate names the **CFPB**;
   Reg B Appendix A item 9 assigns the **FTC** to a non-depository originator, and the Appendix
@@ -464,7 +464,7 @@ anything else in this file being true.
   distorted by it** (qa-sweep D-0819-04). Ten rows whose status cells say `**FIXED**` sit under
   `## Open findings`; the visible consequence is that **open P0 read 3 when it is 0**, and three
   P1 rows still read `open` while their fixes merged 2026-08-18. Move them to `## Closed` in one
-  pass. Pure hygiene — but CHARTER §1 names exactly this hazard, and it cost this run a
+  pass. Pure hygiene — but CHARTER §4 names exactly this hazard, and it cost this run a
   re-verification to catch. Owner: QA Sweep (it owns that register).
 
 ---

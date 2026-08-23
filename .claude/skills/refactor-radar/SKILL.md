@@ -91,7 +91,7 @@ phase exists to discover what your teammates changed while you were not looking.
    by <PR#/branch>`. Plan the edits now; apply them later in the worktree.
 4. Backpressure → **ASSIST MODE, not idle.** If ≥2 OPEN refactor-radar PRs, stop
    *producing* (skip Phases 3–5) and work the assist ladder in
-   knowledge-base/routines/CHARTER.md §5 against what is already in flight: fix a red CI or a
+   knowledge-base/routines/CHARTER.md §9 against what is already in flight: fix a red CI or a
    conflicted base first, then verify an unreviewed PR against its own claims, then
    supply a missing test/doc/ledger row as a comment on that PR. Only after the queue
    is genuinely clear do you report "review capacity is the blocker". Ending a tick

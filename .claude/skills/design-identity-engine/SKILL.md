@@ -27,7 +27,7 @@ Two routines, two jobs, and they must not touch each other's files:
 | **UI Conformance Sweep** | making surfaces *match* the standard | `guard:ui` going down |
 | **Design Identity Engine** (this) | *raising* the standard | one identity decision landed and proved |
 
-CHARTER §6a forbids the sweep from `client/src/components/ui/**`. That carve-out is this routine's
+CHARTER §10a forbids the sweep from `client/src/components/ui/**`. That carve-out is this routine's
 territory. **One invents, one spreads, neither edits the other's files.**
 
 ## Territory
@@ -37,7 +37,7 @@ territory. **One invents, one spreads, neither edits the other's files.**
 `client/src/lib/icons.ts` · `client/src/components/layout/**` · `client/index.html` (font links)
 
 **Never touch:** any file in an open PR, anything under an active REGISTER claim, or the
-Conformance Sweep's surface files. CHARTER §6a's "off limits to every routine, always" list applies
+Conformance Sweep's surface files. CHARTER §10a's "off limits to every routine, always" list applies
 here in full — schema, migrations, encryption, auth, uploads, outbound messaging, the underwriting
 engines, `amortization.ts`, dependencies.
 

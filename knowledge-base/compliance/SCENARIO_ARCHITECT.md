@@ -91,7 +91,7 @@ one.
    share an author. The test must be the **worked numeric example from the cited guideline**, which
    is why the v2 schema's `rule` field requires one.
 
-4. **Patch stops at a draft PR.** CHARTER §1b places credit-decision policy at **L4 (human-only)**
+4. **Patch stops at a draft PR.** CHARTER §6 places credit-decision policy at **L4 (human-only)**
    and every merge at L3, and each routine's off-limits list names the underwriting, decision and
    rule engines. A loop that merged its own rule changes would be a machine setting credit policy —
    and under Reg B the accountable licensee, not the machine, owns that. Extending this is a

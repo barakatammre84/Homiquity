@@ -2,7 +2,7 @@
 
 One row per run. The routine **raises** the standard; the
 [UI Conformance Sweep](../../.claude/skills/ui-conformance-sweep/SKILL.md) **spreads** it. Territory
-split in [CHARTER §6a](../routines/CHARTER.md).
+split in [CHARTER §10a](../routines/CHARTER.md).
 
 The `Refused` column is load-bearing. A direction this routine declined, **and why**, must not be
 re-derived next run — most of the cost here is spent discovering that a reference's answer is wrong

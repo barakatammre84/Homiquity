@@ -19,7 +19,7 @@ restated 41 times — so there is nothing to drift.
 Some areas own files that sit on the charter's always-off-limits list (the PII vault, auth, the
 underwriting engines, object storage, outbound messaging, the amortization module, the furnishing
 gate). Those files are marked **hand-back** in the agent: it diagnoses precisely and a human applies
-the change. That is deliberate — the off-limits list is inherited exactly as `CHARTER.md` §6 writes it,
+the change. That is deliberate — the off-limits list is inherited exactly as `CHARTER.md` §10 writes it,
 and relaxing it is a founder decision, not an agent's.
 
 The **Also writes here** column names the scheduled routines whose write territory overlaps the area,
@@ -716,7 +716,7 @@ and in the owner agent for that area.
 > **Both ends of this are wired.** The dispatch block was added to
 > `feature-completion-engine/SKILL.md` and `workflow-completion-engine/SKILL.md` on 2026-08-20.
 > Those definitions live in `~/.claude/scheduled-tasks/`, not in this repo, so this paragraph is
-> the only in-repo record that the wiring exists — and per CHARTER §11 the in-repo contract wins
+> the only in-repo record that the wiring exists — and per CHARTER §15 the in-repo contract wins
 > if the two ever disagree. Both engines gate the behaviour on the existence check below, so until
 > this file reaches `origin/main` they run exactly as they did before.
 

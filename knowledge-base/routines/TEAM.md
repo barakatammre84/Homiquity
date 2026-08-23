@@ -7,12 +7,12 @@ nothing.
 **Last verified against the code:** 2026-08-19.
 
 > ⚠️ **Partly superseded 2026-08-19 by the prove-it-first suite rewrite** ([`CHARTER.md`](CHARTER.md)
-> §1a, §3). The *role* mapping below still holds; the **clock and the seat list do not**. Three seats
+> §5, §8). The *role* mapping below still holds; the **clock and the seat list do not**. Three seats
 > were retired, two were reshaped, one was promoted to daily, and two new build lanes were added;
-> the **Doc Accuracy** steward was re-seated daily at 19:30 on 2026-08-20 (CHARTER §3 — not a
+> the **Doc Accuracy** steward was re-seated daily at 19:30 on 2026-08-20 (CHARTER §8 — not a
 > hiring-plan seat, so no row below), and the local fleet was paused 2026-08-22 (8 GB laptop), so
 > any `Registered?` column below is the 2026-08-20 state.
-> **Read `CHARTER.md` §3 and `list_scheduled_tasks` for who actually runs** — this file is a
+> **Read `CHARTER.md` §8 and `list_scheduled_tasks` for who actually runs** — this file is a
 > seating chart, not a registration, and §0 there is about exactly that confusion.
 
 > **Freshness:** last verified 2026-08-19 · review every 60 days
@@ -51,7 +51,7 @@ Three different causes, none of them sloppiness:
 - **Domain Oracle, Integration Readiness and QA Mutation Verifier** were added 2026-08-18 and stated
   plainly at the time as *"defined but not registered — registration is a founder action"* (CHARTER
   §3). They have been correct-but-unstaffed ever since. This chart simply never said so.
-- **Complex File Engine** was registered, then **retired 2026-08-20T16:22:57Z** (CHARTER §3's
+- **Complex File Engine** was registered, then **retired 2026-08-20T16:22:57Z** (CHARTER §8's
   retirement list) on a finding — verified at the time — that its definition was not on
   `origin/main`. That was true when checked and false **two minutes thirty seconds later**: PR #589
   merged the definition at **16:25:27Z**. Nobody erred; the check and the merge raced. The subject
@@ -60,7 +60,7 @@ Three different causes, none of them sloppiness:
   `underwritingEngine.ts`, `decisionEngine.ts` or `ruleEngine.ts`, and may not change regulated
   math at all.
 - **Backend Data Engineer** sits on the CCR fleet, where every trigger has read `enabled: false`
-  with zero recorded runs since 2026-08-18 (CHARTER §3a).
+  with zero recorded runs since 2026-08-18 (CHARTER §8a).
 
 **The rule this earns:** a seat is registered or it is a proposal, and the chart must say which.
 Re-read `list_scheduled_tasks` when you edit this table — the scheduler is the authority, this file
@@ -98,7 +98,7 @@ fix from the person's side — **no seat signs off its own.**
   routine would find nothing on most days and become boilerplate.
 - **Product designer** — [`DESIGN_SYSTEM.md`](../handbook/design/DESIGN_SYSTEM.md) plus the UI
   conformance sweep already carry the standard.
-- **Licensed MLO and processor** — statutory human roles (CHARTER §1b, L4). No routine may occupy
+- **Licensed MLO and processor** — statutory human roles (CHARTER §6, L4). No routine may occupy
   a seat the law assigns to a person, and none of the seats above may be read as doing so.
 
 ---
@@ -186,7 +186,7 @@ fixing what it finds, however small: the moment it does, the next day's verdict 
 
 The two rails that hold above every seat, unchanged from [`CHARTER.md`](CHARTER.md):
 
-- **Merging stays human.** A merge to `main` is a production deploy (§1b, L3). No seat merges,
+- **Merging stays human.** A merge to `main` is a production deploy (§6, L3). No seat merges,
   enables auto-merge, or touches a production variable.
 - **A routine that cannot be shown to have run is not a control** (§0). Each seat's report is its
   evidence; a missing report is a finding for Evening Triage, not an absence to be assumed benign.

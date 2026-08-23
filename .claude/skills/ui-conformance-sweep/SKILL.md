@@ -5,7 +5,7 @@ description: Use ONLY when the user explicitly invokes /ui-conformance-sweep or 
 
 # UI Conformance Sweep — the routine that makes the design standard true
 
-**Cadence:** daily, 16:25 UTC (CCR fleet — see CHARTER §3's second-fleet table).
+**Cadence:** daily, 16:25 UTC (CCR fleet — see CHARTER §8's second-fleet table).
 **Writes code:** yes — `client/src/**`, visual conformance only.
 **Produces:** **one** conformance PR + one report. A clean tick produces neither and says so.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
@@ -25,7 +25,7 @@ and stopped: `PageShell` reached 17% of pages, the icon registry and the `<Headi
 primitives shipped with **zero call sites**, and the docs still called all three future work
 while quoting an adoption figure that had drifted in the flattering direction.
 
-CHARTER §6a names the cause in one line: **a standard nobody is assigned to propagate is a
+CHARTER §10a names the cause in one line: **a standard nobody is assigned to propagate is a
 preference.** It then assigned the sweep as a *"may"* to two routines that already have other
 jobs — so no run was ever judged on it. This routine is the fix: adoption is somebody's daily
 number.
@@ -80,7 +80,7 @@ hand-roll their own geometry.
   field hides best. If a conversion *needs* a logic change, that is two PRs, and the logic one is
   not yours.
 
-- **R7 — Off limits.** CHARTER §6's always-off-limits list in full. Plus: capture-path files
+- **R7 — Off limits.** CHARTER §10's always-off-limits list in full. Plus: capture-path files
   under an active Wiring Audit claim; and — binding, with its own document —
   [`handbook/URLA_FORM_REFACTOR_TRAP.md`](../../../knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md).
   On `URLAForm.tsx` specifically: do not extract `buildPayload`/`buildSectionsPayload`, the
@@ -98,17 +98,17 @@ hand-roll their own geometry.
 
 - **R9 — PR-only.** Never merge, never push to `main`, never enable auto-merge, never force-push.
   `git add` explicit paths — never `git add .` or `-A`. The founder merges: a merge to `main` is
-  a production deploy (CHARTER §1b, L3).
+  a production deploy (CHARTER §6, L3).
 
 - **R10 — Verification honesty.** happy-dom has **no layout engine**, and there is no Playwright,
-  Storybook or axe in this repo — CHARTER §6 forbids adding one. So nothing here can prove a
+  Storybook or axe in this repo — CHARTER §10 forbids adding one. So nothing here can prove a
   rendered layout, a mobile viewport or a contrast ratio in situ. Report the commands you
   actually ran. A green `guard:ui` proves only its own seven metrics, and its className counts
   see literal double-quoted strings only — classes built in `cn()`, template literals or cva
   variants are invisible, so **every count is a floor, not a total**. Where a change is only
   verifiable by eye, say so and leave it for a human.
 
-- **R11 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
+- **R11 — CHARTER §12, verbatim.** The escalation runbook binds unchanged.
 
 ## Phase 0 — memory before work, every run
 
@@ -133,13 +133,13 @@ somewhere is a rule that can be enforced there forever after.
 
 ## Report
 
-`knowledge-base/routines/reports/<YYYY-MM-DD>-ui-conformance-sweep.md`, CHARTER §9 format:
+`knowledge-base/routines/reports/<YYYY-MM-DD>-ui-conformance-sweep.md`, CHARTER §13 format:
 STATUS line + one-line verdict · ⛔ human actions (or none) · summary ≤5 sentences · evidence with
 `file:line` or command output for every claim, including the before/after `guard:ui` counts ·
-proposed tickets for Evening Triage. **Never edit `CTO_ROADMAP.md`** — CHARTER §4 gives Triage
+proposed tickets for Evening Triage. **Never edit `CTO_ROADMAP.md`** — CHARTER §3 gives Triage
 exclusive authority over §0–§3. Commit as `docs(routine): ui-conformance-sweep <date>`.
 
 A run that finds the queue blocked — every candidate claimed, or the ratchet already at its floor
 for the surfaces in reach — writes three sentences saying so and stops. That is a success. What
-is *not* acceptable is an idle tick: if peers hold every target, work CHARTER §5's assist ladder
+is *not* acceptable is an idle tick: if peers hold every target, work CHARTER §9's assist ladder
 (fix a red CI, verify an unreviewed PR, supply a missing test) before reporting nothing.

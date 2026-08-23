@@ -85,4 +85,4 @@ itself in one direction.
 
 | date (UTC) | areas walked | tickets filed | skipped, and why |
 |---|---|---|---|
-| — | no runs yet | — | the routine is defined but **not registered**; registration is a founder action (CHARTER §11) |
+| — | no runs yet | — | the routine is defined but **not registered**; registration is a founder action (CHARTER §15) |

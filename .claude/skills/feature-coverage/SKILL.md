@@ -7,7 +7,7 @@ description: Use ONLY when the user explicitly invokes /feature-coverage or expl
 
 **Cadence:** daily, 19:20 — after the Client Journey Walk (17:05) has landed its report, and far
 enough before Evening Triage (21:00) that its tickets are in the day's consolidation.
-**Writes code:** **no.** Ledger rows, tickets and its own report only (L1 per CHARTER §1b).
+**Writes code:** **no.** Ledger rows, tickets and its own report only (L1 per CHARTER §6).
 **Produces:** up to 8 area walks per run, each a row in
 `knowledge-base/routines/feature-coverage/LEDGER.md`, plus buildable tickets in `FINDINGS.md`.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
@@ -43,7 +43,7 @@ has already been burned by a findings register that overstated itself in one dir
 in a peer's open PR, or unwalkable for any reason, leave the row untouched and name it in the run
 log with the reason. A silently skipped area reads exactly like a covered one.
 
-**R5 — CHARTER §8.** Never push to `main`, never merge, never enable auto-merge, never touch a
+**R5 — CHARTER §12.** Never push to `main`, never merge, never enable auto-merge, never touch a
 production variable. `git add` explicit paths only.
 
 **R6 — honesty.** Report SKIPPED-with-reason rather than a soft pass. Never claim a walk you could

@@ -34,7 +34,7 @@ MAX_ITER: 8
 ## What this loop must not do
 
 "Improve" behaviour while moving it · delete code because nothing imports it (code that never
-fires may be the control — `knowledge-base/routines/CHARTER.md` §10) · raise a baseline · extract
+fires may be the control — `knowledge-base/routines/CHARTER.md` §14) · raise a baseline · extract
 the URLA form helpers.
 
 Finish with the LOOP REPORT, then the promise.

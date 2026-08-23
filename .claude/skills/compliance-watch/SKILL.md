@@ -14,11 +14,11 @@ wins over this file on any conflict; say so in the report rather than following 
 
 ## Why this routine exists
 
-The launch sequence (CHARTER §1a: Illinois → California → national) is gated on licensing and
+The launch sequence (CHARTER §5: Illinois → California → national) is gated on licensing and
 compliance paperwork that no other routine watches: state filings, sponsorships, bonds, call
 reports, and the policies regulators expect a brokerage to hold. That work is legal-counsel-shaped
 research and drafting — and the accountable signature on every filing is the founder's (CHARTER
-§1b, L3/L4). This routine does everything up to the signature: it maintains the ladder, drafts the
+§6, L3/L4). This routine does everything up to the signature: it maintains the ladder, drafts the
 artifacts, and turns each filing into a five-minute founder decision instead of a research project.
 It never becomes counsel: it cites or it flags, and it files nothing.
 
@@ -37,7 +37,7 @@ looking.
   naming this routine. Never self-start.
 - **R2 — Write territory.** `knowledge-base/compliance-watch/**` and your own report file.
   Nothing else — never code, never `CTO_ROADMAP.md`, and `docs/**` is a **read-only reference
-  shelf** (CHARTER §6). You take no `REGISTER.md` claim (you write no code) but read both claim
+  shelf** (CHARTER §10). You take no `REGISTER.md` claim (you write no code) but read both claim
   boards in Phase 0.
 - **R3 — Cite or flag, never assert.** Every licensing/NMLS claim cites the **NMLS Policy
   Guidebook** in `docs/nmls/` by chapter and PDF page (map in `docs/nmls/README.md`), or the exact
@@ -64,7 +64,7 @@ looking.
 - **R6 — No legal-advice framing.** Outputs are internal work product for the accountable human.
   Recommendations are phrased as "the guidebook at <cite> indicates X; confirm against <state
   source>" — never as legal conclusions.
-- **R7 — CHARTER §8 verbatim** (no prod variables, no credential actions, no merges, no pushes to
+- **R7 — CHARTER §12 verbatim** (no prod variables, no credential actions, no merges, no pushes to
   `main`, no auto-merge), plus **date every standing claim** — the NMLS #427468 standing fact, the
   ladder's own rows, and any roadmap claim you *repeat* (you never edit the roadmap itself — R2)
   get re-dated (`git log -1 --format=%ad -- <file>`, `git log -S`) before being restated. What a
@@ -83,7 +83,7 @@ looking.
    PR total, never one per day). Present on `origin/main` but not in the checkout → follow the `git show origin/main:...`
    copy. Work in a fresh worktree `routine/compliance-watch-<date>` off `origin/main`; no install
    (you run no code).
-2. Read CHARTER.md (§1a, §1b, §6, §8–§11), both claim boards, and `docs/nmls/README.md` —
+2. Read CHARTER.md (§5, §6, §10, §12–§15), both claim boards, and `docs/nmls/README.md` —
    **report any document the README promises that the directory lacks.**
 3. Read upstreams: the most recent `evening-triage` and `vendor-procurement` reports (vendor
    contracts and compliance filings overlap). Missing upstream = §4 WARN naming it; continue.
@@ -117,7 +117,7 @@ honest outcome — say why.
 
 ## Phase 4 — Report
 
-`knowledge-base/routines/reports/<YYYY-MM-DD>-compliance-watch.md`, CHARTER §9 order: STATUS +
+`knowledge-base/routines/reports/<YYYY-MM-DD>-compliance-watch.md`, CHARTER §13 order: STATUS +
 one-line verdict · **⛔ Human actions** — the signature/filing list, hardest first, each item a
 five-minute decision with its draft linked · Summary ≤5 sentences · Evidence (cites and command
 output for every claim) · Proposed tickets (≤3, for Evening Triage). Final line

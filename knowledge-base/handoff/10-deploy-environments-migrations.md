@@ -187,7 +187,7 @@ git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/work
 |---|---|---|
 | `verify-deploy` is live again but `continue-on-error: true` (`ci.yml:672`), so its red is advisory. With `contexts: []` on `main`, a failed deploy check blocks nothing. The four runbooks describe it as live, which is now true but incomplete — none records that it cannot fail a merge. | `.github/workflows/ci.yml:656,663` | `tests/ciTriggers.test.ts:106-118` accepts LIVE **or** PAUSED for both jobs — it could not have told you the pause happened, and cannot tell you it ended. LEDGER HO-0822-14. |
 | Migrations merged now reach no database; the journal runs ahead of prod for as long as the pause lasts (stated at `ci.yml:546-549`), while `DB_MIGRATIONS.md:19-39` still diagrams an automatic apply on push. | `.github/workflows/ci.yml:562` | Nothing — `guard:migrations` validates the ledger, not whether it was applied. |
-| `ci.yml:545` says the Railway service "is being taken down"; it is up and serving this exact commit. | `.github/workflows/ci.yml:544-545` vs the live curl | Nothing — CHARTER §7 retired the prod-commit-drift check with the pause. |
+| `ci.yml:545` says the Railway service "is being taken down"; it is up and serving this exact commit. | `.github/workflows/ci.yml:544-545` vs the live curl | Nothing — CHARTER §11 retired the prod-commit-drift check with the pause. |
 | `main` requires no status checks; `enforce_admins` binds admins to an empty list. Four docs still say direct pushes are "blocked by branch protection" (`README.md:110`, `app-guide/10-deploy-ops.md:19`, `app-guide/01-start-here.md:62-63`, `LOCAL_DEV.md:309`). | `.github/workflows/ci.yml:30-41` | Nothing automated. LEDGER HO-0822-15. |
 | A copy-pasted journal `when` silently skips a migration in prod. The ledger guard checks duplicate `idx` and `tag` but **not** duplicate `when`. | `scripts/migrate-prod.cjs:71,81`; `scripts/migration-ledger-guard.cjs:19-20` | Partially — a real hole in an otherwise six-check guard. Proposed ticket in chapter 12. |
 | A dry run is not a pre-flight for a contract migration. | `scripts/migrate-prod.cjs:84-87` | Documented, not enforced — the read-only prod probe in `DB_MIGRATIONS.md:171-205` is manual. |
@@ -203,7 +203,7 @@ git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/work
 |---|---|
 | Whether the production database caught up on the first push after the re-arm, and whether anything was pending when it did. | A `workflow_dispatch` of `ci.yml` with `dry_run=true` (`ci.yml:554`), then read the `pending <tag>` list — remembering the dry run reconciles the **journal** and never executes a migration's SQL. Needs repo write access; not run here. |
 | Whether the Railway takedown is still planned at all. `ci.yml:577-582` still carries the warning that if it is, re-arming was "the wrong half of the fix" and prod should stop receiving deploys instead. Prod kept auto-deploying throughout the pause, which is how it reached `12d7cbec` with `verify-deploy` off. | The founder, or Railway → service → Deployments and Settings → Source. |
-| Whether GitHub Actions billing has fully recovered (the protection was removed 2026-08-19 because of a billing failure, `ci.yml:37-39`). | `gh run list --branch main`; CHARTER §7 warns that zero check-runs can mean an outage rather than a change. |
+| Whether GitHub Actions billing has fully recovered (the protection was removed 2026-08-19 because of a billing failure, `ci.yml:37-39`). | `gh run list --branch main`; CHARTER §11 warns that zero check-runs can mean an outage rather than a change. |
 | Whether `CSP_ENFORCE`, `BETA_ACCESS_CODE`, `VITE_PRELAUNCH_GATED` are set in the live service. | Railway Variables (founder-only). The live health body shows `email.configured: true`, so the email secret at least is set. |
 
 ## Analogy
@@ -243,7 +243,7 @@ window.
   `knowledge-base/runbooks/CHANGE_LEDGER.md:30` (the Railway-cutover ledger row),
   `knowledge-base/logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md` (the "build success ≠
   boot success" postmortem behind the boot probe).
-- Charter: `knowledge-base/routines/CHARTER.md` §7 (`:666-693`) — the only in-repo doc that both
+- Charter: `knowledge-base/routines/CHARTER.md` §11 (`:666-693`) — the only in-repo doc that both
   records the pause and names the accepted exposure.
 - Feature-map rows: area 41 (CI, the guard fleet and repository tooling) and area 39 (background
   jobs and scheduled sweeps). Owner: `.claude/agents/hq-ci-guards-owner.md` — its trap list (`:90-95`)

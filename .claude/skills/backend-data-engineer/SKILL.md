@@ -5,12 +5,12 @@ description: Use ONLY when the user explicitly invokes /backend-data-engineer or
 
 # Backend Data Engineer — the routine that owns the package the lender receives
 
-**Cadence:** daily, 11:00 UTC (CCR fleet — see CHARTER §3's second-fleet table).
+**Cadence:** daily, 11:00 UTC (CCR fleet — see CHARTER §8's second-fleet table).
 **Writes code:** yes — `server/**`, `shared/schema/**` + a same-PR `migrations/**` entry.
 **Produces:** at most **two** PRs + one report. A clean tick produces neither PR and says so.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
-The question you own is CHARTER §1's **A** — *does a clean, complete, valid mortgage package reach
+The question you own is CHARTER §4's **A** — *does a clean, complete, valid mortgage package reach
 the lender?* — on the data side: payload correctness, schema discipline, and MISMO/ULDD/URLA
 mapping honesty.
 
@@ -21,12 +21,12 @@ capture path, the UI Conformance Sweep owns visual conformance, Refactor Radar o
 Backend data integrity was inside the Primary Engineer's *company-wide* lane, where it competed
 with the whole roadmap for three PR slots a day and no run was ever judged on it.
 
-CHARTER §6a already recorded what that costs. The design standard shipped, its propagation was
+CHARTER §10a already recorded what that costs. The design standard shipped, its propagation was
 written as a *"may"* against two routines that had other jobs, and adoption sat at 17% for five
 weeks. **A standard nobody is assigned to propagate is a preference** — and so is a delivery
 package nobody is assigned to keep valid.
 
-The specific hazard is named in CHARTER §1: the seed-vs-organic gap. **Green delivery suites hide
+The specific hazard is named in CHARTER §4: the seed-vs-organic gap. **Green delivery suites hide
 it because the fixture is the seed.** A file assembled by the demo seeder has every field the
 exporter reads; a file assembled by a real borrower through the funnel, the URLA and the document
 uploader does not, and nothing in the daily loop is accountable for the difference.
@@ -84,7 +84,7 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   ([`scripts/security-review-guard.cjs`](../../../scripts/security-review-guard.cjs)) over the
   changed files on the final diff — never decide from memory whether you tripped it. A tripping
   diff ships as a **draft PR** with ⛔ *"write the security review or reject"*; the review itself
-  is always human-authored (CHARTER §1b, L2). Borrower PII goes through
+  is always human-authored (CHARTER §6, L2). Borrower PII goes through
   `server/services/encryptionService.ts` (SSNs via `server/services/ssnVault.ts`) — **which you may
   not edit** — and every PII-touching mutation writes a `server/auditLog.ts` entry. Response-body
   logging stays allow-list only. CSRF keeps its single `/api/webhooks/*` carve-out.
@@ -127,7 +127,7 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   production deploy and is L3: **the founder merges everything except the one artifact R12 names**,
   and R12's preconditions are what make that exception safe. Your own PRs are never in it.
 
-- **R12 — Dependency bumps: verify, never author (CHARTER §6c).** `package.json` and
+- **R12 — Dependency bumps: verify, never author (CHARTER §10c).** `package.json` and
   `pnpm-lock.yaml` stay off limits — **no new dependency, ever**, and you never edit either file.
   What you own is the *verdict* on a bump PR someone else opened: check out the branch, run the
   **full** gate (`pnpm check`, `pnpm test`, the `guard:*` suite, `pnpm audit --prod
@@ -136,7 +136,7 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   reason — and carry it in the report. **A major bump is escalated with its breaking-change list,
   never cleared**, and you never close anything.
 
-  **You may merge a green patch/minor bump — founder-authorized 2026-08-18 (§1b, §6c) — and the
+  **You may merge a green patch/minor bump — founder-authorized 2026-08-18 (§6, §10c) — and the
   preconditions are the authorization, not advice.** All seven, or you report and stop: manifest-only
   diff (`package.json`/`pnpm-lock.yaml` and nothing else); a bump of an **existing** dependency;
   patch or minor on a `>= 1.0.0` package (**a `0.x` minor counts as a major**); `main` green **and**
@@ -152,7 +152,7 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   the founder §8's bad-deploy runbook and name `git revert <merge-sha>` with the SHA filled in. The
   report states the merge SHA, the health commit you actually observed, and that rollback command.
 
-- **R13 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
+- **R13 — CHARTER §12, verbatim.** The escalation runbook binds unchanged.
 
 ## Modes
 
@@ -171,7 +171,7 @@ is unreachable — report exactly what you saw and stop).
    the checkout, follow the `git show origin/main:...` copy.
 2. `pnpm install --frozen-lockfile`. **Never add a dependency** — `package.json` and
    `pnpm-lock.yaml` are off limits to every routine, always.
-3. Read, in order: `CHARTER.md` (§1, §1a, §1b, §5, §6, §6b, §8–§11) → `REGISTER.md` →
+3. Read, in order: `CHARTER.md` (§4, §5, §6, §9, §10, §10b, §12–§15) → `REGISTER.md` →
    [`routines/LESSONS.md`](../../../knowledge-base/routines/LESSONS.md) →
    [`backend-data-engineer/LEDGER.md`](../../../knowledge-base/backend-data-engineer/LEDGER.md).
    A ledger row marked `refused` or `blocked-human` is **not** re-attempted.
@@ -191,11 +191,11 @@ is unreachable — report exactly what you saw and stop).
 Add your REGISTER row (routine, target files, worktree, branch, UTC timestamp, intent) and push it
 before you edit anything. If your intended target meets a live claim < 24 h old, take REGISTER's
 graduated response: adjacent → proceed naming the adjacency; direct overlap → pick different work
-or work CHARTER §5's assist ladder against what is already in flight.
+or work CHARTER §9's assist ladder against what is already in flight.
 
 ## Phase 2 — Select (at most two items)
 
-Rank by CHARTER §1 — question A first, then B — then the §1a Illinois tiebreak. Scan in this order:
+Rank by CHARTER §4 — question A first, then B — then the §5 Illinois tiebreak. Scan in this order:
 
 **(a) A red gate outranks everything.** If `pnpm check` or `pnpm test` is red on fresh `origin/main`
 (reinstall after a rebase before believing it), that failure is item one.
@@ -242,7 +242,7 @@ Release each REGISTER row in the same PR. Update ledger rows (`open` / `shipped 
 `blocked-human (why)` / `refused (why)`).
 
 Then one report at
-`knowledge-base/routines/reports/<YYYY-MM-DD>-backend-data-engineer.md`, CHARTER §9 order:
+`knowledge-base/routines/reports/<YYYY-MM-DD>-backend-data-engineer.md`, CHARTER §13 order:
 
 1. `STATUS: OK | WARN | FAIL` + a one-line verdict.
 2. **⛔ Human actions** — hardest first, or `none`.
@@ -251,7 +251,7 @@ Then one report at
 5. **Proposed tickets** — for Evening Triage to land.
 
 Final line: `STATUS: OK|WARN|FAIL`. Commit as `docs(routine): backend data engineer <date>`, on a
-branch, PR'd, **never pushed to `main`**. **Never edit `CTO_ROADMAP.md`** — CHARTER §4 gives
+branch, PR'd, **never pushed to `main`**. **Never edit `CTO_ROADMAP.md`** — CHARTER §3 gives
 Evening Triage exclusive authority over §0–§3.
 
 ## Status rules
@@ -269,9 +269,9 @@ Touch `client/**` · merge or auto-merge anything (L3) · author its own §9 sec
 contract migration · edit `CTO_ROADMAP.md`, `docs/**`, `data/regulatory/**`, `package.json` or
 `pnpm-lock.yaml` · add a dependency · edit `encryptionService.ts`, `ssnVault.ts`, auth/session code,
 `server/integrations/object_storage/**`, outbound messaging, or the underwriting/decision/rule
-engines · edit `package.json` or `pnpm-lock.yaml` even while triaging a bump (§6c authorizes a
+engines · edit `package.json` or `pnpm-lock.yaml` even while triaging a bump (§10c authorizes a
 merge, never an edit) · merge anything that is not a manifest-only patch/minor bump meeting all
-seven §6c preconditions · clear or merge a major version bump · enable auto-merge, ever ·
+seven §10c preconditions · clear or merge a major version bump · enable auto-merge, ever ·
 close anyone's PR · claim a deploy without the `commit` field of
 `GET /api/health` · assert a MISMO name it could not verify. The founder is the only merger; this routine's job is to make every backend merge
 a five-minute decision.

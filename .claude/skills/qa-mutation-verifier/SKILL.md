@@ -7,7 +7,7 @@ description: Use ONLY when the user explicitly invokes /qa-mutation-verifier or 
 
 **Cadence:** daily, 16:20 — after the Deliverable QA Sweep, before Evening Triage.
 **Writes code:** **only inside a throwaway worktree that is destroyed before the run ends.**
-Nothing it writes is ever committed (L1 per CHARTER §1b).
+Nothing it writes is ever committed (L1 per CHARTER §6).
 **Produces:** a `PROVEN` / `UNPROVEN` verdict per claimed fix that merged today.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 and [knowledge-base/routines/TEAM.md](../../../knowledge-base/routines/TEAM.md) win over this file
@@ -47,7 +47,7 @@ test`, to every guard, and to a reviewer reading the diff.
   looks like real work is worse than no run.
 - **R4 — Never weaken a test to make anything pass.** Not to fix a red, not to unblock a
   verification. A test that fails for an unrelated reason is reported `BLOCKED (reason)`. Weakening
-  a `complianceInvariants` test is a compliance incident, not a test fix (CHARTER §6).
+  a `complianceInvariants` test is a compliance incident, not a test fix (CHARTER §10).
 - **R5 — Report-only lane on the real tree.** You may write: your report and the hand-off board
   ([knowledge-base/routines/HANDOFF.md](../../../knowledge-base/routines/HANDOFF.md)). You may
   **never** commit to `client/**`, `server/**`, `shared/**`, `tests/**` or `migrations/**`. A
@@ -64,7 +64,7 @@ test`, to every guard, and to a reviewer reading the diff.
   before signing it off. Our own #547 shipped a silent-success fix that covered **only slot 1**,
   dropping co-borrower rows under a success message. A `PROVEN` verdict on one slot is not a
   verdict on the feature.
-- **R9 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, touch a production
+- **R9 — CHARTER §12, verbatim.** Never push to `main`, merge, enable auto-merge, touch a production
   variable, or run anything against production. Verification is **local** — `http://localhost:5001`
   (worktree servers on 5002). Never reproduce or verify against the deployed site: a failed Railway
   build leaves the previous container serving, so what you see there may not be the code you think.
@@ -80,7 +80,7 @@ exactly what you saw, including anything left behind, and stop).
 
 ## Phase 0 — Orient
 
-1. `git fetch origin`. Read CHARTER (§1, §1b, §6, §8–§11), TEAM.md, HANDOFF.md.
+1. `git fetch origin`. Read CHARTER (§4, §6, §10, §12–§15), TEAM.md, HANDOFF.md.
 2. Read today's `deliverable-qa-sweep` report and the day's merges
    (`git log --merges origin/main --since=...`, plus `gh pr list --state merged`).
 3. Confirm the tree is clean and `pnpm install` is current — a worktree with no install resolves
@@ -88,8 +88,8 @@ exactly what you saw, including anything left behind, and stop).
 
 ## Phase 1 — Build the verification queue
 
-Every fix merged to `main` since the last run that **claims** to close a defect. Rank by CHARTER §1
-(question A before B), then §1a. **A fix in the capture path outranks everything** — that is where
+Every fix merged to `main` since the last run that **claims** to close a defect. Rank by CHARTER §4
+(question A before B), then §5. **A fix in the capture path outranks everything** — that is where
 this defect class lives: the calculators → funnel → URLA path, plus consent and task surfaces.
 
 Take at most **five** per run. A properly mutation-proven verdict is the product; five hedged ones
@@ -111,7 +111,7 @@ Per fix, in its own throwaway worktree:
 
 Append a `VERDICTS` block to HANDOFF.md — every `UNPROVEN` names the seat that picks up the missing
 test tomorrow. Then one report at
-`knowledge-base/routines/reports/<YYYY-MM-DD>-qa-mutation-verifier.md` in CHARTER §9 order —
+`knowledge-base/routines/reports/<YYYY-MM-DD>-qa-mutation-verifier.md` in CHARTER §13 order —
 STATUS · ⛔ human actions (hardest first) · Summary ≤5 sentences · Evidence for every claim (the
 test name that reds, quoted from real output — never paraphrased) · Proposed tickets (≤3). Commit
 `docs(routine): qa-mutation-verifier <date>` on your own branch, PR it, never push to `main`.

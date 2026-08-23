@@ -81,8 +81,8 @@ poll must be added to that allow-list or it will bounce a signed-in user to `/lo
 ## How a shape changes
 
 1. **Only a backend lane proposes it.** The [Backend Data Engineer](../../../.claude/skills/backend-data-engineer/SKILL.md)
-   is accountable (CHARTER §6b); the Primary Engineer may also take one in its company-wide lane.
-   **The UI Conformance Sweep and the Wiring Audit may not** — CHARTER §6/§6a and DESIGN_SYSTEM §14
+   is accountable (CHARTER §10b); the Primary Engineer may also take one in its company-wide lane.
+   **The UI Conformance Sweep and the Wiring Audit may not** — CHARTER §10/§10a and DESIGN_SYSTEM §14
    forbid Zod edits and payload changes inside a visual batch, because capture fields feed the
    ULDD/UCD package and a large styling diff is where a dropped field hides best. They file a ticket.
 2. **A `shared/schema/**` diff ships its migration in the same PR** — hand-authored

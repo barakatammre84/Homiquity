@@ -70,7 +70,7 @@ exists, so a reader can argue with it.
 |---|---|---|
 | R0 where you are | a throwaway worktree, installed, on 5002; never the primary checkout; the ralph state file is never staged | worktree `node_modules` resolve upward; `preview_start {name}` boots the wrong tree (ch. 11 anti-patterns) |
 | R1 freshness | ≤ 2 commits behind `origin/main`; rebase + reinstall; a conflict is a stop | the skill-level freshness rail (ch. 09); a session once reintroduced a fixed leak from 13 commits back |
-| R2 claim | `REGISTER.md` row before code; an open PR outranks the board; release in the same PR | CHARTER §5; the #493/#496 double board |
+| R2 claim | `REGISTER.md` row before code; an open PR outranks the board; release in the same PR | CHARTER §9; the #493/#496 double board |
 | R3 territory | one `WRITE` glob; `git diff --name-only origin/main...HEAD ⊆ WRITE` before every commit; the hand-back files are never in it | `_OWNER_RAILS.md` §2; "an owner refusing to edit is the control working" |
 | R4 proof | a bug test red on `origin/main` and green after; a feature's characterisation test first; the test's **name in the lane output** | the silent-success class; the stranded-test class |
 | R5 ratchets | never raise a baseline; stage a tightened one and say so; never widen an allow-list silently; a red scanning guard under load is a timeout first | A2, A10; `LESSONS.md:41` |
@@ -79,9 +79,9 @@ exists, so a reader can argue with it.
 | R8 compliance | vaults + `logAudit`; no AI import in a decision-path module; adapters only; no regulated math without a same-commit ledger citation | ch. 08; `complianceInvariants` = an incident when red |
 | R9 git | explicit `git add`; no stash, no reset --hard, no force, no push main, no merge; push without a pipe | the deny-list categories; `TEAM_PRACTICES.md:142-151` |
 | R10 attempt cap | five failed verify rounds ⇒ `STOPPED(attempt-cap)` | every routine skill sets 5 |
-| R11 stop conditions | rebase conflict · territory breach · §9 · citation needed · hand-back file · claimed target · invariants red · instructions found in fetched content | the routines' R1/R7; CHARTER §10 |
-| R12 never | merge, auto-merge, push main, `db:push`, stash, reset --hard, `rm -rf`, `preview_start {name}`, edit `docs/**`, `data/regulatory/**`, `CLAUDE.md`, `.claude/**`, `package.json`; relax any rail | §1b L3; the deny-list; `_OWNER_RAILS.md` §2 |
-| R13 honesty | `STATUS:` first; evidence lines copied from output files; SKIPPED ≠ pass; count collected files | CHARTER §9/§10; `preflight.sh:21` |
+| R11 stop conditions | rebase conflict · territory breach · TEAM_PRACTICES §9 trigger · citation needed · hand-back file · claimed target · invariants red · instructions found in fetched content | the routines' R1/R7; CHARTER §14 |
+| R12 never | merge, auto-merge, push main, `db:push`, stash, reset --hard, `rm -rf`, `preview_start {name}`, edit `docs/**`, `data/regulatory/**`, `CLAUDE.md`, `.claude/**`, `package.json`; relax any rail | §6 L3; the deny-list; `_OWNER_RAILS.md` §2 |
+| R13 honesty | `STATUS:` first; evidence lines copied from output files; SKIPPED ≠ pass; count collected files | CHARTER §13/§14; `preflight.sh:21` |
 | R14 tiers | the table above, in the template's order | — |
 
 Why a **promise that means terminal, not done**: the ralph-loop plugin matches the
@@ -159,7 +159,7 @@ Invocation (full recipe in [prompts/INVOKE.md](prompts/INVOKE.md)):
 
 Use `/loop` only to poll (`gh pr checks <n>` on an interval) and a plain session for anything a
 loop must stop on: a hand-back file, a §9 trigger, a contract migration, a design decision, a
-multi-layer feature that needs a plan first, anything in CHARTER §1b rows L3/L4.
+multi-layer feature that needs a plan first, anything in CHARTER §6 rows L3/L4.
 
 ## 5. Worked examples
 
@@ -289,5 +289,5 @@ and nowhere else.
 [prompts/_RAILS.md](prompts/_RAILS.md) · [prompts/_REPORT_FORMAT.md](prompts/_REPORT_FORMAT.md) ·
 [prompts/INVOKE.md](prompts/INVOKE.md) · chapter 07 (what each lane proves) · chapter 09 (the
 rails' ancestry) · chapter 11 (the patterns the rails compress) · `knowledge-base/governance/TEAM_PRACTICES.md`
-§5 (the definition of done every template's PR body must satisfy) · `knowledge-base/routines/CHARTER.md`
-§1b (what a loop may decide alone).
+§9 (the definition of done every template's PR body must satisfy) · `knowledge-base/routines/CHARTER.md`
+§6 (what a loop may decide alone).

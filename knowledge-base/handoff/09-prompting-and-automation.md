@@ -78,7 +78,7 @@ flowchart TD
 - **58 agents, 41 owners, one rails file.** `ls .claude/agents/*.md | wc -l` → `58`;
   `ls .claude/agents/hq-*-owner.md | wc -l` → `41`; `.claude/agents/_OWNER_RAILS.md:3` — "It is read,
   not copied: no hq-*-owner agent restates these rules, so there is nothing to drift"; `:7-9` it
-  subordinates itself to CHARTER §5, §6, §8, §10 ("Where this file and those disagree, those win
+  subordinates itself to CHARTER §9, §10, §12, §14 ("Where this file and those disagree, those win
   and this file is the bug"); `:106` names the dominant defect class — "an operation that does not
   happen while the UI says it did". `.claude/agents/hq-auth-owner.md:42` — "This area is almost
   entirely hand-back"; `:36` — "The claim outranks ownership." Fifteen agents say "never fix(es)"
@@ -96,11 +96,11 @@ flowchart TD
   fresh worktree, `TMP=$(mktemp -d)` never inside the repo) → detect with date-qualified ids
   (`DA-<MMDD>-<NN>`, `RR-###`) and a fixed taxonomy → fix in lanes (fix now / fix + ⛔ flag /
   propose only — "when unsure which lane, the safer lane wins") → a verify loop with a TEST-RAN
-  assertion and a staleness re-check → ledger in the same PR → a CHARTER §9 report → LESSONS → a
+  assertion and a staleness re-check → ledger in the same PR → a CHARTER §13 report → LESSONS → a
   "what this routine deliberately does not do" section. The sharpest rail in the corpus is
   doc-accuracy D7 (`:50-55`): a doc stating an invariant the code violates may be a regression —
   "editing the doc to match broken code launders the regression."
-- **The charter.** `knowledge-base/routines/CHARTER.md` — 855 lines, 14 H2s. §1b (`:120-147`):
+- **The charter.** `knowledge-base/routines/CHARTER.md` — 855 lines, 14 H2s. §6 (`:120-147`):
   L1 decides and acts · L2 acts then flags (expand-only migrations, any §9-tripping diff as a draft
   PR) · L3 prepares, a human signs (merging — "a merge to `main` is a production deploy" — contract
   migrations, filings, money, production variables, launch go/no-go) · L4 human-only; "A rail the
@@ -117,7 +117,7 @@ flowchart TD
   registered in the scheduler is not a routine — it is a fossil"; and six on-disk skills are
   explicitly *not* on the clock (`:249-253` — "read this table and `list_scheduled_tasks`").
   Freshness ≤ 2 commits and backpressure ≥ 2 PRs are **skill-level** rails
-  (`financial-audit/SKILL.md:24`, `doc-accuracy/SKILL.md:47-51`); CHARTER §5's clock is 24 h
+  (`financial-audit/SKILL.md:24`, `doc-accuracy/SKILL.md:47-51`); CHARTER §9's clock is 24 h
   staleness and a 72 h / 7-day decide-or-close.
 - **The board.** `knowledge-base/routines/REGISTER.md:23` — "A claim is a courtesy, not a mutex";
   `:29` "The stronger signal is always origin/main"; a three-tier overlap protocol (`:80-90`); three
@@ -224,7 +224,7 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 Every routine is a locum who has never seen this patient and will never see them again
 (`CHARTER.md:6` — "Each routine runs in a fresh session with no memory of any other run"), so the
 ward runs on the chart, not on recall: the chart says what may be prescribed without a consultant
-(§1b), who is operating on which organ right now (REGISTER), what killed the last patient (LESSONS,
+(§6), who is operating on which organ right now (REGISTER), what killed the last patient (LESSONS,
 §10), and that a note must carry the time it was written. The four Markdown guards are the audit
 clerk who checks the chart is legible, filed and pointing at wards that still exist — and who
 explicitly cannot check whether the diagnosis is right. And the aviation checklist works because a
@@ -244,8 +244,8 @@ second pilot reads it aloud; this cockpit has no hooks, so nobody does.
 ## Go deeper
 
 Read in this order: `CLAUDE.md` (note how much it delegates) → `.claude/agents/_OWNER_RAILS.md`
-(the shortest complete statement of the value system) → `knowledge-base/routines/CHARTER.md` §0,
-§1b, §5, §10 (skip §2/§3/§6 on a first pass — tables to look up, not prose to read) →
+(the shortest complete statement of the value system) → `knowledge-base/routines/CHARTER.md` §1,
+§6, §9, §14 (skip §7/§8/§10 on a first pass — tables to look up, not prose to read) →
 `.claude/skills/refactor-radar/SKILL.md` end to end (the canonical skeleton) →
 `.claude/skills/doc-accuracy/SKILL.md` (D7 at `:67-72` is the single best idea in the corpus) →
 `.claude/agents/hq-auth-owner.md` (the sharpest yours / hand-back / not-yours boundary) →

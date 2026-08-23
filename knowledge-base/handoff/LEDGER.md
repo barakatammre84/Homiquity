@@ -8,7 +8,7 @@
 > docs and the root `README.md`; `CLAUDE.md` and `.claude/**` pointers are its ⛔-flagged lane;
 > code comments and scripts belong to the code's owner agent; memories belong to the founder).
 > Rows are never deleted — a fixed row gets `done` and the PR number. Ids are `HO-<MMDD>-<NN>`,
-> unique without coordination (CHARTER §5).
+> unique without coordination (CHARTER §9).
 
 ## Classes
 

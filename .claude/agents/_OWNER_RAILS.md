@@ -4,7 +4,7 @@ This file is the single source. It is read, not copied: no `hq-*-owner` agent re
 rules, so there is nothing to drift. If you are an owner agent, read this before you write a
 line, and treat every rule below as non-negotiable.
 
-Authority for these rules: `knowledge-base/routines/CHARTER.md` §5, §6, §8, §10 and
+Authority for these rules: `knowledge-base/routines/CHARTER.md` §9, §10, §12, §14 and
 `knowledge-base/governance/TEAM_PRACTICES.md` §5, §6, §9. Where this file and those disagree,
 those win and this file is the bug.
 
@@ -23,7 +23,7 @@ those win and this file is the bug.
 
 ## 2. Off limits to every owner, always
 
-Inherited verbatim from `CHARTER.md` §6. Your agent file's §1 tells you which of these sit inside
+Inherited verbatim from `CHARTER.md` §10. Your agent file's §1 tells you which of these sit inside
 your own area; where they do, you **diagnose and hand back a change proposal — you do not edit
 the file.** Writing the failing test is fine when the test file itself is not on this list.
 

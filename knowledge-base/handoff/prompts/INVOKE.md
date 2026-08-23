@@ -50,14 +50,14 @@ about:
 ```
 
 A `/loop` never edits files — an edit on a timer with no rails is the failure mode the routine
-CHARTER was written to prevent (`knowledge-base/routines/CHARTER.md` §0).
+CHARTER was written to prevent (`knowledge-base/routines/CHARTER.md` §1).
 
 ## 3. A plain session — when a loop is the wrong tool
 
 Use an ordinary session (with the same rails read first) for anything the loop must stop on:
 work that needs a design or taste decision; a change in a hand-back file (auth, the engines,
 the vaults); anything that trips §9; a contract migration; a multi-layer feature that needs a
-plan before its loops; anything in CHARTER §1b rows L3/L4 (merging, production variables,
+plan before its loops; anything in CHARTER §6 rows L3/L4 (merging, production variables,
 disclosure policy, regulator correspondence).
 
 ## 4. After `STATUS: DONE` — what only a human does

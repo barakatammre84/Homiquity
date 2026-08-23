@@ -92,7 +92,7 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
 - **Freshness is a separate five-tier axis.** `README.md:55,65,81,85,101` — `### Tier 1 — Live
   sources of truth` … `### Tier 5 — Archive`. `grep -n '^### Tier' README.md`.
 - **Machine authority is graded too, with different L-numbers.** `knowledge-base/routines/CHARTER.md:120`
-  §1b: L1 decides and acts · L2 acts then flags · L3 prepares, a human signs (merging any PR is a
+  §6: L1 decides and acts · L2 acts then flags · L3 prepares, a human signs (merging any PR is a
   production deploy) · L4 human-only. Do not confuse doc-L1 (vision) with charter-L1 (autonomy).
 - **The ownership map: 41 areas, 41 owners, one-to-one.** `knowledge-base/handbook/FEATURE_MAP.md:31`
   is the header row `| # | Area | Owner agent | Review domain | Last reviewed | Also writes here |`;
@@ -186,7 +186,7 @@ Answer each with a `path:line`; the key is in [TEACHBACK_KEY.md](TEACHBACK_KEY.m
   the precedence block at `knowledge-base/README.md:12-20`; the tier tables at `README.md:36-104`.
 - Ownership: `knowledge-base/handbook/FEATURE_MAP.md` (rows `:33-73`, detail `:83-695`);
   `.claude/agents/_OWNER_RAILS.md`; `knowledge-base/routines/feature-coverage/LEDGER.md`.
-- Machine authority and the claim board: `knowledge-base/routines/CHARTER.md` §1b (`:120-146`),
+- Machine authority and the claim board: `knowledge-base/routines/CHARTER.md` §6 (`:246-274`),
   §5 (`:406`), §6 (`:507`); `knowledge-base/routines/REGISTER.md` — "a file in another session's
   open PR is claimed no matter who owns it; the claim outranks ownership" (`FEATURE_MAP.md:742-744`).
 - Owner agents for this chapter's files: `shared/roles.ts` is referenced by

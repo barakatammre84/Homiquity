@@ -65,4 +65,4 @@ Rules for filling it:
 ```
 
 These mirror the definition of done in `knowledge-base/governance/TEAM_PRACTICES.md` §5 and the
-report shape in `knowledge-base/routines/CHARTER.md` §9 (`STATUS` first, evidence per claim).
+report shape in `knowledge-base/routines/CHARTER.md` §13 (`STATUS` first, evidence per claim).

@@ -117,15 +117,15 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [STAFF_JOURNEYS.md](feature-review/STAFF_JOURNEYS.md) — the 5 staff-desk charters: one file crossing many hands, walked as the seat and its counterpart.
 
 ### Routines — the autonomous operating cadence · [`routines/`](routines/)
-The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**
-- [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the launch sequence (§1a), the decision authority matrix (§1b), the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
+The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §8a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**
+- [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the launch sequence (§5), the decision authority matrix (§6), the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
 - [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
 - [TEAM.md](routines/TEAM.md) — the seating chart: which hiring-plan role each routine occupies, why only
   three seats were added rather than one per role, the working day in clock order, and the rule that makes
   it a team — **no seat signs off its own work**.
 - [HANDOFF.md](routines/HANDOFF.md) — the team's shared queue: `DECISIONS` / `ASKS` / `VERDICTS` / `WAITING`.
   Not the claim lock — every row names the seat that acts next.
-- [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
+- [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §14; may never loosen a compliance rail.
 - [reports/](routines/reports/) — dated run reports; the proof-of-life record.
 - [feature-completion/LEDGER.md](routines/feature-completion/LEDGER.md) — the Feature Completion Engine's cross-run memory: the domain rotation, the gap taken, and — the load-bearing column — every gap it **refused** and why, so the next run does not re-derive the refusal.
 - [primary-engineer/LEDGER.md](primary-engineer/LEDGER.md) — the Primary Engineer's own work queue (Phase 1 source d); rows cite their source or are invalid.
@@ -135,7 +135,7 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
 - [LEDGER.md](ui-conformance/LEDGER.md) — cross-run memory for
   [`/ui-conformance-sweep`](../.claude/skills/ui-conformance-sweep/SKILL.md): converted surfaces,
   refusals with reasons, per-metric floors, and the `guard:ui` count trend. The routine exists
-  because CHARTER §6a's own line — *a standard nobody is assigned to propagate is a preference* —
+  because CHARTER §10a's own line — *a standard nobody is assigned to propagate is a preference* —
   described the state the design system was actually in.
 
 ### Backend Data Engineer — autonomous backend/delivery-integrity routine · [`backend-data-engineer/`](backend-data-engineer/)
@@ -143,7 +143,7 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
   [`/backend-data-engineer`](../.claude/skills/backend-data-engineer/SKILL.md): the backend work queue,
   and an append-only **refusal record** of MISMO names, enumerations and edit codes that could not be
   verified against `docs/fannie-mae/` or the Loan Delivery job aid — so no later run re-derives one from
-  memory. The routine owns CHARTER §1's question A on the data side (§6b).
+  memory. The routine owns CHARTER §4's question A on the data side (§10b).
 
 ### Complex File Engine — autonomous complex-file qualification routine · [`complex-file-engine/`](complex-file-engine/)
 The daily local-fleet `/complex-file-engine` run (skill in `.claude/skills/complex-file-engine/`):
@@ -152,7 +152,7 @@ income orchestrator, situation identification, and tax/document intelligence tha
 borrower qualify at all. Judged on one recomputed number, never one quoted from a doc: how many real
 borrower situations the platform can qualify, correctly and citably. It **never** edits the three
 underwriting engine files and **never** changes regulated math — both are written up as proposals
-(CHARTER §6d).
+(CHARTER §10's always-off-limits list; the doc cited a "§6d" that never existed — corrected 2026-08-23).
 - [LEDGER.md](complex-file-engine/LEDGER.md) — the `CF-<MMDD>-<NN>` findings queue, plus two
   append-only sections: **verified-not-a-defect** (things a run went looking for and found already
   built — the guard against rebuilding an engine a doc calls missing) and **refusals** with the gate
@@ -169,7 +169,7 @@ The looping `/financial-audit` run (skill in `.claude/skills/financial-audit/`):
 
 ### Doc Accuracy — the knowledge-base steward routine · [`doc-accuracy/`](doc-accuracy/)
 The daily `/doc-accuracy` run — local fleet, 19:30, scheduled task `doc-accuracy-daily`
-([routines/CHARTER.md](routines/CHARTER.md) §3; skill in `.claude/skills/doc-accuracy/`): owns the gap the
+([routines/CHARTER.md](routines/CHARTER.md) §8; skill in `.claude/skills/doc-accuracy/`): owns the gap the
 guards can't see — **semantic currency**. `guard:kb` proves indexed-and-linked, `guard:docs` proves
 re-verified-on-time; this routine verifies living docs against the code, corrects factual drift
 (docs-only, one PR per tick, meaning-preserving — rule changes are proposed, never edited), banners
@@ -208,7 +208,7 @@ rows consumed as findings, and the corpus's fresh-hire teach-back re-run every f
 - [logs/2026-08-18-financial-architecture-reaudit-vendor-order-cost-capture.md](logs/2026-08-18-financial-architecture-reaudit-vendor-order-cost-capture.md) — re-audit at HEAD `a846325` ("The Order That Costs Nothing"), four days after the 08-14 propagation pass. **Rescued 2026-08-20** from `claude/fervent-mayer-3ear33`; ledger edits not rescued (same reason as above).
 - [logs/2026-08-20-merge-queue-close-out.md](logs/2026-08-20-merge-queue-close-out.md) — the founder-directed merge-queue drain under the standing merge authority granted that day: 19 open PRs + ~30 bare branches → 21 PRs' content merged and deployed (all locally gated through the Actions billing outage), 14 dead branches tombstoned, the #615 stacked-base incident (caught, recovered as #630, `baseRefName` now a mandatory pre-merge check), the parked founder-decision list, and the standing anti-drain rules (drain before build · done = merged + health-verified · no bare branches).
 
-- [logs/2026-08-18-session-closeout-local-development.md](logs/2026-08-18-session-closeout-local-development.md) — the fleet-state close-out for the move to local development: what #574 put on `main` (the Backend Data Engineer, §5's decide-or-close clock, and §6c's founder-authorized L3 dependency-merge carve-out — **all live in the charter while every trigger that would execute them is off**), the six local-setup traps measured against a running stack, and why `.github/workflows/cron-jobs.yml`'s seven production sweeps were deliberately **left running** (two are compliance watchdogs — `adverse-action-delivery` is an ECOA §1002.9 30-day statutory alarm). Recovered from a session archived mid-push; carries a note saying what that cost and two ✅ corrections.
+- [logs/2026-08-18-session-closeout-local-development.md](logs/2026-08-18-session-closeout-local-development.md) — the fleet-state close-out for the move to local development: what #574 put on `main` (the Backend Data Engineer, §9's decide-or-close clock, and §10c's founder-authorized L3 dependency-merge carve-out — **all live in the charter while every trigger that would execute them is off**), the six local-setup traps measured against a running stack, and why `.github/workflows/cron-jobs.yml`'s seven production sweeps were deliberately **left running** (two are compliance watchdogs — `adverse-action-delivery` is an ECOA §1002.9 30-day statutory alarm). Recovered from a session archived mid-push; carries a note saying what that cost and two ✅ corrections.
 - [logs/2026-08-18-parked-branches.md](logs/2026-08-18-parked-branches.md) — the branch inventory written when the cloud fleet was stood down for local-first development: which parked branches became PRs (#579/#581/#582), which two are parked on a founder decision rather than on readiness (the calm-emerald palette proposal, which contradicts the binding Royal Blue Emerald standard and edits two now-archived docs; and the routine-governance remainder, moot while every trigger is disabled), the five branches that share **no merge base** with `main` and can only be extracted file-by-file, and where closed-PR content lives (`archive/*` tags).
 - [logs/2026-08-18-knowledge-file-audit.md](logs/2026-08-18-knowledge-file-audit.md) — founder-commissioned knowledge-file audit (operating-playbook Step 1, manifest only): the five-upload Better-teardown corpus classified against the repo KB at `3287f3c` — incoming corpus canonical but shipping one stale duplicate (the standalone knowledge doc is the older revision) and four code-refuted claims (the "-subtle tokens unmapped" premise its components are built on is false at HEAD; the nested-control defect is real but wider — 12 sites, different mechanism; the "404" hero images exist and are wired at HEAD, stale-deploy class; the CTA flash is a deliberate skeleton); repo KB clean by its own guards (150 docs indexed, no dead links, 6 living docs fresh; rename residue historical-only, `apr.ts` a domain-term false positive); the four stale app-UI routines confirmed gone from the CCR trigger list; the two new world-copy triggers flagged for rewrite (monthly-financial must invoke `/financial-audit` instead of re-deriving the ledger; weekly-UX must cite FINDINGS.md and drop `push` access), with the financial-audit scheduling-ownership question put to the founder; Step-2 consolidation staged and founder-gated.
 

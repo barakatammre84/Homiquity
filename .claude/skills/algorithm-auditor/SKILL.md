@@ -6,7 +6,7 @@ description: Use ONLY when the user explicitly invokes /algorithm-auditor or exp
 # Algorithm Auditor — attack one calculation until it breaks or holds
 
 **Cadence:** daily, 18:20 — after the Workflow Prover, before Evening Triage.
-**Writes code:** no. Its ledger and report only (L1 per CHARTER §1b).
+**Writes code:** no. Its ledger and report only (L1 per CHARTER §6).
 **Produces:** one algorithm audited by differential, property and boundary attack.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
@@ -56,14 +56,14 @@ where policy says it must come from.
   `data/regulatory/regulatory-ledger.json` entry, which a **builder** lands with the code; you
   propose it.
 - **R5 — Never weaken a `complianceInvariants` test.** A failure there is a compliance incident,
-  not a flaky test (CHARTER §6). Report it as an incident and stop touching it.
+  not a flaky test (CHARTER §10). Report it as an incident and stop touching it.
 - **R6 — Findings only; never fix.** A fix, however small and however obvious, is a proposed ticket
   naming the file, the input that breaks it, and the expected output.
 - **R7 — Every claim carries the input that produces it.** A finding without a reproducing input is
   not a finding. Quote the exact call and the exact output.
 - **R8 — Date every standing claim** against `origin/main` before reporting it (R9 of the house
   rules; `git log -S '<symbol>' -- <path>`). Re-finding a fixed bug erodes the ledger.
-- **R9 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, or touch a
+- **R9 — CHARTER §12, verbatim.** Never push to `main`, merge, enable auto-merge, or touch a
   production variable. `git add` explicit paths only.
 - **R10 — Honesty.** A property you could not test is `SKIPPED (reason)`. Never report a sweep as
   exhaustive when it sampled. State the sample size and the range.
@@ -114,7 +114,7 @@ a P0.
 
 Append confirmed findings to the hand-off board naming the builder seat; send anything needing a
 guideline reading to the Domain Oracle rather than adjudicating it yourself. Then one report at
-`knowledge-base/routines/reports/<YYYY-MM-DD>-algorithm-auditor.md` in CHARTER §9 order — STATUS ·
+`knowledge-base/routines/reports/<YYYY-MM-DD>-algorithm-auditor.md` in CHARTER §13 order — STATUS ·
 ⛔ human actions · Summary ≤5 sentences · Evidence (the reproducing input and the real output for
 every claim) · Proposed tickets (≤3). Commit `docs(routine): algorithm-auditor <date>` on your own
 branch, PR it, never push to `main`.

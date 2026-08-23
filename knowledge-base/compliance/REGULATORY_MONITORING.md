@@ -90,7 +90,7 @@ dates and `codeRef` paths, plus a paste-ready intake block in the
 **No script writes the compliance registry.** Promotion of a signal into
 [UNDERWRITING_SCENARIO_INTAKE.md](./UNDERWRITING_SCENARIO_INTAKE.md) is authored by a human or the
 `/domain-oracle` routine, **with a citation**. A script that could file its own scenario rows
-would be a machine authoring credit policy, which CHARTER §1b places at L4, human-only. Dispositions
+would be a machine authoring credit policy, which CHARTER §6 places at L4, human-only. Dispositions
 are recorded (`--promote` / `--dismiss "<reason>"`), never deleted — a row that vanishes is
 indistinguishable from one nobody ever saw.
 

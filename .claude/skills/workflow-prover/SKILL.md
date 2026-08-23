@@ -6,7 +6,7 @@ description: Use ONLY when the user explicitly invokes /workflow-prover or expli
 # Workflow Prover — run one workflow end to end and prove the values are true
 
 **Cadence:** daily, 17:10 — after the QA Sweep, with the server the App Walker left running.
-**Writes code:** no. Its trace, the workflow ledger, and its report (L1 per CHARTER §1b).
+**Writes code:** no. Its trace, the workflow ledger, and its report (L1 per CHARTER §6).
 **Produces:** a per-step pass/fail trace for one workflow, with **value equality** at every seam.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
@@ -66,7 +66,7 @@ write, a co-applicant's rows landing under the primary borrower.
 - **R8 — Date every standing claim.** Before reporting a step as broken, verify against
   `origin/main` (`git log -S '<symbol>' -- <path>`). WF2-F4 sat asserted in three documents for a
   week after it was fixed, and nearly shipped to eight routines as the headline launch blocker.
-- **R9 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, or touch a
+- **R9 — CHARTER §12, verbatim.** Never push to `main`, merge, enable auto-merge, or touch a
   production variable. `git add` explicit paths only.
 - **R10 — Honesty.** A step you could not execute is `SKIPPED (reason)` — never `PASS` by
   inference from code. Static tracing is a legitimate fallback **only when labelled as such**, and
@@ -111,7 +111,7 @@ more than one that stops at the first. Record `[gate]` steps by what they refuse
 
 Update the workflow's row in `WORKFLOWS.md` — last run, verdict, and any new finding id. Append
 confirmed findings to the hand-off board naming the builder seat. Then one report at
-`knowledge-base/routines/reports/<YYYY-MM-DD>-workflow-prover.md` in CHARTER §9 order — STATUS ·
+`knowledge-base/routines/reports/<YYYY-MM-DD>-workflow-prover.md` in CHARTER §13 order — STATUS ·
 ⛔ human actions · Summary ≤5 sentences · Evidence (real requests and responses, quoted) · Proposed
 tickets (≤3). Commit `docs(routine): workflow-prover <date>` on your own branch, PR it, never push
 to `main`.

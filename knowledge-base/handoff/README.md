@@ -77,7 +77,7 @@ Three layers, weakest to strongest:
    chapter's prove-it block at the new `origin/main` tip, and re-stamps the SHA. A number that
    changed is a prose edit plus, if another doc carried the old number, a ledger row.
 3. **A steward.** The doc-accuracy routine (`.claude/skills/doc-accuracy/SKILL.md`, daily at
-   19:30 — `../routines/CHARTER.md` §3) runs the refresh protocol below as its Phase 1.4 on every
+   19:30 — `../routines/CHARTER.md` §8) runs the refresh protocol below as its Phase 1.4 on every
    tick, consumes `HO-` rows as its own findings and closes them when their fix is on
    `origin/main`, and re-runs the fresh-hire teach-back every fourteenth tick. The hand-invoked
    `handoff-refresh` skill (`.claude/skills/handoff-refresh/SKILL.md`) is the same protocol for a
@@ -139,7 +139,7 @@ hand-back naming the line, the change and the owner. **It never merges.**
 
 Merging · the T5 `/api/health` commit check · §9 security reviews · contract migrations · anything
 in a hand-back file (auth, the decision engines, the PII vaults) · regulated math without a ledger
-citation · CHARTER §1b rows L3 and L4.
+citation · CHARTER §6 rows L3 and L4.
 
 ### The five facts that bite hardest, and where each is proved
 

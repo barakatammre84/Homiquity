@@ -6,7 +6,7 @@ routine (daily 10:40 local). Each run reads this **before** Phase 1 and appends 
 Three sections, three different jobs:
 
 - **§1 Findings** — the work queue. Ids are `CF-<MMDD>-<NN>` using the **run's own date**
-  (CHARTER §5: date-qualified by construction, never a bare next-free integer — six sessions once
+  (CHARTER §9: date-qualified by construction, never a bare next-free integer — six sessions once
   minted six different `F-20`s).
 - **§2 Verified-not-a-defect** — **append-only.** Things a run went looking for and found already
   correctly built. This section is the guard against the house's most expensive research failure:
@@ -48,5 +48,5 @@ against the code in that session at `de3c44e1`, not carried over from a document
 | refused | what | why | reopens only if |
 |---|---|---|---|
 | 2026-08-18 | Computing any DSCR pass/fail verdict, or any bank-statement figure, from published/marketing sources or from the model's own knowledge. | C2/C4. A wrong non-QM number leaks into a lender package and cannot be recalled. The TPO portal matrix controls, and it is not in-repo. | The AE matrix is transcribed into `docs/lender-programs/angel-oak/` (founder action `CF-0818-03`). |
-| 2026-08-18 | Editing `server/underwritingEngine.ts`, `server/services/decisionEngine.ts`, `server/services/ruleEngine.ts`. | C1 / CHARTER §6 + §1b: credit policy is L4, human-only — it is what the licensee is accountable for. | Never, for this routine. Engine changes are proposals in the report; the founder executes them. |
-| 2026-08-18 | Writing to `data/regulatory/regulatory-ledger.json` to accompany a regulated-math change. | C3. CHARTER §6 puts `data/regulatory/**` off limits to every routine *and* requires a same-commit ledger citation for regulated math — together they mean this routine may not change regulated math at all. It drafts the entry verbatim in the report instead. | The founder amends CHARTER §6 knowingly (§1b: rails are never relaxed by a routine or by a session acting for one). The proposal is in the routine's registration report, 2026-08-18. |
+| 2026-08-18 | Editing `server/underwritingEngine.ts`, `server/services/decisionEngine.ts`, `server/services/ruleEngine.ts`. | C1 / CHARTER §10 + §6: credit policy is L4, human-only — it is what the licensee is accountable for. | Never, for this routine. Engine changes are proposals in the report; the founder executes them. |
+| 2026-08-18 | Writing to `data/regulatory/regulatory-ledger.json` to accompany a regulated-math change. | C3. CHARTER §10 puts `data/regulatory/**` off limits to every routine *and* requires a same-commit ledger citation for regulated math — together they mean this routine may not change regulated math at all. It drafts the entry verbatim in the report instead. | The founder amends CHARTER §10 knowingly (§6: rails are never relaxed by a routine or by a session acting for one). The proposal is in the routine's registration report, 2026-08-18. |

@@ -6,7 +6,7 @@ description: Use ONLY when the user explicitly invokes /move-up-lane or explicit
 # Move-Up Lane — the above-conforming borrower nobody owns
 
 **Cadence:** weekly, Wednesday 14:10 — mid-week, clear of every daily builder.
-**Writes code:** yes — at most ONE PR per run, never merged (L2 per CHARTER §1b).
+**Writes code:** yes — at most ONE PR per run, never merged (L2 per CHARTER §6).
 **Owns:** the move-up / jumbo lane — the "You're moving up" door, the conforming-limit boundary,
 jumbo product surfacing, and the honesty of what we tell a borrower above the limit.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
@@ -90,7 +90,7 @@ every guard in the repo was green.
 
 ## Phase 0 — Orient
 
-1. `git fetch origin`. Read CHARTER (§1, §1b, §5, §6, §8–§11), `REGISTER.md`, `HANDOFF.md`.
+1. `git fetch origin`. Read CHARTER (§4, §6, §9, §10, §12–§15), `REGISTER.md`, `HANDOFF.md`.
 2. Read `JOURNEYS.md §4` and the last `journey-walker-affluent` walk, if there is one. A WAITING
    handoff row naming this seat jumps the queue.
 3. Re-derive the lane's state from code — never from this file, and never from the backlog below,
@@ -128,7 +128,7 @@ of it.**
 
 ## Phase 4 — Report
 
-`knowledge-base/routines/reports/<YYYY-MM-DD>-move-up-lane.md`, CHARTER §9's five-part order —
+`knowledge-base/routines/reports/<YYYY-MM-DD>-move-up-lane.md`, CHARTER §13's five-part order —
 STATUS · ⛔ human actions · Summary ≤5 sentences · Evidence (measured, quoted from real output) ·
 Proposed tickets (≤3). End with `STATUS: OK|WARN|FAIL`.
 

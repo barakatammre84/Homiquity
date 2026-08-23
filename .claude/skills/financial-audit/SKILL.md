@@ -85,7 +85,7 @@ was when the loop started.
       a stub). Declared intent, which `main` cannot show until work lands. Read it,
       honour live claims, and **write your own claim** before Phase 2. The contract
       around it — graduated overlap, the assist ladder, date-qualified finding ids —
-      is [`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) §5, which
+      is [`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) §9, which
       binds this routine and wins wherever it and this file disagree.
    c. **`ListAgents` / `SendMessage` — a bonus, never the gate.** Verified blind on
       2026-08-12: it returned *No reachable agents* while another session's financial

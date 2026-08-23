@@ -531,7 +531,7 @@ out of autonomous scope — flag it.
 
 **What is not verifiable here, and must not be claimed:** the client test lane is happy-dom,
 which has **no layout engine**. There is no Playwright, no Storybook and no axe in this repo, and
-`CHARTER.md` §6 forbids adding dependencies. So no automated check in this repo can prove a
+`CHARTER.md` §10 forbids adding dependencies. So no automated check in this repo can prove a
 rendered layout, a contrast ratio in situ, or a mobile viewport. Say what you actually ran.
 
 ---

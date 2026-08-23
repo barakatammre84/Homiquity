@@ -1,13 +1,13 @@
 # State launch ladder — licensing & compliance posture per state
 
 **Maintained by:** the `compliance-watch` routine (Tuesdays). **Owner of every decision:** the
-founder — every filing/signature is L3 per CHARTER §1b. **Seeded:** 2026-08-17, deliberately
+founder — every filing/signature is L3 per CHARTER §6. **Seeded:** 2026-08-17, deliberately
 sparse. **First verification run:** 2026-08-17 (founder-triggered) — guidebook-side claims below
 are verified against the **NMLS Policy Guidebook 2026.03.31** text layer (chapter map in
 `docs/nmls/README.md`); the guidebook is "FOR GUIDANCE ONLY" and **state statutes/regulator
 guidance control** (R4). A row asserted without a cite is invalid (rail R3).
 
-Launch sequence (CHARTER §1a): **Illinois → California → national on business performance.**
+Launch sequence (CHARTER §5): **Illinois → California → national on business performance.**
 
 Status vocabulary: `done` · `drafted` · `in-progress` · `blocked-founder` · `unverified`.
 
@@ -34,8 +34,8 @@ Status vocabulary: `done` · `drafted` · `in-progress` · `blocked-founder` · 
 
 | id | item | status | evidence / cite | baseline |
 |---|---|---|---|---|
-| CW-CA.1 | Enumerate California licensing path(s) for the same business model — **research only until Illinois is live** (CHARTER §1a) | unverified | needs the California checklist(s); note CA has more than one possible regulator/regime — enumerate, do not choose: regime choice is a founder decision with counsel (L4-adjacent). Untouched this run by design — Illinois first | 2026-08-17 |
+| CW-CA.1 | Enumerate California licensing path(s) for the same business model — **research only until Illinois is live** (CHARTER §5) | unverified | needs the California checklist(s); note CA has more than one possible regulator/regime — enumerate, do not choose: regime choice is a founder decision with counsel (L4-adjacent). Untouched this run by design — Illinois first | 2026-08-17 |
 
 ## National (gated on business performance — do not populate speculatively)
 
-No rows until the founder names the next state (CHARTER §1a: never speculative).
+No rows until the founder names the next state (CHARTER §5: never speculative).
