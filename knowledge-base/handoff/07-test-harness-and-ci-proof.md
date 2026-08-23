@@ -78,10 +78,10 @@ flowchart TD
 
 ## The facts, with receipts
 
-- **The node lane.** `vitest.config.ts:30-300` `include: [ … ]` — `grep -cE '^\s*"tests/' vitest.config.ts`
+- **The node lane.** `vitest.config.ts:30-313` `include: [ … ]` — `grep -cE '^\s*"tests/' vitest.config.ts`
   → `221`; `:25-26` `testTimeout: 45000`, `hookTimeout: 60000` ("TIMEOUTS ARE A HANG DETECTOR HERE,
   NOT A PERFORMANCE ASSERTION", `:8`; the suite runs 172 s idle and 305–419 s under load, `:11-12`);
-  `:304-308` a placeholder `DATABASE_URL` keeps it hermetic; `:261-266` new entries are appended at
+  `:315-319` a placeholder `DATABASE_URL` keeps it hermetic; `:262-267` new entries are appended at
   the **END** ("#440 and #443 both went stale without merging because every concurrent PR inserted
   its entry just after `tests/accessControl.test.ts`… an unlisted test file is silently never run").
 - **The client lane.** `vitest.client.config.ts:37` `include: ["client/src/**/*.test.{ts,tsx}"]`
@@ -243,11 +243,11 @@ sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' te
 
 | Trap | Where | Caught by |
 |---|---|---|
-| A new server test in neither config never runs — the allowlist is deliberate, and for the life of the repo nothing detected an omission. | `vitest.config.ts:30-300`; `CICD.md:366-376` | **Closed `fd4a22c5` (#670).** `scripts/test-collection-guard.cjs` diffs the disk against every lane's `include` and fails on a non-empty result; the floor is zero, with no baseline to bump. Its first run found the live example, `tests/maintenanceMode.test.ts` — the `INTAKE_PAUSED` kill switch, five assertions that had never executed. |
+| A new server test in neither config never runs — the allowlist is deliberate, and for the life of the repo nothing detected an omission. | `vitest.config.ts:30-313`; `CICD.md:366-376` | **Closed `fd4a22c5` (#670).** `scripts/test-collection-guard.cjs` diffs the disk against every lane's `include` and fails on a non-empty result; the floor is zero, with no baseline to bump. Its first run found the live example, `tests/maintenanceMode.test.ts` — the `INTAKE_PAUSED` kill switch, five assertions that had never executed. |
 | `pnpm test` can run fewer files than exist and exit 0 — vitest globs via `tinyglobby` → `fdir`, whose default `suppressErrors: true` makes a directory that failed `readdir` read as an *empty* one. Seen three times under load: 111/118, 214/215, 113/119. | `package.json:15`; `scripts/test-collection-guard.cjs` | **Closed `fd4a22c5` (#670).** `pnpm test` is the guard: it runs each lane with `--reporter=json` and fails on any shortfall, naming the missing files. Its own enumeration is `fs.readdirSync` with no error suppression — counting with the same glob would shrink both sides together and pass. |
 | `main` requires zero checks; `enforce_admins: true` binds admins to an empty list. | `ci.yml:30-48` | No mechanism — the comment warns the previous version of itself said "✅ CONFIGURED" while false. LEDGER HO-0822-15. |
 | A pause on `migrate-prod` makes the journal run ahead of prod; this caused a 35-minute auth outage (migration 0057, `users.last_failed_login_at`). Re-armed 2026-08-22 — but a *future* pause is equally invisible. | `ci.yml:583`; `76c96751` | `tests/ciTriggers.test.ts:110` accepts LIVE **or** PAUSED, so it cannot tell you which you have. |
-| `verify-deploy` reddens but cannot fail the workflow — `continue-on-error: true`, deliberately, because it and Railway's "Wait for CI" would otherwise deadlock into a permanent silent deploy freeze (`ci.yml:657-671`). With zero required checks, nothing turns its red into a block. | `ci.yml:656,663` | `tests/ciTriggers.test.ts:115`; the real alarm is Railway's own deployment notifications. |
+| `verify-deploy` reddens but cannot fail the workflow — `continue-on-error: true`, deliberately, because it and Railway's "Wait for CI" would otherwise deadlock into a permanent silent deploy freeze (`ci.yml:657-671`). With zero required checks, nothing turns its red into a block. | `ci.yml:656,672` | `tests/ciTriggers.test.ts:115`; the real alarm is Railway's own deployment notifications. |
 | `strict: false`: two individually green PRs can combine into a red `main`; the ratchets surface it on the *next* PR. | `ci.yml:324-328`; `CICD.md:343-347` | Detected late, by design. |
 | The integration lane never runs in CI — all multi-role authorization coverage rides on someone running it. | `CICD.md:357-361` | TEAM_PRACTICES §5.3 asks for it in the PR body; preflight runs it only when a DB is available. |
 | Two guards auto-write their baselines on a shrink; a preflight run can dirty the tree with a file you did not edit. | `design-token-guard.cjs:116-119`; `bundle-size-guard.cjs:217-218` | `checkup.sh:48` "working tree clean" — after the fact. |

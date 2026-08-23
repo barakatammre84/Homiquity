@@ -117,7 +117,7 @@ one is a tier that was skipped, trusted, or asked a question adjacent to the one
 
 ### 2. The loop contract
 
-The fifteen rails are in [prompts/_RAILS.md](prompts/_RAILS.md); this is the map of why each
+The sixteen rails (R0–R14 plus R1b) are in [prompts/_RAILS.md](prompts/_RAILS.md); this is the map of why each
 exists, so a reader can argue with it.
 
 | Rail | One line | The pattern or incident behind it |
@@ -303,7 +303,7 @@ cd /private/tmp/claude-501/-Users-ammrebarakat-Developer-Homiquity/c5bb7f2c-ceb3
 grep -c '^| T' knowledge-base/handoff/prompts/_RAILS.md
 # → 8   (the header row plus T-1 … T5) @ 6377727e
 grep -cE '^## R' knowledge-base/handoff/prompts/_RAILS.md
-# → 15   (R0 … R14; the R1b row in §2 is being added to the rails file in a sibling edit and moves this by one — re-run, do not trust this line) @ 6377727e
+# → 16   (R0 … R14 plus R1b) @ cadd5bc4
 ls knowledge-base/handoff/prompts/*.md | wc -l
 # → 11   (eight templates + _RAILS.md, _REPORT_FORMAT.md, INVOKE.md) @ 6377727e
 sed -n '15,16p' package.json

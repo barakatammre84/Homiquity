@@ -102,9 +102,9 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
   main, never merge, never enable auto-merge. Branch → PR → green gate → a human clicks. A merge to
   main is a production deploy."
 - **The app-guide has 12 chapters.** `ls knowledge-base/handbook/app-guide/*.md | wc -l` → `12`.
-  (The root `README.md:62` says "11-chapter" — LEDGER HO-0822-07.)
+  (The root `README.md:62` said "11-chapter" until 2026-08-23 — LEDGER HO-0822-07, done.)
 - **Stack versions.** `package.json:7` `"node": "24"` · `:87` `drizzle-orm ^0.45.2` · `:89`
-  `express ^5.2.1` · `:102` `react ^19.2.8` · `:111` `zod ^4.4.3` · `:136` `tailwindcss ^4.3.3` ·
+  `express ^5.2.1` · `:106` `react ^19.2.8` · `:111` `zod ^4.4.3` · `:136` `tailwindcss ^4.3.3` ·
   `:140` `vite ^7.3.6` · `:141` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
   → `39a42bfc 2026-08-04 …bump react… (#301)`), while two app-guide chapters still say React 18
   (LEDGER HO-0822-06).
@@ -132,7 +132,7 @@ ls -1 knowledge-base/handbook/app-guide/*.md | wc -l
 grep -n '^### Tier' README.md
 # → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 12d7cbec
 grep -rn "React 18" knowledge-base/handbook/app-guide/ ; grep -n '"react":' package.json
-# → app-guide/07-frontend.md:5 and 01-start-here.md:22 say React 18; package.json:105 "react": "^19.2.8" @ 12d7cbec
+# → app-guide/07-frontend.md:5 and 01-start-here.md:22 said React 18 until the handbook fix of 2026-08-23; package.json:106 "react": "^19.2.8" @ 6377727e
 wc -l PRODUCT_SPINE.md
 # → 8 @ 12d7cbec
 ```
@@ -143,8 +143,8 @@ wc -l PRODUCT_SPINE.md
 |---|---|---|
 | `isStaffRole()` includes `broker` and `lender`; `isInternalStaffRole()` does not. Using the wrong predicate on an object-level check hands an external partner every borrower record. | `shared/roles.ts:102` vs `:110`; rationale `:77-79` | Partially — `tests/adminPredicate.test.ts` guards only the `isAdmin` predicate; nothing greps a new call site for the wrong pair. Chapter 02 names the storage predicate to use instead. |
 | Adding a self-registerable role to `STAFF_ROLES` opens every `isStaffRole()`-gated endpoint. | `shared/roles.ts:10-13`, `:31-35` | Nothing automated — the protection is the comment. |
-| Two app-guide chapters say React 18; the tree has shipped React 19 since 2026-08-04. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:105` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06. |
-| The two indexes disagree on the chapter count (root README 11, KB README 12, disk 12). | `README.md:62` vs `knowledge-base/README.md:36` | Nothing — `guard:kb` checks that files are indexed, not that counts are right. LEDGER HO-0822-07. |
+| Two app-guide chapters said React 18 for nineteen days after the tree shipped React 19 (2026-08-04); fixed 2026-08-23. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:106` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06 (done). |
+| The two indexes disagreed on the chapter count (root README 11, KB README 12, disk 12) until 2026-08-23. | `README.md:62` vs `knowledge-base/README.md:36` | Nothing — `guard:kb` checks that files are indexed, not that counts are right. LEDGER HO-0822-07 (done). |
 | `FEATURE_MAP.md` "Last reviewed" is a *domain* review date, not an area walk; 23 of 41 areas have never been reviewed. | `FEATURE_MAP.md:754-757`, `:769-771` | The file warns about itself; the record is `knowledge-base/routines/feature-coverage/LEDGER.md`. |
 | Two rival taxonomies: 41 feature areas vs 13 review domains in `knowledge-base/feature-review/DOMAINS.md`. | `FEATURE_MAP.md:702-704` | Nothing — reconciliation is manual, by design ("when the two disagree, one of them is wrong"). |
 
@@ -152,7 +152,7 @@ wc -l PRODUCT_SPINE.md
 
 | Question | What resolves it |
 |---|---|
-| Is "11-chapter" in the root README stale, or an intentional exclusion of chapter 12? | The founder, or `git log -p -- README.md` around the commit that added `12-api-contract.md`. |
+| ~~Is "11-chapter" in the root README stale, or an intentional exclusion of chapter 12?~~ Resolved 2026-08-23: stale — the handbook fix changed it to "12-chapter". | — |
 | Which owner agent owns `shared/roles.ts` as a *primary* file? Two agents merely mention it. | `grep -ln "shared/roles" .claude/agents/hq-*-owner.md` → admin-console and broker-portal; neither declares it. The founder decides. |
 | Will `PARTNER_ROLES` stay at two? The `realtor` entry is tagged "PartnerHub PH-1". | The PH-1 row in `CTO_ROADMAP.md`. |
 

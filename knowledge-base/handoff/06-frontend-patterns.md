@@ -166,7 +166,7 @@ flowchart TD
   fresh object every render, `:41-47`), the server draft 2,500 ms
   (`pages/lending/preApproval/useServerDraftAutosave.ts:28`), and a post-auth replay 500 ms
   (`useDeferredSubmit.ts:25`, consumed synchronously so two tabs cannot double-submit, `:9-13`).
-  Keys "must never change" (`client/src/lib/pendingAttribution.ts:10-16`). `useDraftRestore.ts:124-128`
+  Keys "must never change" (`client/src/lib/pendingAttribution.ts:10-16`). `useDraftRestore.ts:133-137`
   — "form.reset IS the restore".
 - **URLA.** `client/src/pages/borrower/URLAForm.tsx` (857 lines) + 12 files in
   `client/src/pages/borrower/urla/`; `knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md:26-28` —

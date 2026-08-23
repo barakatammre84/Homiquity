@@ -168,7 +168,7 @@ flowchart TD
   "No citation → not implemented"; even the generation prompt says "write 'NO CITATION — needs
   research' instead of guessing" (`:37`). Every `shared/fannieMae/*.ts` names its captured PDF and
   forbids extending from memory.
-- **§9 security-review triggers, and the incidents that added them.** `knowledge-base/governance/TEAM_PRACTICES.md:299-360` — twelve
+- **§9 security-review triggers, and the incidents that added them.** `knowledge-base/governance/TEAM_PRACTICES.md:299-360` (and, in code, the dated trigger list at `scripts/security-review-guard.cjs:47-140` — the same incidents, readable from the repo alone) — twelve
   bullets: PII vault/encryption; auth & sessions; role gates + per-resource ownership; uploads;
   outbound messaging; webhook receivers **and their delegates** ("A path trigger must cover the
   delegate, not just the caller", `:326-327`); request identity & trust boundary; rate-limit
@@ -269,7 +269,7 @@ grep -n "^- \*\*" knowledge-base/governance/TEAM_PRACTICES.md | awk -F: '$1>=299
 | Question | What resolves it |
 |---|---|
 | Do `tests/auditChainTruncation.test.ts` / `tests/auditReanchor.test.ts` simulate a cross-process chain fork? | `grep -n "describe(\|it(" tests/auditChainTruncation.test.ts tests/auditReanchor.test.ts`. |
-| Exactly what `scripts/regulatory-freshness.cjs` fails on (overdue only, or also a missing `codeRef` target)? | `sed -n '1,60p' scripts/regulatory-freshness.cjs`. |
+| ~~Exactly what `scripts/regulatory-freshness.cjs` fails on (overdue only, or also a missing `codeRef` target)?~~ Answered 2026-08-23: both — its header says it "also verifies the codeRef file for each entry still exists" (`scripts/regulatory-freshness.cjs:8-9`). | `sed -n '1,60p' scripts/regulatory-freshness.cjs`. |
 | Which other borrower-facing document routes *should* carry `requireConsent` — a policy question. | `hq-trid-disclosures-owner` + `hq-credit-fcra-owner`, or the founder. |
 | Has the §9 trigger list in the script drifted from the prose list in TEAM_PRACTICES? | `sed -n '45,140p' scripts/security-review-guard.cjs` against `:299-360`. |
 
