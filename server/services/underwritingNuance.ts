@@ -111,6 +111,9 @@ export const REVOLVING_MINIMUM_PAYMENT_FLOOR = 10;
 // (ledger: platform-new-tradeline-window-90d). Detection metadata only: the
 // flagged lines' payments are in adjustedMonthlyDebt regardless of the window.
 export const NEW_TRADELINE_WINDOW_DAYS = 90;
+// PLATFORM OVERLAY, not an agency figure — B3-6-02 puts the DU maximum at 50%
+// (ledger: platform-dti-ceiling-43, platform-conv-dti-cap-43). We are stricter
+// than Fannie here deliberately; that is the permitted direction.
 export const STANDARD_DTI_CEILING = 0.43;
 
 export interface LiabilityAdjustment {
