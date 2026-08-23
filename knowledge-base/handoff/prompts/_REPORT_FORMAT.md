@@ -25,8 +25,9 @@ LOOP REPORT
 STATUS: DONE | STOPPED(<reason>)
 BASE: origin/main @ <sha>   HEAD: <sha>   WORKTREE: <path>   ITERATIONS: <n>/<max>
 PR: <url> | none
+T0@BASE: <first summary line of $SCRATCH/t0-base.log> | trunk-red
 T0: <tsc summary line> | <guards: one word each, e.g. schema ✓ migrations ✓ channel ✓ kb ✓ staleness ✓ citations ✓ querykeys ✓ tokens ✓ ui ✓>
-T1: <node "Test Files" line> | <client "Test Files" line> | collected == on-disk: yes/no
+T1: <the guard's last line: "all lanes ran every file on disk" | "test collection floor FAILED — N problem(s):" + the named problems> | <node "Test Files" line> | <client "Test Files" line>
 T2: <preflight --fast last summary line, incl. §9 result>
 T3: <preflight last summary line, incl. the integration-lane line> | not run (why)
 T4: <probe output summary> | n/a (no UI change)
@@ -47,8 +48,13 @@ Rules for filling it:
 
 - Every `T*` line is **copied** from the output file the tier wrote (`"$SCRATCH/t0.log"` …),
   never retyped from memory. If a tier did not run, the line says `not run` and why.
-- `collected == on-disk` is the T1 sanity check from `_RAILS.md` R14 — the node lane's
-  `Test Files (N)` must equal the allowlist count, the client lane's must equal the glob count.
+- `T0@BASE` is the R1b baseline — T0 run on the untouched worktree before the first edit, from
+  `"$SCRATCH/t0-base.log"`. `trunk-red` there means the loop stopped with
+  `STATUS: STOPPED(trunk-red)` and the hand-back names the failing step, not the diff.
+- The T1 line opens with the collection guard's own verdict (`_RAILS.md` R14): `pnpm test` is
+  `scripts/test-collection-guard.cjs`, which compares each lane's collected set with the disk for
+  you — copy its last line, and on a failure the lane or files it names. A `Test Files N passed (M)`
+  with N < M can only come from `pnpm test:raw`, which a loop never runs.
 - `SKIPPED` lines from `scripts/preflight.sh` are reproduced verbatim; a skipped stage is not a
   pass.
 - `PR:` is `none` unless `gh pr view <n> --json url` printed it.

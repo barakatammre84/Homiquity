@@ -34,9 +34,10 @@ MAX_ITER: 6
    Client lane: colocate it; no config change.
 3. **T0.** `pnpm check` → `$SCRATCH/t0.log`. Guards are unaffected by a test file, but run
    `pnpm guard:kb` if you touched anything under `knowledge-base/`.
-4. **T1.** `pnpm test > "$SCRATCH/t1.log" 2>&1`. Assert: the test file name appears in the log;
-   the two `Test Files` counts equal the on-disk counts (`_RAILS.md` R14). A missing file name
-   means the allowlist line was not appended — fix, do not proceed.
+4. **T1.** `pnpm test > "$SCRATCH/t1.log" 2>&1`. Assert: the test file name appears in the log,
+   and the log's last line is `all lanes ran every file on disk` (`_RAILS.md` R14). A node-lane
+   file whose allowlist line was not appended now fails the run as an orphan (`✗ orphan files …
+   matched by no lane`, the file named) — fix, do not proceed.
 5. Commit with explicit `git add tests/<name>.test.ts vitest.config.ts` (or the colocated file).
 6. **T2.** `pnpm preflight --fast > "$SCRATCH/t2.log" 2>&1`. Read the last 30 lines; §9 must
    report no trigger for a test-only diff — if it does, stop and report, do not edit the guard.

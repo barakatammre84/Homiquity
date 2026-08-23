@@ -171,14 +171,18 @@ The looping `/financial-audit` run (skill in `.claude/skills/financial-audit/`):
 - [LEDGER.md](financial-audit/LEDGER.md) — the `F-###` register, statuses, run log, and the standing signals three audits found repeatedly (the routine's cross-run memory).
 
 ### Doc Accuracy — the knowledge-base steward routine · [`doc-accuracy/`](doc-accuracy/)
-The daily CCR-fired `/doc-accuracy` run (skill in `.claude/skills/doc-accuracy/`): owns the gap the
+The daily `/doc-accuracy` run — local fleet, 19:30, scheduled task `doc-accuracy-daily`
+([routines/CHARTER.md](routines/CHARTER.md) §3; skill in `.claude/skills/doc-accuracy/`): owns the gap the
 guards can't see — **semantic currency**. `guard:kb` proves indexed-and-linked, `guard:docs` proves
 re-verified-on-time; this routine verifies living docs against the code, corrects factual drift
 (docs-only, one PR per tick, meaning-preserving — rule changes are proposed, never edited), banners
 what history overtook, proposes pruning for fossils, and keeps a drift-source scoreboard so
 recurring drift classes earn structural prevention rather than a third hand-fix. Drift vs
 regression is decided before any edit: a doc contradicting the code may be reporting a code bug,
-which gets escalated, never papered over (rail D7).
+which gets escalated, never papered over (rail D7). Since 2026-08-23 it also checks the
+[handoff corpus](handoff/) read-only every tick (`pnpm handoff:facts --check/--cite`; the 17:06 Handoff
+Corpus Steward is that directory's only writer), consumes `HO-` rows as findings for the sibling docs
+they name, and re-runs the corpus's fresh-hire teach-back every fourteenth tick.
 - [LEDGER.md](doc-accuracy/LEDGER.md) — the `DA-<MMDD>-<NN>` register, drift-source scoreboard, rotation cursor, exclusion table (the routine's cross-run memory).
 
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)

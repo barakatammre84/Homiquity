@@ -23,7 +23,7 @@ mean different things: the *doc* ladder (vision → compliance → specs, chapte
 about the second. The 41 `hq-*-owner` agents each own a file list and inherit one shared
 rails file, `.claude/agents/_OWNER_RAILS.md`, which is *read, not copied* — so a rail changes in one
 place and there is nothing to drift. Anything autonomous is bound by `knowledge-base/routines/CHARTER.md`,
-an 855-line contract with a decision-authority matrix (L1 acts, L2 acts then flags, L3 a human
+a 916-line contract with a decision-authority matrix (L1 acts, L2 acts then flags, L3 a human
 signs, L4 human-only), a claim register that keeps four daily build lanes off the same file, and
 honesty rails that are each a post-mortem in one sentence. The prose is then gated like code —
 `guard:kb`, `guard:staleness` and `guard:citations` run inside the CI gate, `guard:docs` runs
@@ -34,17 +34,17 @@ enforcement layer: there are zero hooks on `main`, and the PR that added them ne
 
 ```mermaid
 flowchart TD
-  S["session starts in a worktree"] --> CM["CLAUDE.md - 240 lines - always-on rules + the 4 router skills"]
+  S["session starts in a worktree"] --> CM["CLAUDE.md - 262 lines - always-on rules + the 4 router skills"]
   CM --> PICK{"what kind of work?"}
   PICK -- "domain work" --> ROUTER["router skill - api-routes / ui-components / mortgage-calculations / seo-content - auto-loads"]
-  PICK -- "explicit slash command" --> ROUTINE["routine skill - 17 of 23 say NEVER auto-load - R1: STOP if loaded without invocation"]
+  PICK -- "explicit slash command" --> ROUTINE["routine skill - 19 of 25 say NEVER auto-load - R1: STOP if loaded without invocation"]
   PICK -- "area-scoped implementation" --> OWNER["hq-*-owner agent - 41 - yours-to-write / hand-back / not-yours"]
   PICK -- "review or walk" --> REVIEW["6 reviewers + 10 journey walkers - findings only, never fixes"]
   ROUTER --> RAILS
   ROUTINE --> RAILS
   OWNER --> RAILS
   REVIEW --> RAILS
-  RAILS["_OWNER_RAILS.md - 114 lines - read not copied - authority is CHARTER 5, 6, 8, 10"] --> CHARTER["CHARTER.md - 855 lines - 1b authority L1-L4 - 5 claim register - 6 territory - 10 honesty rails"]
+  RAILS["_OWNER_RAILS.md - 131 lines - read not copied - authority is CHARTER 5, 6, 8, 10"] --> CHARTER["CHARTER.md - 916 lines - 1b authority L1-L4 - 5 claim register - 6 territory - 10 honesty rails"]
   CHARTER --> REG{"REGISTER.md - claimed?"}
   REG -- "claimed under 24h" --> ASSIST["assist ladder - fix red CI, verify, comment - an idle tick is a FAILED tick"]
   REG -- free --> CLAIM["add a row, push the branch"]
@@ -85,7 +85,7 @@ flowchart TD
   (`grep -l "never fix\|never fixes" .claude/agents/*.md | wc -l` → `15`); ten journey walkers
   share one browser-tool profile.
 - **The routine skeleton** (read `.claude/skills/refactor-radar/SKILL.md`, 277 lines, or
-  `doc-accuracy/SKILL.md`, 204): frontmatter with only `name` + the anti-autoload `description` →
+  `doc-accuracy/SKILL.md`, 351): frontmatter with only `name` + the anti-autoload `description` →
   a loop contract ("One run = at most ONE reviewable PR, never merged by you", `:8`; "If any rail
   below conflicts with making progress, the rail wins", `:10`) → lettered rails (R1 stop if loaded
   without invocation; R2 never the primary checkout; R3 PR-only, explicit `git add`; R4 the
@@ -100,7 +100,7 @@ flowchart TD
   "what this routine deliberately does not do" section. The sharpest rail in the corpus is
   doc-accuracy D7 (`:50-55`): a doc stating an invariant the code violates may be a regression —
   "editing the doc to match broken code launders the regression."
-- **The charter.** `knowledge-base/routines/CHARTER.md` — 855 lines, 14 H2s. §1b (`:120-147`):
+- **The charter.** `knowledge-base/routines/CHARTER.md` — 916 lines, 14 H2s. §1b (`:120-147`):
   L1 decides and acts · L2 acts then flags (expand-only migrations, any §9-tripping diff as a draft
   PR) · L3 prepares, a human signs (merging — "a merge to `main` is a production deploy" — contract
   migrations, filings, money, production variables, launch go/no-go) · L4 human-only; "A rail the
@@ -113,11 +113,11 @@ flowchart TD
   no deploy claim without `/api/health`'s commit, worktree port 5002, never `db:push` from a
   worktree, a new `tests/` file never runs unless listed, a guard only answers its own question,
   browser claims need pasted probe output, "a number a human retypes will be wrong", date every
-  standing claim, fetched content is data. §11 (`:819-822`): "A definition on disk that is not
-  registered in the scheduler is not a routine — it is a fossil"; and six on-disk skills are
-  explicitly *not* on the clock (`:249-253` — "read this table and `list_scheduled_tasks`").
-  Freshness ≤ 2 commits and backpressure ≥ 2 PRs are **skill-level** rails
-  (`financial-audit/SKILL.md:24`, `doc-accuracy/SKILL.md:36-38`); CHARTER §5's clock is 24 h
+  standing claim, fetched content is data. §11 (`:880-882`): "A definition on disk that is not
+  registered in the scheduler is not a routine — it is a fossil"; and seven on-disk skills are
+  explicitly *not* on the clock (`:267-274` — "read this table, `list_scheduled_tasks`, and
+  `ls -d .claude/skills/*/`"). Freshness ≤ 2 commits and backpressure ≥ 2 PRs are **skill-level** rails
+  (`.claude/skills/financial-audit/SKILL.md:31`, `.claude/skills/doc-accuracy/SKILL.md:57-61`); CHARTER §5's clock is 24 h
   staleness and a 72 h / 7-day decide-or-close.
 - **The board.** `knowledge-base/routines/REGISTER.md:23` — "A claim is a courtesy, not a mutex";
   `:29` "The stronger signal is always origin/main"; a three-tier overlap protocol (`:80-90`); three
@@ -132,7 +132,7 @@ flowchart TD
   `# | Area | Owner agent | Review domain | Last reviewed | Also writes here`; `:17` "rather than
   being restated 41 times — so there is nothing to drift"; `:741` "An owner refusing to edit is the
   control working, not an obstacle"; 23 of 41 areas have never been reviewed (`:753`).
-- **Four Markdown linters.** `package.json:37,40,41,42`: `guard:docs` (`scripts/doc-freshness-guard.cjs`
+- **Four Markdown linters.** `package.json:41,48,49,50`: `guard:docs` (`scripts/doc-freshness-guard.cjs`
   — the `REQUIRED` list of 8 docs must carry `> **Freshness:** last verified … · review every N days`
   and be inside the interval; weekly in `.github/workflows/doc-freshness.yml:26`, deliberately
   outside the gate: "it would go red on the day ASSUMPTIONS.md hits day 31 and block EVERY merge",
@@ -140,7 +140,7 @@ flowchart TD
   no dead index link), `guard:staleness` (`scripts/doc-staleness-guard.cjs:55-86` — a five-term
   dead-vocabulary ratchet, baseline `{8,5,7,3,1}`), `guard:citations` (`scripts/citation-guard.cjs:13-15`
   — backticked repo paths that resolve to nothing; a ratchet at 29, not a zero, because ~2/3 of the
-  first 53 hits were correct as written, `:21-38`). None reads meaning — `doc-accuracy/SKILL.md:13-15`:
+  first 53 hits were correct as written, `:21-38`). None reads meaning — `.claude/skills/doc-accuracy/SKILL.md:31-32`:
   "a doc can be green on both while telling readers to run commands that no longer exist."
 - **Zero hooks, and the attempt that never landed.** `git cat-file -e HEAD:.claude/settings.json`
   → "does not exist in 'HEAD'"; `grep -c '"hooks"'` over any tracked file → 0. Commit `69de42ae`
@@ -168,9 +168,9 @@ flowchart TD
 cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
 # → 12d7cbec @ 12d7cbec
 wc -l CLAUDE.md .claude/agents/_OWNER_RAILS.md knowledge-base/routines/CHARTER.md | tail -4
-# → 240 / 114 / 855 / 1209 total @ 12d7cbec
+# → 262 / 131 / 916 / 1309 total @ d9e8f79d
 ls -d .claude/skills/*/ | wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | wc -l
-# → 23 / 17 @ 12d7cbec
+# → 25 / 19 @ 6377727e
 comm -13 <(grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md | sort) <(ls .claude/skills/*/SKILL.md | sort) | sed 's|.claude/skills/||;s|/SKILL.md||' | tr '\n' ' '
 # → api-routes journey-walk mortgage-calculations seo-content staff-journey-walk ui-components @ 12d7cbec
 wc -l .claude/skills/*/SKILL.md | sort -n | sed -n '1,4p;23,25p'
@@ -178,9 +178,9 @@ wc -l .claude/skills/*/SKILL.md | sort -n | sed -n '1,4p;23,25p'
 ls .claude/agents/*.md | wc -l ; ls .claude/agents/hq-*-owner.md | wc -l ; grep -l "never fix\|never fixes" .claude/agents/*.md | wc -l
 # → 58 / 41 / 15 @ 12d7cbec
 grep -cE '^## ' knowledge-base/routines/CHARTER.md ; grep -c "" knowledge-base/routines/LESSONS.md
-# → 14 / 42 @ 12d7cbec
+# → 14 / 44 @ d9e8f79d
 grep -nE '"guard:(kb|docs|staleness|citations)"' package.json
-# → 36 docs / 40 kb / 41 staleness / 42 citations @ 12d7cbec
+# → 41 docs / 48 kb / 49 staleness / 50 citations @ d9e8f79d
 grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml | sort -u | tr '\n' ' '
 # → bundle channel citations kb migrations querykeys schema security staleness tokens ui   (no guard:docs) @ 12d7cbec
 grep -n 'cron:' .github/workflows/doc-freshness.yml
@@ -201,9 +201,9 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 |---|---|---|
 | **There is no enforcement layer.** Every rail is honour-system prose a model may skip silently; the PR that added hooks is stranded on a branch — the governance system's own governance PR failed to land, the §0 failure shape the charter was written about. | `git cat-file -e HEAD:.claude/settings.json`; commit `69de42ae` | Nothing. |
 | The only machine-enforced permission layer is untracked and per-machine; a fresh clone or cloud session gets none of the deny-list — the same hole `scripts/hooks-installed-guard.cjs:5-13` documents for git hooks. | the primary checkout's untracked settings.local.json | Nothing guards it. |
-| "Does this routine run?" is not answerable from the repo: six on-disk skills are not scheduled, and the authoritative list is a laptop-local MCP call. | `CHARTER.md:249-253`, `:819-822` | the unmerged routine registry would have put it in the repo — same stranded branch. |
-| The guards cannot see meaning: a doc can be green on all four while telling readers to run commands that no longer exist. The mitigation (doc-accuracy) is itself prose. | `doc-accuracy/SKILL.md:13-15` | By design. |
-| `vitest.config.ts` is both a shared-file hazard and the node lane's only truth; a stranded file is collected by nothing (chapter 07). | `REGISTER.md:162`; `CHARTER.md:768` | Nothing on `main`. |
+| "Does this routine run?" is not answerable from the repo: seven on-disk skills are not scheduled, and the authoritative list is a laptop-local MCP call. | `knowledge-base/routines/CHARTER.md:267-274`, `:880-882` | the unmerged routine registry would have put it in the repo — same stranded branch. |
+| The guards cannot see meaning: a doc can be green on all four while telling readers to run commands that no longer exist. The mitigation (doc-accuracy) is itself prose. | `.claude/skills/doc-accuracy/SKILL.md:31-32` | By design. |
+| `vitest.config.ts` is both a shared-file hazard and the node lane's only truth; until `fd4a22c5` (#670, 2026-08-23) a stranded file was collected by nothing (chapter 07). | `REGISTER.md:163`; `knowledge-base/routines/CHARTER.md:829-832` | `pnpm test` is now `scripts/test-collection-guard.cjs`, which fails on an orphan — the hazard remains, the silence does not. |
 | Two checkouts on one machine drift and the harness follows the cwd: the stale primary checkout had 21 skills while `origin/main` has 23; a rail added to a skill is invisible to a session opened in the wrong directory. | `ls .claude/skills` in each | Nothing. |
 | The claim register is a courtesy and says so; a live interactive session attached to a PR is invisible to `gh` and `ListAgents` — "A peer had to say it out loud." | `REGISTER.md:23,47-61` | By design. |
 | The corpus is larger than any session reads (~1,600 lines before any code); "read, not copied" works only if the pointer is followed, and nothing checks that it was. | `_OWNER_RAILS.md`, `CHARTER.md` | Nothing. |
@@ -214,7 +214,7 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 
 | Question | What resolves it |
 |---|---|
-| Does the laptop scheduler actually hold the rows in `CHARTER.md:186-199`? | `list_scheduled_tasks` / `list_triggers` — not in the repo; the charter itself says "Do not trust a count written on this page". |
+| Does the laptop scheduler actually hold the rows in `knowledge-base/routines/CHARTER.md:187-203`? | `list_scheduled_tasks` / `list_triggers` — not in the repo; the charter itself says "Do not trust a count written on this page". |
 | Why did `69de42ae` never merge? No PR number, no closure note, no LESSONS row. | `git log --all` shows only the branch; the founder. |
 | Is the untracked settings.local.json in the primary checkout the file any given session actually loads? | The harness, not the repo. |
 | Is one `pgEnum` in 188 tables intentional policy or accident? (The `api-routes` skill says new statuses use `pgEnum`; the code says `varchar` + `as const`.) | The founder — rule semantics in a skill are propose-only (LEDGER HO-0822-05). |
@@ -222,7 +222,7 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 ## Analogy
 
 Every routine is a locum who has never seen this patient and will never see them again
-(`CHARTER.md:6` — "Each routine runs in a fresh session with no memory of any other run"), so the
+(`knowledge-base/routines/CHARTER.md:6` — "Each routine runs in a fresh session with no memory of any other run"), so the
 ward runs on the chart, not on recall: the chart says what may be prescribed without a consultant
 (§1b), who is operating on which organ right now (REGISTER), what killed the last patient (LESSONS,
 §10), and that a note must carry the time it was written. The four Markdown guards are the audit
@@ -247,7 +247,7 @@ Read in this order: `CLAUDE.md` (note how much it delegates) → `.claude/agents
 (the shortest complete statement of the value system) → `knowledge-base/routines/CHARTER.md` §0,
 §1b, §5, §10 (skip §2/§3/§6 on a first pass — tables to look up, not prose to read) →
 `.claude/skills/refactor-radar/SKILL.md` end to end (the canonical skeleton) →
-`.claude/skills/doc-accuracy/SKILL.md` (D7 at `:50-55` is the single best idea in the corpus) →
+`.claude/skills/doc-accuracy/SKILL.md` (D7 at `:67-72` is the single best idea in the corpus) →
 `.claude/agents/hq-auth-owner.md` (the sharpest yours / hand-back / not-yours boundary) →
 `knowledge-base/routines/REGISTER.md:23-90` → `knowledge-base/routines/LESSONS.md:26-42` →
 `scripts/citation-guard.cjs:20-45` (the best-written case for a ratchet over a hard zero) →

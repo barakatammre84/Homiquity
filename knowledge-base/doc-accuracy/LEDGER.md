@@ -12,12 +12,13 @@ and are never reused. Statuses: `open` → `in-pr` → `done`, or `refuted` / `e
 the routine's **first real tick** — a 79-commit, two-day window, because the seat was defined on
 2026-08-18 and first fired on 2026-08-20. Ticks from here are one day wide.)*
 
-**Cadence:** **daily at 19:33 local**, local fleet, `taskId` `doc-accuracy-daily` — founder decision
-2026-08-20, which re-seated this routine off the CCR fleet's every-6 h trigger so its report lands
-between the 17:05 Client Journey Walk and the 21:00 Evening Triage that reads it. The SKILL text
-still describes the 6-hourly cadence; it is **not self-amendable** (rail D10), so the correction is
-proposed to the founder rather than made here. Everything else in the skill binds unchanged: the
-≤1-open-docs-PR-per-day budget is now at most one PR per run.
+**Cadence:** daily at 19:33 local, scheduled task `doc-accuracy-daily` — founder decision
+2026-08-20; the skill was amended to match by the founder on 2026-08-23 (no self-amendment: D10).
+Every tick also checks `knowledge-base/handoff/` read-only (SKILL Phase 1.4 — the 17:06 Handoff Corpus
+Steward is that directory's only writer, CHARTER §6) and every fourteenth tick re-runs the corpus's
+fresh-hire teach-back (Phase 1.5), reporting to that seat — cluster 14 below.
+
+
 
 ---
 
@@ -46,6 +47,22 @@ on** (the audit's Step-2 staging or another session's PR may land any of them fi
 | DA-0820-11 | claim-fixed-still-asserted | open — proposed to its owner | `routines/journey-walk/LEDGER.md:7` describes **#607** as "still open, `DIRTY`". | `gh pr view 607` → `MERGED 2026-08-20T18:11:22Z`. **Not touched:** peer routines' cross-run memory is off limits (D10); handed to the Client Journey Walk seat. |
 | DA-0820-13 | *(not doc drift — recorded because it blocked this tick)* | open — handed to Trunk Health | `tests/extractionPersistence.test.ts` is **flaky in the node lane** and blocked a docs-only push at the pre-push hook. | 2/5 failed in the gate run (`571ms`, `264ms` — not the timeout signature); **5/5 passing run alone**; **213/213 passing on a second full `pnpm test:unit`**. Failing assertion is `expect(persistDocumentExtraction).toHaveBeenCalledTimes(1)` — a call-count assertion on a module-level mock. Landed with #628 in this window. |
 | DA-0820-12 | drift | in-pr | Root `README.md:62` called the app-guide "the 11-chapter subsystem handbook". | `ls knowledge-base/handbook/app-guide/` → 12 files; `12-api-contract.md` added by **#574 (`70598e33`, 2026-08-18)**. → "12-chapter". |
+| DA-0823-01 | contradiction | in-pr (founder amendment) | `.claude/skills/doc-accuracy/SKILL.md` stated two cadences — every 6 hours (`:19`, `:24`, `:140` at `6377727e`) and daily 19:30 (`:21-23`) — and Phase 1.3 assumed several ticks a day ("the day's FIRST sweep tick"). | `list_scheduled_tasks` → `doc-accuracy-daily`, `30 19 * * *`, fires 19:33; `logs/2026-08-20-hygiene-pitch-adjudication.md:43-45`. Fixed by the founder's amendment (this PR): one cadence statement, one rotation slice per tick. |
+| DA-0823-02 | drift | in-pr | `SKILL.md:12` "`pnpm guard:docs`: six opted-in docs". | `scripts/doc-freshness-guard.cjs:35-51` lists **eight** in `REQUIRED` (`DESIGN_SYSTEM.md` and `HIRING_PLAN.md` added 2026-08-18). Fixed in this PR. |
+| DA-0823-03 | contradiction | in-pr ⛔ | `routines/CHARTER.md` still seated Doc Accuracy on the CCR fleet every 6 h (`:315` §3a row, `:330-335` "the suite's tightest"), listed it among skills "not on this clock" (`:249-253`), said its skill "does not exist at `origin/main` yet" (`:283-285`, `:317-322`), counted thirteen seats (`:178`) and omitted the 19:30 seat from the §3 table (`:184-199`) and the §4 chain. CHARTER wins over a skill (`:12-13`), so a tick was contractually bound to the wrong clock. | `list_scheduled_tasks` (local, `30 19 * * *`); `git cat-file -e origin/main:.claude/skills/doc-accuracy/SKILL.md` → exists since 2026-08-18. Fixed in this PR under rail D11 (factual rows); the §6 territory row is taken as #706 left it — `knowledge-base/handoff/**` carved out of this routine's lane. ⛔ still open inside the note: whether the old CCR trigger was deleted — `list_triggers` is a founder read. |
+| DA-0823-04 | drift | in-pr | This ledger: rotation cursor said "Full cycle ≈ 13 days at the 6-hourly cadence" (`:51-53`); no cluster covered `knowledge-base/handoff/`; cluster 7 said "app-guide 07–11" (the app-guide has 12 chapters, FACTS F-20). | `ls knowledge-base/handbook/app-guide/*.md \| wc -l` → 12. Fixed in this PR: one slice per tick, cluster 7 → 07–12, cluster 14 added. |
+| DA-0823-05 | drift | in-pr | `knowledge-base/README.md:171` "The daily CCR-fired `/doc-accuracy` run". | The seat is a local scheduled task since 2026-08-20 (DA-0823-01's evidence). Fixed in this PR; the handoff stewardship sentence added after `:178` (additive — shared-file hazard). |
+| DA-0823-06 | drift | in-pr | `knowledge-base/handoff/README.md:78-82` "sweeps `knowledge-base/**` every six hours … may consume `HO-` rows" and "a hand-invoked refresh skill (a follow-up … in a separate PR)"; `:4` a hand-typed corpus-wide stamp (`12d7cbec`) that disagreed with the generated one in `FACTS.md` (`ca791d72`). | `grep -c "HO-\|handoff" .claude/skills/doc-accuracy/SKILL.md` → 0 before this PR (the consumer claim lived only in the corpus); `#692` merged `ca791d72` (the skill exists). Fixed in this PR (stamp not bumped — partial re-read). |
+| DA-0823-07 | drift | in-pr | `knowledge-base/handoff/11-patterns-and-repetition.md:247` (at `6377727e`; the chapter is being restructured by a founder-directed PR, so read the line at that SHA) "doc-accuracy every 6 h". | DA-0823-01. Fixed in this PR (stamp not bumped). |
+| DA-0823-08 | drift (citation moved) | in-pr | The amendment moves every line of `SKILL.md`; the corpus cites it by line in 15 places (`handoff/09-…md:88,101,120,143,205,250`; `11-…md:183,184,191,192,196,211,247`; `TEACHBACK_KEY.md:114,115`). | Remapped in this PR from the final skill text, each verified with `sed -n '<line>p'` (bounds alone cannot see a stale-but-in-range line — HO-0822-27). |
+| DA-0823-09 | gap | in-pr (banner) | `routines/TEAM.md:66-75` seating chart lacks the 19:30 seat; `:77-82` names retired seats. | Banner at `:9-11` extended (the seat is not a hiring-plan seat; the `Registered?` column is the 2026-08-20 state). The paragraph rewrite is cluster 4's slice. |
+| DA-0823-10 | contradiction | in-pr | `routines/LESSONS.md:12` "Newest first" — the table is oldest-first (`:26` = 08-12 … `:42` = 08-19) and every writer since 08-12 has appended at the bottom. | Fixed in this PR by correcting the instruction, not re-sorting the table (re-sorting 17 rows conflicts with #647 and #675). SKILL Phase 3.2 now says "append at the bottom". |
+| DA-0823-11 | gap | open — in progress on a founder-directed docs PR | `knowledge-base/handoff/TEACHBACK_KEY.md` has sections for chapters 00–10 only (`grep -c '^## ' → 11`); chapters 11 and 12 carry 6 questions each with no key, so the teach-back (Phase 1.5) cannot score 12 of 100 and must not author its own rows. | Authoring is the founder's (D10). A founder-directed PR (`docs/handoff-day1-and-scaffold-0823`) adds the rows; until it merges the grader records them `UNKEYED`. |
+| DA-0823-12 | drift | **done** 2026-08-23 (outside the repo, CHARTER §11) | The scheduler prompt `~/.claude/scheduled-tasks/doc-accuracy-daily/SKILL.md` said "the repo is private", "`pnpm install` in the worktree before running anything", "the pre-push hook runs the full local CI gate and can take minutes". | `.githooks/pre-push:17-18, 70-85` (#660 `e49aab6d`): the hook is typecheck + guards, opt-in tests, and skips itself uninstalled; the repo is public again since 2026-08-22. Rewritten in the same session as the CHARTER edit. |
+| DA-0823-13 | claim-fixed-still-asserted | open — handed to #647's rebase | #647 (`routine/doc-accuracy-2026-08-20`) asserts in its README ground-rules paragraph and CHARTER §2 "Deploy proof" hunk that `verify-deploy` is `if: false` and `migrate-prod` is dispatch-only. | Re-armed by #669 `76c96751` on 2026-08-22: `sed -n '574p;647p;663p' .github/workflows/ci.yml` at that SHA (FACTS F-43). #647 is CONFLICTING; the founder asked for it to be rebased and re-dated rather than closed — DA-0820-09 closes as `done (#669)` in that rebase. |
+| DA-0823-14 | drift | open — the 17:06 Handoff Corpus Steward's (seated by #706 on 2026-08-23); this routine's Phase 1.4 will report whether it landed | `#670` `fd4a22c5` merged 2026-08-23: `pnpm test` is now `scripts/test-collection-guard.cjs`; the corpus's T1 rail, chapter 07/12 status boxes, `README.md:147`, `LEDGER.md` HO-0822-09/-23/U6 and FACTS F-13/F-36/F-39 described the pre-merge state. | #670's own commit message ends "POST-MERGE TO-DO: run `/handoff-refresh`" — the refresh was a human to-do, which is the gap this amendment closes. PR #699 (`docs/handoff-refresh-0823`) is the mechanical refresh; what it leaves (the `_RAILS.md` T1 row, `README.md:147`, template lines) is the first tick's 1.4 queue or the founder-directed docs PR's. |
+| DA-0823-16 | contradiction | **resolved** 2026-08-23 in this PR | Two seats claimed the handoff corpus within four hours: this amendment (doc-accuracy refreshing it at 19:30) and #706 `db668ea6` (the 17:06 seat rewritten into the Handoff Corpus Steward, the Client Journey Walk retired to hand-invocation, CHARTER §3/§4/§6 updated). CHARTER §3a's retired-row note names exactly this as the two-truths hazard. | Resolved toward one writer per truth (CHARTER §6 as #706 left it): the 17:06 seat writes `knowledge-base/handoff/**`; this routine checks it read-only every tick, runs its teach-back every fourteenth, and proposes `HO-` rows. ⛔ Two founder items remain: (1) #706's scheduler repoint of `client-journey-walk` is still pending and the task is paused — until it fires, nothing writes the corpus on a clock and this routine's Phase 1.4 will report the missing upstream seat every day; (2) the daily Client Journey Walk — the suite's UX instrument since the 2026-08-19 directive — lost its cadence in #706; confirm that was intended. |
+| DA-0823-15 | gap | open — proposed ticket (code) | No file under `knowledge-base/handoff/` is in `scripts/doc-freshness-guard.cjs`'s `REQUIRED` list, so the corpus's 28 `Freshness:` lines are unenforced; `FACTS.md` (14-day interval) lapses 2026-09-05 with nothing to notice. | `grep -c handoff scripts/doc-freshness-guard.cjs` → 0 at `6377727e`. Guards are code (D10): ticket for `hq-ci-guards-owner` — add `handoff/README.md` and `handoff/FACTS.md` to `REQUIRED`; a tooling PR (`chore/harness-tiers-0823`) carries it. |
 
 ## Drift-source scoreboard (the learning loop)
 
@@ -57,13 +74,15 @@ failed loop (SKILL Phase 3.2).
 | drift class | tally | clusters hit | prevention proposed? |
 |---|---|---|---|
 | path-moved | 2 | governance, L1/L2 + feature-review | not yet |
-| command-renamed | 3 | governance, handbook/specs/KB-README, compliance | **yes, and it already exists** — `pnpm guard:staleness` (`scripts/doc-staleness-guard.cjs`, #559) ratchets this exact class. The prevention for the *next* one is to keep its baseline honest: **proposed ticket, tighten `scripts/doc-staleness-baseline.json` `npmCommandRefs` 6 → 5** after this PR lands (a guard baseline is code — not this routine's to edit, D5/D10). |
+| command-renamed | 3 | governance, handbook/specs/KB-README, compliance | **yes, and it already exists** — `pnpm guard:staleness`'s `npm-as-instruction` metric is the commands-as-instruction sweep; the class is at its threshold because the guard ratchets rather than zeroes |
 | retired-term | 1 | specs | covered by `guard:staleness`'s `launchSprintRefs` metric |
-| claim-fixed-still-asserted | 3 | research, routines/CHARTER ×2, routines/journey-walk | **yes — proposed:** the class is *"a transient state written into a living doc as if permanent"* (#589/#607/"has not merged"/"still open, DIRTY"). Every instance names a **PR number or an `origin/main` presence claim**, both machine-checkable. Proposed ticket: extend `doc-staleness-guard.cjs` with a `transientPrClaims` metric — a living doc (excluding `logs/`, `reports/`, `archive/`) asserting `#NNNN` near *open · not merged · unlanded · once … lands · if they merge* fails when `gh pr view NNNN` says MERGED. |
-| contradiction | 2 | root README, routines/CHARTER §2 | not yet — both were *internal* contradictions (a doc disagreeing with itself two rows apart), which no current guard can see |
+| claim-fixed-still-asserted | 4 | research, routines/CHARTER ×2, routines/journey-walk, routines (#647's own deploy claims — closed by #669 on its rebase) | **yes — proposed:** the class is a doc asserting a state the repo has since left; prevention = every standing claim carries its verification date (D6), which the 2026-08-23 amendment's contract header now models |
+| contradiction | 5 | root README, routines/CHARTER §2 (DA-0820), `.claude/skills`, routines/CHARTER, routines/LESSONS (DA-0823) | **yes (2026-08-23):** the cadence was restated in nine living-doc sites and drifted in seven within three days of the founder changing it; prevention is structural — a scheduling fact is stated once (CHARTER §3's row) and every other site points at it |
+| drift | 8 | `.claude/skills`, doc-accuracy, KB-README, handoff (README, 11), scheduler prompt, handoff (post-#670) | at 8 from one cause (a re-seated routine): same prevention as above; the handoff rows belong to the 17:06 Handoff Corpus Steward from 2026-08-23 (#706); this routine only checks and proposes |
 | fossil | 1 | root README + runbooks | not yet |
-| index/dead-link | 1 | feature-review | `guard:kb` covers the KB README's own links only; this routine's sweep 2a covers every living doc's pointers |
-| regression-suspect | 2 | CI config, branch protection | n/a — escalated, never fixed here |
+| index/dead-link | 1 | feature-review | `guard:kb` covers the KB README's own links only; this routine's sweep 2a covers the rest |
+| gap | 3 | routines/TEAM, handoff (answer key), scripts (freshness opt-in) | the freshness opt-in is the proposed ticket (DA-0823-15); the key rows are founder authoring |
+| regression-suspect | 2 | CI config, branch protection | both closed 2026-08-22/23 (#669; branch protection re-armed) — escalated, never fixed here |
 
 Classes: `path-moved` · `command-renamed` · `retired-term` · `transient-state` ·
 `claim-fixed-still-asserted` · `freshness-lapsed` · `contradiction` · `index/dead-link` ·
@@ -71,9 +90,9 @@ Classes: `path-moved` · `command-renamed` · `retired-term` · `transient-state
 
 ## Rotation cursor
 
-**Next slice: 2.** · **Slice done today: yes (2026-08-20, slice 1).** One deep slice per day now
-that the seat is daily (SKILL Phase 1.3 — "the day's first sweep tick" is the only tick).
-Full cycle = 13 days, one slice per day.
+**Next slice: 2.** One deep slice **every tick** (SKILL Phase 1.3). Fourteen clusters ⇒ full cycle
+= fourteen ticks (one tick a day at 19:33); the "slice done today" marker is retired. *(Slice 1 done
+2026-08-20 by this tick.)*
 
 | # | cluster | notes |
 |---|---|---|
@@ -83,13 +102,14 @@ Full cycle = 13 days, one slice per day.
 | 4 | `routines/`: CHARTER, REGISTER, LESSONS, reports/README | CHARTER factual rows ⛔ lane; §1b/§5/§6/§10 never (D11) |
 | 5 | `handbook/`: DEVELOPER_PLAYBOOK, URLA_FORM_REFACTOR_TRAP, `design/` | |
 | 6 | `handbook/app-guide/` 01–06 | |
-| 7 | `handbook/app-guide/` 07–11 | |
+| 7 | `handbook/app-guide/` 07–12 | 12 chapters (FACTS F-20) |
 | 8 | `runbooks/` + support-playbooks | CICD/CHANGE_LEDGER historical rows are history (D9) |
 | 9 | `compliance/` | verify against code only; regulatory readings flagged `UNVERIFIED`, never adjudicated |
 | 10 | `specs/` + L1/L2 | L1/L2 content propose-only; stamps + pointers in-lane |
 | 11 | `feature-review/` program docs + `research/` living claims | FINDINGS.md rows = propose-only (peer register, D10) |
 | 12 | `.claude/skills/` + `.claude/agents/` | ⛔ lane; `doc-accuracy/SKILL.md` itself never (D10) |
 | 13 | KB index integrity + `archive/` quarantine intact + `logs/` supersession banners | |
+| 14 | `knowledge-base/handoff/` — chapters 00–12, FACTS, LEDGER, TEACHBACK_KEY, `prompts/` | **read-only here** — the slice IS the teach-back (SKILL Phase 1.5) plus the `--check`/`--cite` consistency read; every finding is a proposed `HO-` row for the 17:06 Handoff Corpus Steward, the directory's only writer (D10, CHARTER §6); chapter authoring founder-only |
 
 ## Known false positives — exclusion table (never re-litigate; grow it, cite it)
 
@@ -112,3 +132,4 @@ Full cycle = 13 days, one slice per day.
 |---|---|---|---|---|---|
 | 2026-08-20 | `sweep+fix` (first real tick) | `e3655d7..d8316ec` — **79 commits, 2 days** (seat defined 08-18, first fired 08-20) | **13 new** (DA-0820-01…13): 9 fixed in this PR, 2 `regression-suspect` escalated un-edited, 1 handed to its owning routine · **2 carried closed** (DA-0818-02, -03, both landed by #559) · 0 refuted | *(this PR)* | WARN |
 | 2026-08-18 | founding (not a tick) | `56cf00a..e3655d7` (3 docs-only commits, merged in-session) | 4 seeded from the knowledge-file audit → 2 closed by #557 landing mid-session (DA-0818-01, -04), 2 carried open (-02 narrowed, -03 re-verified) | founding branch `claude/md-docs-accuracy-routine-2x0850` | — |
+| 2026-08-23 | founder amendment (not a tick) | — (`last-swept SHA` untouched; no sweep — two routine PRs were open, #647 and #658, so a tick would have been `observe`) | 15 recorded (DA-0823-01…15): 10 fixed in this PR (one ⛔ CHARTER), 1 fixed in the scheduler, 4 open/proposed (-11 founder authoring, -13 #647's rebase, -14 first tick's 1.4, -15 code ticket) | `docs/doc-accuracy-daily-steward` | #700 |

@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** **§2 and §3/§3a re-verified 2026-08-20** by `/doc-accuracy` (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe) — every other section still carries its 2026-08-18 verification. 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer — its §3a row and the CCR-table restructure came from `main` and were taken on merge; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match). **§3, §3a, §4 and §6's Doc Accuracy rows amended 2026-08-23 by the founder** (the seat moved to the local fleet, daily 19:30, on 2026-08-20; the handoff corpus `knowledge-base/handoff/` made its read-only check and teach-back, never its writer, added to the steward's lane). **§2 and §3/§3a were also re-verified 2026-08-20 by `/doc-accuracy`** (scheduler read live with `list_scheduled_tasks`; skill presence with `git cat-file -e origin/main:<path>`; prod `commit` with a Railway-host `/api/health` probe).
 
 Each routine runs in a **fresh session with no memory of any other run**. Its job description
 lives as a `SKILL.md` — in `~/.claude/scheduled-tasks/<id>/` for the local fleet, in the repo's
@@ -175,8 +175,10 @@ The scheduler adds a small **deterministic dispatch offset** per task, so a rout
 minutes after its cron minute. "Fires" below is the real observed time — the number that matters
 when reasoning about overlap. `taskId` is the scheduler key.
 
-**Rewritten 2026-08-19** to the founder's prove-it-first directive (§1a). Headcount is unchanged
-at thirteen; the *allocation* changed. Before: two daily seats wrote code, three seats were
+**Rewritten 2026-08-19** to the founder's prove-it-first directive (§1a). Headcount was unchanged
+at thirteen that day; the *allocation* changed. Two seats have joined the table since — Doc Accuracy
+(re-seated daily at 19:30 on 2026-08-20, moved from the CCR fleet) and the Staff Journey Walk
+(2026-08-22) — so count the rows, not this sentence. Before: two daily seats wrote code, three seats were
 registered against definitions that had never merged and no-opped every run, and four seats a week
 asked whether we could launch. After: **four daily build lanes**, a **daily** client journey walk,
 and the launch/procurement seats reduced to one weekly and one monthly. *(2026-08-23: the daily
@@ -268,9 +270,11 @@ definition is a rail nobody reads.
 **Seven definitions exist in `.claude/skills/` that are NOT on this clock** — Domain Oracle,
 Integration Readiness, QA Mutation Verifier, App Walker, Workflow Prover, Algorithm Auditor, and
 (since 2026-08-23) the client `journey-walk` front door, plus
-the UI Conformance Sweep, Backend Data Engineer and Doc Accuracy on the CCR side. **A definition on
+the UI Conformance Sweep and Backend Data Engineer on the CCR side (§3a; Doc Accuracy left that side
+for this clock on 2026-08-20). **A definition on
 disk is not a routine** (§0). Do not read a `.claude/skills/*/SKILL.md` as evidence that something
-runs; read this table and `list_scheduled_tasks`. Registration is a founder action.
+runs, and do not trust a count of them written here — read this table, `list_scheduled_tasks`, and
+`ls -d .claude/skills/*/`. Registration is a founder action.
 
 **Sprint Blitz (`sprint-blitz`) was retired 2026-08-17** — absorbed into the Primary Engineer,
 which carries its queue, its ranking, and its fix-the-gate-first rule.
@@ -300,11 +304,10 @@ at [`research/better-teardown/`](../research/better-teardown/)), and `docs/DESIG
 a directory §6 puts off limits to every routine. All three now cite
 [`handbook/design/DESIGN_SYSTEM.md`](../handbook/design/DESIGN_SYSTEM.md) and
 [`feature-review/FINDINGS.md`](../feature-review/FINDINGS.md) — the same sources this fleet uses —
-and probe the Railway host rather than `www`. A fourth, the doc-accuracy steward, cited a skill
-that did not exist at `origin/main` when this paragraph was written; **that skill landed
-2026-08-18T20:04Z via #569** (`f7501e07`), and the seat has since moved to the local fleet (§3's
-19:33 row). **Changing one fleet means checking the other**; the quarterly knowledge audit reads
-both lists.
+and probe the Railway host rather than `www`. The doc-accuracy steward was a fourth until
+2026-08-20, when it moved to this clock as a local daily seat (§3); its skill has been on
+`origin/main` since 2026-08-18. **Changing one fleet means checking the other**; the quarterly
+knowledge audit reads both lists.
 
 The **Capture Path Engineer** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
@@ -333,15 +336,15 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 | 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
 | 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
 | hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
-| — *(moved 2026-08-20)* | — | **Doc Accuracy** — **now on the local fleet**, daily 19:33 (`doc-accuracy-daily`, §3). Founder decision 2026-08-20 re-seated it from this fleet's every-6 h cadence so its report lands between the 17:05 Journey Walk and the 21:00 Evening Triage that consumes it. ⛔ **Unverified from this session:** whether the old CCR trigger (`40 3,9,15,21 * * *`) was deleted — no `list_triggers` tool was reachable. Two doc-hygiene routines over one `.md` corpus is the two-truths hazard the retired row below records. | — | — | — |
 
-**All three founding skills have since landed** — this paragraph read *"three of these cite a
-skill that is not on `origin/main` yet"* when written on 2026-08-18, and was false by that evening:
-the UI conformance sweep via **#566** (`46006862`, 19:24Z), Doc Accuracy via **#569** (`f7501e07`,
-20:04Z) and the Backend Data Engineer via **#574** (`70598e33`, 21:33Z). Each is verifiable with
-`git cat-file -e origin/main:.claude/skills/<id>/SKILL.md`. The standing debt it named — a routine
-that cannot act is not a control (§0) — is therefore cleared for all three. **Two of them write
-code** (the others are report-, issue- or PR-lane only), so §6's territory rows and §5's claim
+**Moved off this table, kept as a record:** Doc Accuracy ran here as `40 3,9,15,21 * * *` (every
+6 h, UTC) from 2026-08-18 until the founder re-seated it on the local clock as `doc-accuracy-daily`,
+daily 19:30 (§3, 2026-08-20). Its skill (`.claude/skills/doc-accuracy/SKILL.md`) has been on
+`origin/main` since 2026-08-18, so the "cites a skill not on `main`" caveat that once applied to
+three CCR rows now applies to none of the rows above. ⛔ *Unverified 2026-08-23: whether the old
+CCR trigger was deleted — read `list_triggers` and, if it still exists, delete it (§11): two stewards
+over one corpus is the two-truths hazard the retired row below records.* **Two of the rows above
+write code** (the others are report-, issue- or PR-lane only), so §6's territory rows and §5's claim
 register do real work here rather than being formalities.
 
 A retired row, kept as a deliberate record: a **weekly doc & memory hygiene sweep** (Mon 14:00,
@@ -350,12 +353,15 @@ been created twelve minutes earlier with the better-specified prompt. Two doc-hy
 competing over the same `.md` corpus is the two-truths hazard both exist to prevent — see the
 [knowledge-file audit](../logs/2026-08-18-knowledge-file-audit.md) §4.
 
-Doc Accuracy's cadence is deliberately the suite's tightest: every fresh session — human or
-routine — orients from the docs, so doc drift compounds into every other lane's errors within
-hours (founder direction, 2026-08-18). Its ticks are diff-driven from its ledger's `last-swept
-SHA`, so an empty window is a cheap clean tick; same-day ticks extend one PR. Its report lands in
-`reports/` like every routine's (§7 counts it; §9 format binds it) and its proposed tickets go to
-Evening Triage like everyone's (§4).
+Doc Accuracy now runs once daily at 19:33 on the local fleet (§3 — founder decision 2026-08-20;
+the every-6-hours CCR cadence of 2026-08-18 was retired with the move). Every fresh session — human
+or routine — orients from the docs, so doc drift compounds into every other lane's errors; its
+ticks are diff-driven from its ledger's `last-swept SHA`, so an empty window is a cheap clean
+tick. Since 2026-08-23 every tick also runs a **read-only** consistency check of the handoff corpus
+(`pnpm handoff:facts --check/--cite`, never `--write` — `knowledge-base/handoff/**` has one writer,
+the 17:06 Handoff Corpus Steward) and every fourteenth tick re-runs the corpus's fresh-hire
+teach-back, reporting misses to that seat. Its report lands in `reports/` like every routine's (§7 counts it; §9 format
+binds it) and its proposed tickets go to Evening Triage like everyone's (§4).
 
 ---
 
@@ -390,6 +396,9 @@ The day is a pipeline, not a stack of independent jobs.
         ▼
 17:05 Handoff Corpus Steward ──► the onboarding corpus re-proven against main; drift
         │                         rows opened, resolved and aged (⛔ when a lane sits on one)
+        ▼
+19:30 Doc Accuracy ──► the knowledge-base steward: living docs vs the code since the
+        │               last-swept SHA; the handoff corpus checked, never written; one docs-only PR
         ▼
 21:00 Evening Triage ──► reads all of the above, dedupes into ONE backlog,
                           updates CTO_ROADMAP.md, writes the founder's list

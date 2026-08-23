@@ -8,7 +8,10 @@ nothing.
 
 > ⚠️ **Partly superseded 2026-08-19 by the prove-it-first suite rewrite** ([`CHARTER.md`](CHARTER.md)
 > §1a, §3). The *role* mapping below still holds; the **clock and the seat list do not**. Three seats
-> were retired, two were reshaped, one was promoted to daily, and two new build lanes were added.
+> were retired, two were reshaped, one was promoted to daily, and two new build lanes were added;
+> the **Doc Accuracy** steward was re-seated daily at 19:30 on 2026-08-20 (CHARTER §3 — not a
+> hiring-plan seat, so no row below), and the local fleet was paused 2026-08-22 (8 GB laptop), so
+> any `Registered?` column below is the 2026-08-20 state.
 > **Read `CHARTER.md` §3 and `list_scheduled_tasks` for who actually runs** — this file is a
 > seating chart, not a registration, and §0 there is about exactly that confusion.
 

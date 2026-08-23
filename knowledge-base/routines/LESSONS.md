@@ -9,7 +9,9 @@ honesty rails are the distilled, human-curated version; this is the inbox that f
 
 ## How to use it
 
-1. **Append when you learn something the next session would otherwise re-learn.** Newest first.
+1. **Append when you learn something the next session would otherwise re-learn.** Append at the
+   bottom — the table is chronological, so the last rows are the newest, and the newest rows bind
+   on conflict.
 2. **Cite evidence on every row** — a command, a PR, a `file:line`. A lesson without evidence is
    an opinion, and this file is not for opinions.
 3. **Promote to `CHARTER.md` §10** when a lesson proves general and durable. Trim rows that were
