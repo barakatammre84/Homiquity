@@ -72,6 +72,12 @@ export default defineConfig({
       "tests/securityReviewGuard.test.ts",
       // TEAM_PRACTICES §10 — the Selling Guide authority gate.
       "tests/sellingGuideAuthorityGuard.test.ts",
+      // The corpus coherence guard (pnpm guard:corpus). Pins the constant-parse
+      // against the real extractor so a renamed constant reds the suite instead
+      // of leaving the guard silently checking nothing, plus every failing
+      // direction (sha drift, count mismatch, unknown xref id, hand-edit
+      // tripwire, stale coverage edition) and the INERT-when-absent rule.
+      "tests/sellingGuideCorpusGuard.test.ts",
       // F-0818-11 — the DU casefile DTI must include the proposed housing payment.
       "tests/ausCasefileDti.test.ts",
       "tests/userPhones.test.ts",

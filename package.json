@@ -45,6 +45,7 @@
     "guard:authority": "node scripts/selling-guide-authority-guard.cjs",
     "coverage:sg": "node scripts/selling-guide-coverage.cjs",
     "guard:coverage": "node scripts/selling-guide-coverage.cjs --check",
+    "guard:corpus": "node scripts/selling-guide-corpus-guard.cjs",
     "guard:kb": "node scripts/kb-index-guard.cjs",
     "guard:staleness": "node scripts/doc-staleness-guard.cjs",
     "guard:citations": "node scripts/citation-guard.cjs",
