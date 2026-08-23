@@ -1,7 +1,7 @@
 # Handoff — the Feynman onboarding corpus for Homiquity
 
-> **Freshness:** last verified 2026-08-22 · review every 60 days
-> Verified against `origin/main` @ 12d7cbec (every chapter carries its own stamp).
+> **Freshness:** last verified 2026-08-23 · review every 60 days
+> Verified against `origin/main` @ 6377727e (every chapter carries its own stamp).
 
 This directory teaches the product to a full-stack engineer who has never seen it, and hands it
 over to a team that will keep it running. It is a **layer over** the existing documentation, not
@@ -149,7 +149,7 @@ citation · CHARTER §1b rows L3 and L4.
 |---|---|---|
 | 1 | `main` requires **zero** status checks, and `enforce_admins: true` binds admins to an empty list. A green gate is advisory. | FACTS F-44; chapter 07 |
 | 2 | A merge is a deploy, and a **failed** Railway build leaves the previous container serving — so the site stays up and every check stays green while prod goes stale. Only `/api/health`'s `commit` proves a ship. | chapter 10 |
-| 3 | `pnpm test` runs a hand-maintained **allowlist**. An unlisted node test is silently never run — one is stranded on `main` today — and the lane can collect fewer files than exist and still exit 0. | FACTS F-13, F-39; chapter 07 |
+| 3 | `pnpm test` runs a hand-maintained **allowlist** — an unlisted node test is silently never run. Since #670 (`fd4a22c5`, 2026-08-23) the command IS the floor: `scripts/test-collection-guard.cjs` fails on a collected-vs-on-disk shortfall and on a test in no lane, and the once-stranded `tests/maintenanceMode.test.ts` is listed (`vitest.config.ts:306`). The discipline stands: append your new test to the allowlist, and read the collected counts. | FACTS F-13, F-39; chapter 07 |
 | 4 | Adding a colocated client test reddens `guard:ui` until you run `pnpm guard:ui --write-table`, because the generated table's denominator counts test files. This has already merged red to `main` once. | LEDGER HO-0822-25, HO-0822-26 |
 | 5 | The dominant defect class here is an operation that **does not happen while the UI says it did** — a 200 for a write that was silently dropped. Chapter 04's draft round-trip is the worked example, and its fix did not close the class. | chapter 04 |
 
