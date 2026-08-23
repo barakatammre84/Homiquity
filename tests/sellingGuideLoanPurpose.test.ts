@@ -66,3 +66,52 @@ describe("B2-1.3 a non-purchase file must not be decisioned on purchase ceilings
     expect(ENGINE).toMatch(/input\.loanPurpose \?\? "purchase"/);
   });
 });
+
+describe("B3-6-04 an ARM must not be qualified at its note rate", () => {
+  /**
+   * Found by auditing every captured column against what the decision path
+   * consumes: 67 columns on loan_applications, 27 read by the engine. Eight of
+   * the unread ones are the ARM block — index, margin, initial/periodic/lifetime
+   * caps, adjustment frequency — which is precisely what B3-6-04 needs.
+   *
+   * The chain that makes it live rather than theoretical:
+   *   1. URLA Section 4a offers "Adjustable Rate (ARM)";
+   *   2. loan_applications.amortization_type stores it;
+   *   3. derivePricing prices a 30-year fixed regardless;
+   *   4. mismoValidation then DEMANDS the arm_* terms at delivery — terms
+   *      nothing in the product writes.
+   * So an ARM borrower was qualified at the teaser rate and could not be
+   * delivered.
+   */
+  it("the engine accepts an amortizationType input", () => {
+    expect(ENGINE).toMatch(/amortizationType\?: string/);
+  });
+
+  it("the decision engine populates it — a declared input nothing fills is not a gate", () => {
+    expect(DECISION).toMatch(/amortizationType:\s*app\.amortizationType/);
+  });
+
+  it("routes an adjustable-rate file to review", () => {
+    expect(ENGINE).toMatch(/amortization === "adjustable"/);
+  });
+
+  it("cites B3-6-04 and says why it cannot compute the rate", () => {
+    expect(ENGINE).toContain("B3-6-04");
+    // The reason must name the missing capture, not just the missing rule —
+    // otherwise the next session "implements" it against absent inputs.
+    expect(ENGINE).toMatch(/index, margin, caps/);
+  });
+
+  it("does not invent a qualifying rate or a cap", () => {
+    const block = ENGINE.slice(
+      ENGINE.indexOf("B3-6-04, Qualifying Payment Requirements"),
+      ENGINE.indexOf("Subject-property reconciliation"),
+    );
+    expect(block.length).toBeGreaterThan(0);
+    expect(block).not.toMatch(/\d+(\.\d+)?\s*%/);
+  });
+
+  it("leaves a fixed-rate file alone", () => {
+    expect(ENGINE).toMatch(/input\.amortizationType \?\? "fixed"/);
+  });
+});

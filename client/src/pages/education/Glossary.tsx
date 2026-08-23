@@ -141,14 +141,14 @@ export default function Glossary() {
         ]}
       />
       {/* Hero */}
-      <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
+      <div className="bg-muted p-6 sm:p-8 lg:p-12">
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
             <BookOpen className="h-4 w-4" />
             Glossary
           </div>
           <h1
-            className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
+            className="font-display text-3xl font-bold leading-none tracking-tight sm:text-4xl lg:text-5xl"
             data-testid="text-glossary-title"
           >
             Homeownership and mortgage terms

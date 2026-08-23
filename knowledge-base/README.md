@@ -40,13 +40,14 @@ doc-drift bug to fix):
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
   - [12 — The UI ↔ Backend API Contract](handbook/app-guide/12-api-contract.md) — who owns a payload shape, the three wire states (absent / value / `null`), the error shape, and how a shape changes without dropping a borrower's answer.
 - [design/DESIGN_SYSTEM.md](handbook/design/DESIGN_SYSTEM.md) — **the single binding design standard**
-  (Royal Blue Emerald). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
+  ("Mint & Flare"). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
   elevation, the icon registry, `<Logo>`/white-label, empty states, the **capture-flow standard**
   (progressive disclosure · tunnel vision · mobile invariants), the **four-question gate**
   (provenance · explanation · agreement · honesty), and the adoption checklist. §0 is a *measured*
   adoption table — no `⏳`, every row carries a number and the command that produces it
   (`pnpm guard:ui`). Merged 2026-08-18 from `design_guidelines.md` + `visual-consistency-standard.md`,
   both now in [archive/design/](archive/design/).
+- [handoff/](handoff/) — the **Feynman onboarding & handoff corpus** for a full-stack team: each chapter explains one subsystem plainly, then proves every claim with a read-only command, names where it breaks, and ends in a teach-back. Layered on the app-guide (which wins on any conflict; the code wins over both); counts are command-derived in `handoff/FACTS.md`, drift found in other docs is logged in `handoff/LEDGER.md` rather than hand-patched; `handoff/prompts/` holds the loop rails and templates for building through Claude without breaking the harness.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
@@ -57,6 +58,7 @@ doc-drift bug to fix):
 - [NTHLA_609G_SPEC.md](compliance/NTHLA_609G_SPEC.md) — FCRA §609(g) Notice to Home Loan Applicant: absent today, hard-blocking for F3, and the per-bureau data the credit-vendor contract must deliver
 - [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, one command from greppable via `scripts/extract-selling-guide.py`; the copyrighted text is gitignored since the repo went public, the tracked `section-index.tsv` still locates any section). Verified-conforming table, the eight corrections landed 2026-08-20/22, and twenty recorded gaps resolved conservatively rather than assumed
 - [`compliance/SELLING_GUIDE_COVERAGE.md`](compliance/SELLING_GUIDE_COVERAGE.md) — generated standing map of all 423 Selling Guide sections against this codebase; run `pnpm coverage:sg` after editing `compliance/selling-guide-coverage.json`.
+- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, one command from greppable via `scripts/extract-selling-guide.py`; the copyrighted text is gitignored since the repo went public, the tracked `section-index.tsv` still locates any section). Verified-conforming table, the ten corrections landed 2026-08-20/22, and twenty-one recorded gaps resolved conservatively rather than assumed
 - [security/threat_model.md](compliance/security/threat_model.md)
 
 ### SOP Manual — written operating procedures (DRAFT) · [`sop/`](sop/)
@@ -110,6 +112,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
 - [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
 - [design-identity/ILLUSTRATION_BRIEF.md](design-identity/ILLUSTRATION_BRIEF.md) — what to commission for the animated scenes, and the mechanism that already exists.
+- [design-identity/LEDGER.md](design-identity/LEDGER.md) — Design Identity Engine cross-run memory: what each run raised, what it proved it on, and the directions it refused.
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [journey-walks/](feature-review/journey-walks/) — dated persona-walk reports parked outside the register while it is claimed; fold in and delete.
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.

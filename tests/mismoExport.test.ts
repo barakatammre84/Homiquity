@@ -317,3 +317,35 @@ describe("LoanAmortizationType (F-053)", () => {
     ).toThrow(/unmapped amortization type/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// B3-6-05, Debts Paid by Others → LiabilityExclusionIndicator. MISMO_3_0.xsd
+// line 9748: "Indicates whether the liability is to be excluded from inclusion
+// in calculations associated with processing the loan." The package must tell
+// the lender the same story the qualifying ratio does.
+// ---------------------------------------------------------------------------
+describe("LiabilityExclusionIndicator follows the B3-6-05 exclusion", () => {
+  const paidByFamily = {
+    liabilityType: "Student Loan",
+    creditorName: "Navient",
+    monthlyPayment: "350",
+    unpaidBalance: "30000",
+    paidByOtherParty: true,
+    otherPartyRelationship: "family_member",
+    otherPartyInterestedParty: false,
+  };
+
+  it("is emitted as true, in schema order, for an excluded payment", () => {
+    const xml = generateMISMO34XML(baseDto({ liabilities: [paidByFamily as any] }));
+    expect(xml).toContain("<LiabilityExclusionIndicator>true</LiabilityExclusionIndicator>");
+    // Alphabetical sequence inside LIABILITY_DETAIL: Exclusion before MonthlyPaymentAmount.
+    expect(xml.indexOf("<LiabilityExclusionIndicator>")).toBeLessThan(xml.indexOf("<LiabilityMonthlyPaymentAmount>"));
+  });
+
+  it("is absent (included is the default) for an ordinary liability and for a rejected claim", () => {
+    expect(generateMISMO34XML(baseDto({ liabilities: [{ liabilityType: "credit_card", monthlyPayment: "50" } as any] })))
+      .not.toContain("LiabilityExclusionIndicator");
+    expect(generateMISMO34XML(baseDto({ liabilities: [{ ...paidByFamily, otherPartyInterestedParty: true } as any] })))
+      .not.toContain("LiabilityExclusionIndicator");
+  });
+});

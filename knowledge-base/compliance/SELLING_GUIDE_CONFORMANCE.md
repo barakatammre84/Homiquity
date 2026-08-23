@@ -126,6 +126,12 @@ Fixed by normalising the type before dispatch and hoisting the paid-off check ah
 type branch. This is the repo's standing silent-success class: an operation that does not
 happen while the surface says it did.
 
+**Amended 2026-08-22 (C-9):** the vocabulary named above is the *staff* `liabilities` table's
+enum (`shared/schema/underwritingFinancials.ts`). The URLA picker that feeds
+`urla_liabilities` — the rows `assessLiabilities` actually receives — writes its own labels
+(`"Revolving (Credit Card)"`), which the normaliser turned into `revolving_(credit_card)`. So
+the revolving branch C-1 added was still unreachable for every real row. See C-9.
+
 ### C-3 — Income seasoning cited the wrong topic
 
 `underwritingNuance.ts` cited **B3-3.2** for the length-of-self-employment rule. B3-3.2-01 is
@@ -186,7 +192,7 @@ that is a larger DTI understatement than C-1, in the same forbidden direction.
 
 Fixed across the capture path, not just the arithmetic:
 
-- `migrations/0057_subject_property_association_dues.sql` — expand-only, nullable, **no
+- `migrations/0058_subject_property_association_dues.sql` — expand-only, nullable, **no
   DEFAULT**. Zero is a claim ("this property has no association"); defaulting every existing
   row to it would fabricate the exact figure the column exists to stop assuming.
 - `computePaymentProjection` adds the dues to `estimatedMonthlyTotal` and reports them.
@@ -237,7 +243,180 @@ Matrix, and a fabricated ceiling would be exactly the failure this whole pass ex
 prevent. Tightening a gate is the only direction a reading may move without its source in hand.
 Omitted purpose still defaults to `purchase`, so genuine purchase files are byte-identical.
 
+### C-9 — An ARM could be declared, qualified at its teaser rate, and never delivered
+
+Found by the capture-vs-consumption audit below, not by reading a section.
+
+**B3-6-04, Qualifying Payment Requirements.** The note rate is the qualifying rate for
+**fixed-rate mortgages only**. An ARM with a five-year initial fixed period qualifies at the
+**greater of** the note rate plus its first rate-change cap or the fully indexed rate; three
+years or less, at the maximum rate reachable in the first five years.
+
+The chain that made this live rather than theoretical:
+
+1. URLA Section 4a offers **"Adjustable Rate (ARM)"** (`AMORTIZATION_TYPE_OPTIONS`);
+2. `loan_applications.amortization_type` stores it, written by the URLA save path;
+3. `derivePricing` prices a 30-year fixed regardless, and the engine never read the column;
+4. `mismoValidation` then **demands** `arm_index_type`, `arm_margin` and `arm_initial_cap` at
+   delivery — columns nothing in the product writes.
+
+So an ARM borrower was qualified at the teaser rate *and* could not be delivered. Both halves
+were invisible: the first because the engine ignored a column, the second because the validator
+only fires much later.
+
+The engine now routes an adjustable file to human review, citing B3-6-04 and naming the missing
+capture. Deliberately no rate or cap is invented — the terms needed to compute the real figure
+are not captured, so this is uncomputable rather than merely unimplemented. Fixed-rate files are
+byte-identical.
+
+### C-10 — 🚨 The entire URLA Section 5 declarations table never reached the decision
+
+**The largest finding of this pass.** Found by extending the capture-versus-consumption audit to
+the URLA tables — the blind spot the first audit named.
+
+`borrower_declarations` carries **33 columns** and reaches exactly two consumers: document
+generation (`routes/lending/documents.ts`) and MISMO completeness scoring
+(`mismoValidation.scoreDeclarations`). **Zero of it reached the decision path**, and no engine
+file contained the words bankruptcy, foreclosure, short sale, judgment or federal debt at all.
+
+So a borrower could declare a **foreclosure**, a **Chapter 7 bankruptcy**, a **deed-in-lieu**, a
+**short sale**, **outstanding judgments**, or **delinquency on federal debt** — and be
+decisioned exactly as though they had not. These are among the most basic conventional
+eligibility rules there are.
+
+**B3-5.3-07, Significant Derogatory Credit Events — Waiting Periods:**
+
+| Derogatory event | Waiting period | With extenuating circumstances |
+|---|---|---|
+| Bankruptcy — Chapter 7 or 11 | **4 years** | 2 years |
+| Bankruptcy — Chapter 13 | 2 years from discharge; **4 from dismissal** | 2 / 2 |
+| Multiple filings in the past 7 years | **5 years** | 3 years |
+| Foreclosure | **7 years** | 3 years (≤90% LTV, purchase primary or limited cash-out) |
+| Deed-in-lieu, preforeclosure sale, charge-off of a mortgage | **4 years** | 2 years |
+
+**And the schema cannot clear them either.** Every period runs from a discharge, dismissal or
+completion **date**, and the columns are **booleans** (`has_been_foreclosed`,
+`has_declared_bankruptcy`, with `bankruptcy_types` as free text). No dates are captured, so the
+waiting period is uncomputable — the same shape as the ARM terms in C-9.
+
+But being unable to **clear** an event is not a reason to **ignore** it. Declared events now
+route to human review, citing B3-5.3-07 and naming the missing dates. No waiting period is
+hardcoded, and the test asserts no "N years" literal appears in the block — a period applied to
+data that cannot support it would be worse than none.
+
+Read across **all borrowers** via `getAllBorrowerDeclarations`. Scoping to the primary would
+have repeated G-15 exactly: counting a co-borrower's income while ignoring their risk. Pinned by
+a test that fails if a co-borrower's foreclosure is invisible.
+
+**Still not captured, and needed before any of this can be decided rather than reviewed:** the
+event dates, whether extenuating circumstances are documented, and the number of prior filings
+(the 5-year multiple-filing rule).
+
 ---
+
+## The capture-versus-consumption audit (2026-08-22)
+
+Five of the most serious findings on this page share one shape: **a value that exists in the
+capture or marketing surface and is invisible to the engine** — HOA dues (C-6), loan purpose
+(C-8), co-borrower credit (G-15), real estate owned (G-16), DPA seconds (G-21). That is a class,
+not a coincidence, so it was worth measuring rather than continuing to find instances by
+reading.
+
+**Method** (repeatable): enumerate the columns on `loan_applications`, enumerate every
+`app.<field>` / `application.<field>` reference across the decision and pricing path
+(`decisionEngine`, `underwritingEngine`, `loanEstimate`, `preUnderwriting`, `scenarioSimulator`,
+`income/orchestrator`, `underwriting`), and take the difference — excluding infrastructure
+columns (ids, timestamps, AUS/HMDA/TRID bookkeeping, derived ratios).
+
+**Result: 67 captured columns, 27 read by the decision path, 21 unread.** Triaged:
+
+| Unread columns | Verdict |
+|---|---|
+| `amortizationType` + the 8 `arm_*` terms | 🚨 **Defect — C-9.** The form offers ARM; the engine ignored it; delivery demands terms nothing writes. |
+| `totalPointsAndFees` | ✅ Sound. `mismoValidation` computes a lower bound from platform charges when it is absent and reports a **warning, never a pass** — a prior session already fixed the "missing ⇒ compliant" trap. |
+| `incomeVerified`, `assetsVerified`, `creditVerified` | ✅ Read by `services/verification.ts`; they feed the provenance system the engine *does* consume. |
+| `d1cAssetsRelief`, `d1cIncomeRelief`, `d1cEmploymentRelief` | ✅ Day 1 Certainty relief belongs to the AUS/autopilot lane, not the deterministic engine. |
+| `employmentYears`, `employerName` | ✅ Read elsewhere; the engine deliberately prefers the authoritative `urla_employment` rows. |
+| `propertyAddress`, `propertyCity`, `propertyZip` | ✅ `propertyState` is what pricing needs; the rest are not decision inputs. |
+| `avoidsInterestFinancing` | ⚠️ Expected — the Islamic-finance lane is founder-gated. Note it is also one of the three funnel answers the autosave path drops (see the capture-path findings). |
+
+One defect in twenty-one, and the rest explained. That is the useful outcome: the class is real
+but it is now **enumerated**, and this table is the thing to re-run after any schema change
+rather than rediscovering the shape a sixth time.
+
+### Round 2 — the URLA tables (same method, the blind spot the first round named)
+
+| Table | Cols | Reachable | Verdict |
+|---|---|---|---|
+| `borrower_declarations` | 33 | **0** | 🚨 **C-10** — the whole table stopped at document generation and MISMO scoring |
+| `real_estate_owned` | 25 | 5 | Already G-16/G-17 — no borrower-facing capture path |
+| `urla_property_info` | 21 | 6 | ✅ The 11 unread are address, county, legal description, mixed-use and manufactured-width — not decision inputs |
+| `urla_liabilities` | 13 | 4 | ✅ The 5 unread are creditor name and the encrypted account-number quartet — correctly not decisioned on |
+| `urla_assets` | 11 | 2 | ✅ Same: institution name and the encrypted quartet |
+| `other_income_sources` | 5 | 5 | ✅ Fully consumed |
+
+Two rounds, one method, two real defects (C-9, C-10) out of ~120 columns — and every other
+unread column now carries a written verdict rather than an open question.
+
+**What neither round could see:** values that exist only in a marketing surface with **no column
+at all**, which is how G-21 (the DPA second liens) hid. That needs a different technique —
+starting from what the product *promises* rather than from what it *stores*.
+
+---
+
+### C-9 — The revolving imputation still could not fire for the picker's own labels
+
+**B3-6-05, Revolving Charge/Lines of Credit** (same quote as C-1). C-1's branch dispatched on
+a snake_case normaliser (`credit_card`), and C-2's test fed it `"credit_card"`, `"Credit Card"`
+and `"revolving"` — none of which the URLA picker emits. The picker stores
+`"Revolving (Credit Card)"` verbatim, and the normaliser produced `revolving_(credit_card)`, so
+`isRevolvingType` was false for every row the form writes. A second dead branch under a
+green test, found while stacking C-10 on this page.
+
+Fixed by moving the picker's list to `shared/liabilityTypes.ts` (`URLA_LIABILITY_TYPES`) —
+the same move `INCOME_SOURCES` made — with one classifier, `liabilityKind`, that reads the
+picker's labels *and* the staff enum, shared by the picker, both engines, the pre-underwriting
+flags and the MISMO export. `tests/sellingGuideMonthlyDebt.test.ts` now feeds the engine the
+picker's own list and asserts every label reaches a real branch.
+
+### C-10 — Debts paid by others were always counted against the borrower
+
+**B3-6-05, Debts Paid by Others** (revised in the 08/05/2026 edition). "When a borrower is
+obligated on a non-mortgage debt - but is not the party who is actually repaying the debt - the
+lender may exclude the monthly payment from the borrower's recurring monthly obligations. This
+policy applies whether or not the other party is obligated on the debt, but is not applicable if
+the other party is an interested party to the subject transaction (such as the seller or real
+estate agent)." For mortgage debt, the full PITIA "if the party making the payments is obligated
+on the mortgage debt, there are no delinquencies in the most recent 12 months, and the borrower
+is not using rental income from the applicable property to qualify." Either way, "the lender
+must obtain the most recent 12 months' canceled checks (or bank statements) from the other party
+making the payments that document a 12-month payment history with no delinquent payments."
+
+Nothing on `urla_liabilities` could carry the declaration, so every such payment sat in the
+DTI — a borrower whose parent pays their student loan was qualified on a ratio the Guide says
+they need not carry. Implemented end to end:
+
+- **Declaration** — five columns (migration 0058): the claim, the payer's relationship (never a
+  name), and the three facts the rule turns on. The URLA form asks exactly those questions and
+  shows, from the same predicate the engines read, whether the payment left the ratio and why
+  not if it did not.
+- **One rule** — `shared/liabilityExclusions.ts` (`assessPaidByOtherParty`), read by the instant
+  decision (`sumOpenMonthlyLiabilities`), the staff calculations engine (`assessLiabilities`),
+  the pre-underwriting flags and the MISMO export (`LiabilityExclusionIndicator`, verified in
+  `MISMO_3_0.xsd` line 9748). An unanswered question is a condition not yet met: the debt stays
+  in until the borrower answers. Guarded by `tests/complianceInvariants.test.ts`.
+- **Documentation** — the exclusion applies the moment the answers qualify, and the 12-month
+  history follows it as an auto-generated, per-liability `loan_condition`
+  (`PRE_UW_THIRD_PARTY_PAID_DEBT:<liabilityId>`, document type `third_party_payment_history`),
+  reconciled on every liability write: created when claimed, retired (`not_applicable`) when
+  withdrawn, re-opened if the claim returns, never duplicated, a cleared one left as history.
+  Staff verification of the history **is** that condition's clearing workflow — there is
+  deliberately no staff-only column on the liability row, because the liability routes
+  whitelist by table column and a borrower could set one on their own row.
+
+The product decision recorded with it: the borrower is qualified on the ratio the Guide entitles
+them to with the paperwork named, not held to a ratio it says they need not carry. The
+12-month no-delinquency fact is what the documentation proves, not a self-reported field.
 
 ## Open gaps — recorded, not silently assumed
 
@@ -496,6 +675,41 @@ text is now gitignored, so citing
 `docs/fannie-mae/selling-guide/selling-guide-text.txt` passes locally and **fails in CI**, where
 the fresh clone lacks it. Cite the tracked `section-index.tsv` (or this ledger) and name the
 section.
+
+### G-21 — 🚨 CLTV and HCLTV are never computed, and we actively market the thing that creates them
+
+**B2-1.2-02 (CLTV)** and **B2-1.2-03 (HCLTV)**. CLTV is the first mortgage plus the drawn
+portion of any HELOC plus the unpaid balance of all closed-end subordinate financing, over the
+**lesser of sales price or appraised value**. **B2-1.2-04, Subordinate Financing** governs when
+a subordinate lien is permitted at all.
+
+The engine gets the *basis* right — `Math.min(contractSalesPrice, appraisalValue)` — and then
+computes **only LTV**. `grep -i cltv` across `server/` and `shared/` returns nothing but the
+comments this pass added; there is no CLTV grid in `seedLendingGrids.ts` and no HCLTV anywhere.
+A file at 95% LTV and 105% CLTV clears the LTV ceiling and is never measured against a CLTV one.
+
+**What makes this live rather than theoretical: we promote the subordinate financing ourselves.**
+`server/seedData/illinoisDpa.ts` seeds four IHDA programs, surfaced to borrowers through
+articles and the assistant's `getDpaPrograms` tool, in the launch state:
+
+| Program | Assistance | Form |
+|---|---|---|
+| IHDAccess Home | 6% of price, to $15,000 | no-interest **second loan** |
+| IHDAccess Forgivable | 4% of price, to $6,000 | forgivable loan |
+| IHDAccess Deferred | 5% of price, to $7,500 | no-interest deferred loan |
+| IHDAccess Repayable | 10% of price, to $10,000 | zero-interest, **repaid monthly over 10 years** |
+
+Each is a subordinate lien on the subject property. `IHDAccess Repayable` additionally carries a
+**monthly payment**, which B3-6-03 puts inside PITIA (see G-10) and which no field records.
+
+`dpa_programs` is a marketing catalog: there is no link from an application to a program, no
+subordinate-lien amount, and no payment. So this is a **capture** gap rather than a
+miscalculation — we are not computing a known figure wrongly, we are blind to it. But we are
+blind to something we recommend, in the first state we are launching in.
+
+Note the sequencing trap: closing this needs the CLTV *ceiling*, and B2-1.3/B2-1.2 route
+maximum CLTV/HCLTV ratios to the **Eligibility Matrix** (G-14), which we do not hold. So the
+capture half is buildable now; the enforcement half is blocked on procurement, exactly like C-8.
 
 ### G-7 — Jumbo routing uses the one-unit limit for 2–4 unit properties (B2-1.5-01)
 

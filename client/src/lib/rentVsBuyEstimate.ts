@@ -55,21 +55,27 @@ export function calculateResults(inputs: CalculatorInputs): CalculatorResults {
     annualAppreciation,
   } = inputs;
 
-  const downPayment = homePrice * (downPaymentPercent / 100);
-  const loanAmount = homePrice - downPayment;
+  // Clamp before deriving money. The page's number inputs carry no `min`, so a
+  // negative home price inverted every ownership figure — a -$225 monthly cost
+  // and -$5,302 of "equity". Same guard as HomeEquityCalculator's
+  // `Math.max(0, homeValue)`.
+  const price = Math.max(0, homePrice);
+  const rent = Math.max(0, monthlyRent);
+  const downPayment = price * (downPaymentPercent / 100);
+  const loanAmount = price - downPayment;
   const monthlyRate = interestRate / 100 / 12;
   const numPayments = 30 * 12;
 
   const monthlyMortgage = monthlyPrincipalAndInterest(loanAmount, interestRate, numPayments);
 
-  const monthlyPropertyTax = (homePrice * (propertyTaxRate / 100)) / 12;
-  const monthlyInsurance = (homePrice * (insuranceRate / 100)) / 12;
-  const monthlyMaintenance = (homePrice * (maintenanceRate / 100)) / 12;
+  const monthlyPropertyTax = (price * (propertyTaxRate / 100)) / 12;
+  const monthlyInsurance = (price * (insuranceRate / 100)) / 12;
+  const monthlyMaintenance = (price * (maintenanceRate / 100)) / 12;
   const totalMonthlyOwnership =
     monthlyMortgage + monthlyPropertyTax + monthlyInsurance + hoaMonthly + monthlyMaintenance;
 
   let totalRentCost = 0;
-  let currentRent = monthlyRent;
+  let currentRent = rent;
   for (let year = 0; year < yearsToStay; year++) {
     totalRentCost += currentRent * 12;
     currentRent *= 1 + annualRentIncrease / 100;
@@ -77,7 +83,7 @@ export function calculateResults(inputs: CalculatorInputs): CalculatorResults {
 
   const totalOwnershipCost = totalMonthlyOwnership * 12 * yearsToStay;
 
-  const futureHomeValue = homePrice * Math.pow(1 + annualAppreciation / 100, yearsToStay);
+  const futureHomeValue = price * Math.pow(1 + annualAppreciation / 100, yearsToStay);
 
   let remainingBalance = loanAmount;
   for (let month = 0; month < yearsToStay * 12; month++) {
@@ -93,7 +99,7 @@ export function calculateResults(inputs: CalculatorInputs): CalculatorResults {
   let breakEvenYears = 0;
   let cumulativeRent = 0;
   let cumulativeOwnership = 0;
-  let testRent = monthlyRent;
+  let testRent = rent;
   let testBalance = loanAmount;
 
   for (let year = 1; year <= 30; year++) {
@@ -107,7 +113,7 @@ export function calculateResults(inputs: CalculatorInputs): CalculatorResults {
       testBalance -= monthlyMortgage - interest;
     }
 
-    const testHomeValue = homePrice * Math.pow(1 + annualAppreciation / 100, year);
+    const testHomeValue = price * Math.pow(1 + annualAppreciation / 100, year);
     const testEquity = testHomeValue - Math.max(0, testBalance);
     const netOwnership = cumulativeOwnership + downPayment - testEquity;
 

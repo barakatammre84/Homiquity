@@ -44,6 +44,39 @@ that `main` cannot show until work lands.
 
 Humans claim too — a routine cannot see your editor.
 
+## Before you touch someone else's PR — the check `gh` cannot do
+
+Added 2026-08-22, after a drain session update-branched PRs that had **live interactive sessions
+attached to them**. Neither `gh pr view` nor `ListAgents` shows this. A peer had to say it out loud.
+
+```bash
+# each row carries prNumber + isRunning — test it, do not eyeball the sidebar
+mcp__ccd_session_mgmt__list_sessions
+```
+
+`isRunning: true` with a `prNumber` means **a human or session is editing that PR right now**.
+Refreshing its branch or merging it pulls the rug out mid-edit. On 2026-08-22 that was **two**
+sessions on #650 and one each on #653 and #660 — invisible from the CLI.
+
+**Rule: run this before any `gh pr update-branch` or merge on a PR you did not open.**
+
+### Three things that look like a CI verdict and are not
+
+All three cost real time on 2026-08-22:
+
+1. **`main` itself can be red, and it fails everyone.** `guard:citations` failed on pristine
+   `origin/main` (24 → 29). CI tests the **merge-with-main** commit, so **13 open PRs went red on a
+   step none of them owned**. Two sessions diagnosed it independently from opposite directions
+   before either attributed it correctly. **Before debugging your own diff, run the failing guard
+   against pristine `origin/main`.** Fixed in #662.
+2. **A draft PR accumulates `statusCheckRollup` rows that read as coverage.** The gate's `if:`
+   includes `draft == false`, so it never ran — but #653 showed `checks=6` while ungated. The
+   failure mode is not an obvious blank, it is six green-ish rows. Same class of lie as
+   `mergeStateStatus: CLEAN`, which only ever meant "no conflicts". `gh pr ready` to get a verdict.
+3. **A rerun of a billing-era corpse can be a second corpse.** `gh run rerun` re-queues under the
+   *current* billing state. Check `steps` on the **rerun**, not just on the original: a real gate
+   run is 28–29 steps / ~3 min; a corpse is `steps=0` in ~2s.
+
 ## Graduated overlap response
 
 When your intended work meets a live claim, the answer is rarely "stop":
@@ -61,6 +94,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
 | founder-directed session (Selling Guide constitution) | `scripts/selling-guide-authority-guard.cjs` (new) · `tests/sellingGuideAuthorityGuard.test.ts` (new) · `.github/workflows/ci.yml` · `package.json` (one script line) · every `.claude/skills/<slug>/SKILL.md` · `.claude/agents/_OWNER_RAILS.md` · `knowledge-base/governance/TEAM_PRACTICES.md` | scratchpad/sg-wt | compliance/selling-guide-constitution | 2026-08-21T12:20Z | Installs the Selling Guide as the governing authority: the §10 authority gate, the Guide-first rewrite of the skill fleet, and the shared owner rails. **Deliberately NOT claimed** — `CLAUDE.md` (#650, #642), `knowledge-base/routines/CHARTER.md` (#647), `knowledge-base/routines/TEAM.md` (#645) and SELLING\_GUIDE\_CONFORMANCE.md (#650, not yet on main) are all in flight; those edits wait for those PRs rather than racing them (§5: a file in an open PR is claimed). The gate ships **inert** until the corpus from #650 lands, and arms itself automatically then. |
+| founder-directed drain session 2026-08-22 | **the merge queue itself** — open-PR triage, `gh pr update-branch` refreshes, merges to `main`, and branch cleanup. Plus `scripts/citation-baseline.json`. **NOT claiming any feature code**: a PR's own content stays its author's. | main-probe, reg-watch-0820 | `chore/claim-drain-lane-0822` | 2026-08-22T18:45Z | Drain the 20-PR backlog that built up during the Actions billing outage. **`main` was RED** (citation ratchet 24→29) which failed 13 PRs for a reason none of them owned — fixed in #662, so re-run before you believe an old red. **If you own an open PR: I will `update-branch` and merge it when green; I will not edit its content.** Overlap here is adjacency, not collision — but tell me before you merge to `main` so we do not double-deploy. |
 
 
 ## Recently released
