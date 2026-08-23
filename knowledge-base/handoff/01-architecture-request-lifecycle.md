@@ -143,7 +143,7 @@ flowchart TD
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -c "app.use(" server/app.ts
 # → 39 @ 12d7cbec

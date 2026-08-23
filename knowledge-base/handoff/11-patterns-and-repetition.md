@@ -12,7 +12,7 @@ must obey because of it, and (e) the known exceptions. A number without its comm
 a claim without `file:line` is not a finding. Reproduce with:
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git fetch origin && git rev-parse --short HEAD   # → 12d7cbec
+cd "$(git rev-parse --show-toplevel)" && git fetch origin && git rev-parse --short HEAD   # any clean checkout of origin/main → 12d7cbec
 ```
 
 ## A. The most consistent application-logic patterns

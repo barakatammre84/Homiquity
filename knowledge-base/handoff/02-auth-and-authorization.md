@@ -152,7 +152,7 @@ sequenceDiagram
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -n "scryptAsync(password, salt, 64)" server/auth.ts
 # → 34:  const buf = (await scryptAsync(password, salt, 64)) as Buffer; @ 12d7cbec

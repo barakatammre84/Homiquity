@@ -92,7 +92,7 @@ allows exactly four files: `server/pipelineEngine.ts`, `server/services/loanAnal
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -rn "updatePipelineStage(" server --include='*.ts'
 # → pipelineEngine.ts:594 (def) · borrower/dealTeam.ts:143 · lending/applications.ts:103 · lending/statusDecisions.ts:240 · underwriting/pipeline.ts:382 @ 12d7cbec

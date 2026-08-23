@@ -165,7 +165,7 @@ flowchart TD
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 wc -l CLAUDE.md .claude/agents/_OWNER_RAILS.md knowledge-base/routines/CHARTER.md | tail -4
 # → 240 / 114 / 855 / 1209 total @ 12d7cbec

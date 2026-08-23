@@ -200,7 +200,7 @@ flowchart TD
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -c "<Route" client/src/App.tsx ; grep -c "lazy(" client/src/App.tsx ; wc -l client/src/App.tsx
 # → 121 / 113 / 635 @ 12d7cbec

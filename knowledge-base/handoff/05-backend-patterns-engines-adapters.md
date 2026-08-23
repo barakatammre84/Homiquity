@@ -176,7 +176,7 @@ flowchart TD
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -rnE 'app\.(get|post|put|patch|delete)\(' server/routes | wc -l ; grep -rhoE "app\.(get|post|put|patch|delete|all)\(" server | wc -l
 # → 558 / 579   (the api-routes skill says "~523") @ 12d7cbec

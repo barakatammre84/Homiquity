@@ -148,7 +148,7 @@ flowchart TD
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 curl -s -m 10 https://homiquity-production.up.railway.app/api/health
 # → {"status":"ok","timestamp":"…","commit":"12d7cbecd420bbf3361f63b06a3a019398dabc55","email":{"configured":true,"providers":["sendgrid"]}} @ 12d7cbec

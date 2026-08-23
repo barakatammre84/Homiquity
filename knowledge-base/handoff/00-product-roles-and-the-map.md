@@ -115,7 +115,7 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -cE '^export const (STAFF|CLIENT|PARTNER|INTERNAL_STAFF)_ROLES' shared/roles.ts
 # → 4 @ 12d7cbec

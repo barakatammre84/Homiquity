@@ -149,7 +149,7 @@ erDiagram
 ## Prove it yourself
 
 ```bash
-cd /Users/ammrebarakat/Developer/Homiquity-handoff && git rev-parse --short HEAD
+cd "$(git rev-parse --show-toplevel)" && git rev-parse --short HEAD   # any clean checkout of origin/main
 # → 12d7cbec @ 12d7cbec
 grep -c "pgTable(" shared/schema/*.ts | awk -F: '{s+=$2} END{print s}' ; ls shared/schema/*.ts | wc -l ; wc -l shared/schema/*.ts | tail -1
 # → 188 / 34 / 10669 total @ 12d7cbec

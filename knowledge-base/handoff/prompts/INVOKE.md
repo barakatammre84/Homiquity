@@ -9,9 +9,10 @@
 
 ```bash
 # a throwaway worktree of origin/main, installed, with the env file
-git -C /Users/ammrebarakat/Developer/Homiquity fetch origin
-git -C /Users/ammrebarakat/Developer/Homiquity worktree add ~/Developer/hq-loop-<slug> -b <type>/<slug> origin/main
-cd ~/Developer/hq-loop-<slug> && pnpm install --frozen-lockfile && cp /Users/ammrebarakat/Developer/Homiquity/.env .env
+HQ="$(git rev-parse --show-toplevel)"   # run these from your primary Homiquity checkout
+git -C "$HQ" fetch origin
+git -C "$HQ" worktree add "$HQ/../hq-loop-<slug>" -b <type>/<slug> origin/main
+cd "$HQ/../hq-loop-<slug>" && pnpm install --frozen-lockfile && cp "$HQ/.env" .env
 # a scratch directory OUTSIDE the repo for the loop's logs and memory
 mkdir -p ~/hq-scratch/<slug> && export SCRATCH=~/hq-scratch/<slug>
 ```
@@ -34,7 +35,7 @@ every iteration, so the prompt stays short and the rails stay in one place:
   with variable content (counts, PR numbers) can never match.
 - `--max-iterations` — the template's `MAX_ITER`, which is the attempt cap (5) plus a margin.
   It is the only hard stop: if the loop never reaches `DONE` or a `STOPPED(...)`, this ends it.
-- Monitor from another terminal: `head -10 ~/Developer/hq-loop-<slug>/.claude/ralph-loop.local.md`
+- Monitor from another terminal: `head -10 <worktree>/.claude/ralph-loop.local.md`
   (`iteration:` and `max_iterations:` are in its frontmatter) and `tail -f $SCRATCH/loop-log.md`.
 - Stop by hand: `/cancel-ralph` in the session.
 - When it ends, read the LOOP REPORT (the last message). `STATUS: DONE` → review the draft PR;
@@ -73,4 +74,4 @@ disclosure policy, regulator correspondence).
    `migrate-prod` (`:574`); read `applied N migration(s)` in its log. Re-check both jobs' `if:`
    lines before trusting either (`grep -n "if:" .github/workflows/ci.yml`) — they were paused for
    two days in August 2026 and nothing announced it. Chapter 07 keeps the dated status.
-4. Remove the worktree: `git -C /Users/ammrebarakat/Developer/Homiquity worktree remove ~/Developer/hq-loop-<slug>`.
+4. Remove the worktree: `git -C "$HQ" worktree remove "$HQ/../hq-loop-<slug>"`.

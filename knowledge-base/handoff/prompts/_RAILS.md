@@ -12,8 +12,8 @@ fastest way to produce one. Every rail below names the incident or doc that earn
 
 ## R0 — Where you are
 
-- You run in a **throwaway git worktree** of `origin/main`, never in the primary checkout at
-  `/Users/ammrebarakat/Developer/Homiquity` (it is on a peer's branch and dirty). Prove it every
+- You run in a **throwaway git worktree** of `origin/main`, never in the primary checkout — the
+  clone the loop was invoked from (routinely on a peer's branch and dirty). Prove it every
   iteration: `git rev-parse --show-toplevel` and `git status --porcelain`.
 - `pnpm install --frozen-lockfile` ran **inside this worktree** (a worktree with no install
   resolves `node_modules` upward into the primary checkout and produces phantom `tsc` errors —
