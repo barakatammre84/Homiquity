@@ -8,7 +8,7 @@ import {
 import { computeAgencyWageIncome } from "../server/services/income/paths/agencyWage";
 import { computeSelfEmploymentPath } from "../server/services/income/paths/selfEmployment";
 import { computeRentalPath } from "../server/services/income/paths/rental";
-import { incomePathsSchema } from "../shared/incomePaths";
+import { incomePathsSchema, sumAppliedIncome } from "../shared/incomePaths";
 import type { EmploymentHistory, OtherIncomeSource, SelfEmploymentWorksheet } from "@shared/schema";
 
 /**
@@ -384,5 +384,143 @@ describe("S-07 departing residence + per-property split + subject DSCR (PR-B)", 
       subjectProperty: { numberOfUnits: 1, occupancyType: "investment", estimatedMarketRent: 3000, estimatedPitia: 2500 },
     });
     expect(s1).not.toBe(s2);
+  });
+});
+
+/**
+ * The itemisation invariant (2026-08-23).
+ *
+ * A path result recorded what a path was WORTH and never what it CONTRIBUTED,
+ * and the subject property's 2–4-unit qualifying rent contributed without being
+ * a path at all. Every surface that itemises the qualifying total inherited the
+ * gap: the borrower's "How your qualifying income was calculated" card and the
+ * LO cockpit both rendered rows that did not sum to the number above them.
+ *
+ * Measured on the pre-fix code, all three with $6,000 of wages:
+ *   - rentals of +1,250 and −750 → rows 6,500, total 7,250 (750 unexplained);
+ *   - owner-occupied duplex, 1,500 market rent → rows 6,000, total 7,125;
+ *   - a single rental at a loss → a −750 row badged "Counted", absent from the
+ *     total (the loss is a monthly DEBT, never negative income).
+ *
+ * So the rule, not the instances: Σ contributed === the primary total, always.
+ */
+describe("applied amounts reconcile to the qualifying total", () => {
+  const wage = [emp({ baseIncome: 6000 })];
+  const rentalEntry = (rent: number, debt: number) =>
+    ({ address: "r", monthlyRentalIncome: rent, monthlyDebtPayment: debt }) as never;
+
+  const cases: Array<[string, IncomePathsCoreInput]> = [
+    ["wage only", { employment: wage, otherIncome: [], rentalProperties: [] }],
+    [
+      "mixed rental portfolio (positives to income, losses to obligations)",
+      {
+        employment: wage,
+        otherIncome: [],
+        rentalProperties: [rentalEntry(3000, 1000), rentalEntry(1000, 1500)],
+        applyRentalToDti: true,
+      },
+    ],
+    [
+      "rental loss only, provenance not yet decision-grade",
+      {
+        employment: wage,
+        otherIncome: [],
+        rentalProperties: [rentalEntry(1000, 1500)],
+        applyRentalToDti: false,
+      },
+    ],
+    [
+      "owner-occupied duplex — subject unit rent has no path of its own",
+      {
+        employment: wage,
+        otherIncome: [],
+        rentalProperties: [],
+        applyRentalToDti: true,
+        subjectProperty: {
+          numberOfUnits: 2,
+          occupancyType: "primary_residence",
+          estimatedMarketRent: 1500,
+          estimatedPitia: 2500,
+        },
+      },
+    ],
+    [
+      "duplex AND a losing rental — both corrections at once",
+      {
+        employment: wage,
+        otherIncome: [],
+        rentalProperties: [rentalEntry(1000, 1500)],
+        applyRentalToDti: true,
+        subjectProperty: {
+          numberOfUnits: 3,
+          occupancyType: "primary_residence",
+          estimatedMarketRent: 2000,
+          estimatedPitia: 3000,
+        },
+      },
+    ],
+  ];
+
+  it.each(cases)("%s", (_name, input) => {
+    const r = computeIncomePaths(input);
+    expect(sumAppliedIncome(r.paths)).toBe(r.primaryMonthlyQualifyingIncome);
+  });
+
+  it("the subject property's qualifying rent rides on the rental row it belongs to", () => {
+    const r = computeIncomePaths({
+      employment: wage,
+      otherIncome: [],
+      rentalProperties: [],
+      applyRentalToDti: true,
+      subjectProperty: {
+        numberOfUnits: 2,
+        occupancyType: "primary_residence",
+        estimatedMarketRent: 1500,
+        estimatedPitia: 2500,
+      },
+    });
+    const rental = r.paths.find((p) => p.pathId === "rental")!;
+    // 75% of 1,500 — the cited B3-3.8-01 treatment, unchanged.
+    expect(r.primaryBreakdown.subjectRentalIncomeApplied).toBe(1125);
+    // "no other properties" is not "no rental income": the row must exist.
+    expect(rental.status).toBe("applicable");
+    expect(rental.kind === "dti_income" && rental.appliedMonthlyIncome).toBe(1125);
+    expect(rental.notes.some((n) => n.includes("Subject property"))).toBe(true);
+  });
+
+  it("a rental loss is an obligation, never negative applied income", () => {
+    const r = computeIncomePaths({
+      employment: wage,
+      otherIncome: [],
+      rentalProperties: [rentalEntry(1000, 1500)],
+      applyRentalToDti: true,
+    });
+    const rental = r.paths.find((p) => p.pathId === "rental")!;
+    expect(rental.kind === "dti_income" && rental.monthlyQualifyingIncome).toBe(-750);
+    expect(rental.kind === "dti_income" && rental.appliedMonthlyIncome).toBe(0);
+    expect(rental.kind === "dti_income" && rental.appliedMonthlyObligation).toBe(750);
+    expect(r.primaryBreakdown.rentalLiabilityApplied).toBe(750);
+  });
+
+  it("an alternative METHOD contributes nothing to the full-doc total", () => {
+    const r = computeIncomePaths({ employment: wage, otherIncome: [], rentalProperties: [] });
+    const bank = r.paths.find((p) => p.pathId === "bank_statement")!;
+    expect(bank.role).toBe("alternative");
+    expect(bank.kind === "dti_income" && bank.appliedMonthlyIncome).toBe(0);
+  });
+
+  it("sumAppliedIncome refuses a legacy row rather than reading it as zero", () => {
+    const r = computeIncomePaths({
+      employment: wage,
+      otherIncome: [],
+      rentalProperties: [rentalEntry(3000, 1000)],
+      applyRentalToDti: true,
+    });
+    const legacy = r.paths.map((p) =>
+      p.kind === "dti_income"
+        ? { ...p, appliedMonthlyIncome: undefined, appliedMonthlyObligation: undefined }
+        : p,
+    );
+    expect(sumAppliedIncome(legacy)).toBeNull();
   });
 });
