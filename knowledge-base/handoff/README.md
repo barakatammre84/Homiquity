@@ -87,6 +87,68 @@ FACTS commands and each chapter's prove-it block → fix prose, add `HO-` rows, 
 for files actually re-read → append a line to the ledger's run log → PR with
 `git add knowledge-base/handoff/...` explicitly.
 
+## What changes when you build
+
+Nothing here replaces how you already work. It changes what is *available* when you ask, and it
+names the four things a session cannot do for you.
+
+### An ordinary session — the default, and the right choice for most work
+
+`CLAUDE.md` loads automatically, plus a router skill when the work matches its domain. That is
+already true today. What this directory adds is a place to point:
+
+- **"Read handoff chapter NN first"** for territory you have not worked in. Cheaper than letting a
+  session re-derive the architecture from greps, and the chapter's claims carry commands you can
+  re-run rather than assertions you have to trust.
+- **"Follow `prompts/_RAILS.md`"** for anything with a testable outcome. That single sentence buys
+  the territory discipline (a declared WRITE list, checked against `git diff --name-only`) and the
+  tier evidence (T0–T3 lines copied from logs, not recalled) — with no loop machinery at all.
+
+Still binding, unchanged by any of this: work in a worktree off `origin/main`, never the primary
+checkout. The pre-push hook is the only gate that runs on its own, and since #660 it is the
+**cheap half** — typecheck plus eight guards, ~25 s, and **no unit tests** unless you set
+`PREPUSH_TESTS=1`. `knowledge-base/governance/TEAM_PRACTICES.md` §5 is the definition of done.
+
+### A loop — for bounded work, not as an upgrade
+
+Use `prompts/INVOKE.md`. A loop is worth its overhead when the task is one layer, one WRITE list,
+and has a test that can go red before it goes green — a characterisation test, a contained bug
+fix, a migration. It is the wrong tool for anything exploratory, because a loop cannot decide that
+the task was the wrong task.
+
+Four mechanics that cost a real acceptance run to learn: headless `claude -p` does **not** expand
+the slash command (run the plugin's setup script first, and blank the `session_id` it inherits);
+the completion promise must be the **last line** of the final message, after any prose; fresh
+worktree with `pnpm install --frozen-lockfile`, port 5002, and a scratch directory **outside** the
+repo; and a loop that adds a client test will be told to regenerate the design-system table, which
+is sanctioned and belongs in its own commit.
+
+A loop ends in `DONE` with T0–T3 lines copied from its logs, or `STOPPED(<reason>)` with a
+hand-back naming the line, the change and the owner. **It never merges.**
+
+### What never moves to a loop, or to a session running unattended
+
+Merging · the T5 `/api/health` commit check · §9 security reviews · contract migrations · anything
+in a hand-back file (auth, the decision engines, the PII vaults) · regulated math without a ledger
+citation · CHARTER §1b rows L3 and L4.
+
+### The five facts that bite hardest, and where each is proved
+
+| | fact | proof |
+|---|---|---|
+| 1 | `main` requires **zero** status checks, and `enforce_admins: true` binds admins to an empty list. A green gate is advisory. | FACTS F-44; chapter 07 |
+| 2 | A merge is a deploy, and a **failed** Railway build leaves the previous container serving — so the site stays up and every check stays green while prod goes stale. Only `/api/health`'s `commit` proves a ship. | chapter 10 |
+| 3 | `pnpm test` runs a hand-maintained **allowlist**. An unlisted node test is silently never run — one is stranded on `main` today — and the lane can collect fewer files than exist and still exit 0. | FACTS F-13, F-39; chapter 07 |
+| 4 | Adding a colocated client test reddens `guard:ui` until you run `pnpm guard:ui --write-table`, because the generated table's denominator counts test files. This has already merged red to `main` once. | LEDGER HO-0822-25, HO-0822-26 |
+| 5 | The dominant defect class here is an operation that **does not happen while the UI says it did** — a 200 for a write that was silently dropped. Chapter 04's draft round-trip is the worked example, and its fix did not close the class. | chapter 04 |
+
+### If something you were told here is wrong
+
+That is expected, and it has a route: it becomes an `HO-<MMDD>-<NN>` row in
+[LEDGER.md](LEDGER.md), never a silent edit to a sibling doc. The precedence rule at the top of
+every chapter is the first defence — **the app-guide wins on conflict, and the code wins over
+both.** You are meant to distrust this directory and check.
+
 ## Conventions these files obey (and the guards that check them)
 
 - Links are relative to the linking file (`TEAM_PRACTICES.md` §7).
