@@ -192,7 +192,7 @@ that is a larger DTI understatement than C-1, in the same forbidden direction.
 
 Fixed across the capture path, not just the arithmetic:
 
-- `migrations/0057_subject_property_association_dues.sql` — expand-only, nullable, **no
+- `migrations/0058_subject_property_association_dues.sql` — expand-only, nullable, **no
   DEFAULT**. Zero is a claim ("this property has no association"); defaulting every existing
   row to it would fabricate the exact figure the column exists to stop assuming.
 - `computePaymentProjection` adds the dues to `estimatedMonthlyTotal` and reports them.

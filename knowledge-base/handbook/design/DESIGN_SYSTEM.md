@@ -1,9 +1,16 @@
 # Design System — Homiquity
 
 **Status:** binding on every client surface. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 at `56cf00a`.
+**Last verified against the code:** 2026-08-22 at `074899e3`.
 
-> **Freshness:** last verified 2026-08-18 · review every 30 days
+> **Freshness:** last verified 2026-08-22 · review every 30 days
+>
+> ⚠️ The previous stamp read *2026-08-18 at `56cf00a`* — **two days before the palette
+> rebuild landed** (`3cba2dae`, 2026-08-20). §1 described a system the code had already
+> replaced, and the name "Royal Blue Emerald" propagated from here into CLAUDE.md, three
+> auto-loading skill/agent files, and the token guard's own header. That is the failure
+> mode this stamp exists to catch: **a doc can be "fresh" and wrong if the freshness date
+> predates the change.** Re-verify §1 against `client/src/index.css` on any palette commit.
 
 > **Code wins.** Tokens live in [`client/src/index.css`](../../../client/src/index.css) and
 > [`tailwind.config.ts`](../../../tailwind.config.ts); primitives live in
@@ -40,16 +47,16 @@ sites actually use it.
 | Capability | State | Measured |
 |---|---|---|
 | `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 282 page files import it — *pnpm guard:ui → `pageShellDrift`* |
-| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 21 file(s) import the registry, 322 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
+| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 22 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
-| `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
+| `Logo` + `BrandingProvider` | **BUILT · ADOPTED** | 18 call site(s) |
 | Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 34 in 25 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 9 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 119 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 124 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
-| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **322** file(s) |
+| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
@@ -73,18 +80,56 @@ commit the result in the same PR; never edit the block by hand. Adding a row mea
 
 ---
 
-## 1. Design approach — "Royal Blue Emerald"
+## 1. Design approach — "Mint & Flare"
 
-*Royal-blue repaint 2026-07-08 of "Charcoal Emerald" (which superseded "Obsidian Indigo" on
-2026-07-06).* Better.com-style conversion clarity: stark-white surfaces, neutral slate
-structure, near-black slate typography, **royal-blue dark surfaces** (sidebar, hero gradients),
-and **emerald reserved for forward-moving conversion actions** ("green means Go") — radical
-transparency, frictionless onboarding, high-velocity conversion.
+*Rebuilt 2026-08-20 (`3cba2dae`) on **Monzo's structure**, superseding "Royal Blue Emerald"
+(2026-07-08) → "Charcoal Emerald" → "Obsidian Indigo" (2026-07-06).* Monzo's whole live site
+measures as white + one near-black + **one** tint; the restraint is the craft, not the specific
+hues. So Homiquity took the structural decisions and **deliberately not the values** — the
+near-black is tinted with Homiquity's own emerald rather than Monzo's navy, because an
+indistinguishable palette from a bank in the same sector is trade-dress risk, not homage.
 
-**Dark-surface ramp** (`precision.950/900/700` — hero gradients only): `950 #0A1E52` deep royal
-navy · `900 #1B3B9E` royal blue · `700 #2456D6` vivid royal blue. **Neutral light ramp**
-(`precision.500→50`): `500 #64748B` Muted Slate (micro-copy) · `300 #94A3B8` · `100 #E2E8F0`
-(hairlines) · `50 #F8FAFC` (data-section separation).
+🚨 **There is no royal blue in this system, and the neutral ramp is no longer the slate family.**
+Every neutral now carries the brand hue. Audit notes, screenshots or docs describing stark-white
+surfaces over a slate structure with royal-blue dark surfaces describe the *previous* system.
+
+White ground · **green-black dark surfaces** (sidebar, footer, hero gradients) · **one mint
+tint** · **emerald reserved for forward-moving conversion actions** ("green means Go") · **one
+orange `--flare`** as the single warm accent.
+
+**Dark-surface ramp** (`precision.950/900/700` — hero gradients only): `950 #0B1E19` green-black,
+hero anchor · `900 #112823` green-black mid · `700 #17302A` deep emerald-slate, hero end. *White
+on 950 measures 17.30:1; on 700, 14.07:1.* **Neutral light ramp** (`precision.500→50`):
+`500 #5A726C` muted green-grey, micro-copy (5.17:1 on white) · `300 #93A5A0` hover/disabled
+borders · `100 #E2E9E7` hairlines · `50 #F1F8F5` the single pale tint.
+
+**The warm accent — `--flare` #FF5E00 (hue 22deg), and it is a FILL colour, never text.** It does
+the job Monzo's coral does (one jolt of warmth against a cold near-black, used sparingly) at a
+plainly different hue. **The value is SAMPLED FROM THE LOGO, not chosen** — it is the exact ink of
+the founder's logomark. Its usage is constrained by contrast, not taste:
+
+| | Pair | Ratio |
+|---|---|---|
+| ✅ ALLOWED | fills, borders, illustration, focus rings — any ground | — |
+| ✅ ALLOWED | flare as text on the dark ground `#0B1E19` | 5.65:1 |
+| ✅ ALLOWED | flare as text on the sidebar `#17302A` | 4.59:1 |
+| ✅ ALLOWED | `--flare-foreground` text on a flare fill | 5.65:1 |
+| ❌ FORBIDDEN | flare as text on white | 3.06:1 |
+| ❌ FORBIDDEN | white text on a flare fill | 3.06:1 |
+| ❌ FORBIDDEN | flare as text on mint | 2.77:1 |
+
+When orange must actually be **read**, use **`--flare-ink` #AD4000** (5.98:1 on white, 5.40:1 on
+mint). Logos are exempt from WCAG 1.4.3, so the logomark and wordmark may carry bright `--flare`
+**on white** — that exemption covers the mark only, never body copy, labels or numbers, and it was
+measured for white, **not** for mint.
+
+> ⚠️ **This block was stale for one commit and it is worth recording why.** It was written with
+> `--flare` at #DD610E (hue 24), then `client/src/index.css` moved to the logo's #FF5E00 without
+> this table following — recreating, inside the very PR that fixed the palette-name drift, exactly
+> the doc-versus-code split that PR existed to close. **The sidebar row is new**: the old table
+> quoted only the darkest ground, so flare-on-sidebar was never measured, and at the old value it
+> was **3.88:1 — a silent AA failure** for a pairing the table implied was fine. Re-derive every
+> ratio here from `index.css` on any palette commit; the code is the source, this is the mirror.
 
 **Core principles**
 
@@ -282,7 +327,65 @@ not the capture-flow container; see §12.
   supplies hover/active tints. Loading is `<Skeleton>` (`animate-skeleton-precision`), **never a
   spinner**.
 
+  🚨 **JS-driven reveals must not be the only thing that makes content visible.**
+  `Reveal`/`Stagger`/`StaggerItem` (`client/src/components/motion/`) set inline
+  `opacity: 0` and animate to 1 — so anything that stops the animation leaves the
+  content **permanently unseen**, not merely un-animated.
+
+  That is not theoretical. On 2026-08-22 the home page was measured with two of
+  four journey cards at `opacity: 0` and the other two at 0.27 and 0.78 —
+  **identical readings at 6s and 10s.** Stalled. The cause is `document.hidden`:
+  browsers throttle `requestAnimationFrame` in a background tab, and
+  framer-motion drives on rAF, so a reveal that begins while hidden can stop
+  mid-ramp. Opening a link in a background tab is an ordinary thing to do.
+
+  The primitives now gate on `useCanAnimate()` — **reduced motion OR a hidden
+  document renders plainly**, with no observer and no inline opacity to get stuck
+  at. `client/src/components/motion/hiddenTab.test.tsx` pins it.
+
+  Two things to carry forward:
+  - **`prefers-reduced-motion` is not the whole accessibility story for motion.**
+    It was handled correctly here from the first commit, and the page was still
+    broken for a different reason entirely.
+  - **Verify reveals on a FULL-PAGE capture.** This survived several rounds of
+    review because every screenshot was a partial viewport that happened to miss
+    the section. A tall viewport (e.g. 1280x2600) puts the whole page in one
+    frame.
+
 ---
+
+## 5a. Horizontal rhythm — `OffsetBlock`
+
+Every content block on the public pages was `mx-auto`, so the eye tracked one
+unchanging centre line from the top of a page to the bottom. `OffsetBlock`
+(`client/src/components/layout/OffsetBlock.tsx`) anchors a block to one side at
+`lg` and above, so the page zig-zags instead.
+
+| Prop | Effect at `lg`+ |
+|---|---|
+| `side="left"` | `lg:ml-16 lg:mr-auto` — hugs left, slack thrown right |
+| `side="right"` | `lg:mr-16 lg:ml-auto` — hugs right, slack thrown left |
+| `side="center"` | unchanged, `mx-auto` (the default) |
+
+Measured on `/self-employed` at 1440px: offset blocks land at 96/320 and
+320/96 (left/right gaps), five other blocks stay centred.
+
+🚨 **It collapses to centred below `lg`, and that is the load-bearing part.**
+Under ~1024px an offset block is not a rhythm, it is a cramped column with a
+useless margin — and the breakage is invisible until someone opens a laptop.
+That collapse is why this is a primitive instead of utility classes pasted onto
+sections, and `OffsetBlock.test.tsx` asserts it for all three sides.
+
+**It sets no width.** Callers keep their own `max-w-*`; line length is a
+readability decision, not a rhythm one.
+
+**Use it as a rhythm, not a metronome.** The reference centres two of its six
+blocks; `/self-employed` offsets two of seven. Alternating every section is just
+a different monotony. Keep **forms and long prose centred** — a drifting form
+reads as a bug, and drifting prose costs readability for nothing.
+
+Because it is structural rather than chromatic, it survives the tenant
+white-label constraint and is usable on authed surfaces.
 
 ## 6. Components — `client/src/components/ui/**`
 
@@ -353,14 +456,28 @@ up" state and RenterHome's readiness ring are the quality bar.
 **Boundary:** private/authenticated surfaces are tenant-branded; public marketing stays
 Homiquity.
 
-- **`<Logo>`** (`components/brand/Logo.tsx`) replaces ~13 copy-pasted wordmark spans that vary in
-  weight, size and colour. Props: `size` (`sm|md|lg`), `variant` (`wordmark|mark|lockup`), `tone`
-  (`brand|onDark|mono`). Branding-aware: on a private surface with an active tenant it renders
-  the tenant logo/name; on public surfaces always Homiquity.
-- **`BrandingProvider`** (mounted on `PrivateLayout` only) is the white-label seam. It sets the
-  **brandable** vars on the layout root: `--primary`, `--accent`, `--sidebar`, `--ring`,
-  `--brand-logo`. Because components use `bg-primary`/`bg-accent` semantically, the portal
-  re-skins automatically — and stays token-guard-safe (no inline hex in components).
+- **`<Logo>`** (`components/brand/Logo.tsx`) replaces the **18** copy-pasted wordmark spans that
+  varied in weight, size and colour — the count was previously written here as "~13"; the census
+  was re-run against the tree. Props: `size` (`sm|md|lg`), `variant` (`wordmark|mark|lockup`),
+  `tone` (`brand|onDark|mono`), `mark` (`compact|primary`, default `compact`). Branding-aware: on
+  a private surface with an active tenant it renders the tenant logo/name; on public surfaces
+  always Homiquity.
+  - The logomark is a **CSS mask** (`.brand-mark` in index.css) over `client/public/brand/*.png`,
+    not an `<img>` or inline SVG — there is no vector master, and a mask takes its colour from
+    `currentColor` so one asset serves every tone and a tenant re-skin reaches it for free.
+  - `mark` defaults to `compact` because the primary artwork's outlined stem and chart columns
+    stop resolving below ~48px and every lockup here renders at 20-28px.
+- **`BrandingProvider`** is the white-label seam — and it is **currently INERT: it is mounted
+  NOWHERE.** (`grep -rn "<BrandingProvider" client/src` returns zero JSX mounts; its only consumer
+  is `Logo.tsx`, so `useBranding()` always returns the default context.) This line previously said
+  "mounted on `PrivateLayout` only", which was never true of the shipped tree. When it *is*
+  mounted it sets the **brandable** vars on the layout root: `--primary`, `--accent`, `--sidebar`,
+  `--ring`. Because components use `bg-primary`/`bg-accent` semantically, the portal re-skins
+  automatically — and stays token-guard-safe (no inline hex in components).
+  - ⚠️ `--brand-logo` was listed here as one of those vars. **No such token exists** in
+    `index.css`, `tailwind.config.ts` or `BrandingProvider.tsx`. Removed rather than implemented:
+    the mark is coloured by `currentColor` through the mask, so a tenant's `--primary` already
+    reaches it and a dedicated logo var would be a second, competing mechanism.
 - **Fixed tokens, never tenant-overridable:** the neutral ramp, `--surface` + the elevation
   scale, and all semantic status tokens. They carry meaning and AA guarantees and must stay
   constant across tenants.

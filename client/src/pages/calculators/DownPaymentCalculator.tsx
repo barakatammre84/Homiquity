@@ -82,6 +82,12 @@ export default function DownPaymentCalculator() {
   const trackedRef = useRef(false);
 
   const results = useMemo(() => calculate(inputs), [inputs]);
+  // `calculate()` clamps homePrice at 0, but the tier table, the card blurb and
+  // the conversion CTA all read inputs.homePrice directly, so a negative typed
+  // into the (min-less) number input rendered as real money — "-$3,000" tiers
+  // and a "-$100,000 home" — and handed a negative purchasePrice to the funnel.
+  // Clamp once here; the input itself stays raw so it remains controlled.
+  const displayPrice = Math.max(0, inputs.homePrice);
 
   useEffect(() => {
     if (!trackedRef.current) {
@@ -280,7 +286,7 @@ export default function DownPaymentCalculator() {
                   <Landmark className="h-5 w-5" />
                   Down Payment by Program
                 </CardTitle>
-                <CardDescription>What you'd put down on a {formatCurrency(inputs.homePrice)} home</CardDescription>
+                <CardDescription>What you'd put down on a {formatCurrency(displayPrice)} home</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2" data-testid="table-tiers">
@@ -293,7 +299,7 @@ export default function DownPaymentCalculator() {
                     >
                       <span className="text-muted-foreground">{tier.label}</span>
                       <span className="font-medium tabular-nums">
-                        {formatCurrency(inputs.homePrice * (tier.percent / 100))}
+                        {formatCurrency(displayPrice * (tier.percent / 100))}
                       </span>
                     </button>
                   ))}
@@ -319,7 +325,7 @@ export default function DownPaymentCalculator() {
               </Button>
             )}
 
-            <ConversionCTA context="calculator" purchasePrice={String(inputs.homePrice)} />
+            <ConversionCTA context="calculator" purchasePrice={String(displayPrice)} />
           </div>
         </div>
       </PageShell>

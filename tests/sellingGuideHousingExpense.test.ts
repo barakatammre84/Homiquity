@@ -55,7 +55,7 @@ describe("B3-6-03 schema carries the dues as decision input", () => {
   // the column is to stop assuming the figure.
   it("does not default the dues to zero", async () => {
     const fs = await import("node:fs");
-    const sql = fs.readFileSync("migrations/0057_subject_property_association_dues.sql", "utf-8");
+    const sql = fs.readFileSync("migrations/0058_subject_property_association_dues.sql", "utf-8");
     expect(sql).toContain("ADD COLUMN IF NOT EXISTS");
     expect(sql).not.toMatch(/monthly_association_dues[^;]*DEFAULT/i);
     expect(sql).not.toMatch(/monthly_association_dues[^;]*NOT NULL/i);

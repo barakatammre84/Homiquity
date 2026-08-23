@@ -1,0 +1,34 @@
+-- 0057: login lockout — make failed_login_attempts a run of CONSECUTIVE
+-- failures instead of a lifetime total.
+--
+-- WHY. `users.failed_login_attempts` only ever incremented. Nothing decayed it;
+-- only `lockout_until` expired. The single reset paths were a successful
+-- PASSWORD login (server/auth.ts) and setPassword() — social login never
+-- touched it. Two live defects followed, and this column is what fixes both:
+--
+--   1. A user with a password_hash who signs in with Google accumulated failed
+--      password attempts forever, because their successful logins go through
+--      socialAuth and never cleared the counter.
+--   2. At 12 lifetime failures the escalation exponent reaches 12 - 5 = 7, so
+--      the window (15m * 2^7 = 32h) clamps to its 24h maximum and stays there.
+--      From then on a single typo — years after the failures that earned it —
+--      locked the account for a full day. A lockout-DoS, not a brute-force hole.
+--
+-- The service's own doc comment claimed "5 straight failures" and "Any
+-- successful login resets the counter". Neither was true as implemented.
+--
+-- SAFETY (expand/contract, per CLAUDE.md §Database):
+--   * ADD COLUMN, nullable, no DEFAULT / NOT NULL / CHECK / FK — catalog-only,
+--     so it cannot fail on existing rows and needs no pre-flight data probe.
+--   * IF NOT EXISTS makes it re-runnable.
+--   * Backward-compatible both ways: the currently-deployed container never
+--     selects or writes this column, and the new code reads NULL as "no run in
+--     progress".
+--
+-- NO BACKFILL, DELIBERATELY. Nobody recorded when the existing failures
+-- happened, so any timestamp written here would be invented provenance for a
+-- security counter. NULL is the honest gap — and it is also the correct
+-- behaviour: a legacy lifetime count reads as a dead run and is discarded on
+-- that account's next failure, which is exactly the healing this migration is
+-- for. See server/services/loginLockout.ts.
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "last_failed_login_at" timestamp;
