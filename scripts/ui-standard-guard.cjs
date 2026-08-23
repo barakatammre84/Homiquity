@@ -334,10 +334,22 @@ const MEASURES = [
              detail: `set once on \`PrivateLayout\`'s \`<main>\`; ${n} file(s) name it directly — pages inherit it`, cmd: "—" };
   })(),
   (() => {
-    const n = ALL.filter(([rel]) => /\.test\.(tsx?|jsx?)$/.test(rel)).length;
+    // The client test-file COUNT is deliberately not rendered into the table.
+    //
+    // §0 is an ADOPTION table, and a test count is an activity number: it moves whenever
+    // anyone adds a test, which made the generated table stale, which hard-fails this guard,
+    // which blocks every local push repo-wide until someone runs `--write-table`. The
+    // acceptance run in handoff ch.12 had to commit a generated line just to add one test
+    // (HO-0822-25). "BUILT" is the adoption signal; the count never was.
+    //
+    // The primitives count stays: it changes when the design system gains a primitive, which
+    // IS an adoption event, and it does not move when someone writes a test.
+    //
+    // The live number is one command away, which is the house rule — name the command rather
+    // than freeze a number a human then has to keep true.
     const prim = ALL.filter(([rel]) => rel.startsWith(path.join("client", "src", "components", "ui")) && !/\.test\./.test(rel)).length;
     return { label: "Component tests / `components/ui` primitives", state: "BUILT",
-             detail: `${n} client test file(s); ${prim} primitives`, cmd: "pnpm test:client" };
+             detail: `colocated \`*.test.tsx\` beside components; ${prim} primitives`, cmd: "pnpm test:client" };
   })(),
 ];
 
