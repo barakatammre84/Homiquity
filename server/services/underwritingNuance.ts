@@ -25,7 +25,14 @@ import { toNum } from "@shared/lib/number";
 export interface SeasoningAssessment {
   /** Sources fully usable (≥24 months in the same line of work). */
   seasonedSources: string[];
-  /** 12–24 months: usable only with strong compensating factors. */
+  /**
+   * 12–24 months. B3-3.5-01 does NOT condition this on offsetting strengths —
+   * "compensating factors" is B3-3.2-02's test for employment-related income, a
+   * different section. The conditions here are documentary: the most recent
+   * returns must reflect a full 12 months from the current business, AND the file
+   * must separately document prior income at the same (or greater) level in the
+   * same field. Neither is captured, so this tier is a flag, never a clearance.
+   */
   conditionalSources: Array<{ type: string; months: number }>;
   /** <12 months: not usable for qualifying under standard guidelines. */
   unseasonedSources: Array<{ type: string; months: number }>;
@@ -34,7 +41,16 @@ export interface SeasoningAssessment {
 export const SEASONING_FULL_MONTHS = 24;
 export const SEASONING_CONDITIONAL_MONTHS = 12;
 
-/** Self-employment/contract income types that carry the seasoning requirement. */
+/**
+ * Self-employment/contract income types that carry the seasoning requirement.
+ *
+ * ⚠️ B3-3.5-01 governs SELF-EMPLOYMENT only — it defines a self-employed borrower
+ * as one holding a 25%-or-greater ownership interest. `rental`, `investment` and
+ * `other` are carried here without an authority that reaches them (rental has its
+ * own, B3-3.8-01, cited below). Narrowing the set would REMOVE a flag, which is
+ * the loosening direction, so it is recorded as gap G-22 and left to the founder
+ * rather than decided here.
+ */
 const SEASONING_GOVERNED_TYPES = new Set(["self_employed", "rental", "investment", "other"]);
 
 export function assessIncomeSeasoning(

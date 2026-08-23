@@ -38,7 +38,7 @@ const MATERIALIZABLE: Partial<Record<PreUwFlagCode, FollowUpSpec>> = {
   INCOME_SEASONING: {
     title: "Income History Verification",
     category: "income",
-    citation: "Fannie Mae B3-3.2",
+    citation: "Fannie Mae B3-3.5-01",
   },
   VERIFIED_DEBT_DTI: {
     title: "Debt / DTI Documentation",
@@ -48,7 +48,7 @@ const MATERIALIZABLE: Partial<Record<PreUwFlagCode, FollowUpSpec>> = {
   LARGE_DEPOSIT_SOURCING: {
     title: "Large Deposit Sourcing (Letter of Explanation)",
     category: "assets",
-    citation: "Fannie Mae B3-4.3-04",
+    citation: "Fannie Mae B3-4.2-02 (gifts resolved per B3-4.3-04)",
   },
   RENTAL_INCOME_OFFSET: {
     title: "Rental Income Documentation",
