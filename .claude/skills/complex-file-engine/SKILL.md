@@ -9,6 +9,10 @@ description: Use ONLY when the user explicitly invokes /complex-file-engine or e
 layer** seat ([`TEAM.md`](../../../knowledge-base/routines/TEAM.md) §1).
 **Writes code:** yes — the income/situation/document layer. **Never** the three engine files (C1).
 **Produces:** at most **one** PR + one report + `CF-…` ledger rows. A clean tick produces no PR and says so.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md) wins
 over this file on any conflict; say so in the report rather than following the stale copy.
 

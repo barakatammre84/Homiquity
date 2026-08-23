@@ -152,12 +152,17 @@ A clean iteration says so in one line and does not invent work.
 | Tier | Command(s) | Proves | Cannot see |
 |---|---|---|---|
 | T-1 | `git fetch origin && git rev-list --count HEAD..origin/main`; `gh pr list --state open --json number,files`; read `knowledge-base/routines/REGISTER.md` | fresh, unclaimed | code |
-| T0 | `pnpm check`; `for f in scripts/*.cjs; do node --check "$f" \|\| exit 1; done`; `pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:querykeys && pnpm guard:tokens && pnpm guard:ui` | types; guard scripts parse; ratchets not regressed | runtime; classNames built by `cn()`/templates (guards read literal strings) |
-| T1 | `pnpm test > "$SCRATCH/t1.log" 2>&1` then read the two `Test Files` lines; node count must equal `grep -cE '^\s*"tests/' vitest.config.ts`; client count must equal `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | in-process logic, source-text invariants, happy-dom components | HTTP, DB, layout; a stranded or truncated collection (the reason for the two equalities) |
-| T2 | `pnpm preflight --fast` (needs ≥1 commit on the branch or §9 reports SKIPPED) | T0 + T1 + `pnpm audit --prod` + the §9 guard as CI computes it | build, boot, integration — all SKIPPED |
-| T3 | `bash scripts/local-db.sh up` if no Postgres; `pnpm preflight` | build + `guard:bundle` + prod-mode boot on 3999 + the integration lane on 4000 | prod data; anything outside the integration include list |
+| T0 | `pnpm harness:t0` | types; guard scripts parse; ratchets not regressed | runtime; classNames built by `cn()`/templates (guards read literal strings) |
+| T1 | `pnpm harness:t1 > "$SCRATCH/t1.log" 2>&1` — never `\| tail`; `pnpm test` IS the collection guard, so the two count equalities it used to ask for by hand are now enforced by the floor | in-process logic, source-text invariants, happy-dom components | HTTP, DB, layout (the collection floor now covers a stranded or truncated run) |
+| T2 | `pnpm harness:t2` (needs ≥1 commit on the branch or §9 reports SKIPPED) | T0 + T1 + `pnpm audit --prod` + the §9 guard as CI computes it | build, boot, integration — all SKIPPED |
+| T3 | `bash scripts/local-db.sh up` if no Postgres; `pnpm harness:t3` | build + `guard:bundle` + prod-mode boot on 3999 + the integration lane on 4000 | prod data; anything outside the integration include list |
 | T4 | `PORT=5002 pnpm dev` in the worktree; `node scripts/browser-probe.cjs --url http://localhost:5002/<route> --width 320`; journey-walker agents (findings only) | real render and wiring | contrast, full a11y; agents are snapshotted at session start |
-| T5 | after a human merges: `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` equals the merge SHA; a migration is applied by `migrate-prod` on the merge push (`ci.yml:574`) — read `applied N migration(s)` in its log | prod runs the merge | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong schema; `verify-deploy` asks this same question but is `continue-on-error`, so its answer blocks nothing |
+| T5 | after a human merges: `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` equals the merge SHA; a migration is applied by `migrate-prod` on the merge push (`ci.yml:583`) — read `applied N migration(s)` in its log | prod runs the merge | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong schema; `verify-deploy` asks this same question but is `continue-on-error`, so its answer blocks nothing |
+
+T0–T3 are single commands because `scripts/harness.sh` now holds their definitions; this table
+says what each tier proves and cannot see, and the script says how. Retyping a nine-guard chain
+out of a markdown table was a drift surface with nothing watching it. T-1, T4 and T5 stay prose:
+each needs a judgement or a running service that one command cannot honestly assert.
 
 The completion promise may be written only when the LOOP REPORT cites T0–T3 lines copied from the
 output files (T4 too when UI changed). **Belief is not a tier.**
