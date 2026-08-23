@@ -112,8 +112,12 @@ State the mode and why in the report, always. **`sweep+fix`** (default): every p
 exists, in which case only the ledger run-log line rides). **`observe`** (D4, ≥2 open PRs from this
 routine): Phase 0, Phase 1 detection in full — including 1.4's `--check`/`--cite` and 1.5 if due —
 and the report; no `--write`, no doc edits. The first job in this mode is the assist ladder
-(CHARTER §5) on your own open PRs: rebase a `CONFLICTING` one, re-date every claim in it per D6,
-and say what moved. **`refresh-only`** (D3, >2 behind mid-tick): refreshing is the only work.
+(CHARTER §5) on your own open PRs: bring a `CONFLICTING` one up to date by merging `origin/main`
+into its branch (never a rebase — a rebased shared branch needs the force-push D5 forbids),
+resolve additively, re-date every claim in it per D6, and say what moved. The report and the
+ledger's run-log line then ride on the routine's **newest open PR branch** (extend it, as Phase 2
+already says for a same-day branch) — never a third PR. **`refresh-only`** (D3, >2 behind
+mid-tick): refreshing is the only work.
 **`aborted`**: no network, no GitHub access by `gh` or MCP, or the repo dirty in a way you did not
 cause — report exactly what you saw and stop.
 

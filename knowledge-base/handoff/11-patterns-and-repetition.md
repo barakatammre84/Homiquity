@@ -180,7 +180,7 @@ for the loop rails in chapter 12, and most already are.
 |---|---|---|---|
 | B1 | **Router vs routine**: six skills may auto-load (the four thin routers plus the two journey walks); seventeen carry the anti-autoload template and `R1: STOP if loaded without invocation`. | `grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` → 17; `refactor-radar/SKILL.md:3,19-20` | A loop template is invoked by a pointer prompt, never by context. |
 | B2 | **One rails file, read not copied.** | `.claude/agents/_OWNER_RAILS.md:3`; `FEATURE_MAP.md:16-17` | `prompts/_RAILS.md` is read every iteration; templates never restate a rail. |
-| B3 | **The routine skeleton**: preamble → lettered rails → Phase 0 memory/sync/backpressure → detect with date-qualified ids → fix in lanes → verify loop with a TEST-RAN assertion → ledger in the same PR → `STATUS` report → negative scope. | `refactor-radar/SKILL.md:17-111,165-205,238-277`; `doc-accuracy/SKILL.md:41-106,277-343` | Every template has the same eight sections in the same order. |
+| B3 | **The routine skeleton**: preamble → lettered rails → Phase 0 memory/sync/backpressure → detect with date-qualified ids → fix in lanes → verify loop with a TEST-RAN assertion → ledger in the same PR → `STATUS` report → negative scope. | `refactor-radar/SKILL.md:17-111,165-205,238-277`; `doc-accuracy/SKILL.md:41-106,281-347` | Every template has the same eight sections in the same order. |
 | B4 | **Freshness ≤ 2 commits; backpressure ≥ 2 open PRs ⇒ assist, never idle.** | `financial-audit/SKILL.md:24`; `doc-accuracy/SKILL.md:47-51`; `CHARTER.md:434-449` | `_RAILS.md` R1; "an idle tick is a failed tick". |
 | B5 | **Claim before code; an open PR outranks the board; release in the same PR.** | `CHARTER.md:414-432,502`; `REGISTER.md:23,29` | R2. |
 | B6 | **Evidence rule**: no `file:line` = not a finding; a number a human retypes will be wrong; never quote a negative grep without re-running it. | `CHARTER.md:758-813`; `LESSONS.md:38` | R13; every LOOP REPORT line is copied from an output file. |
@@ -208,7 +208,7 @@ for the loop rails in chapter 12, and most already are.
 | A baseline race between concurrent PRs; a guard writing its baseline mid-run. | `ci.yml:303-301`; `design-token-guard.cjs:116-119` | R5. |
 | `git push \| tail` reports success on failure; `\| tail -n` eats a failure list. | `TEAM_PRACTICES.md:142-151`; `LESSONS.md:42` | R9, R13: no pipes on push, full logs to a file. |
 | A red scanning guard on a loaded machine is a timeout until you check its duration. | `LESSONS.md:41`; `vitest.config.ts:8-19` | R5's last bullet. |
-| `ListAgents` as evidence of solitude. | `LESSONS.md:27`; `doc-accuracy/SKILL.md:144-147` | T-1 reads open PRs first, the board second, agents last. |
+| `ListAgents` as evidence of solitude. | `LESSONS.md:27`; `doc-accuracy/SKILL.md:148-151` | T-1 reads open PRs first, the board second, agents last. |
 | Memory claims that are not repo facts ("collection guard gated" — still #670, still open; "skills hot-reload"). | LEDGER HO-0822-09/21 | "Unmerged memory is not memory": the loop trusts `origin/main`, then the board, then memory. **The instructive case is the one that resolved:** the `PREPUSH_TESTS=1` claim (HO-0822-08) was false when written and became true on 2026-08-22 when #660 merged. A memory that describes an intention is not wrong forever — it is unverifiable, which is worse, because re-reading it never tells you which state you are in. Check the repo, not the recollection. |
 
 ## C. The repetitive work, from the history
