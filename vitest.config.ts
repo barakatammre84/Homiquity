@@ -72,6 +72,12 @@ export default defineConfig({
       "tests/securityReviewGuard.test.ts",
       // TEAM_PRACTICES §10 — the Selling Guide authority gate.
       "tests/sellingGuideAuthorityGuard.test.ts",
+      // The corpus coherence guard (pnpm guard:corpus). Pins the constant-parse
+      // against the real extractor so a renamed constant reds the suite instead
+      // of leaving the guard silently checking nothing, plus every failing
+      // direction (sha drift, count mismatch, unknown xref id, hand-edit
+      // tripwire, stale coverage edition) and the INERT-when-absent rule.
+      "tests/sellingGuideCorpusGuard.test.ts",
       // F-0818-11 — the DU casefile DTI must include the proposed housing payment.
       "tests/ausCasefileDti.test.ts",
       "tests/userPhones.test.ts",
@@ -101,6 +107,12 @@ export default defineConfig({
       // with every gate green — a monitor that stops running emits nothing to
       // be wrong about, and two of its four sources report false-clean.
       "tests/regulatoryWatch.test.ts",
+      // The Selling Guide edition & link watcher, on injected fetch. Its
+      // load-bearing rule is denied-is-not-rot: the first seed run took the
+      // agent proxy's 403s for link rot and emitted 293 false signals. Also
+      // pins the host short-circuit, the sha-based new-edition signal (founder
+      // runbook, never auto-cutover), and the offline freshness ratchet.
+      "tests/sellingGuideWatch.test.ts",
       "tests/decisionEngineGaps.test.ts",
       // WF1-002: the engine's compensation-independent pricing projection.
       "tests/paymentProjection.test.ts",

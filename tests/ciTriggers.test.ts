@@ -292,3 +292,45 @@ describe("the docs-only fast path cannot skip a gate that matters", () => {
     }
   });
 });
+
+describe("the Selling Guide corpus steps outrun the scope classifier", () => {
+  // The scope step's DOCS_RE includes `^docs/`, so a PR touching only
+  // docs/fannie-mae/selling-guide/** classifies as code=false. The corpus steps
+  // exist to gate exactly those PRs — so a well-meaning "optimization" that puts
+  // them behind `steps.scope.outputs.code` would skip them on every PR that
+  // matters while still showing a green gate. Pin the property, not the hope.
+  const CORPUS_STEPS = [
+    "Selling Guide corpus coherence",
+    "Selling Guide coverage map current",
+    "Selling Guide extraction proof (recover → extract → verify)",
+  ];
+
+  /** The YAML block of one gate step: from its `- name:` to the next `- name:`. */
+  const stepBlock = (name: string) => {
+    const start = CI.indexOf(`- name: ${name}`);
+    expect(start, `gate step '${name}' missing from ci.yml`).toBeGreaterThan(-1);
+    const rest = CI.slice(start + 1);
+    const next = rest.search(/\n\s+- name: /);
+    return next === -1 ? rest : rest.slice(0, next);
+  };
+
+  it("all three steps exist in the gate", () => {
+    for (const name of CORPUS_STEPS) stepBlock(name);
+  });
+
+  it("none of them is gated on the scope step's code classification", () => {
+    for (const name of CORPUS_STEPS) {
+      expect(
+        stepBlock(name),
+        `'${name}' is behind steps.scope.outputs.code — a corpus-only PR classifies ` +
+          `as inert docs, so this condition skips the step on exactly the PRs it gates`,
+      ).not.toContain("steps.scope.outputs.code");
+    }
+  });
+
+  it("the extraction proof derives the pymupdf pin instead of restating it", () => {
+    expect(stepBlock("Selling Guide extraction proof (recover → extract → verify)")).toContain(
+      "PYMUPDF_PINNED",
+    );
+  });
+});

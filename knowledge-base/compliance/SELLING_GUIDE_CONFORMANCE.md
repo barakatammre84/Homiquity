@@ -3,15 +3,17 @@
 **Source of truth:** Fannie Mae *Selling Guide*, edition **08-05-2026**.
 
 The Guide itself is **not committed** — this repository is public and the Guide is Fannie
-Mae's copyrighted work. One command makes it greppable on your machine:
+Mae's copyrighted work. One command materializes the whole corpus on your machine — in a
+fresh clone it recovers the PDF from this repo's own git history, SHA-256-verified, with
+no network (front door: [docs/fannie-mae/selling-guide/README.md](../../docs/fannie-mae/selling-guide/README.md)):
 
 ```bash
 python3 scripts/extract-selling-guide.py
 ```
 
-If it cannot find the PDF it prints where it looked and **stops**. That is the correct
-outcome, and it matches CLAUDE.md: a missing source is an honest gap, never a licence to
-answer a Fannie policy question from memory.
+If it can find no PDF by any path it prints where it looked and **stops**. That is the
+correct outcome, and it matches CLAUDE.md: a missing source is an honest gap, never a
+licence to answer a Fannie policy question from memory.
 
 Per [CLAUDE.md](../../CLAUDE.md) the *Selling Guide* is the top of the Fannie document
 hierarchy — it **controls over every job aid** in `docs/fannie-mae/`, and over anything in
@@ -28,8 +30,15 @@ sections that carried those verdicts (A2-2-04 p38, B3-2-01 p288, B3-2-02 p292) a
 grep -n "B3-6-05" docs/fannie-mae/selling-guide/section-index.tsv
 ```
 
-That gives the PDF page. Then read the section out of the generated text
-(`selling-guide-text.txt`, gitignored — run the script above once if it is absent):
+That gives the PDF page. Then read the section itself — the extraction writes one file
+per section (gitignored — run the script above once if they are absent):
+
+```bash
+python3 scripts/extract-selling-guide.py --section B3-6-05
+# …or open docs/fannie-mae/selling-guide/extracted/sections/B3-6-05.txt directly
+```
+
+For a page-bounded read of the whole-book stream, the older recipe still works:
 
 ```bash
 awk '/\[\[PAGE 523 /,/\[\[PAGE 531 /' docs/fannie-mae/selling-guide/selling-guide-text.txt

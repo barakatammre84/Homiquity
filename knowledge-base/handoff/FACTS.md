@@ -52,15 +52,15 @@ and returns nothing — a false "the file changed").
 | F-10 | role-group declarations (line numbers: STAFF, CLIENT, PARTNER, ALL, INTERNAL_STAFF) | `grep -nE "^export const (STAFF_ROLES\|CLIENT_ROLES\|PARTNER_ROLES\|INTERNAL_STAFF_ROLES\|ALL_ROLES)" shared/roles.ts \| cut -d: -f1` | 14 26 36 42 80 (8 + 2 + 2 = 12 roles; 6 internal) |
 | F-11 | `inArray(` call sites | `grep -rn "inArray(" server --include='*.ts' \| wc -l` | 56 |
 | F-12 | `.transaction(` call sites | `grep -rn "\.transaction(" server --include='*.ts' \| wc -l` | 6 |
-| F-13 | node-lane allowlist · test files on disk | `grep -cE '^\s*"tests/' vitest.config.ts ; git ls-files 'tests/*.test.ts' \| wc -l` | 221 · 239 |
+| F-13 | node-lane allowlist · test files on disk | `grep -cE '^\s*"tests/' vitest.config.ts ; git ls-files 'tests/*.test.ts' \| wc -l` | 230 · 248 |
 | F-14 | integration-lane includes | `grep -cE '^\s*"tests/' vitest.integration.config.ts` | 18 |
-| F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 123 |
+| F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 124 |
 | F-16 | guards in the CI gate | `grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml \| sort -u` | bundle channel citations kb migrations querykeys schema security staleness tokens ui (11; `guard:docs` deliberately absent) |
-| F-17 | pre-push steps · preflight steps · checkup checks | `grep -c '^step ' .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh` | 9 · 18 · 18 (was 10 — `e49aab6d`/#660 made the unit lanes opt-in behind `PREPUSH_TESTS=1`) |
-| F-18 | skills · of which anti-autoload | `ls -d .claude/skills/*/ \| wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` | 25 · 19 |
+| F-17 | pre-push steps · preflight steps · checkup checks | `grep -c '^step ' .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh` | 14 · 24 · 21 (was 10 — `e49aab6d`/#660 made the unit lanes opt-in behind `PREPUSH_TESTS=1`; +the Selling Guide corpus/coverage/watch lines, 2026-08-23) |
+| F-18 | skills · of which anti-autoload | `ls -d .claude/skills/*/ \| wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` | 26 · 20 |
 | F-19 | agents · of which owners | `ls .claude/agents/*.md \| wc -l ; ls .claude/agents/hq-*-owner.md \| wc -l` | 58 · 41 |
 | F-20 | app-guide chapters | `ls knowledge-base/handbook/app-guide/*.md \| wc -l` | 12 |
-| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 229 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
+| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 233 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
 | F-22 | client routes · lazy routes | `grep -c "<Route" client/src/App.tsx ; grep -c "lazy(" client/src/App.tsx` | 121 · 113 |
 | F-23 | coach model calls per turn · coach tools | `grep -n "MAX_MODEL_CALLS_PER_TURN\s*=" server/services/coachingClient.ts ; grep -c 'name: "' server/services/coachTools.ts` | 4 · 8 |
 | F-24 | server files mentioning Anthropic · SDK import lines | `grep -rln "anthropic" server --include='*.ts' \| wc -l ; grep -rn "@anthropic-ai/sdk" server --include='*.ts' \| wc -l` | 7 · 5 (none in `DECISION_PATH_MODULES`) |
@@ -73,17 +73,21 @@ and returns nothing — a false "the file changed").
 | F-31 | commits on `main` | `git rev-list --count HEAD` | 1,098 — `HEAD`, so run it on `main`; on a branch it counts the branch |
 | F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
-| F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 63 |
+| F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 66 |
 | F-35 | query-key factories | `grep -cE '^export const [a-zA-Z]+Keys' client/src/lib/queryClient.ts` | 17 |
-| F-36 | guard scripts · baseline files | `ls scripts/*-guard.cjs \| wc -l ; ls scripts/*baseline*.json \| wc -l` | 15 · 7 |
+| F-36 | guard scripts · baseline files | `ls scripts/*-guard.cjs \| wc -l ; ls scripts/*baseline*.json \| wc -l` | 17 · 7 |
 | F-37 | foreign keys to `loan_applications` · to `users` | `grep -rn "references(() => loanApplications.id)" shared/schema/*.ts \| wc -l ; grep -rn "references(() => users.id)" shared/schema/*.ts \| wc -l` | 91 · 130 |
 | F-38 | `app.use(` mounts · server `.ts` files | `grep -c "app.use(" server/app.ts ; find server -name '*.ts' \| wc -l` | 39 · 291 |
 | F-39 | test files in neither vitest config | `comm -23 <(git ls-files 'tests/*.test.ts'\|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts\|tr -d '"'\|sort -u)` | *none* (0) — the file was listed and the zero is now **enforced**: `scripts/test-collection-guard.cjs` fails on any test file no lane's `include` matches (`fd4a22c5`, #670) |
 | F-40 | `updatePipelineStage(` references · `recalculateDecision(` references | `grep -rn "updatePipelineStage(" server --include='*.ts' \| wc -l ; grep -rn "recalculateDecision(" server --include='*.ts' \| wc -l` | 5 · 11 |
 | F-41 | regulatory-ledger entries · still carrying a blocked-network note | `python3 -c "import json;e=json.load(open('data/regulatory/regulatory-ledger.json'))['entries'];print(len(e), len([x for x in e if 'block' in (x.get('notes','') or '').lower()]))"` | 59 · 9 |
-| F-42 | `complianceInvariants` describes · its | `grep -c "^describe(" tests/complianceInvariants.test.ts ; grep -c "  it(" tests/complianceInvariants.test.ts` | 16 · 54 |
-| F-43 | the two deploy-job conditions, and the one that cannot fail | `sed -n '583p;656p;672p' .github/workflows/ci.yml` | `if: … == 'push' \|\| … == 'workflow_dispatch'` · `if: … == 'push'` · `continue-on-error: true` — both re-armed by `76c96751` (#669) after a 2026-08-19/20 pause; `verify-deploy` reddens without failing the workflow, by design |
+| F-42 | `complianceInvariants` describes · its | `grep -c "^describe(" tests/complianceInvariants.test.ts ; grep -c "  it(" tests/complianceInvariants.test.ts` | 16 · 55 |
+| F-43 | the two deploy-job conditions, and the one that cannot fail | `sed -n '736p;809p;825p' .github/workflows/ci.yml` | `if: … == 'push' \|\| … == 'workflow_dispatch'` · `if: … == 'push'` · `continue-on-error: true` — both re-armed by `76c96751` (#669) after a 2026-08-19/20 pause; `verify-deploy` reddens without failing the workflow, by design |
 | F-44 | required status checks on `main` | `gh api repos/barakatammre84/Homiquity/branches/main/protection --jq '.required_status_checks.contexts\|length'` | 0 (measured 2026-08-22, not a property of the commit) |
+| F-45 | Selling Guide leaf sections · TOC entries | `cut -f3 docs/fannie-mae/selling-guide/section-index.tsv \| grep -Ec '^[A-E][0-9]?(-[0-9]+(\.[0-9]+)?)*-[0-9]{2}, ' ; tail -n +2 docs/fannie-mae/selling-guide/section-index.tsv \| wc -l` | 423 · 554 |
+| F-46 | Guide link inventory: unique URLs · probeable ok · xref edges | `python3 -c "import json;s=json.load(open('docs/fannie-mae/selling-guide/links.json'))['summary'];print(s['unique_urls'],s['ok_urls'],s['xref_edges'])"` | 319 · 295 · 989 |
+| F-47 | Selling Guide gate steps in ci.yml (authority guard + corpus coherence + coverage map + extraction proof — all always-run) | `grep -cE '^      - name: Selling Guide' .github/workflows/ci.yml` | 4 |
+| F-48 | acknowledged blocked sources+hosts in the Guide watch state (the procurement ratchet) | `python3 -c "import json;print(len(json.load(open('data/regulatory/selling-guide-watch-state.json'))['acknowledgedBlocked']))"` | 25 |
 
 <!-- END GENERATED -->
 

@@ -100,6 +100,10 @@ export function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: s
                 </span>
                 {income.requiresManualReview && <Badge variant="warning">Manual review</Badge>}
               </div>
+              {/* Each row is what the path CONTRIBUTED to the figure above, so
+                  the list reconciles to it. A rental portfolio's losses sit on
+                  the obligation side and are labelled as such rather than
+                  netted into an income number that then fails to add up. */}
               <ul className="space-y-1 text-sm">
                 {income.paths
                   .filter((p) => p.status === "applicable")
@@ -108,13 +112,20 @@ export function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: s
                       <span className="text-muted-foreground">
                         {prettyPathId(p.pathId)}
                         {p.role === "alternative" && <span className="ml-1 text-xs">(alt)</span>}
+                        {p.kind === "dti_income" && (p.appliedMonthlyObligation ?? 0) > 0 && (
+                          <span className="ml-1 text-xs">
+                            (+{formatCurrency(p.appliedMonthlyObligation ?? 0)}/mo to debts)
+                          </span>
+                        )}
                       </span>
                       <span className="tabular-nums">
                         {p.kind === "coverage_ratio"
                           ? p.coverageRatio != null
                             ? `DSCR ${p.coverageRatio.toFixed(2)}`
                             : "—"
-                          : formatCurrency(p.monthlyQualifyingIncome ?? 0) + "/mo"}
+                          : formatCurrency(
+                              p.appliedMonthlyIncome ?? p.monthlyQualifyingIncome ?? 0,
+                            ) + "/mo"}
                       </span>
                     </li>
                   ))}

@@ -42,6 +42,11 @@ export interface IncomePath {
   kind: "dti_income" | "coverage_ratio";
   monthlyQualifyingIncome?: number;
   appliedToDti?: boolean;
+  /** What the path contributed to primaryMonthlyQualifyingIncome (rental
+   *  differs from its net; absent on evaluations predating the split). */
+  appliedMonthlyIncome?: number;
+  /** What it contributed to monthly obligations instead (rental losses). */
+  appliedMonthlyObligation?: number;
   coverageRatio?: number | null;
   requiresManualReview: boolean;
 }

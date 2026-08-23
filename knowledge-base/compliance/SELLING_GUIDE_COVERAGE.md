@@ -4,7 +4,7 @@
 
 **Generated — do not hand-edit.** Run `pnpm coverage:sg` after editing
 [`knowledge-base/compliance/selling-guide-coverage.json`](selling-guide-coverage.json). The section rows come from
-`docs/fannie-mae/selling-guide/section-index.tsv` (edition 2026-08-05); the status file
+`docs/fannie-mae/selling-guide/section-index.tsv` (edition 08-05-2026); the status file
 carries only judgements, so this map cannot invent or omit a section.
 
 This is the **standing map of all 423 citable sections**.
