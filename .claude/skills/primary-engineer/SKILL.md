@@ -57,7 +57,8 @@ moves only when the founder has a free evening.
   shared primary checkout is never the venue). `git fetch origin && git pull --rebase origin main`,
   then `pnpm install --frozen-lockfile` **again after the rebase**; `ListAgents` (or whatever
   session-listing capability this harness provides — record `SKIPPED` if none); read `REGISTER.md`
-  and `knowledge-base/SESSION_CLAIMS.md`; claim the item (row: routine, target, worktree, branch,
+  — the single claim board, which absorbed `knowledge-base/SESSION_CLAIMS.md` on 2026-08-12; that
+  path is now a stub, so never claim there; claim the item (row: routine, target, worktree, branch,
   UTC timestamp) and **push the claim commit with the item branch immediately** — an unpushed
   claim is invisible to every peer (§5); **release the row when the item ships, parks, or dies** —
   always.
@@ -122,7 +123,8 @@ unreachable — report exactly what you saw and stop).
    branch and its PR; every later guard run appends its report there (one guard PR total, never
    one per day). If the file exists on `origin/main` but
    not in the current checkout, follow the `git show origin/main:...` copy.
-2. Read CHARTER.md (§1, §1a, §1b, §5, §6, §8–§11), REGISTER.md, SESSION_CLAIMS.md,
+2. Read CHARTER.md (§1, §1a, §1b, §5, §6, §8–§11), REGISTER.md (the single claim board since it
+   absorbed SESSION_CLAIMS.md on 2026-08-12),
    `knowledge-base/refactor-radar/LEDGER.md`. `ListAgents` (fallback per R4 if absent).
 3. Read upstreams: the most recent `launch-gate` report, yesterday's `deliverable-qa-sweep` and
    `evening-triage` reports. Reports often live on unmerged `routine/*` PR branches — check
