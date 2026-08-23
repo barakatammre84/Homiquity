@@ -3,7 +3,9 @@
  * happy path" layer. Pure functions only: no IO, no AI, no discretion. Every
  * rule cites its guideline so audits can trace math to policy:
  *
- *  - Income seasoning        Fannie Mae Selling Guide B3-3.2
+ *  - Income seasoning        Fannie Mae Selling Guide B3-3.5-01 (Length of
+ *                            Self-Employment: two-year history, or 12 months
+ *                            with documented prior income in the same field)
  *  - Deferred student loans  Fannie Mae Selling Guide B3-6-05 (1% rule)
  *  - VA residual income      VA Pamphlet 26-7 Chapter 4 (incl. 20% cushion)
  *  - Large-deposit sourcing  Fannie Mae Selling Guide B3-4.2-02 (Depository
@@ -17,7 +19,7 @@ import type { IncomeSourceEntry, RentalPropertyEntry } from "@shared/schema";
 import { toNum } from "@shared/lib/number";
 
 // ---------------------------------------------------------------------------
-// Scenario 1 — income seasoning (B3-3.2)
+// Scenario 1 — income seasoning (B3-3.5-01)
 // ---------------------------------------------------------------------------
 
 export interface SeasoningAssessment {
@@ -83,6 +85,12 @@ export interface Tradeline {
 }
 
 export const DEFERRED_STUDENT_LOAN_FACTOR = 0.01;
+// B3-6-05, Revolving Charge/Lines of Credit: where the credit report carries no
+// required minimum payment, the qualifying obligation is 5% of the outstanding
+// balance — for DU casefiles, the greater of $10 or 5%. Without this a revolving
+// tradeline pulled with a $0 minimum contributed nothing to the DTI.
+export const REVOLVING_PAYMENT_FACTOR = 0.05;
+export const REVOLVING_MINIMUM_PAYMENT_FLOOR = 10;
 // PLATFORM POLICY, not an agency figure — B3-6-05 publishes no recency window
 // (ledger: platform-new-tradeline-window-90d). Detection metadata only: the
 // flagged lines' payments are in adjustedMonthlyDebt regardless of the window.
@@ -96,10 +104,24 @@ export interface LiabilityAdjustment {
   reportedMonthlyPayments: number;
   /** Additional payment imputed on deferred student loans (1% of balance). */
   deferredStudentLoanImputed: number;
+  /** Additional payment imputed on revolving lines reporting no minimum (B3-6-05). */
+  revolvingImputed: number;
+  /** Revolving lines that reported no minimum payment and were imputed. */
+  imputedRevolvingLines: Tradeline[];
   /** Payments on lines opened within the new-tradeline window. */
   newTradelinePayments: number;
   deferredStudentLoans: Tradeline[];
   newTradelines: Tradeline[];
+}
+
+/**
+ * B3-6-05 revolving set: "credit cards, department store charge cards, and
+ * personal lines of credit". Equity lines secured by real estate are excluded —
+ * the same topic routes those into the housing expense.
+ */
+function isRevolving(type: string): boolean {
+  const t = (type || "").toLowerCase();
+  return t === "revolving" || t === "credit_card" || t === "retail";
 }
 
 export function adjustLiabilities(tradelines: Tradeline[] | null | undefined): LiabilityAdjustment {
@@ -111,6 +133,17 @@ export function adjustLiabilities(tradelines: Tradeline[] | null | undefined): L
     (t) => t.openedDaysAgo !== undefined && t.openedDaysAgo <= NEW_TRADELINE_WINDOW_DAYS,
   );
 
+  // B3-6-05: revolving lines reporting no minimum payment qualify at the greater
+  // of $10 or 5% of balance. Student loans are handled by the 1% rule above and
+  // are excluded here so a single tradeline is never imputed twice.
+  const imputedRevolvingLines = lines.filter(
+    (t) => isRevolving(t.type) && !t.monthlyPayment && t.balance > 0,
+  );
+  const revolvingImputed = imputedRevolvingLines.reduce(
+    (sum, t) => sum + Math.max(REVOLVING_MINIMUM_PAYMENT_FLOOR, t.balance * REVOLVING_PAYMENT_FACTOR),
+    0,
+  );
+
   const reportedMonthlyPayments = lines.reduce((sum, t) => sum + (t.monthlyPayment || 0), 0);
   const deferredStudentLoanImputed = deferredStudentLoans.reduce(
     (sum, t) => sum + t.balance * DEFERRED_STUDENT_LOAN_FACTOR,
@@ -118,9 +151,11 @@ export function adjustLiabilities(tradelines: Tradeline[] | null | undefined): L
   );
 
   return {
-    adjustedMonthlyDebt: reportedMonthlyPayments + deferredStudentLoanImputed,
+    adjustedMonthlyDebt: reportedMonthlyPayments + deferredStudentLoanImputed + revolvingImputed,
     reportedMonthlyPayments,
     deferredStudentLoanImputed,
+    revolvingImputed,
+    imputedRevolvingLines,
     // Informational: already inside reportedMonthlyPayments, surfaced so the
     // resolution copy can explain WHERE the debt shift came from.
     newTradelinePayments: newTradelines.reduce((sum, t) => sum + (t.monthlyPayment || 0), 0),
