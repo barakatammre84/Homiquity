@@ -135,11 +135,11 @@ Fixed by normalising the type before dispatch and hoisting the paid-off check ah
 type branch. This is the repo's standing silent-success class: an operation that does not
 happen while the surface says it did.
 
-**Amended 2026-08-22 (C-9):** the vocabulary named above is the *staff* `liabilities` table's
+**Amended 2026-08-22 (C-11):** the vocabulary named above is the *staff* `liabilities` table's
 enum (`shared/schema/underwritingFinancials.ts`). The URLA picker that feeds
 `urla_liabilities` — the rows `assessLiabilities` actually receives — writes its own labels
 (`"Revolving (Credit Card)"`), which the normaliser turned into `revolving_(credit_card)`. So
-the revolving branch C-1 added was still unreachable for every real row. See C-9.
+the revolving branch C-1 added was still unreachable for every real row. See C-11.
 
 ### C-3 — Income seasoning cited the wrong topic
 
@@ -373,14 +373,26 @@ starting from what the product *promises* rather than from what it *stores*.
 
 ---
 
-### C-9 — The revolving imputation still could not fire for the picker's own labels
+## Corrected 2026-08-22
+
+> **Renumbered 2026-08-23.** These two entries were first recorded as C-9 and C-10, colliding
+> with the pair of the same numbers above: two different findings answering to one id, in the
+> file whose ids other files cite. They are **C-11** and **C-12** from here on, and every
+> reference to them on this page moved with them. `pnpm guard:conformance` now fails on a
+> duplicate id, so this particular drift cannot recur silently.
+>
+> (The colliding pair above — C-9, ARM and C-10, declarations — also landed 2026-08-22, in
+> commits `809517b` and `e29a99a`, although they sit under the 08-20 heading. They keep their
+> ids because four other passages on this page cite them.)
+
+### C-11 — The revolving imputation still could not fire for the picker's own labels
 
 **B3-6-05, Revolving Charge/Lines of Credit** (same quote as C-1). C-1's branch dispatched on
 a snake_case normaliser (`credit_card`), and C-2's test fed it `"credit_card"`, `"Credit Card"`
 and `"revolving"` — none of which the URLA picker emits. The picker stores
 `"Revolving (Credit Card)"` verbatim, and the normaliser produced `revolving_(credit_card)`, so
 `isRevolvingType` was false for every row the form writes. A second dead branch under a
-green test, found while stacking C-10 on this page.
+green test, found while stacking C-12 on this page.
 
 Fixed by moving the picker's list to `shared/liabilityTypes.ts` (`URLA_LIABILITY_TYPES`) —
 the same move `INCOME_SOURCES` made — with one classifier, `liabilityKind`, that reads the
@@ -388,7 +400,7 @@ picker's labels *and* the staff enum, shared by the picker, both engines, the pr
 flags and the MISMO export. `tests/sellingGuideMonthlyDebt.test.ts` now feeds the engine the
 picker's own list and asserts every label reaches a real branch.
 
-### C-10 — Debts paid by others were always counted against the borrower
+### C-12 — Debts paid by others were always counted against the borrower
 
 **B3-6-05, Debts Paid by Others** (revised in the 08/05/2026 edition). "When a borrower is
 obligated on a non-mortgage debt - but is not the party who is actually repaying the debt - the
