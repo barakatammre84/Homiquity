@@ -910,11 +910,43 @@ the relevant counties sit at the baseline — this is latent rather than active,
 live the moment a high-cost state (CA is the named next market) is opened. Same procurement
 dependency as G-7.
 
-### G-6 — Sections revised in the 08-05-2026 release, not yet scrubbed
+### G-6 — Sections revised in the 08-05-2026 release — **dispositioned 2026-08-23**
 
-The PDF's highlights mark this release's revised sections. Those touching engines we have
-built (B3-6-05, B3-5.3-09) are covered above. The remainder are **unreviewed against our
-code** and are mostly property/project/insurance surfaces we have not built yet:
+**Every section in this queue now carries a coverage row.** Twenty were read against the code
+and recorded `absent`; the two seller/servicer ones sit under the existing broker carve-out.
+**No conflict was found** — which is the expected result and not a disappointing one: these are
+surfaces we have not built, so there is nothing yet to contradict them. The gap is coverage,
+not conformance, and it is now written down per section instead of listed as a backlog.
+
+What the pass changed beyond the rows:
+
+- **Three numbers this entry asserted are now verified on the PDF**, because all three live in
+  tables that flatten in the extracted text. Single-entity ownership (B4-2.1-03, sheets 656 and
+  663): more than **2 units** for projects of 5–10 in a master association, more than **2 units**
+  for 11–20, more than **20%** for 21 or more — and units under any rental or lease arrangement,
+  including lease-purchase and rent-to-own, count toward it. Master-policy deductible (B7-3-03,
+  sheets 879–880): **5%** of coverage per occurrence, **$50,000 per unit** where the policy
+  carries a per-unit deductible. Fidelity/crime (B7-4-02, sheet 901): required for all condo and
+  co-op projects **except** those qualifying for a review waiver, projects of **20 units or
+  less**, or projects needing **$5,000 or less** of coverage. All three were stated correctly
+  here; now they are stated *provably*.
+- **A pattern worth naming: delivery codes without the rules behind them.** The only code in the
+  tree touching any of these surfaces is the Special Feature Code catalog — SFC 215/279/375/773
+  (HomeStyle Renovation and Energy), 892 (HomeStyle Refresh), 630/631 (resale restrictions), 168
+  (inter vivos revocable trust). We can *deliver* a loan flagged as each of these while
+  implementing none of the eligibility rules that would make the flag true. It is not a live
+  defect — every one is `autoDerived: false`, so nothing can assert one on its own, and a human
+  setting it is making the claim deliberately — but it is the shape C-9 had (URLA offers ARM,
+  engine ignores it, delivery demands terms nothing writes), and it is worth knowing before
+  someone wires auto-derivation.
+- **Two rows are dated before this edition** — B5-3.2-06 (12/11/2024) and B7-3-05 (12/14/2022).
+  They appear in `revised-sections.tsv` because the tsv is derived from the release PDF's
+  highlight annotations, which mark pages rather than changed text. Recorded so the next reader
+  does not go looking for a change that is not there.
+- **E-2-04 is `absent`, not `not_applicable`.** There is no `E-` broker carve-out, and inter
+  vivos trust signature mechanics are originator-facing, not purely seller/servicer.
+
+The queue as it stood, for the record:
 
 - B2-3-03 Leasehold Estates — co-op ground-lease renewal, UAD 3.6 Policy Supplement
 - B4-2.1-01/-02/-03, B4-2.2-01/-02/-04, B4-2.3-01 — condo/PUD/co-op project standards,
