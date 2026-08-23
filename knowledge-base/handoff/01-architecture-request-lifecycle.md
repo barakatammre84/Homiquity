@@ -114,7 +114,7 @@ flowchart TD
   `/login` but not `/`, so the homepage would 404 (`:5-8`).
 - **Five route directories, four of which are sub-registrars.** `ls -d server/routes/*/` →
   `admin/ agent-broker/ borrower/ lending/ underwriting/`; `ls server/routes/*/index.ts` → four
-  files (`admin/` holds one file wired directly from `routes.ts:114`). Each `index.ts` pins "the
+  files (`admin/` holds one file wired directly from `server/routes.ts:114`). Each `index.ts` pins "the
   ORIGINAL registration order, so Express route matching is unchanged", and
   `server/routes/borrower/index.ts:43-45` records that `registerLeaseRoutes` was *appended, not
   inserted*.

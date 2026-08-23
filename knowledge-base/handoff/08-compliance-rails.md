@@ -199,7 +199,7 @@ flowchart TD
 | Gate | Where | Failure mode |
 |---|---|---|
 | `assertEncryptionConfig()` | `server/services/encryptionService.ts:197` ← `server/routes.ts:95` | throw at boot |
-| `initEncryption()` KMS unwrap | `encryptionService.ts:148` ← `routes.ts:99` | throw at boot |
+| `initEncryption()` KMS unwrap | `encryptionService.ts:148` ← `server/routes.ts:99` | throw at boot |
 | `SESSION_SECRET` entropy floor | `server/integrations/auth/session.ts:20-26` | throw at boot (prod) |
 | `hashPII` salt guard | `encryptionService.ts:536-541` | throw rather than use a fallback salt |
 | `prelaunchGate` | `server/services/prelaunchGate.ts:37` | 404 `PRELAUNCH_GATED`; unset env fails *safe* |

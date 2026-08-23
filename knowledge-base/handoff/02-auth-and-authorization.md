@@ -104,7 +104,7 @@ sequenceDiagram
 - **External partners see masked PII.** `server/routes/borrower/access.ts:42-52`
   `maskUrlaPersonalInfo` reduces SSN to `•••-••-1234` and nulls DOB; applied at
   `server/routes/borrower/urla.ts:40-44` when the requester is staff-typed but not internal. The
-  full-SSN reveal endpoint allows `["admin","underwriter","processor"]` (`urla.ts:79`) and audits
+  full-SSN reveal endpoint allows `["admin","underwriter","processor"]` (`server/routes/borrower/urla.ts:79`) and audits
   `urla.ssn_reveal` (`:89`).
 - **Promotion happens once, guarded, audited, best-effort.** `server/routes/lending/applications.ts:129-145`:
   `aspiring_owner` → `active_buyer` on first application; the comment states both are

@@ -188,7 +188,7 @@ underwritingTasks.ts: tasks task_documents task_events task_audit_log sla_class_
 - **A compliance column with no default, on purpose.** `shared/schema/compliance.ts:232-244`
   `adverse_actions.basedOnConsumerReport` — "a backfilled guess on a compliance record would be a
   falsified record"; `fcraCompliant` is computed per notice, never defaulted.
-- **The hash chain.** `compliance.ts:270` `credit_audit_log` (`entryHash`, `previousEntryHash`,
+- **The hash chain.** `shared/schema/compliance.ts:270` `credit_audit_log` (`entryHash`, `previousEntryHash`,
   `sequenceNumber`, `hashVersion`) and `:329` `credit_audit_chain_tips` — the schema header says
   plainly it is tamper-*evident*, not a cryptographic guarantee (same database as the log).
 - **Delivery is one row per application.** `shared/schema/delivery.ts:100`
@@ -197,11 +197,11 @@ underwritingTasks.ts: tasks task_documents task_events task_audit_log sla_class_
 - **Rent furnishing performs no I/O by design.** `shared/schema/rent.ts:22-29` — "Nothing here
   transmits anything to a credit bureau … The queue accumulates state and performs no I/O."
 - **Encrypted-at-rest columns: 8 sites, 3-column pattern each.** `grep -rn "_encrypted" shared/schema/*.ts | wc -l`
-  → `8`: `documents.ts:302` (`raw_response_encrypted`), `:462` (`classification_raw_encrypted`),
+  → `8`: `shared/schema/documents.ts:302` (`raw_response_encrypted`), `:462` (`classification_raw_encrypted`),
   `lendingCore.ts:417` (`extraction_raw_encrypted`), `lendingUrla.ts:40` (`ssn_encrypted`), `:354`
   and `:383` (`account_number_encrypted` on assets and liabilities), `rent.ts:107`
   (`landlord_email_encrypted`), `:110` (`property_address_encrypted`). Plus `credit_pulls`'
-  `encryptedRawResponse` (`compliance.ts:158-160`) which the grep's naming misses. Chapter 08 has
+  `encryptedRawResponse` (`shared/schema/compliance.ts:158-160`) which the grep's naming misses. Chapter 08 has
   the vaults.
 - **Validation pattern.** `grep -rn "createInsertSchema(" shared server | wc -l` → `177`;
   `grep -rn "z.enum(" shared/schema | wc -l` → `22`. Shape: `createInsertSchema(table).omit({id,

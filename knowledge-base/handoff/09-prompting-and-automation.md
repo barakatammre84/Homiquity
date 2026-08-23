@@ -201,9 +201,9 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 |---|---|---|
 | **There is no enforcement layer.** Every rail is honour-system prose a model may skip silently; the PR that added hooks is stranded on a branch — the governance system's own governance PR failed to land, the §0 failure shape the charter was written about. | `git cat-file -e HEAD:.claude/settings.json`; commit `69de42ae` | Nothing. |
 | The only machine-enforced permission layer is untracked and per-machine; a fresh clone or cloud session gets none of the deny-list — the same hole `scripts/hooks-installed-guard.cjs:5-13` documents for git hooks. | the primary checkout's untracked settings.local.json | Nothing guards it. |
-| "Does this routine run?" is not answerable from the repo: six on-disk skills are not scheduled, and the authoritative list is a laptop-local MCP call. | `CHARTER.md:249-253`, `:819-822` | the unmerged routine registry would have put it in the repo — same stranded branch. |
+| "Does this routine run?" is not answerable from the repo: six on-disk skills are not scheduled, and the authoritative list is a laptop-local MCP call. | `knowledge-base/routines/CHARTER.md:252-258`, `:819-822` | the unmerged routine registry would have put it in the repo — same stranded branch. |
 | The guards cannot see meaning: a doc can be green on all four while telling readers to run commands that no longer exist. The mitigation (doc-accuracy) is itself prose. | `doc-accuracy/SKILL.md:22-23` | By design. |
-| `vitest.config.ts` is both a shared-file hazard and the node lane's only truth; a stranded file is collected by nothing (chapter 07). | `REGISTER.md:162`; `CHARTER.md:768` | Nothing on `main`. |
+| `vitest.config.ts` is both a shared-file hazard and the node lane's only truth; a stranded file is collected by nothing (chapter 07). | `REGISTER.md:162`; `knowledge-base/routines/CHARTER.md:810` | Nothing on `main`. |
 | Two checkouts on one machine drift and the harness follows the cwd: the stale primary checkout had 21 skills while `origin/main` has 23; a rail added to a skill is invisible to a session opened in the wrong directory. | `ls .claude/skills` in each | Nothing. |
 | The claim register is a courtesy and says so; a live interactive session attached to a PR is invisible to `gh` and `ListAgents` — "A peer had to say it out loud." | `REGISTER.md:23,47-61` | By design. |
 | The corpus is larger than any session reads (~1,600 lines before any code); "read, not copied" works only if the pointer is followed, and nothing checks that it was. | `_OWNER_RAILS.md`, `CHARTER.md` | Nothing. |
@@ -214,7 +214,7 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 
 | Question | What resolves it |
 |---|---|
-| Does the laptop scheduler actually hold the rows in `CHARTER.md:186-199`? | `list_scheduled_tasks` / `list_triggers` — not in the repo; the charter itself says "Do not trust a count written on this page". |
+| Does the laptop scheduler actually hold the rows in `knowledge-base/routines/CHARTER.md:186-200`? | `list_scheduled_tasks` / `list_triggers` — not in the repo; the charter itself says "Do not trust a count written on this page". |
 | Why did `69de42ae` never merge? No PR number, no closure note, no LESSONS row. | `git log --all` shows only the branch; the founder. |
 | Is the untracked settings.local.json in the primary checkout the file any given session actually loads? | The harness, not the repo. |
 | Is one `pgEnum` in 188 tables intentional policy or accident? (The `api-routes` skill says new statuses use `pgEnum`; the code says `varchar` + `as const`.) | The founder — rule semantics in a skill are propose-only (LEDGER HO-0822-05). |
@@ -222,7 +222,7 @@ grep -rn "STATUS: OK" .claude/skills/*/SKILL.md | wc -l ; grep -rn "attempt" .cl
 ## Analogy
 
 Every routine is a locum who has never seen this patient and will never see them again
-(`CHARTER.md:6` — "Each routine runs in a fresh session with no memory of any other run"), so the
+(`knowledge-base/routines/CHARTER.md:6` — "Each routine runs in a fresh session with no memory of any other run"), so the
 ward runs on the chart, not on recall: the chart says what may be prescribed without a consultant
 (§1b), who is operating on which organ right now (REGISTER), what killed the last patient (LESSONS,
 §10), and that a note must carry the time it was written. The four Markdown guards are the audit
