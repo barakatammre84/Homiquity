@@ -22,10 +22,14 @@ import { sendEmail } from "./emailService";
  *
  * Flags do not gate stages by themselves — the conditions system does that.
  * Where a flag needs teeth (e.g. low reserves), this module materializes an
- * outstanding loan condition, and the existing status mutator
- * (updatePipelineStage behind /api/loan-applications/:id/status, which
- * refuses advancement while checkPipelineProgress reports blockers) enforces
- * it. Self-employed files already receive their 2-year tax-return condition
+ * outstanding loan condition, and the status route enforces it at the
+ * closing track: /api/loan-applications/:id/status runs checkPipelineProgress
+ * before granting clear_to_close/closing/funded and 422s while it reports
+ * blockers (Selling Guide B3-2-05; before 2026-08-23 this sentence claimed
+ * enforcement that no reachable route performed — the walk record
+ * knowledge-base/feature-review/journey-walks/2026-08-23-lo-submission-review.md
+ * carries the funded-with-open-conditions repro that corrected it).
+ * Self-employed files already receive their 2-year tax-return condition
  * from pipelineEngine at intake; the COMPLEX_INCOME_CHECK flag is the compact
  * marker lenders and the UI can read without scanning conditions.
  *

@@ -340,6 +340,13 @@ export default defineConfig({
       // shortfall, and independently re-asserts the zero-orphan floor so it
       // survives someone unwiring the guard from `pnpm test`.
       "tests/testCollectionGuard.test.ts",
+      // The condition gate on the status route's closing track (Selling Guide
+      // B3-2-05 — 2026-08-23 review: clear_to_close/closing/funded were granted
+      // with conditions outstanding because nothing reachable consulted
+      // checkPipelineProgress). Route-wiring pins; the engine branches live in
+      // pipelineEngineStageTransitions.test.ts. Hermetic: express on an
+      // ephemeral port, stubbed storage, mocked engine.
+      "tests/statusConditionGate.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
