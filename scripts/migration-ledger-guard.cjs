@@ -15,13 +15,14 @@
  * the journal would have carried two entries with `idx: 38` and `migrate-prod` would
  * have applied them in an undefined order against the production database.
  *
- * Six checks, all hard failures:
+ * Seven checks, all hard failures:
  *   1. duplicate `idx`           — two migrations claiming the same apply slot
  *   2. duplicate `tag`           — two entries naming the same migration
  *   3. non-contiguous `idx`      — gaps/dupes break the 0..N-1 apply sequence
  *   4. journal entry with no SQL — `migrate` aborts on the missing file
  *   5. SQL file with no entry    — silently never applied; prod drifts from the repo
  *   6. filename prefix != `idx`  — the shape a half-resolved collision leaves behind
+ *   7. duplicate `when`          — drizzle orders by it; a tie can skip a migration silently
  *
  * Zero-dependency; no DB connection. Reads only the repo's own files, so it is safe
  * to run anywhere (laptop, worktree, CI) without credentials.
@@ -99,6 +100,29 @@ function checkLedger(entries, sqlFiles) {
   }
   for (const [tag, count] of byTag) {
     if (count > 1) problems.push(`duplicate tag "${tag}" — ${count} journal entries name it`);
+  }
+
+  // 7 — duplicate `when`. Drizzle orders pending migrations by this timestamp, so two entries
+  // sharing one are applied in an order the journal does not actually specify — and the failure
+  // is silent: `migrate-prod` reports success having skipped one. It is the easy mistake to make,
+  // because two branches that each add a migration both take "the next timestamp" and collide the
+  // moment they merge. Both of #650's migrations carried main's `when` on 2026-08-22; the index
+  // collision was loud and this one would not have been.
+  const byWhen = new Map();
+  for (const e of entries) {
+    // A missing `when` is a different defect and not this check's business; comparing
+    // `undefined` to `undefined` would report every entry in a journal that omits the field.
+    if (e.when === undefined || e.when === null) continue;
+    if (!byWhen.has(e.when)) byWhen.set(e.when, []);
+    byWhen.get(e.when).push(e.tag);
+  }
+  for (const [when, tags] of byWhen) {
+    if (tags.length > 1) {
+      problems.push(
+        `duplicate when ${when} — ${tags.length} entries share it: ${tags.join(", ")} ` +
+          `(drizzle orders by this field; a tie is applied in an unspecified order and can skip one)`,
+      );
+    }
   }
 
   // 3 — idx must be the contiguous run 0..N-1, the order drizzle applies in.

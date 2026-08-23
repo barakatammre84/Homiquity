@@ -729,7 +729,7 @@ export const underwritingRulesDsl = pgTable("underwriting_rules_dsl", {
   
   // Metadata
   category: varchar("category", { length: 50 }), // income, liability, dti, dscr, document, credit
-  guidelineReference: varchar("guideline_reference", { length: 255 }), // e.g., "FNMA B3-3.1-09"
+  guidelineReference: varchar("guideline_reference", { length: 255 }), // e.g., "FNMA B3-3.1-01"
   
   // Lifecycle
   isActive: boolean("is_active").default(true),

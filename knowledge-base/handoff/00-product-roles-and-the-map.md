@@ -108,7 +108,7 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
   `:140` `vite ^7.3.6` · `:141` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
   → `39a42bfc 2026-08-04 …bump react… (#301)`), while two app-guide chapters still say React 18
   (LEDGER HO-0822-06).
-- **Two package scripts are fuses, not commands.** `package.json:25` `db:generate` and `:29`
+- **Two package scripts are fuses, not commands.** `package.json:26` `db:generate` and `:29`
   `db:push` both begin `echo 'BLOCKED: …' && exit 1` — generate has snapshot drift; push drops
   columns owned by other branches on the shared dev DB, and prod is migrate-only (chapter 10).
 
@@ -132,7 +132,7 @@ ls -1 knowledge-base/handbook/app-guide/*.md | wc -l
 grep -n '^### Tier' README.md
 # → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 12d7cbec
 grep -rn "React 18" knowledge-base/handbook/app-guide/ ; grep -n '"react":' package.json
-# → app-guide/07-frontend.md:5 and 01-start-here.md:22 say React 18; package.json:102 "react": "^19.2.8" @ 12d7cbec
+# → app-guide/07-frontend.md:5 and 01-start-here.md:22 say React 18; package.json:105 "react": "^19.2.8" @ 12d7cbec
 wc -l PRODUCT_SPINE.md
 # → 8 @ 12d7cbec
 ```
@@ -143,7 +143,7 @@ wc -l PRODUCT_SPINE.md
 |---|---|---|
 | `isStaffRole()` includes `broker` and `lender`; `isInternalStaffRole()` does not. Using the wrong predicate on an object-level check hands an external partner every borrower record. | `shared/roles.ts:102` vs `:110`; rationale `:77-79` | Partially — `tests/adminPredicate.test.ts` guards only the `isAdmin` predicate; nothing greps a new call site for the wrong pair. Chapter 02 names the storage predicate to use instead. |
 | Adding a self-registerable role to `STAFF_ROLES` opens every `isStaffRole()`-gated endpoint. | `shared/roles.ts:10-13`, `:31-35` | Nothing automated — the protection is the comment. |
-| Two app-guide chapters say React 18; the tree has shipped React 19 since 2026-08-04. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:102` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06. |
+| Two app-guide chapters say React 18; the tree has shipped React 19 since 2026-08-04. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:105` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06. |
 | The two indexes disagree on the chapter count (root README 11, KB README 12, disk 12). | `README.md:62` vs `knowledge-base/README.md:36` | Nothing — `guard:kb` checks that files are indexed, not that counts are right. LEDGER HO-0822-07. |
 | `FEATURE_MAP.md` "Last reviewed" is a *domain* review date, not an area walk; 23 of 41 areas have never been reviewed. | `FEATURE_MAP.md:754-757`, `:769-771` | The file warns about itself; the record is `knowledge-base/routines/feature-coverage/LEDGER.md`. |
 | Two rival taxonomies: 41 feature areas vs 13 review domains in `knowledge-base/feature-review/DOMAINS.md`. | `FEATURE_MAP.md:702-704` | Nothing — reconciliation is manual, by design ("when the two disagree, one of them is wrong"). |

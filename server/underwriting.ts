@@ -18,6 +18,8 @@ import { lookupResolver } from "./services/lookupResolver";
 import { computeAgencyWageIncome } from "./services/income/paths/agencyWage";
 import { computeSelfEmploymentPath } from "./services/income/paths/selfEmployment";
 import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
+import { liabilityKind, type LiabilityKind } from "@shared/liabilityTypes";
+import { assessPaidByOtherParty } from "@shared/liabilityExclusions";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -284,6 +286,46 @@ export async function verifyAssets(
 // LIABILITY ASSESSMENT ENGINE
 // ============================================================================
 
+/**
+ * Fannie Mae Selling Guide B3-6-05, Monthly Debt Obligations (08/05/2026) —
+ * Revolving Charge/Lines of Credit. Where the credit report shows no required
+ * minimum payment and nothing documents a lower one, the qualifying payment is
+ * 5% of the outstanding balance; for DU casefiles it is the greater of $10 or
+ * 5%. We apply the DU form because every conventional file here is routed to DU.
+ */
+export const REVOLVING_PAYMENT_FACTOR = 0.05;
+export const REVOLVING_MINIMUM_PAYMENT_FLOOR = 10;
+
+/**
+ * B3-6-05 — Student Loans. Deferred loans or loans in forbearance may be
+ * qualified at 1% of the outstanding balance.
+ */
+export const DEFERRED_STUDENT_LOAN_FACTOR = 0.01;
+
+/**
+ * `urla_liabilities.liability_type` is a free varchar written from the URLA
+ * picker's LABELS ("Revolving (Credit Card)"), while older rows and importers
+ * carry snake_case spellings ("credit_card"). The classifier that reads both
+ * is `liabilityKind` in shared/liabilityTypes.ts — shared with the picker, the
+ * pre-underwriting flags and the MISMO export — because a local normaliser
+ * here once mapped only the snake_case half and the B3-6-05 revolving branch
+ * below was unreachable for every row the form actually writes.
+ *
+ * B3-6-05 treats revolving charge accounts and unsecured lines of credit as
+ * long-term debt: "credit cards, department store charge cards, and personal
+ * lines of credit". HELOCs are deliberately not revolving here — the same
+ * topic routes equity lines secured by real estate into the housing expense.
+ */
+function isRevolvingType(kind: LiabilityKind): boolean {
+  return kind === "revolving";
+}
+
+function toAmount(value: string | number | null | undefined): number {
+  const n = typeof value === "string" ? parseFloat(value) : value ?? 0;
+  return Number.isFinite(n) ? (n as number) : 0;
+}
+
+
 export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssessmentResult {
   const result: LiabilityAssessmentResult = {
     totalMonthlyPayment: 0,
@@ -292,54 +334,106 @@ export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssess
   };
 
   for (const liability of liabilities) {
-    const monthlyPayment = typeof liability.monthlyPayment === 'string' 
-      ? parseFloat(liability.monthlyPayment) 
-      : (liability.monthlyPayment || 0);
+    const reportedPayment = toAmount(liability.monthlyPayment);
+    const balance = toAmount(liability.unpaidBalance);
+    const type = liabilityKind(liability.liabilityType);
 
-    const type = liability.liabilityType?.toLowerCase() || "other";
-    const balance = typeof liability.unpaidBalance === 'string' 
-      ? parseFloat(liability.unpaidBalance) 
-      : (liability.unpaidBalance || 0);
-
-    let included = true;
-    let reason = "Included in DTI";
-
-    if (type === "installment") {
-      // 10-month rule: typically would need remainingTermMonths to apply properly
-      // For now, include unless toBePaidOff is true
-      if (liability.toBePaidOff) {
-        included = false;
-        reason = "To be paid off at closing";
-      }
-    } else if (type === "lease") {
-      included = true;
-      reason = "Lease: always included (new vehicle assumption)";
-    } else if (type === "student_loan") {
-      // 0.5%-1% of balance imputed payment for deferred
-      if (monthlyPayment === 0 && balance > 0) {
-        const imputedPayment = balance * 0.01; // Use 1% (conservative)
-        result.breakdown.push({
-          type: `${type} (deferred)`,
-          payment: imputedPayment,
-          included: true,
-          reason: "1% of balance imputed (deferred loan)",
-        });
-        result.totalMonthlyPayment += imputedPayment;
-        continue;
-      }
+    // B3-6-07, Debts Paid Off At or Prior to Closing: a revolving balance paid
+    // off at/prior to closing needs no payment in the DTI, and an installment
+    // loan paid down to 10 or fewer remaining payments drops out of long-term
+    // debt. This is checked FIRST and for every type — it previously sat inside
+    // an `installment` branch that the liability vocabulary can never produce,
+    // so no debt was ever actually excluded.
+    if (liability.toBePaidOff) {
+      result.excludedDebts += reportedPayment;
+      result.breakdown.push({
+        type,
+        payment: reportedPayment,
+        included: false,
+        reason: "Paid off at or prior to closing (B3-6-07)",
+      });
+      continue;
     }
 
-    if (included) {
-      result.totalMonthlyPayment += monthlyPayment;
-    } else {
-      result.excludedDebts += monthlyPayment;
+    // B3-6-05, Monthly Debt Obligations — Debts Paid by Others: a payment
+    // another party actually makes leaves the recurring obligations once the
+    // borrower's answers satisfy the rule (non-mortgage: payer not an
+    // interested party; mortgage-class: payer obligated, no rental income
+    // from the property). shared/liabilityExclusions.ts is the one predicate
+    // every DTI path reads. The Guide's 12-month cancelled-check history is
+    // raised as an auto-generated condition, not re-derived here.
+    const paidByOther = assessPaidByOtherParty(liability);
+    if (paidByOther.status === "excludable") {
+      result.excludedDebts += reportedPayment;
+      result.breakdown.push({
+        type,
+        payment: reportedPayment,
+        included: false,
+        reason: paidByOther.mortgageClass
+          ? "Housing expense paid by an obligated third party — excluded on a documented 12-month payment history (B3-6-05, Debts Paid by Others)"
+          : "Paid by a third party — excluded on a documented 12-month payment history (B3-6-05, Debts Paid by Others)",
+      });
+      continue;
     }
 
+    // B3-6-05, Monthly Debt Obligations — Student Loans: where the credit
+    // report carries no payment (or $0), a deferred/forbearance loan qualifies
+    // at 1% of the outstanding balance.
+    //
+    // Deliberately conservative: B3-6-05 also permits qualifying at $0 when an
+    // income-driven plan is DOCUMENTED at $0, and permits a fully amortizing
+    // payment from documented terms. Neither is representable on
+    // urla_liabilities today (no plan-type or term column), so we impute the 1%
+    // figure rather than assume the borrower-favorable path. See
+    // knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md (gap G-2).
+    if (type === "student_loan" && reportedPayment === 0 && balance > 0) {
+      const imputed = balance * DEFERRED_STUDENT_LOAN_FACTOR;
+      result.totalMonthlyPayment += imputed;
+      result.breakdown.push({
+        type: `${type} (deferred)`,
+        payment: imputed,
+        included: true,
+        reason: "1% of balance imputed — deferred student loan (B3-6-05)",
+      });
+      continue;
+    }
+
+    // B3-6-05, Monthly Debt Obligations — Revolving Charge/Lines of Credit:
+    // "If the credit report does not show a required minimum payment amount and
+    // there is no supplemental documentation to support a payment of less than
+    // 5%, the lender must use 5% of the outstanding balance as the borrower's
+    // recurring monthly debt obligation." For DU casefiles the floor is the
+    // GREATER of $10 or 5% of the balance.
+    //
+    // Without this, a revolving line reported with no minimum payment
+    // contributed $0 to the DTI — understating the ratio and approving files DU
+    // would decline. That is the one direction the compliance rail forbids.
+    if (isRevolvingType(type) && reportedPayment === 0 && balance > 0) {
+      const imputed = Math.max(
+        REVOLVING_MINIMUM_PAYMENT_FLOOR,
+        balance * REVOLVING_PAYMENT_FACTOR,
+      );
+      result.totalMonthlyPayment += imputed;
+      result.breakdown.push({
+        type: `${type} (no minimum payment reported)`,
+        payment: imputed,
+        included: true,
+        reason: "Greater of $10 or 5% of balance imputed — revolving (B3-6-05)",
+      });
+      continue;
+    }
+
+    // B3-6-05 — Lease Payments are included regardless of months remaining, and
+    // Installment Debt is included where more than ten monthly payments remain.
+    // urla_liabilities carries no remaining-term column, so every installment
+    // debt is included: the conservative reading, and the only one the stored
+    // data supports. See SELLING_GUIDE_CONFORMANCE.md (gap G-1).
+    result.totalMonthlyPayment += reportedPayment;
     result.breakdown.push({
       type,
-      payment: monthlyPayment,
-      included,
-      reason,
+      payment: reportedPayment,
+      included: true,
+      reason: "Included in recurring monthly debt obligations (B3-6-05)",
     });
   }
 
