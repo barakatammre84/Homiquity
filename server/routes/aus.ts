@@ -17,6 +17,7 @@ import {
   submitToLPA,
 } from "../services/ausSubmission";
 import { validateMISMOCompleteness, evaluateGseSubmissionReadiness } from "../services/mismoValidation";
+import { computeCasefileDti } from "../services/ausSubmission";
 
 /**
  * AUS orchestration routes: Plaid asset webhook ingestion and GSE (Fannie DU)
@@ -95,7 +96,8 @@ export function registerAusRoutes(app: Express) {
           institutionCount: report.institutionCount,
           accountCount: report.accountCount,
           totalBalance: report.totalBalance.toFixed(2),
-          // Audit trace + large-deposit sourcing input (B3-4.3-04).
+          // Audit trace + large-deposit sourcing input (B3-4.2-02 Depository Accounts; a deposit that
+            // turns out to be a gift resolves under B3-4.3-04).
           rawPayload: report,
           completedAt: new Date(),
           expiresAt: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
@@ -198,10 +200,37 @@ export function registerAusRoutes(app: Express) {
         }
 
         const monthlyIncome = application.annualIncome ? Number(application.annualIncome) / 12 : null;
-        const dti =
-          monthlyIncome && application.monthlyDebts
-            ? Number((Number(application.monthlyDebts) / monthlyIncome).toFixed(4))
-            : null;
+
+        // B3-6-02 (Debt-to-Income Ratios) read with B3-6-03 (Monthly Housing Expense for the
+        // Subject Property): the qualifying ratio is TOTAL monthly obligations INCLUDING the
+        // proposed housing payment. This sent recurring debts alone, which understates every
+        // purchase casefile — on a file with $750 of debts, $6,000 income and a $2,250 payment
+        // it reported 12.5% where the real ratio is 50%, the difference between clearing DU's
+        // ceiling and hitting it.
+        //
+        // A2-2-04 makes that a warranty problem, not a cosmetic one: the DU limited waiver holds
+        // only where "all data pertaining to the mortgage loan is complete, accurate, and not
+        // fraudulent", and it expressly does not relieve the lender of "the identification and
+        // inclusion of a borrower's liabilities in the DTI".
+        //
+        // Uses the same projection the decision engine uses (decisionEngine.ts), so the casefile
+        // and the decision cannot disagree — B3-2-01 requires the delivered data to match the
+        // final DU submission.
+        let proposedHousingPayment: number | null = null;
+        try {
+          const { computePaymentProjection } = await import("../services/loanEstimate");
+          proposedHousingPayment = (await computePaymentProjection(applicationId)).estimatedMonthlyTotal;
+        } catch (projErr) {
+          // Pricing inputs missing/unpriceable. Fall through to a null DTI rather than a partial
+          // one: an absent ratio is honest and DU asks for it, while a knowingly understated one
+          // buys an Approve/Eligible the file has not earned.
+          console.error("[aus] payment projection unavailable; submitting DTI as null:", projErr);
+        }
+        const dti = computeCasefileDti({
+          monthlyIncome,
+          monthlyDebts: application.monthlyDebts != null ? Number(application.monthlyDebts) : null,
+          proposedHousingPayment,
+        });
 
         const casefileInput = {
           applicationId,

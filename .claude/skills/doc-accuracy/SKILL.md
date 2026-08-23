@@ -5,6 +5,13 @@ description: Use ONLY when the user explicitly invokes /doc-accuracy or explicit
 
 # Doc Accuracy — the knowledge-base steward routine
 
+**Authority — Fannie policy.** The *Selling Guide*, edition 08-05-2026, is committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) and controls over every
+job aid. Any Fannie claim you make or repeat cites a section id resolving in `section-index.tsv`,
+read out of the committed text this run — never from memory. An id the index does not know is a
+**wrong** citation, not an old one. A value read out of a **table** is unverified until you open
+the PDF page. (TEAM_PRACTICES §10; enforced by `pnpm guard:authority`.)
+
 The `.md` corpus is the company's operating memory: every routine, every fresh session, and the
 founder act on what it says. A stale doc is therefore an **active liability, not untidiness** —
 the dormant-suite disaster ([`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) §0)

@@ -8,6 +8,10 @@ description: Use ONLY when the user explicitly invokes /workflow-prover or expli
 **Cadence:** daily, 17:10 — after the QA Sweep, with the server the App Walker left running.
 **Writes code:** no. Its trace, the workflow ledger, and its report (L1 per CHARTER §1b).
 **Produces:** a per-step pass/fail trace for one workflow, with **value equality** at every seam.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 
@@ -66,9 +70,17 @@ write, a co-applicant's rows landing under the primary borrower.
 - **R8 — Date every standing claim.** Before reporting a step as broken, verify against
   `origin/main` (`git log -S '<symbol>' -- <path>`). WF2-F4 sat asserted in three documents for a
   week after it was fixed, and nearly shipped to eight routines as the headline launch blocker.
-- **R9 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, or touch a
+- **R9 — Selling Guide.** Every Fannie policy claim cites a section id that resolves in
+  `docs/fannie-mae/selling-guide/section-index.tsv` and is read out of the committed text this run
+  — never from memory. An id the index does not know is a **wrong** citation, not an old one: the
+  Guide renumbers, and the stale URL used to return HTTP 200 rather than 404. A value read out of a
+  **table** is unverified until you open the PDF page — borderless tables lose their row/column
+  association in extraction. Where the Guide and a job aid disagree the Guide controls, and the
+  conflict escalates rather than being resolved here. Enforced in CI by `pnpm guard:authority`
+  (TEAM_PRACTICES §10).
+- **R10 — CHARTER §8, verbatim.** Never push to `main`, merge, enable auto-merge, or touch a
   production variable. `git add` explicit paths only.
-- **R10 — Honesty.** A step you could not execute is `SKIPPED (reason)` — never `PASS` by
+- **R11 — Honesty.** A step you could not execute is `SKIPPED (reason)` — never `PASS` by
   inference from code. Static tracing is a legitimate fallback **only when labelled as such**, and
   a run that is entirely static says so in its STATUS line.
 
