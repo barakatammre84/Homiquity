@@ -32,7 +32,7 @@ export default function Disclosures() {
             <Shield className="h-4 w-4 text-success-subtle-foreground" />
             Transparency
           </div>
-          <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl" data-testid="text-disclosures-title">
+          <h1 className="font-display text-3xl font-bold leading-none text-white sm:text-4xl lg:text-5xl" data-testid="text-disclosures-title">
             Disclosures & Licensing
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">
