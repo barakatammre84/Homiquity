@@ -47,20 +47,26 @@ A red trunk, a dead gate, or a routine that cannot be shown to have run outranks
 below — these are the *technical* blockers CHARTER §1a-2026-08-23 names as the only legitimate
 ones.
 
-- [ ] 🚨 **KTLO-4. `main` has no *required* gate and still auto-deploys to production.
-  Re-verified 2026-08-23T02:37Z — still true, with one thing better than it was.** Better: CI is
-  running again and every merge to `main` today went green before Railway built it. Unchanged and
-  still the hazard: `required_status_checks.contexts: []`, so that verification is **voluntary** —
-  a red or missing run blocks nothing, and `enforce_admins: true` over zero checks binds admins to
-  nothing. Prod serves the same commit as `origin/main`, and Railway's `checkSuites: false` means
-  it never waits for CI. Now that Actions is alive (1.17), **restoring the required check is a
-  one-command founder click and no longer costs anything** — the separators are U+00B7 MIDDLE
-  DOTs, and the string must match verbatim or every PR deadlocks on a check that never arrives:
-  ```bash
-  echo '{"strict":false,"contexts":["gate (typecheck · tests · schema guard)"]}' | gh api -X PATCH repos/barakatammre84/Homiquity/branches/main/protection/required_status_checks --input -
-  ```
-  Until one of {required check restored, Railway source disconnected} is done, treat every merge
-  as a production deploy of unverified code and run `pnpm preflight` first.
+- [ ] **KTLO-4. The required gate is BACK and binding — what remains is Railway's own coupling.**
+  **Corrected 2026-08-23 against [#711](https://github.com/barakatammre84/Homiquity/pull/711),
+  which withdrew this item's premise.** The claim that stood here until this edit —
+  `required_status_checks.contexts: []`, "verification is voluntary", with a restore command —
+  came from an 02:37Z probe and was already false by 17:41Z. Classic branch protection (not a
+  ruleset) is live on `main`, proven **behaviourally**, which is the only way it can be proven:
+  merging #708/#647 through the API returned verbatim
+  `405 Required status check "gate (typecheck · tests · schema guard)" is expected`, and #647 went
+  `behind` when `main` moved and merged only once brought current — so **`strict: true` is on too**.
+  🚨 **Do not try to read this from the settings endpoint:** `…/branches/main/protection` returns
+  403 to any non-admin token, which is exactly how this claim rotted in *both* directions (it also
+  sat on a stale ✅ for weeks after protection was removed). Probe the behaviour — open a PR and
+  read what the merge refuses. Two live consequences: renaming the `gate` job deadlocks every open
+  PR (the check name is matched verbatim, U+00B7 MIDDLE DOTs — see the DO-NOT-RENAME warning in
+  `.github/workflows/ci.yml`), and **every PR must be current with `main` to merge**, so a routine
+  that lets its branch go stale has made work for itself. **What is still open:** Railway's
+  `checkSuites: false` means the deploy hook itself never waits for CI, so anything reaching `main`
+  by a path other than a gated PR merge still ships unverified. Decide whether that residue is
+  worth closing (disconnect the Railway GitHub source and deploy on a tag/dispatch) or accept it
+  and record the acceptance in [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md).
 - [ ] **3.24 A routine can fire and leave no artifact, and the suite reads that as "did not run"**
   (evening-triage 2026-08-18; recurred 2026-08-19 ×2 and 2026-08-22 ×3 — `primary-engineer`,
   Trunk Health and `workflow-completion-engine` all dispatched and left no report on any ref, and
@@ -185,8 +191,10 @@ ones.
   payment failure has never been observed resolved, so flipping the repo private re-breaks every
   merge instantly (it did exactly that on 2026-08-19). Also owed by the public decision:
   `knowledge-base/feature-review/FINDINGS.md`, `governance/security/`, and ~19 MB of re-hosted
-  Fannie/NMLS PDFs are world-readable, and secret scanning + push protection are disabled. Restore
-  command and full provenance: archived KTLO-2 (2026-08-23 snapshot banner note 3).
+  Fannie/NMLS PDFs are world-readable, and secret scanning + push protection are disabled. Full
+  provenance: archived KTLO-2 (2026-08-23 snapshot banner note 3). Its restore command is **done** —
+  the required `gate` check is live again with `strict` on (KTLO-4), which is a second reason not to
+  flip the repo private casually: a required check that cannot run blocks every PR in the repo.
 - [ ] **1.18 Product decision: bind `/api/leads` or delete it** — headless partner-embed vs a
   Homiquity-hosted form; PartnerHub prompt PH-6 is chartered to resolve exactly this. The
   engineering follows in 3.4.

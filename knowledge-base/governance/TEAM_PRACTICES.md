@@ -146,9 +146,10 @@ discovered trap gets a line here in the same PR.
   the status of its *last* command, so `git push 2>&1 | tail -20` is `0` even when the pre-push gate
   blocked the push and nothing reached `origin`. Observed independently by two sessions on
   2026-08-20; one only noticed because a later `git ls-remote` disagreed with what it believed it
-  had pushed. This matters more than it used to: `main` carries no required status check while
-  Actions is down, so the pre-push hook is the only gate, and this masks the one signal that it
-  fired. The hook itself is correct — verified `exit 1` against `origin/main`'s copy. Fix the
+  had pushed. This mattered even more while `main` carried no required status check and the
+  pre-push hook was the only gate; the required `gate` check is live again as of 2026-08-23, so a
+  masked push now surfaces later as a PR that never gates rather than as a merge nobody checked —
+  later, but still wrong. The hook itself is correct — verified `exit 1` against `origin/main`'s copy. Fix the
   caller: `set -o pipefail`, read `${PIPESTATUS[0]}`, or do not pipe. **Confirm a push by what is on
   the remote (`git rev-parse origin/<branch>`), never by an exit code.** Same family as every other
   entry here — an operation that did not happen while the output says it did
@@ -209,15 +210,21 @@ discovered trap gets a line here in the same PR.
   green.** Work lands as a short-lived branch → PR → gate green → **squash merge**. No
   required reviews: the author merges their own green PR. Recipe:
   [CICD.md](../runbooks/CICD.md) §Shipping.
-  ⚠️ **Half of that is doctrine only — measured 2026-08-22.** Force-push and deletion of
-  `main` *are* still blocked (`allow_force_pushes` / `allow_deletions` both `false`) and
-  `enforce_admins` is on; but
-  `gh api repos/barakatammre84/Homiquity/branches/main/protection` returns
-  `"contexts": []`, `"checks": []`, `strict: false` — **admins bound to zero checks**, so no
-  platform rule stops a pre-green merge. This bullet asserted "branch protection currently
-  enforces this (required `gate` check …)" from 2026-07-19 (#261, `65b17793`) until this
-  correction. Run the enforcement probe below before relying on `--auto`. Whether the
-  required `gate` context should be restored is escalated to the founder, not settled here.
+  ✅ **Enforced again — measured 2026-08-23.** The `gate` check is a required status check on
+  `main` once more, and `strict` is on with it. This bullet has now been wrong in **both**
+  directions: it asserted enforcement from 2026-07-19 (#261, `65b17793`) through the weeks
+  after protection was removed on 2026-08-19, then asserted the absence from 2026-08-22 into
+  a day when it was live again. **Date the claim, or probe it.**
+  The probe that cannot go stale is behavioural, because
+  `gh api repos/barakatammre84/Homiquity/branches/main/protection` answers **403 "Resource
+  not accessible by integration"** to any non-admin token — a session literally cannot read
+  the contexts list, which is how both stale claims survived. What was observed instead:
+  merging #708 and #647 through the API returned `405 Required status check "gate (typecheck ·
+  tests · schema guard)" is expected`, and #647 went `behind` when `main` moved and merged only
+  after being brought current. `…/branches/main --jq .protected` → `true`;
+  `…/rules/branches/main --jq 'length'` → `0`, so it is classic protection, not a ruleset.
+  **Practical consequence: a red or stale PR cannot be merged by anyone**, `--auto` is usable
+  again, and renaming the `gate` job would deadlock every open PR.
 - **⚠️ The 2026-07-19 lesson: GitHub enforces branch protection only while plan/visibility
   allow it, and a flip can silently *drop the rule entirely*.** The repo went private
   ~17:20Z that day (Free plan ⇒ no protection on private repos) — the rule wasn't merely
