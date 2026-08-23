@@ -15,6 +15,8 @@ import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
+import { RefinanceCompareArt } from "@/components/illustrations/RefinanceCompareArt";
+import { AdvocacyArt } from "@/components/illustrations/AdvocacyArt";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
@@ -124,7 +126,7 @@ export default function Refinance() {
 
             <div className="mt-10 grid items-center gap-12 lg:mt-14 lg:grid-cols-2 lg:gap-16">
               <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-refi-hero-title">
+                <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-refi-hero-title">
                   Could refinancing lower your monthly payment?
                 </h1>
                 <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -147,13 +149,9 @@ export default function Refinance() {
                 </div>
               </div>
 
-              <FramedPhoto
-                src={lifestyleImages.refinance.src}
-                alt={lifestyleImages.refinance.alt}
-                testId="img-hero-refi"
-                position="center 35%"
-                loading="eager"
+              <RefinanceCompareArt
                 className="mx-auto w-full max-w-lg lg:max-w-none"
+                data-testid="img-hero-refinance"
               />
             </div>
           </div>
@@ -379,9 +377,7 @@ export default function Refinance() {
           testId="section-refi-life"
           eyebrow="More than a rate"
           title="Refinance around your life — not just today's number"
-          image={lifestyleImages.founderNote.src}
-          imageAlt={lifestyleImages.founderNote.alt}
-          imagePosition="center 30%"
+          illustration={<AdvocacyArt />}
           className="bg-muted"
         >
           <p>

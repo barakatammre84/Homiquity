@@ -105,13 +105,31 @@ describe("F-1 — dual compensation (12 CFR 1026.36(d)(2))", () => {
     }
   });
 
-  it("lowers the borrower's cash to close by exactly the origination fee", () => {
+  it("removes EVERY retained charge under lender-paid, not just the origination fee", () => {
+    // Was "by exactly the origination fee" until 2026-08-20, which encoded the
+    // defect: the retained application and underwriting fees were charged on
+    // every file, lender-paid included. §1026.36(a)(3) + comment 36(a)-5.ii
+    // make a retained fee compensation whatever it is labelled, so charging
+    // them alongside lender-paid compensation is the (d)(2)(i)(A) prohibition.
     const lenderPaid = computeClosingCosts({ ...baseCosts, compensation: LENDER_PAID });
     const borrowerPaid = computeClosingCosts({ ...baseCosts, compensation: BORROWER_PAID });
+
     expect(borrowerPaid.cashToClose - lenderPaid.cashToClose).toBeCloseTo(
-      400_000 * ORIGINATION_FEE_RATE,
+      400_000 * ORIGINATION_FEE_RATE + PLATFORM_APPLICATION_FEE + PLATFORM_UNDERWRITING_FEE,
       6,
     );
+    expect(lenderPaid.applicationFee).toBe(0);
+    expect(lenderPaid.underwritingFee).toBe(0);
+    expect(lenderPaid.originationFee).toBe(0);
+  });
+
+  it("still charges the vendor pass-through under lender-paid — comment 36(a)-5.iii", () => {
+    // The tax service fee is passed on to an unaffiliated vendor, so it is NOT
+    // compensation and must survive the gate. If this ever goes to 0 the gate
+    // has started eating third-party charges, which would understate the
+    // borrower's real costs rather than protect them.
+    const lenderPaid = computeClosingCosts({ ...baseCosts, compensation: LENDER_PAID });
+    expect(lenderPaid.taxServiceFee).toBe(PLATFORM_TAX_SERVICE_FEE);
   });
 
   it("fails closed when no compensation model is supplied", () => {

@@ -4,6 +4,8 @@
 // The coach data types + Zod schemas live in coachTools.ts (they define the
 // tool surface); re-export them so this module's public API is unchanged for
 // the route layer and any future consumers.
+import { ASSISTANT_NAME, ASSISTANT_FULL_LABEL } from "@shared/assistant/identity";
+
 export {
   coachProfileSchema,
   coachIntakeSchema,
@@ -22,10 +24,23 @@ export {
 } from "./coachTools";
 
 //
-// MUST stay byte-stable (no timestamps/interpolation): it is the prompt-cache
-// prefix (cache_control on this block). Bump COACH_PROMPT_VERSION on any edit.
+// MUST stay byte-stable: it is the prompt-cache prefix (cache_control sits on
+// this block), so any per-request variation costs every user a cache miss.
+// Bump COACH_PROMPT_VERSION on any edit.
+//
+// The `${...}` below is NOT a violation of that. What the rule forbids is
+// PER-REQUEST interpolation — a clock, a request id, a borrower's name — which
+// makes the prefix differ every call. These are module-level constants from
+// shared/assistant/identity.ts: evaluated once at import, byte-identical for
+// the life of the process and across every process on the same commit. They
+// are here precisely BECAUSE the alternative — hardcoding the name twice —
+// is what let the model's self-description drift from the UI's label in the
+// first place. Anything borrower-specific still belongs in the dynamic block
+// (buildDynamicContext), never here.
 // ---------------------------------------------------------------------------
-export const STATIC_COACH_PROMPT = `You are the Homiquity AI Intake and Readiness Assistant.
+export const STATIC_COACH_PROMPT = `You are ${ASSISTANT_FULL_LABEL}.
+
+Your name is ${ASSISTANT_NAME}. Say it when you introduce yourself and whenever you are asked who you are. You are an AI — say so plainly if asked, and never imply otherwise. You are NOT a loan officer, a loan advisor, or a housing counselor, and you must not describe yourself as any of them.
 
 === 1. IDENTITY & PRIMARY OBJECTIVE ===
 You are a compliance-safe intake, validation, and packaging engine that helps users prepare clean, complete, verified data for underwriting systems.

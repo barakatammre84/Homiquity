@@ -40,16 +40,16 @@ sites actually use it.
 | Capability | State | Measured |
 |---|---|---|
 | `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 282 page files import it — *pnpm guard:ui → `pageShellDrift`* |
-| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 21 file(s) import the registry, 322 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
+| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 6%** | 22 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `PageShell fullHeight` | **BUILT · ADOPTED 0%** | zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
 | `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
 | Raw `<button>` with no height, padding or `.touch-target` | **NEEDS REVIEW** | 34 in 25 file(s) — each is EITHER a sub-44px control or a button wrapping a large area; only a human can tell which |
 | `EmptyState` | **BUILT** | 9 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 118 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 123 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | **HELD** | **0** file(s) — **at zero; any hit is a regression** |
-| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **322** file(s) |
+| `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **11** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
@@ -282,7 +282,65 @@ not the capture-flow container; see §12.
   supplies hover/active tints. Loading is `<Skeleton>` (`animate-skeleton-precision`), **never a
   spinner**.
 
+  🚨 **JS-driven reveals must not be the only thing that makes content visible.**
+  `Reveal`/`Stagger`/`StaggerItem` (`client/src/components/motion/`) set inline
+  `opacity: 0` and animate to 1 — so anything that stops the animation leaves the
+  content **permanently unseen**, not merely un-animated.
+
+  That is not theoretical. On 2026-08-22 the home page was measured with two of
+  four journey cards at `opacity: 0` and the other two at 0.27 and 0.78 —
+  **identical readings at 6s and 10s.** Stalled. The cause is `document.hidden`:
+  browsers throttle `requestAnimationFrame` in a background tab, and
+  framer-motion drives on rAF, so a reveal that begins while hidden can stop
+  mid-ramp. Opening a link in a background tab is an ordinary thing to do.
+
+  The primitives now gate on `useCanAnimate()` — **reduced motion OR a hidden
+  document renders plainly**, with no observer and no inline opacity to get stuck
+  at. `client/src/components/motion/hiddenTab.test.tsx` pins it.
+
+  Two things to carry forward:
+  - **`prefers-reduced-motion` is not the whole accessibility story for motion.**
+    It was handled correctly here from the first commit, and the page was still
+    broken for a different reason entirely.
+  - **Verify reveals on a FULL-PAGE capture.** This survived several rounds of
+    review because every screenshot was a partial viewport that happened to miss
+    the section. A tall viewport (e.g. 1280x2600) puts the whole page in one
+    frame.
+
 ---
+
+## 5a. Horizontal rhythm — `OffsetBlock`
+
+Every content block on the public pages was `mx-auto`, so the eye tracked one
+unchanging centre line from the top of a page to the bottom. `OffsetBlock`
+(`client/src/components/layout/OffsetBlock.tsx`) anchors a block to one side at
+`lg` and above, so the page zig-zags instead.
+
+| Prop | Effect at `lg`+ |
+|---|---|
+| `side="left"` | `lg:ml-16 lg:mr-auto` — hugs left, slack thrown right |
+| `side="right"` | `lg:mr-16 lg:ml-auto` — hugs right, slack thrown left |
+| `side="center"` | unchanged, `mx-auto` (the default) |
+
+Measured on `/self-employed` at 1440px: offset blocks land at 96/320 and
+320/96 (left/right gaps), five other blocks stay centred.
+
+🚨 **It collapses to centred below `lg`, and that is the load-bearing part.**
+Under ~1024px an offset block is not a rhythm, it is a cramped column with a
+useless margin — and the breakage is invisible until someone opens a laptop.
+That collapse is why this is a primitive instead of utility classes pasted onto
+sections, and `OffsetBlock.test.tsx` asserts it for all three sides.
+
+**It sets no width.** Callers keep their own `max-w-*`; line length is a
+readability decision, not a rhythm one.
+
+**Use it as a rhythm, not a metronome.** The reference centres two of its six
+blocks; `/self-employed` offsets two of seven. Alternating every section is just
+a different monotony. Keep **forms and long prose centred** — a drifting form
+reads as a bug, and drifting prose costs readability for nothing.
+
+Because it is structural rather than chromatic, it survives the tenant
+white-label constraint and is usable on authed surfaces.
 
 ## 6. Components — `client/src/components/ui/**`
 

@@ -17,6 +17,13 @@ import { cn } from "@/lib/utils";
 
 export interface IllustrationProps {
   className?: string;
+  /**
+   * Optional hook for tests. Declared because it is NOT free: props absent from
+   * this interface are dropped without reaching the DOM, so a `data-testid`
+   * passed to one of these would silently never render and any test targeting
+   * it would fail for a reason nowhere near the cause.
+   */
+  "data-testid"?: string;
 }
 
 /** "You're all caught up" — a check in a ring. */

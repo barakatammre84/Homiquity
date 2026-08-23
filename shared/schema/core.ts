@@ -66,6 +66,12 @@ export const users = pgTable("users", {
   // serverless, so this DB-backed counter is the durable control.
   failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
   lockoutUntil: timestamp("lockout_until"),
+  // Timestamp of the most recent failed password attempt. This is what makes
+  // failedLoginAttempts a run of CONSECUTIVE failures rather than a lifetime
+  // total (see server/services/loginLockout.ts): a run older than
+  // FAILURE_WINDOW_MS no longer counts. NULL = no run in progress, which is
+  // also what every row written before this column existed reads as.
+  lastFailedLoginAt: timestamp("last_failed_login_at"),
   // Null until the user confirms ownership of their email via a verification
   // link. Social-auth users are considered verified by their provider.
   emailVerifiedAt: timestamp("email_verified_at"),
