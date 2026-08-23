@@ -75,11 +75,16 @@ Three layers, weakest to strongest:
 2. **Command-derived facts.** A refresh re-runs every command in [FACTS.md](FACTS.md) and every
    chapter's prove-it block at the new `origin/main` tip, and re-stamps the SHA. A number that
    changed is a prose edit plus, if another doc carried the old number, a ledger row.
-3. **A steward.** The doc-accuracy routine sweeps `knowledge-base/**` every six hours for dead
-   pointers and renamed paths and may consume `HO-` rows as its own findings. A hand-invoked
-   refresh skill (a follow-up to this corpus, in a separate PR) automates layer 2 end to end:
-   detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run the commands,
-   rewrite the generated block, log the run.
+3. **A steward, on a clock.** Since 2026-08-23 the daily 17:06 seat (**Handoff Corpus Steward**,
+   `.claude/skills/handoff-refresh/SKILL.md`; CHARTER §3 — it took over the laptop `taskId`
+   `client-journey-walk` when the daily walk retired to hand-invocation) runs layer 2 end to end
+   every day: detect moved paths with `git diff --stat <FACTS SHA>..origin/main`, re-run the
+   commands, rewrite the generated block, **age the open `HO-` rows** (a fix-now row older than
+   7 days becomes a ⛔ line naming its lane), log the run. Its clocks: `--check`/`--cite` daily ·
+   FACTS fully re-derived every ≤14 days · every chapter re-read in rotation every ≤30 days — so
+   the numbers are never fresher than the prose that interprets them. The doc-accuracy routine
+   still sweeps the rest of `knowledge-base/**` and consumes `HO-` rows as its own findings; since
+   2026-08-23 it never edits `handoff/**` itself (CHARTER §6 — one writer per truth).
 
 **Refresh protocol:** invoke the `handoff-refresh` skill, or do it by hand — fresh worktree of
 `origin/main` → `pnpm handoff:facts --check` and `--cite` to find drift mechanically, plus

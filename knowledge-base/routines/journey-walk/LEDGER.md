@@ -1,7 +1,15 @@
 # Client Journey Walk — rotation ledger
 
-Cross-run memory for the `client-journey-walk` seat (daily since 2026-08-19). One persona per run,
-**strict rotation 1 → 2 → 3 → 4 → 1**. A fresh session reads this file to know where to resume.
+> **⛔ Cadence retired 2026-08-23 (founder decision).** The daily 17:06 seat (`client-journey-walk`)
+> was reshaped into the **Handoff Corpus Steward** (`.claude/skills/handoff-refresh/SKILL.md`;
+> CHARTER §3). Journey walks are now **hand-invoked only** via `/journey-walk` — the charters
+> (`feature-review/JOURNEYS.md`), the five walker agents, and this rotation ledger all stay
+> authoritative for those runs. This file remains the walk's cross-run memory; the steward never
+> writes here.
+
+Cross-run memory for the `client-journey-walk` seat (daily 2026-08-19 → 2026-08-23, hand-invoked
+since). One persona per run, **strict rotation 1 → 2 → 3 → 4 → 1**. A fresh session reads this
+file to know where to resume.
 
 **Charter: `knowledge-base/feature-review/JOURNEYS.md` is ON `origin/main` and WINS.** It arrived
 **2026-08-20 via #595**, not via its founding PR #607 (still open, `DIRTY` — and now partly
