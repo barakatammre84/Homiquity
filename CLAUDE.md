@@ -4,6 +4,9 @@ Guidance for Claude Code when working in this repository. The deep engineering m
 [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [knowledge-base/handbook/app-guide/](knowledge-base/handbook/app-guide/);
 session working practices (doc rules, branch lifecycle, definition of done, push policy)
 are [knowledge-base/governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
+Onboarding, or building through a Claude loop? [knowledge-base/handoff/](knowledge-base/handoff/)
+is the Feynman layer over the app-guide — every chapter proves its claims with a command you
+can run — and `handoff/prompts/` carries the loop rails and templates.
 
 ## Domain skills (loaded on demand)
 
