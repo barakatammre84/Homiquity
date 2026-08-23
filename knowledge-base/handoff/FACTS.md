@@ -1,7 +1,7 @@
 # FACTS — every count the corpus uses, derived by command
 
 > **Freshness:** last verified 2026-08-22 · review every 14 days
-> **Verified against** `origin/main` @ **fd4a22c5** (full `fd4a22c53d998ad4b4205a3b1ca85a99d210fb4a`).
+> **Verified against** `origin/main` @ **6377727e** (full `6377727ea064fdb46b1a97470bf62b7ff504894d`).
 
 The chapters cite rows here by id (`F-07`). Every value below was produced by running the
 command in the same row, in a clean worktree of the stamped commit, with the output pasted —
@@ -25,6 +25,8 @@ it must move with its PR; this file is a *record*, so it must follow `main`.)
 
 **37 of the 44 rows are machine-checkable** — the other 7 print prose rather than an integer, and
 `--check` names them rather than passing them silently (F-04, F-06, F-16, F-23, F-30, F-39, F-43).
+Where `gh` is not installed (remote sessions use the GitHub MCP tools instead), F-44's command
+cannot run, so `--check` reports 8 not-comparable there; its value keeps its own measured date.
 The "re-derive by hand" recipe at the bottom is what the generator automates, and remains the
 fallback if it is ever deleted — nothing depends on it.
 
@@ -38,7 +40,7 @@ and returns nothing — a false "the file changed").
 
 <!-- BEGIN GENERATED — do not hand-edit; re-derive with the recipe below and paste -->
 
-| id | fact | command (run from the worktree root) | value @ fd4a22c5 |
+| id | fact | command (run from the worktree root) | value @ 6377727e |
 |---|---|---|---|
 | F-01 | Drizzle tables | `grep -c "pgTable(" shared/schema/*.ts \| awk -F: '{s+=$2} END{print s}'` | 188 |
 | F-02 | schema files | `ls shared/schema/*.ts \| wc -l` | 34 |
@@ -70,7 +72,7 @@ and returns nothing — a false "the file changed").
 | F-28 | encrypted-at-rest column sites | `grep -rn "_encrypted" shared/schema/*.ts \| wc -l` | 8 (+ `credit_pulls.encryptedRawResponse`, named differently) |
 | F-29 | production cron sweeps | `grep -c "cron:" .github/workflows/cron-jobs.yml` | 7 |
 | F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 81,487 · shared 22,997 · client/src 107,288 · tests 46,168 |
-| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,098 — `HEAD`, so run it on `main`; on a branch it counts the branch |
+| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,100 — `HEAD`, so run it on `main`; on a branch it counts the branch |
 | F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
 | F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 63 |
@@ -96,7 +98,7 @@ F-03, F-01 (the vocabulary rule) · F-40 (the single status writer) · F-36 (the
 ## Re-derive by hand
 
 ```bash
-WT=/Users/ammrebarakat/Developer/Homiquity-handoff   # any clean worktree of origin/main
+WT="$(git rev-parse --show-toplevel)"   # any clean worktree of origin/main — worktree-add one if your checkout is on a branch
 cd "$WT" && git fetch origin && git rev-parse --short HEAD     # the new stamp
 # `pnpm handoff:facts --write` does all of the below; this is the fallback if it is gone.
 # then run each command in the table above, in order, and paste the outputs.
