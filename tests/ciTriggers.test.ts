@@ -302,6 +302,7 @@ describe("the Selling Guide corpus steps outrun the scope classifier", () => {
   const CORPUS_STEPS = [
     "Selling Guide corpus coherence",
     "Selling Guide coverage map current",
+    "Selling Guide conformance register",
     "Selling Guide extraction proof (recover → extract → verify)",
   ];
 

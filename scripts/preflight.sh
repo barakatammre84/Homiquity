@@ -99,6 +99,7 @@ step "query-key transport"            node scripts/query-key-transport-guard.cjs
 step "citation ratchet"               node scripts/citation-guard.cjs
 step "selling-guide corpus"           node scripts/selling-guide-corpus-guard.cjs
 step "selling-guide coverage"         node scripts/selling-guide-coverage.cjs --check
+step "selling-guide conformance"      node scripts/selling-guide-conformance-guard.cjs
 
 # The full extraction proof needs pymupdf; CI always runs it (pinned, in a venv).
 # Locally it runs only where pymupdf is importable — and SAYS so when skipped,

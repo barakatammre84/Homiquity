@@ -78,6 +78,7 @@ export default defineConfig({
       // direction (sha drift, count mismatch, unknown xref id, hand-edit
       // tripwire, stale coverage edition) and the INERT-when-absent rule.
       "tests/sellingGuideCorpusGuard.test.ts",
+      "tests/sellingGuideConformanceGuard.test.ts",
       // F-0818-11 — the DU casefile DTI must include the proposed housing payment.
       "tests/ausCasefileDti.test.ts",
       "tests/userPhones.test.ts",
