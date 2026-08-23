@@ -107,19 +107,20 @@ history. Never act on these.
 
 - `main` is production, and Railway still builds and deploys every merge (`railway.json`) —
   observed 2026-08-20: prod `/api/health` served `d8316ec1`, the `origin/main` tip.
-  ⚠️ **But CI no longer proves that.** PR #608 (2026-08-20) paused both prod jobs for local-only
-  development: `verify-deploy` is `if: false` and `migrate-prod` is `workflow_dispatch`-only, so a
-  merged migration is applied **nowhere** and nothing checks that prod advanced. The rule that
-  survives the pause unchanged: a green check is not proof the merge shipped — a failed Railway
-  build leaves the previous container serving, so only the `commit` field of `/api/health` proves
-  prod is on your code. Poll it yourself until CI does again.
-  ⚠️ **Re-measure branch protection before trusting the `gate` check.** `main` carries a
-  protection rule, but `required_status_checks.contexts` read **empty** on 2026-08-20
-  (`gh api repos/barakatammre84/Homiquity/branches/main/protection`) — `enforce_admins: true`
-  over zero required checks binds admins to nothing. Same caveat, same measurement, at
-  [`ci.yml`](.github/workflows/ci.yml) lines 39–45. Land work via short-lived PR branches through
-  the `gate` check regardless; that is doctrine, not something the branch rule is currently
-  enforcing. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
+  ⚠️ **CI stopped proving that for two days.** PR #608 (2026-08-20) paused both prod jobs for
+  local-only development (`verify-deploy` `if: false`, `migrate-prod` `workflow_dispatch`-only); PR #669
+  (`76c96751`, 2026-08-22) re-armed them — `migrate-prod` applies on every push to `main`
+  ([`ci.yml`](.github/workflows/ci.yml) `:681`) and `verify-deploy` polls `/api/health` after each
+  (`:754`) — but `verify-deploy` is `continue-on-error: true` (`:770`), deliberately, so its red blocks
+  nothing. The rule that survived the pause is still the rule: a green check is not proof the merge
+  shipped — a failed Railway build leaves the previous container serving — so only the `commit`
+  field of `/api/health` proves prod is on your code. Read that job's result; never assume it.
+  ⚠️ **Re-measure branch protection before trusting the `gate` check.** It read **empty** on
+  2026-08-20 (`gh api repos/barakatammre84/Homiquity/branches/main/protection` → `contexts: []`,
+  `enforce_admins: true` over zero checks) and was re-armed by 2026-08-23: `contexts` = the `gate`
+  check, `strict: true` — a PR must be green *and* current with `main` to merge. The measurement
+  is the truth on the day you run it; land work via short-lived PR branches through the `gate`
+  check regardless. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
 - `client/` and `server/` never import from each other; both import from `shared/`.
 - Vendor integrations are deterministic simulations behind adapters until real contracts exist.
 - Borrower PII goes through `server/services/encryptionService.ts` / `ssnVault.ts` + audit log.
