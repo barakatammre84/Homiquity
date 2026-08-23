@@ -39,7 +39,7 @@ export function ReadinessGapCard({ primary, tiers, downPaymentSaved, creditScore
       steps.push({
         icon: TrendingUp,
         tone: "todo",
-        text: `Raise your credit score to ${tierForThreePct.minScore}+ to unlock a 3% down payment and better pricing.`,
+        text: `Raise your credit score to ${tierForThreePct.minScore}+ to unlock a ${(tierForThreePct.minDownPaymentPct * 100).toFixed(0)}% down payment and better pricing.`,
       });
     } else {
       steps.push({

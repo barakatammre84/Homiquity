@@ -157,7 +157,14 @@ export async function seed() {
   }
 
   // ==========================================
-  // SEED: Conventional max LTV by occupancy x units (Fannie Eligibility Matrix)
+  // SEED: Conventional max LTV by occupancy x units — PLATFORM-CONSERVATIVE
+  // CEILINGS, not transcribed agency figures. B2-1.2-01 defines how the LTV
+  // ratio is CALCULATED and then says "Refer to the Eligibility Matrix for
+  // maximum allowable LTV ratios" (verified on PDF sheet 180, 2026-08-23 — the
+  // section's own two tables are calculation methods, and it publishes no
+  // maximum anywhere). We do not hold the Eligibility Matrix (gap G-14), so
+  // these are our own ceilings until it is procured; a matrix miss routes to
+  // manual review rather than inventing a limit.
   // ==========================================
   const maxLtvId = await createMatrix(
     "CONVENTIONAL_MAX_LTV",
