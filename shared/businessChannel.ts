@@ -26,9 +26,9 @@
 // ---------------------------------------------------------------------------
 // Deleting the delivery stack would be right under one reading and destroy
 // months of correct work under the other. So the channel is DECLARED here, the
-// stack is frozen rather than removed (scripts/delivery-stack-freeze-guard.cjs
-// fails the build if it grows while the channel is "broker"), and flipping the
-// answer is one edit in this file.
+// stack is kept, and flipping the answer is one edit in this file. (The CI
+// growth-freeze on the stack was lifted 2026-08-23 by founder directive —
+// CHARTER §1a: business decisions gate operations, never what may be built.)
 //
 // The decision itself, its consequences and its cost are in
 // knowledge-base/governance/CHANNEL_DECISION.md. Read that before changing the

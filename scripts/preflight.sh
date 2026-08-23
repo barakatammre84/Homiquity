@@ -83,7 +83,6 @@ step "pre-push gate armed"            node scripts/hooks-installed-guard.cjs
 step "typecheck (tsc)"                npx tsc --noEmit
 step "schema <-> migrations"          node scripts/schema-migration-guard.cjs
 step "migration ledger"               node scripts/migration-ledger-guard.cjs
-step "delivery-stack freeze"          node scripts/delivery-stack-freeze-guard.cjs
 step "design tokens"                  node scripts/design-token-guard.cjs
 step "UI standard ratchet"            node scripts/ui-standard-guard.cjs
 step "knowledge-base index"           node scripts/kb-index-guard.cjs

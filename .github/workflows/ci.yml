@@ -295,15 +295,6 @@ jobs:
         # hand. (Job `name:` above deliberately unchanged — it is the verbatim
         # required-check string; see the rename warning.)
         run: pnpm guard:migrations
-      - name: Delivery-stack freeze (F-14 channel decision)
-        if: steps.scope.outputs.code == 'true'
-        # A broker never delivers to Fannie Mae — the wholesale lender is the
-        # seller/servicer. While shared/businessChannel.ts says "broker", the GSE
-        # delivery stack may shrink but not grow, so the channel decision is not
-        # made by accretion while it sits open. Turns itself off if the channel
-        # flips to correspondent. (Job `name:` above deliberately unchanged — it is
-        # the verbatim required-check string; see the rename warning.)
-        run: pnpm guard:channel
 
       - name: Design-token ratchet
         if: steps.scope.outputs.code == 'true'
