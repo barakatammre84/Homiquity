@@ -11,20 +11,23 @@
 > **Dated status box (re-verify on every refresh — this one is as of 2026-08-23):** `main`
 > requires **no** status checks (`gh api …/branches/main/protection` → `contexts: []`,
 > `enforce_admins: true`, `strict: false`, measured 2026-08-23); `migrate-prod` and `verify-deploy`
-> were re-armed on 2026-08-22 (`76c96751`), but `verify-deploy` is `continue-on-error: true`
-> (`.github/workflows/ci.yml:672`) and nothing requires it, so its red blocks nothing; the
-> test-collection guard **merged 2026-08-23** (`fd4a22c5`) — `pnpm test` is now
+> were re-armed on 2026-08-22 (`76c96751`, #669), but `verify-deploy` is `continue-on-error: true`
+> (`.github/workflows/ci.yml:770`) and nothing requires it, so its red blocks nothing; the
+> test-collection guard **merged 2026-08-23** (`fd4a22c5`, #670) — `pnpm test` is now
 > `node scripts/test-collection-guard.cjs` (`package.json:15`), so **T1's manual count check is
 > retired**: the lane fails by itself, naming the files, when it collects fewer test files than
 > exist on disk or when any test file matches no lane's `include`; the old unguarded pair survives
-> as `pnpm test:raw` (`package.json:16`) and seeing its output in a report is the tell that the
+> as `pnpm test:raw` (`package.json:20`) and seeing its output in a report is the tell that the
 > floor was bypassed; the pre-push hook still does not run the unit lanes unless you set
-> `PREPUSH_TESTS=1` (`e49aab6d`; `.githooks/pre-push:130-133`), so T1 is a step you run
+> `PREPUSH_TESTS=1` (`e49aab6d`, #660; `.githooks/pre-push:138-141`), so T1 is a step you run
 > deliberately *or* read off CI; no node test file is stranded any more —
-> `tests/maintenanceMode.test.ts` is listed (`vitest.config.ts:306`) and the zero is enforced
-> rather than observed (FACTS F-39); the ralph state file is still not gitignored and there are
-> still no `harness:` scripts (§6, tickets 11 and 12). **T5 stays a human step** — a
-> machine-checked deploy that cannot fail a merge is not a gate (FACTS F-13, F-39, F-43, F-44).
+> `tests/maintenanceMode.test.ts` is listed (`vitest.config.ts:324`) and the zero is enforced
+> rather than observed (FACTS F-39). Later the same day three more tickets closed: `pnpm
+> harness:t0..t3` exist (`package.json:16-19` → `scripts/harness.sh`, #702, which also gitignored
+> the ralph state file, `.gitignore:56`, and added the seventh ledger check), pre-push and preflight
+> now run the gate's whole guard set (#703), and the integration lane runs in the gate (#704,
+> `.github/workflows/ci.yml:583`). **T5 stays a human step** — a machine-checked deploy that cannot
+> fail a merge is not a gate (FACTS F-13, F-39, F-43, F-44).
 
 ## The mental model
 
@@ -98,15 +101,17 @@ cannot produce any of those four is most of the way to safe.
 | Tier | Commands (run in the worktree) | Proves | Cannot see | Measured @ 074899e3 | When in the loop |
 |---|---|---|---|---|---|
 | **T-1 standing** | `git fetch origin && git rev-list --count HEAD..origin/main` (must be ≤ 2); `gh pr list --state open --json number,files`; read `knowledge-base/routines/REGISTER.md` | you are fresh and unclaimed | code | seconds | every iteration start |
-| **T0 static** | `pnpm check`; `for f in scripts/*.cjs; do node --check "$f" \|\| exit 1; done`; `pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb && pnpm guard:staleness && pnpm guard:citations && pnpm guard:querykeys && pnpm guard:tokens && pnpm guard:ui` | types; the guard scripts parse; the ratchets did not regress; the migration ledger is intact | runtime; classNames built by `cn()`/templates (the UI guards read literal strings); `guard:tokens` and `guard:ui` rewrite their baseline on a shrink | `tsc` **57 s** on the first run (cold cache, six evidence agents grepping in parallel) and **5–9 s** warm · `node --check` 1 s · nine guards **13 s**, tree clean afterwards | after every edit |
-| **T1 unit** | `pnpm test > "$SCRATCH/t1.log" 2>&1` (never `\| tail`). Since `fd4a22c5` this **is** the floor: `package.json:15` runs `scripts/test-collection-guard.cjs`, which enumerates the expected files from disk with a loud `readdirSync`, runs each lane once with `--reporter=default --reporter=json` (`:313-316`), prints `SHORT BY N` and the missing file names on any shortfall (`:406-415`), and fails on a test file no lane includes (`:462-469`). Your new test's file name must still appear in the log. | in-process logic, the 63 source-text invariants, components in happy-dom; **and** that every test file on disk was collected | HTTP, the database, layout; timeouts under load read as failures; `pnpm test:raw`, `test:unit` and `test:client` bypass the floor, and passing any argument disables it (`:354`) | **139 s** wall for the raw pair at `074899e3` — node lane 218/218 files, 3,156 tests, 83 s; client lane 120/120 files, 808 tests, 51 s; the guard runs the same two lanes once each, so expect the same order of cost, but its own overhead was **not** re-timed | after T0 |
-| **T2 `pnpm preflight --fast`** | needs ≥ 1 commit on the branch, else the §9 stage reports SKIPPED | T0 + T1 + `pnpm audit --prod --audit-level=high` + the §9 security-review guard **exactly as CI computes it** (merge-base diff) | build, boot and the integration lane — reported SKIPPED, which is neither a pass nor a fail | **142 s** wall on the second run (`tsc` 5 s warm, unit lanes ≈ 2 min); 13 stages `ok`, 4 `SKIPPED — --fast`; its closing block lists what it cannot see even when green | before every push |
-| **T3 `pnpm preflight`** | `bash scripts/local-db.sh up` first if no Postgres answers (needs `pg_ctl` or Docker; neither was present on the measuring machine) | + `pnpm build` + `guard:bundle` + a production-mode boot on 3999 answering `/api/health` + the 18-file integration lane on 4000 | production data shape; anything outside the 18 files; `/api/health` is `SELECT 1`; `guard:bundle` rewrites its baseline on a shrink | **204 s** wall with the database stages skipped: 16 stages `ok` including `production build` and `client bundle ratchet`; `self-host boot` and `integration lane` reported `SKIPPED — no database — run: bash scripts/local-db.sh up` (this laptop has neither `pg_ctl` nor Docker); tree clean afterwards | before opening the PR; after every rebase |
+| **T0 static** | `pnpm harness:t0` — `pnpm check`, `node --check` over every `scripts/*.cjs`, then the nine guards, exactly as `scripts/harness.sh:32-41` chains them (#702) | types; the guard scripts parse; the ratchets did not regress; the migration ledger is intact | runtime; classNames built by `cn()`/templates (the UI guards read literal strings); `guard:tokens` and `guard:ui` rewrite their baseline on a shrink | `tsc` **57 s** on the first run (cold cache, six evidence agents grepping in parallel) and **5–9 s** warm · `node --check` 1 s · nine guards **13 s**, tree clean afterwards | after every edit |
+| **T1 unit** | `pnpm harness:t1 > "$SCRATCH/t1.log" 2>&1` (never `\| tail`) — it is `pnpm test` (`scripts/harness.sh:46`), and since `fd4a22c5` that **is** the floor: `package.json:15` runs `scripts/test-collection-guard.cjs`, which enumerates the expected files from disk with a loud `readdirSync`, runs each lane once with `--reporter=default --reporter=json` (`:313-316`), prints `SHORT BY N` and the missing file names on any shortfall (`:406-415`), and fails on a test file no lane includes (`:462-469`). Your new test's file name must still appear in the log. | in-process logic, the 63 source-text invariants, components in happy-dom; **and** that every test file on disk was collected | HTTP, the database, layout; timeouts under load read as failures; `pnpm test:raw`, `test:unit` and `test:client` bypass the floor, and passing any argument disables it (`:354`) | **139 s** wall for the raw pair at `074899e3` — node lane 218/218 files, 3,156 tests, 83 s; client lane 120/120 files, 808 tests, 51 s; the guard runs the same two lanes once each, so expect the same order of cost, but its own overhead was **not** re-timed | after T0 |
+| **T2 integrated** | `pnpm harness:t2` (= `pnpm preflight --fast`) — needs ≥ 1 commit on the branch, else the §9 stage reports SKIPPED | T0 + T1 + `pnpm audit --prod --audit-level=high` + the §9 security-review guard **exactly as CI computes it** (merge-base diff) | build, boot and the integration lane — reported SKIPPED, which is neither a pass nor a fail | **142 s** wall on the second run (`tsc` 5 s warm, unit lanes ≈ 2 min); 13 stages `ok`, 4 `SKIPPED — --fast`; its closing block lists what it cannot see even when green | before every push |
+| **T3 full** | `bash scripts/local-db.sh up` first if no Postgres answers (needs `pg_ctl` or Docker; neither was present on the measuring machine); then `pnpm harness:t3` (= `pnpm preflight`) | + `pnpm build` + `guard:bundle` + a production-mode boot on 3999 answering `/api/health` + the 18-file integration lane on 4000 | production data shape; anything outside the 18 files; `/api/health` is `SELECT 1`; `guard:bundle` rewrites its baseline on a shrink | **204 s** wall with the database stages skipped: 16 stages `ok` including `production build` and `client bundle ratchet`; `self-host boot` and `integration lane` reported `SKIPPED — no database — run: bash scripts/local-db.sh up` (this laptop has neither `pg_ctl` nor Docker); tree clean afterwards | before opening the PR; after every rebase |
 | **T4 browser** | `PORT=5002 pnpm dev` **inside the worktree** (prove it: `lsof -a -p <pid> -d cwd`); `node scripts/browser-probe.cjs --url http://localhost:5002/<route> --width 320` (and 768, 1280); the `journey-walker-*` / `workflow-verifier` agents, findings only | real render at three widths, end-to-end wiring | contrast and full a11y; anything `browser-probe.cjs` does not check; agents are snapshotted at session start | not measured (needs the database for a server) | UI or workflow changes; evidence = pasted probe output |
-| **T5 post-merge** | `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` must equal the merge SHA. `verify-deploy` (`.github/workflows/ci.yml:639`, runs on push `:656`) polls this for you — but it is `continue-on-error` (`:672`) and unrequired, so read its result rather than assuming a green workflow means it passed. A migration rides along automatically again (`migrate-prod`, `:549`, condition `:583`); confirm `applied N migration(s)` in that job's log | prod runs the merge; the migration landed | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong database for 35 minutes; 200 is not the right database | — | never by the loop — it writes these commands into the PR body |
+| **T5 post-merge** | `curl -s https://homiquity-production.up.railway.app/api/health \| jq -r .commit` must equal the merge SHA. `verify-deploy` (`.github/workflows/ci.yml:737`, runs on push `:754`) polls this for you — but it is `continue-on-error` (`:770`) and unrequired, so read its result rather than assuming a green workflow means it passed. A migration rides along automatically again (`migrate-prod`, `:647`, condition `:681`); confirm `applied N migration(s)` in that job's log | prod runs the merge; the migration landed | a commit match is not a schema match — the 2026-08-22 outage served the right commit against the wrong database for 35 minutes; 200 is not the right database | — | never by the loop — it writes these commands into the PR body |
 
 The same table without the measurements is R14 in `prompts/_RAILS.md` — the loop reads only that
-file, so the copy is deliberate and the rails file is the one to edit.
+file, so the copy is deliberate and the rails file is the one to edit. The commands themselves
+now live in `scripts/harness.sh`, so neither copy can drift from what the tiers actually run:
+these columns say what each tier proves and cannot see, and the script says how.
 
 The Tier Rule, in one line: **the completion promise may be written only when the LOOP REPORT
 cites T0–T3 summary lines copied from the output files, plus T4 output when UI changed. Belief
@@ -229,9 +234,10 @@ destructive-operation categories were passed as disallowed tools. 83 turns, 22.5
 lines below are copied from its logs and its LOOP REPORT; the PR number lives only in the
 ledger's run log. **The counts in this table are the run's, not today's** — it executed at
 `074899e3`, when the allowlist held 218 entries and 120 client tests were tracked;
-`git rev-list --count 074899e3..origin/main` → 23 commits have landed since, and the tree now
-holds 221 allowlist entries and 123 tracked client tests. Do not read them as current facts; read
-them as what the harness printed on the day, which is the point of recording a run at all.
+`git rev-list --count 074899e3..origin/main` → 74 commits have landed since (23 at `6377727e`), and
+the tree now holds 228 allowlist entries and 124 tracked client tests (`d9e8f79d`). Do not read
+them as current facts; read them as what the harness printed on the day, which is the point of
+recording a run at all.
 
 | step | what happened | copied from the logs |
 |---|---|---|
@@ -294,38 +300,39 @@ When a value moves, the chapter moves with it in the same commit; when a rail mo
 
 ## Prove it yourself
 
-Run from the repo root. The tree was `be1ba5e1` — `origin/main` @ `6377727e` plus this
-corpus's own docs commits; none of the files below differs between the two.
+Run from the repo root. First measured at `6377727e` (plus this corpus's own docs commits), then
+re-run on 2026-08-23 after merging `origin/main` @ `d9e8f79d` into this branch — the lines stamped
+`@ d9e8f79d` changed under that merge (#702/#703/#704 closed tickets 4, 6, 8, 11 and 12).
 
 ```bash
-cd /private/tmp/claude-501/-Users-ammrebarakat-Developer-Homiquity/c5bb7f2c-ceb3-4863-9512-a8d898a1328b/scratchpad/wt-b2 && git rev-parse --short HEAD ; git rev-parse --short origin/main
-# → be1ba5e1 / 6377727e
+git rev-parse --short origin/main
+# → d9e8f79d
 grep -c '^| T' knowledge-base/handoff/prompts/_RAILS.md
 # → 8   (the header row plus T-1 … T5) @ 6377727e
 grep -cE '^## R' knowledge-base/handoff/prompts/_RAILS.md
 # → 16   (R0 … R14 plus R1b) @ cadd5bc4
 ls knowledge-base/handoff/prompts/*.md | wc -l
 # → 11   (eight templates + _RAILS.md, _REPORT_FORMAT.md, INVOKE.md) @ 6377727e
-sed -n '15,16p' package.json
-# → "test": "node scripts/test-collection-guard.cjs", / "test:raw": "vitest run --config vitest.config.ts && vitest run --config vitest.client.config.ts", @ 6377727e
+sed -n '15,20p' package.json
+# → "test": "node scripts/test-collection-guard.cjs", / "harness:t0" … "harness:t3": "bash scripts/harness.sh tN", / "test:raw": "vitest run --config vitest.config.ts && vitest run --config vitest.client.config.ts", @ d9e8f79d
 ls scripts/test-collection-guard.cjs
 # → scripts/test-collection-guard.cjs @ 6377727e
 grep -cE '^\s*"tests/' vitest.config.ts ; git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' | wc -l
-# → 221 / 123 @ 6377727e
+# → 228 / 124 @ d9e8f79d
 grep -n '"tests/maintenanceMode.test.ts"' vitest.config.ts
-# → 306:      "tests/maintenanceMode.test.ts", @ 6377727e
+# → 324:      "tests/maintenanceMode.test.ts", @ d9e8f79d
 grep -n "continue-on-error" .github/workflows/ci.yml
-# → 668 (its comment) / 672:    continue-on-error: true @ 6377727e
+# → 766 (its comment) / 770:    continue-on-error: true @ d9e8f79d
 grep -n "PREPUSH_TESTS" .githooks/pre-push | head -2
-# → 29:#   PREPUSH_TESTS=1 git push      # also run both vitest lanes before pushing / 130:if [ "${PREPUSH_TESTS:-0}" = "1" ]; then @ 6377727e
-sed -n '22p' scripts/preflight.sh
-# → # A stage that cannot run is reported SKIPPED with the reason and does NOT pass. @ 6377727e
+# → 29:#   PREPUSH_TESTS=1 git push      # also run both vitest lanes before pushing / 138:if [ "${PREPUSH_TESTS:-0}" = "1" ]; then @ d9e8f79d
+sed -n '24p' scripts/preflight.sh
+# → # A stage that cannot run is reported SKIPPED with the reason and does NOT pass. @ d9e8f79d
 git check-ignore -v .claude/ralph-loop.local.md ; echo "exit=$?"
-# → exit=1   (not ignored — ticket 12 stays open) @ 6377727e
+# → .gitignore:56:.claude/ralph-loop.local.md / exit=0   (ignored since #702 — ticket 12 closed) @ d9e8f79d
 grep -c harness package.json
-# → 0   (no harness: aliases — ticket 11 stays open) @ 6377727e
+# → 4   (harness:t0..t3 — ticket 11 closed by #702) @ d9e8f79d
 git rev-list --count 074899e3..origin/main
-# → 23 @ 6377727e
+# → 74 @ d9e8f79d
 gh api repos/barakatammre84/Homiquity/branches/main/protection --jq '.required_status_checks.contexts|length'
 # → 0   (measured 2026-08-23; with --jq '{strict:.required_status_checks.strict, enforce_admins:.enforce_admins.enabled}' → strict false, enforce_admins true — a property of the repo settings, not of the commit)
 ```
@@ -340,12 +347,12 @@ skipped, trusted, or asked a question adjacent to the one that mattered.
 
 | Blind spot | What it cost, from the record | Caught by |
 |---|---|---|
-| The integration lane never runs in CI. | A green gate proves typecheck + unit lanes + a boot to 200 and nothing more (`knowledge-base/runbooks/CICD.md:357-362`); the gate's Postgres serves the boot probe only. | Nothing in CI; T3 locally, only when a database answers. Ticket 4. |
-| T4 never runs automatically. | A rendered regression ships behind a green workflow; the probe answers four questions and no contrast ratio (`knowledge-base/routines/CHARTER.md:819-828`). | A human pasting `browser-probe.cjs` output; the journey walkers, findings only. |
-| T5 cannot fail a merge. | Nine consecutive failed deploys behind a green check (`CICD.md:221-226`); a 35-minute auth outage from a migration the paused applier never ran, during which `verify-deploy` would have been **green throughout** because it compares commits (`.github/workflows/ci.yml:650-655`). | `verify-deploy` reddens without failing the workflow (`:672`); `main` requires zero checks. Ticket 1. |
-| A stranded test. | `tests/changeOfCircumstance.test.ts` sat in neither config (`vitest.config.ts:140-142`); `tests/maintenanceMode.test.ts` — the intake kill switch — had five assertions that never ran until 2026-08-23. | The orphan floor in `scripts/test-collection-guard.cjs:462-469` — zero, no baseline. Closed. |
+| The integration lane never ran in CI — until 2026-08-23. | For the life of the repo a green gate proved typecheck + unit lanes + a boot to 200 and nothing more; the gate's Postgres served the boot probe only. `knowledge-base/runbooks/CICD.md:357-362` still says so (LEDGER HO-0823-05). | Since #704 (`d9e8f79d`) the gate re-boots the built bundle in development mode, seeds the grids and runs the 18 files (`.github/workflows/ci.yml:583-646`) — only when the change-scope step says code changed; T3 locally, only when a database answers. Ticket 4, closed. |
+| T4 never runs automatically. | A rendered regression ships behind a green workflow; the probe answers four questions and no contrast ratio (`knowledge-base/routines/CHARTER.md:838-847`). | A human pasting `browser-probe.cjs` output; the journey walkers, findings only. |
+| T5 cannot fail a merge. | Nine consecutive failed deploys behind a green check (`CICD.md:221-226`); a 35-minute auth outage from a migration the paused applier never ran, during which `verify-deploy` would have been **green throughout** because it compares commits (`.github/workflows/ci.yml:748-750`). | `verify-deploy` reddens without failing the workflow (`:770`); `main` requires zero checks. Ticket 1. |
+| A stranded test. | `tests/changeOfCircumstance.test.ts` sat in neither config (`vitest.config.ts:145-146`); `tests/maintenanceMode.test.ts` — the intake kill switch — had five assertions that never ran until 2026-08-23. | The orphan floor in `scripts/test-collection-guard.cjs:462-469` — zero, no baseline. Closed. |
 | A collection that silently dropped files. | 36 of 118 client files dropped with no signal under load; `Test Files 111 passed (111)` with 118 on disk (`scripts/test-collection-guard.cjs:6-19`). | `SHORT BY N` with the names (`:406-415`). Closed — but only through `pnpm test`; `test:raw`, `test:unit`, `test:client` and any argument bypass it (`:354`). |
-| A guard that could not run and whose silence read as CLEAN. | A syntax error in a guard shipped to `main` green (`.github/workflows/ci.yml:449-450`). | `node --check` on every `scripts/*.cjs` in T0 and preflight (`scripts/preflight.sh:93`). |
+| A guard that could not run and whose silence read as CLEAN. | A syntax error in a guard shipped to `main` green (`.github/workflows/ci.yml:481-490`). | `node --check` on every `scripts/*.cjs` in T0 and preflight (`scripts/preflight.sh:95`). |
 | A baseline bumped to pass. | Five commits mention "baseline" (ch. 11 §C); a ratchet that is raised is a rubber stamp. | R5 and review; no guard can tell a legitimate tightening from a raise except by reading the PR body. |
 | A generated block that goes stale on trunk. | `main` itself red on `guard:ui` after a merge that skipped `--write-table`; every open PR and every local push inherited it (LEDGER HO-0822-26). | R1b: T0 on the untouched worktree first, red ⇒ `STOPPED(trunk-red)`. |
 
@@ -353,37 +360,42 @@ skipped, trusted, or asked a question adjacent to the one that mattered.
 
 1. **Re-arm the required `gate` check on `main`** (`contexts: []` today; the verbatim name with
    U+00B7 separators; `strict: true`). A founder click; highest value. ⛔
-2. ~~**Land the re-arm of `migrate-prod` and `verify-deploy`**~~ — **DONE** 2026-08-22, `76c96751`.
-   LEDGER HO-0822-14 closed. **The successor ticket is smaller and still open:** nothing
-   makes `verify-deploy`'s red matter. It is `continue-on-error: true` on purpose (`ci.yml:672` —
+2. ~~**Land the re-arm of `migrate-prod` and `verify-deploy`**~~ — **DONE** 2026-08-22, `76c96751`
+   (#669). LEDGER HO-0822-14 closed. **The successor ticket is smaller and still open:** nothing
+   makes `verify-deploy`'s red matter. It is `continue-on-error: true` on purpose (`ci.yml:770` —
    it and Railway's "Wait for CI" deadlock otherwise), so the only way its finding becomes a block
    is ticket 1. Until then T5 stays a human read. ⛔
-3. ~~**Land the test-collection guard**~~ — **DONE 2026-08-23**, `fd4a22c5`.
+3. ~~**Land the test-collection guard**~~ — **DONE 2026-08-23**, `fd4a22c5` (#670).
    `scripts/test-collection-guard.cjs` is `package.json:15`; T1's manual count check is retired.
-   It did need the rebase this ticket predicted (HO-0822-U6): the pre-push hook PR had rewritten
-   the same hook block into a `PREPUSH_TESTS` conditional, which the guard PR adopted verbatim
-   rather than reverting.
-4. **Run the integration lane in the CI gate.** The `postgres:16` service already exists for the
-   boot probe (`ci.yml:172-181`); boot `dist/index.js` in dev mode on 4000 with
-   `RATE_LIMIT_RELAXED=true` and run `pnpm test:integration` (+2–3 min). Owner `hq-ci-guards-owner`.
-   Resolves HO-0822-U2.
-5. ~~**A stranded-test guard**~~ — **DONE 2026-08-23**, `fd4a22c5`. The orphan floor in
+   It did need the rebase this ticket predicted (HO-0822-U6): #660 had rewritten the same hook block
+   into a `PREPUSH_TESTS` conditional, which #670 adopted verbatim rather than reverting.
+4. ~~**Run the integration lane in the CI gate.**~~ — **DONE 2026-08-23**, `d9e8f79d` (#704).
+   The gate's existing `postgres:16` service (`ci.yml:172-181`) now also serves a second boot of
+   `dist/index.js` in development mode on 4000 with `RATE_LIMIT_RELAXED=true`, grids seeded first,
+   then `pnpm test:integration` (`ci.yml:583-646`; its first run proved the grids must be seeded
+   before the content seed). Runs only when code changed. HO-0822-U2 closed; the runbook sentence
+   it falsifies is HO-0823-05.
+5. ~~**A stranded-test guard**~~ — **DONE 2026-08-23**, `fd4a22c5` (#670). The orphan floor in
    `scripts/test-collection-guard.cjs` fails when `git ls-files` minus every lane's include is
    non-empty; `tests/maintenanceMode.test.ts` was appended in the same PR (HO-0822-23 closed).
-6. **A seventh ledger check**: duplicate `when` in `migrations/meta/_journal.json` (HO-0822-24) —
-   the one mistake that makes `migrate-prod` skip a migration silently.
+6. ~~**A seventh ledger check**~~ — **DONE 2026-08-23**, `5aab6f9a` (#702): duplicate `when` in
+   `migrations/meta/_journal.json` now fails `scripts/migration-ledger-guard.cjs:105-125`, pinned by
+   `tests/migrationLedgerGuard.test.ts` (HO-0822-24 closed) — the one mistake that made
+   `migrate-prod` skip a migration silently.
 7. **Shared test helpers** — a `loginAs` and an HTTP helper under a new tests/helpers/ directory
    (proposed, so not backticked): nine files define `loginAs`, fourteen hand-roll the headers; the
    commonest integration-test authoring error disappears.
-8. **Bring pre-push and preflight to parity with the gate**: add `guard:citations` and the two
-   missing query-key scripts (today they run one of three — `.githooks/pre-push:117`,
-   `scripts/preflight.sh:94`).
+8. ~~**Bring pre-push and preflight to parity with the gate**~~ — **DONE 2026-08-23**, `7f6cea19`
+   (#703): `guard:citations` and the two missing query-key scripts now run in both
+   (`.githooks/pre-push:123-125`, `scripts/preflight.sh:96-99`); the hook's own header miscounts
+   them ("twelve guards" for eleven, `:26`) — LEDGER HO-0822-20's class.
 9. **A source-text test that no decision-path module calls `tryResolveMatrixValue`** (HO-0822-U8).
 10. **A `routeMeta` ↔ `SEOHead` contract test** — the hand-mirror has no guard (ch. 06).
-11. **`pnpm harness:t0|t1|t2|t3` aliases** so the playbook cites one token per tier
-   (`package.json` is founder territory; `grep -c harness package.json` → 0 on 2026-08-23).
-12. **Ignore the ralph state file** — .claude/ralph-loop.local.md (untracked by design, hence no
-   backticks) is not gitignored today (`git check-ignore -v` exits 1 on 2026-08-23).
+11. ~~**`pnpm harness:t0|t1|t2|t3` aliases**~~ — **DONE 2026-08-23**, `5aab6f9a` (#702):
+   `package.json:16-19` → `scripts/harness.sh`, the executable definition of the tiers; the
+   playbook and R14 now cite one token per tier (`grep -c harness package.json` → 4).
+12. ~~**Ignore the ralph state file**~~ — **DONE 2026-08-23**, `5aab6f9a` (#702): `.gitignore:56`
+   (`git check-ignore -v .claude/ralph-loop.local.md` exits 0).
 13. **A scheduled persona smoke** via the journey walkers, report-only, in the cloud fleet.
 14. **Assign owners** to `server/routes.ts`, `server/db.ts`, `server/index-prod.ts`,
    `railway.json`, `scripts/migrate-prod.cjs`, `.github/workflows/ci.yml` (HO-0822-13).

@@ -432,8 +432,67 @@ export interface PaymentProjection {
   monthlyPrincipalAndInterest: number;
   monthlyMortgageInsurance: number;
   monthlyEscrow: number;
-  /** P&I + MI + escrow — the engine's proposed PITI. */
+  /**
+   * Owners' association / co-op dues for the subject property — Selling Guide
+   * B3-6-03 counts them inside PITIA. `null` means NOT CAPTURED, which is not
+   * the same as zero; see `associationDuesUncaptured`.
+   */
+  monthlyAssociationDues: number | null;
+  /**
+   * True when the subject property is an association-bearing type (condo,
+   * co-op, PUD, townhouse) and its dues have not been captured. The DTI built
+   * on this projection is then understated by an unknown amount, so callers
+   * must gap the file rather than decision it.
+   */
+  associationDuesUncaptured: boolean;
+  /**
+   * P&I + MI + escrow. Byte-identical to the Loan Estimate's
+   * projectedPayments.years1Through5.estimatedTotal — same derivation, same
+   * escrow model, same rounding. Deliberately EXCLUDES association dues so that
+   * parity holds; use `qualifyingPitia` for the DTI.
+   */
   estimatedMonthlyTotal: number;
+  /**
+   * The Selling Guide B3-6-03 qualifying housing expense: `estimatedMonthlyTotal`
+   * plus association/co-op dues. **This is the figure the DTI is built on.**
+   *
+   * It is a separate field, not a redefinition of `estimatedMonthlyTotal`,
+   * because the two answer different questions under different regimes. B3-6-03
+   * governs what Fannie qualifies on and is verifiable against the committed
+   * Guide. What belongs on the DISCLOSED Loan Estimate is Reg Z §1026.37(c) —
+   * and per CLAUDE.md, `docs/reg-z/` holds no captured source text, so a Reg Z
+   * reading is flagged, never asserted, and may never be acted on unilaterally.
+   * Changing the disclosure on an unverifiable reading is exactly what that rail
+   * forbids. Recorded as gap G-11.
+   */
+  qualifyingPitia: number;
+}
+
+/**
+ * Property types that carry owners' association or co-op dues. B3-6-03 requires
+ * those dues inside PITIA, so a null on one of these is a captured-nothing gap
+ * rather than a genuine zero. A detached single-family property may still have
+ * an HOA; the difference is that zero is a plausible default there and is not
+ * on a condo or co-op.
+ */
+const ASSOCIATION_BEARING_PROPERTY_TYPES = new Set([
+  "condo",
+  "condominium",
+  "co_op",
+  "coop",
+  "cooperative",
+  "pud",
+  "planned_unit_development",
+  "townhouse",
+  "townhome",
+  // "Town House" / "town-house" normalise to this — a real intake spelling.
+  "town_house",
+  "town_home",
+]);
+
+export function isAssociationBearingPropertyType(propertyType: string | null | undefined): boolean {
+  const t = (propertyType ?? "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return ASSOCIATION_BEARING_PROPERTY_TYPES.has(t);
 }
 
 /**
@@ -470,16 +529,39 @@ export async function computePaymentProjection(
   /** ARC-3 what-if inputs. Omitted by the engine and the LE — see PricingOverrides. */
   overrides?: PricingOverrides,
 ): Promise<PaymentProjection> {
-  const { purchasePrice, loanAmount, interestRate, monthlyPandI, monthlyPMI } =
+  const { application, purchasePrice, loanAmount, interestRate, monthlyPandI, monthlyPMI } =
     await derivePricing(applicationId, overrides);
   const { monthlyEscrow } = estimateMonthlyEscrow({ purchasePrice });
+
+  // B3-6-03, Monthly Housing Expense: PITIA includes "any owners' association
+  // dues" and "any monthly co-op corporation fee". They were absent from this
+  // projection entirely, so a condo borrower's DTI was computed without their
+  // dues — routinely $300-800/month, understating the ratio in the one
+  // direction that approves files it should decline.
+  const propertyInfo = await storage.getUrlaPropertyInfo(applicationId);
+  const rawDues = propertyInfo?.monthlyAssociationDues;
+  const monthlyAssociationDues = rawDues === null || rawDues === undefined ? null : Number(rawDues);
+  const duesForPitia = monthlyAssociationDues !== null && Number.isFinite(monthlyAssociationDues)
+    ? monthlyAssociationDues
+    : 0;
+
+  // A null on a condo/co-op/PUD is "not captured", never zero. Surfacing it lets
+  // the decision path gap the file instead of qualifying on a housing expense it
+  // knows is incomplete.
+  const associationDuesUncaptured =
+    monthlyAssociationDues === null && isAssociationBearingPropertyType(application.propertyType);
+
   return {
     loanAmount,
     interestRate,
     monthlyPrincipalAndInterest: Math.round(monthlyPandI * 100) / 100,
     monthlyMortgageInsurance: Math.round(monthlyPMI * 100) / 100,
     monthlyEscrow: Math.round(monthlyEscrow * 100) / 100,
+    monthlyAssociationDues,
+    associationDuesUncaptured,
     estimatedMonthlyTotal: Math.round((monthlyPandI + monthlyPMI + monthlyEscrow) * 100) / 100,
+    qualifyingPitia:
+      Math.round((monthlyPandI + monthlyPMI + monthlyEscrow + duesForPitia) * 100) / 100,
   };
 }
 

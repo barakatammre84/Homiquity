@@ -1,7 +1,7 @@
 # 02 — Authentication and authorization
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md) (it wins on conflict; the code wins over both).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 06 — Auth, Security & Secrets](../handbook/app-guide/06-auth-security-secrets.md) (it wins on conflict; the code wins over both).
 
 ## The mental model
 
@@ -92,7 +92,8 @@ sequenceDiagram
   (`server/integrations/auth/routes.ts:14-18`). The client keys it as `["/api/auth/user"]`.
 - **The three gates, and the counts.** `isAuthenticated` `server/auth.ts:417` — `grep -rn "isAuthenticated" server --include='*.ts' | wc -l` → `347`;
   `isAdmin` `:443`; `requireRole(...roles)` `:452` — 40 files, 220 call sites; `requireStaff` → `0`
-  (there is none — handlers use the `shared/roles.ts` predicates, 138 sites).
+  (there is none — handlers use the `shared/roles.ts` predicates:
+  `grep -rnE "is(Staff|InternalStaff|Client|Partner)Role" server --include='*.ts' | wc -l` → 136).
 - **Object-level access has two helpers with different reach.** `server/storage/applications.ts:43`
   `getLoanApplicationWithAccess` (114 references): admin unrestricted (`:45`); internal staff **or**
   `broker`/`lender` need an active `deal_team_members` row (`:57-77`); everyone else is scoped to
@@ -103,8 +104,8 @@ sequenceDiagram
   queue.
 - **External partners see masked PII.** `server/routes/borrower/access.ts:42-52`
   `maskUrlaPersonalInfo` reduces SSN to `•••-••-1234` and nulls DOB; applied at
-  `server/routes/borrower/urla.ts:40-44` when the requester is staff-typed but not internal. The
-  full-SSN reveal endpoint allows `["admin","underwriter","processor"]` (`server/routes/borrower/urla.ts:79`) and audits
+  `server/routes/borrower/urla.ts:56-60` when the requester is staff-typed but not internal. The
+  full-SSN reveal endpoint allows `["admin","underwriter","processor"]` (`server/routes/borrower/urla.ts:95`) and audits
   `urla.ssn_reveal` (`:89`).
 - **Promotion happens once, guarded, audited, best-effort.** `server/routes/lending/applications.ts:129-145`:
   `aspiring_owner` → `active_buyer` on first application; the comment states both are
@@ -248,8 +249,8 @@ grep -rin csrf client/src | wc -l ; grep -rhoE 'process\.env\.TWILIO[A-Z_]*' ser
 | `isAuthenticated` returns 500 on any DB error — a users-table blip becomes a 500 on every authenticated route; the client treats non-401 as `degraded` and does not log out, so only the client half is guarded. | `server/auth.ts:436-439` | Not directly. |
 | CSRF is bypassed in development, including when both headers are absent — so the integration lane (which runs against a dev server) cannot see a CSRF regression. | `server/app.ts:458-460` | `tests/complianceInvariants.test.ts:423` pins only the webhook carve-out shape. |
 | Two access models: `getLoanApplicationWithAccess` admits broker/lender via deal team; `verifyInternalStaffApplicationAccess` refuses them and adds the `loanOfficerId` pointer. Picking the wrong one silently widens or narrows access. | `server/storage/applications.ts:43` vs `server/routes/borrower/access.ts:12` | No drift test compares them. |
-| `maskUrlaPersonalInfo` is applied on exactly one route; any other route returning URLA personal info to a broker/lender leaks SSN and DOB. | `server/routes/borrower/urla.ts:40-44` | No source-text invariant pins it. |
-| The SSN reveal's audit write cannot fail the request — `logAudit` swallows its own errors, so a dead `audit_logs` table still returns plaintext. | `server/routes/borrower/urla.ts:89-93`; `server/auditLog.ts:23-25` | Nothing (L2 names the adjacent gap F-006). |
+| `maskUrlaPersonalInfo` is applied on exactly one route; any other route returning URLA personal info to a broker/lender leaks SSN and DOB. | `server/routes/borrower/urla.ts:56-60` | No source-text invariant pins it. |
+| The SSN reveal's audit write cannot fail the request — `logAudit` swallows its own errors, so a dead `audit_logs` table still returns plaintext. | `server/routes/borrower/urla.ts:105-109`; `server/auditLog.ts:23-25` | Nothing (L2 names the adjacent gap F-006). |
 | The staff-invite email match is exact string equality with no case normalization, while login lowercases. | `server/routes/staff-invites.ts:100` vs `server/auth.ts:152` | No test found. |
 | The `oauth_state` cookie is `secure: true` unconditionally while the session cookie is secure only in production — on plain-http local dev the state cookie is never stored; GET callbacks fall back to the session copy, Apple's cross-site POST would not. | `server/socialAuth.ts:202-208` vs `session.ts:46` | `tests/socialAuthProviders.test.ts` exists; whether it covers this asymmetry is unverified. |
 | Apple's `parseUserInfo` returns `{ email: "" }`; the real email comes from decoding the id_token in the callback branch. Refactoring Apple onto the generic path kills every Apple login with `?error=no_email`. The id_token is decoded, not signature-verified (defensible: it arrived over TLS from Apple's token endpoint, but unstated). | `server/socialAuth.ts:96-101`, `:172-181`, `:301-309` | No test. |

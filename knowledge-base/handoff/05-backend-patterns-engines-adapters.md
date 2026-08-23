@@ -1,7 +1,7 @@
 # 05 — Backend patterns, engines and adapters
 
-> **Freshness:** last verified 2026-08-22 · review every 30 days
-> **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 04 — API Surface](../handbook/app-guide/04-api-routes.md), [08 — Service Catalog](../handbook/app-guide/08-services.md), [09 — External Integrations](../handbook/app-guide/09-integrations.md), [12 — API contract](../handbook/app-guide/12-api-contract.md) and the `api-routes` skill (they win on conflict; the code wins over both — the skill's endpoint count and its `pgEnum` rule are stale, LEDGER HO-0822-04/05).
+> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Verified against** `origin/main` @ 6377727e · **Authoritative:** [app-guide 04 — API Surface](../handbook/app-guide/04-api-routes.md), [08 — Service Catalog](../handbook/app-guide/08-services.md), [09 — External Integrations](../handbook/app-guide/09-integrations.md), [12 — API contract](../handbook/app-guide/12-api-contract.md) and the `api-routes` skill (they win on conflict; the code wins over both — the skill's endpoint count and its `pgEnum` rule are stale, LEDGER HO-0822-04/05).
 
 ## The mental model
 
@@ -95,16 +95,16 @@ flowchart TD
   `services/borrowerEntityResolution.ts:257`. Intake and stage changes are best-effort sequences.
 - **`logAudit` is 26 lines, 138 call sites (133 in routes), and swallows its own errors.**
   `server/auditLog.ts:23-25`; `grep -rn "logAudit(" server | wc -l` → `138`.
-- **The underwriting engine.** `server/underwritingEngine.ts:241` `ConsolidatedUnderwritingEngine`,
-  singleton `:632`; the contract at `:235-239`: "intentionally isolated from any external/AI
+- **The underwriting engine.** `server/underwritingEngine.ts:295` `ConsolidatedUnderwritingEngine`,
+  singleton `:728`; the contract at `:289-293`: "intentionally isolated from any external/AI
   decisioning path (Fair Lending / Reg B) … resolved at runtime from the dynamic lookup matrices
   … there are no hardcoded fallbacks." `UnderwritingErrorKind` `:32-35` = `INPUT_INCOMPLETE |
   INPUT_INVALID | POLICY_OUT_OF_BAND` so a policy gap routes to a human instead of looping the
   borrower for documents. Two production callers: `server/services/decisionEngine.ts:390`,
   `server/services/scenarioSimulator.ts:344`.
-- **The decision engine.** `server/services/decisionEngine.ts` (514 lines): `runInstantDecision`
-  `:283`, `recalculateDecision` `:449` (append-only, never throws into the caller),
-  `getDecisionHistory` `:507`; most callers reach it by dynamic `await import` (`routes/borrower/urla.ts:196,645`,
+- **The decision engine.** `server/services/decisionEngine.ts` (610 lines): `runInstantDecision`
+  `:333`, `recalculateDecision` `:545` (append-only, never throws into the caller),
+  `getDecisionHistory` `:603`; most callers reach it by dynamic `await import` (`routes/borrower/urla.ts:212,664`,
   `routes/lending/statusDecisions.ts:386`, `routes/underwriting/decisions.ts:23,45`).
 - **The rule DSL.** `server/services/ruleEngine.ts:137` `executeRules` — one export, one
   production caller (`server/routes/underwriting-rules.ts:7`).
@@ -122,7 +122,7 @@ flowchart TD
   `:323-326`) rather than defaulting; the resolved policy is stored beside the decision so it can be
   reconstructed after a matrix edit (`shared/schema/decisions.ts:42-46` `resolvedPolicy`,
   `policyFingerprint`).** Clocks are the stated exception: four of the eight read `Date.now()` or
-  `new Date()` (below) — for employment tenure at `server/underwriting.ts:146`, stamps and
+  `new Date()` (below) — for employment tenure at `server/underwriting.ts:148`, stamps and
   expiries elsewhere — and only the AI-import half of this sentence is enforced by a test (LEDGER
   HO-0822-U8: nothing forbids `tryResolveMatrixValue` in these files; today nothing outside
   `lookupResolver.ts` calls it either, `grep -rln tryResolveMatrixValue tests/ server/`).
@@ -131,7 +131,7 @@ flowchart TD
   50.0 *fnma-b3-6-02-du-max-dti*, `CONVENTIONAL_LTV_CAP` 95.0, `CONVENTIONAL_FICO_FLOOR` 620
   *fnma-b3-5-1-01-min-credit-score*, `CONFORMING_LOAN_LIMIT`, `VA_RESIDUAL_EXTRA_MEMBER` 80.0,
   `HAIRCUT_STOCK_INVESTMENT` 60, `HAIRCUT_RETIREMENT` 70) and 4 grids (`CONVENTIONAL_PMI` `:65`,
-  `CONVENTIONAL_MAX_LTV` `:162`, `FANNIE_LLPA` `:195`, `VA_RESIDUAL` `:239`). **The seed deletes
+  `CONVENTIONAL_MAX_LTV` `:163`, `FANNIE_LLPA` `:195`, `VA_RESIDUAL` `:239`). **The seed deletes
   both matrix tables first** (`:17-18`). Unseeded cells route to manual review on purpose (`:168-169`).
 - **The adapter template.** `server/mcp/vendors.ts:31` `seeded(seed)` = SHA-256 → uint32 /
   0xffffffff; env key absent → seeded simulation flagged `simulated: true` (`:140`, `:184`); key
@@ -183,8 +183,8 @@ flowchart TD
   never cross to a borrower surface — but its `:17` cites an oracle test at a path that does not
   exist (LEDGER HO-0822-17). Daily cap 30 messages (`server/routes/coach.ts:337`). Seven files
   mention Anthropic; none is in the decision path.
-- **Inventory.** `find server -name '*.ts' | wc -l` → `291`; services 123 files / 36,027 lines,
-  routes 82 / 25,806, storage 26 / 6,311, mcp 5 / 1,015, integrations 8 / 932.
+- **Inventory.** `find server -name '*.ts' | wc -l` → `291`; services 123 files / 36,529 lines,
+  routes 82 / 25,892, storage 26 / 6,311, mcp 5 / 1,015, integrations 8 / 932 (@ d9e8f79d).
 
 ## Prove it yourself
 
@@ -227,7 +227,7 @@ for f in $(sed -n '35,42p' tests/complianceInvariants.test.ts | tr -d ' ",'); do
 #   server/services/ausSubmission.ts random=0 try=0 clock=3
 #   server/pricing.ts random=0 try=0 clock=0
 #   server/underwriting.ts random=0 try=0 clock=1
-#   server/underwritingEngine.ts random=0 try=0 clock=0   @ 6377727e
+#   server/underwritingEngine.ts random=0 try=0 clock=0   @ d9e8f79d
 ```
 
 ## Where this breaks
@@ -248,7 +248,7 @@ for f in $(sed -n '35,42p' tests/complianceInvariants.test.ts | tr -d ' ",'); do
 | `STATIC_COACH_PROMPT` byte-stability and `COACH_TOOLS` order are enforced by comments; a reorder invalidates the ~19.6k-token cache prefix for everyone. | `coachingPrompt.ts:27-39`; `coachTools.ts:29-31` | Nothing asserts either. |
 | `CRON_SECRET` unset degrades every sweep to admin-only — loud in Actions (`cron-jobs.yml:106-109` fails the step), invisible in the app. | `server/routes/jobs.ts:28-32` | CI only. |
 | The `/api/webhooks/*` CSRF carve-out is a path prefix; a new webhook is unprotected until someone writes its signature check and test. | `server/app.ts:427` | `tests/twilioWebhookSignature.test.ts` pins the two SMS receivers only. |
-| `app-guide/08-services.md:108` still routes readers to `server/storage.ts`, deleted at the split. | `knowledge-base/handbook/app-guide/08-services.md:108` | Nothing. LEDGER HO-0822-18. |
+| *(Resolved 2026-08-22 by #694, `3d047ce9` — kept so the resolution is datable.)* app-guide 08 routed readers to `server/storage.ts`, deleted at the split; `:107` now points at `server/storage/`. LEDGER HO-0822-18 awaits closing by the Handoff Corpus Steward. | `knowledge-base/handbook/app-guide/08-services.md:107` (now correct) | The trap this row records is historical. |
 
 ## What we do not know
 
@@ -259,7 +259,7 @@ for f in $(sed -n '35,42p' tests/complianceInvariants.test.ts | tr -d ' ",'); do
 | Are the 52 service files that import neither `db` nor `storage` pure, or do they reach the DB through a sibling? | `grep -rn "from \"../../db\"" server/services` plus a read. |
 | Is `MCP_AGENT_REGISTRY` populated in any deployed environment? | Railway Variables (founder-only). |
 | How many of the 558 registrations are the same path+verb registered twice? | A dedupe over `(method, path)` pairs. |
-| Can a clock read change a decision? Four decision-path modules read the clock (prove-it above); `server/underwriting.ts:146` turns `Date.now()` into employment months, so the same file run on two days could cross a tenure threshold with no input change. Is that intended, and is the evaluation date stored with the decision? | Read the four sites against `shared/schema/decisions.ts:42-46`; a characterisation test that runs the engine twice with a mocked clock. `hq-underwriting-owner`. |
+| Can a clock read change a decision? Four decision-path modules read the clock (prove-it above); `server/underwriting.ts:148` turns `Date.now()` into employment months, so the same file run on two days could cross a tenure threshold with no input change. Is that intended, and is the evaluation date stored with the decision? | Read the four sites against `shared/schema/decisions.ts:42-46`; a characterisation test that runs the engine twice with a mocked clock. `hq-underwriting-owner`. |
 
 ## Analogy
 
@@ -289,7 +289,7 @@ production guard).
 
 - [app-guide 04](../handbook/app-guide/04-api-routes.md) (endpoint tables, authorization pattern),
   [08](../handbook/app-guide/08-services.md) (the pre-flight checklist for regulated math at
-  `:89-102` — read before touching an engine; the stale `storage.ts` pointer at `:108`),
+  `:89-102` — read before touching an engine — its stale `storage.ts` pointer was fixed by #694),
   [09](../handbook/app-guide/09-integrations.md) (the vendor table and pre-flight at `:81-98`),
   [12](../handbook/app-guide/12-api-contract.md) (the three wire states at `:29-50`, machine-checked
   by `tests/zodSchemaSemantics.test.ts`).

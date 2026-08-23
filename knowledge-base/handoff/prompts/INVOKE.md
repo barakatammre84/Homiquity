@@ -67,10 +67,10 @@ disclosure policy, regulator correspondence).
 2. Merge (L3 — a merge to `main` is a production deploy).
 3. T5: `curl -s https://homiquity-production.up.railway.app/api/health | jq -r .commit` must equal
    the merge SHA. Do this **by hand even though `verify-deploy` now does it too** — it carries
-   `continue-on-error: true` (`.github/workflows/ci.yml:672`, deliberately, so it cannot deadlock
+   `continue-on-error: true` (`.github/workflows/ci.yml:770`, deliberately, so it cannot deadlock
    Railway's "Wait for CI"), and `main` requires no checks, so a green workflow tells you nothing
    about whether that job passed. A PR that carried a migration is applied automatically by
-   `migrate-prod` (`:549`, its `if:` at `:583`); read `applied N migration(s)` in its log. Re-check both jobs' `if:`
+   `migrate-prod` (`:647`, its `if:` at `:681`); read `applied N migration(s)` in its log. Re-check both jobs' `if:`
    lines before trusting either (`grep -n "if:" .github/workflows/ci.yml`) — they were paused for
    two days in August 2026 and nothing announced it. Chapter 07 keeps the dated status.
 4. Remove the worktree: `git -C /Users/ammrebarakat/Developer/Homiquity worktree remove ~/Developer/hq-loop-<slug>`.

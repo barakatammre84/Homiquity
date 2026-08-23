@@ -56,6 +56,9 @@ doc-drift bug to fix):
   · [SAFE_MLO_COMPLIANCE_MAP.md](compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [COMPLIANCE_COUNSEL_REVIEW.md](compliance/COMPLIANCE_COUNSEL_REVIEW.md)
 - [LAUNCH_COUNSEL_PACKET.md](compliance/LAUNCH_COUNSEL_PACKET.md) — the four counsel asks that gate the go-live flip (sendable as-is)
 - [NTHLA_609G_SPEC.md](compliance/NTHLA_609G_SPEC.md) — FCRA §609(g) Notice to Home Loan Applicant: absent today, hard-blocking for F3, and the per-bureau data the credit-vendor contract must deliver
+- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, one command from greppable via `scripts/extract-selling-guide.py`; the copyrighted text is gitignored since the repo went public, the tracked `section-index.tsv` still locates any section). Verified-conforming table, the eight corrections landed 2026-08-20/22, and twenty recorded gaps resolved conservatively rather than assumed
+- [`compliance/SELLING_GUIDE_COVERAGE.md`](compliance/SELLING_GUIDE_COVERAGE.md) — generated standing map of all 423 Selling Guide sections against this codebase; run `pnpm coverage:sg` after editing `compliance/selling-guide-coverage.json`.
+- [SELLING_GUIDE_CONFORMANCE.md](compliance/SELLING_GUIDE_CONFORMANCE.md) — what our code agrees and disagrees with in the Fannie Mae *Selling Guide* (edition 08-05-2026, one command from greppable via `scripts/extract-selling-guide.py`; the copyrighted text is gitignored since the repo went public, the tracked `section-index.tsv` still locates any section). Verified-conforming table, the ten corrections landed 2026-08-20/22, and twenty-one recorded gaps resolved conservatively rather than assumed
 - [security/threat_model.md](compliance/security/threat_model.md)
 
 ### SOP Manual — written operating procedures (DRAFT) · [`sop/`](sop/)
@@ -176,9 +179,10 @@ re-verified-on-time; this routine verifies living docs against the code, correct
 what history overtook, proposes pruning for fossils, and keeps a drift-source scoreboard so
 recurring drift classes earn structural prevention rather than a third hand-fix. Drift vs
 regression is decided before any edit: a doc contradicting the code may be reporting a code bug,
-which gets escalated, never papered over (rail D7). Since 2026-08-23 it also stewards the
-[handoff corpus](handoff/): `handoff/FACTS.md` re-derived by `pnpm handoff:facts` every tick, `HO-`
-rows consumed as findings, and the corpus's fresh-hire teach-back re-run every fourteenth tick.
+which gets escalated, never papered over (rail D7). Since 2026-08-23 it also checks the
+[handoff corpus](handoff/) read-only every tick (`pnpm handoff:facts --check/--cite`; the 17:06 Handoff
+Corpus Steward is that directory's only writer), consumes `HO-` rows as findings for the sibling docs
+they name, and re-runs the corpus's fresh-hire teach-back every fourteenth tick.
 - [LEDGER.md](doc-accuracy/LEDGER.md) — the `DA-<MMDD>-<NN>` register, drift-source scoreboard, rotation cursor, exclusion table (the routine's cross-run memory).
 
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)

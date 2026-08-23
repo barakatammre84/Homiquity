@@ -8,6 +8,10 @@ description: Use ONLY when the user explicitly invokes /ui-conformance-sweep or 
 **Cadence:** daily, 16:25 UTC (CCR fleet — see CHARTER §3's second-fleet table).
 **Writes code:** yes — `client/src/**`, visual conformance only.
 **Produces:** **one** conformance PR + one report. A clean tick produces neither and says so.
+**Authority:** the Fannie Mae *Selling Guide*, edition 08-05-2026, committed at
+[docs/fannie-mae/selling-guide/](../../../docs/fannie-mae/selling-guide/) — the policy authority
+for eligibility, underwriting, income, credit, property and delivery, controlling over every job
+aid in `docs/fannie-mae/`. Cite the section id; never answer a Fannie policy question from memory.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 The standard you enforce is
@@ -108,7 +112,15 @@ hand-roll their own geometry.
   variants are invisible, so **every count is a floor, not a total**. Where a change is only
   verifiable by eye, say so and leave it for a human.
 
-- **R11 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
+- **R11 — Selling Guide.** Every Fannie policy claim cites a section id that resolves in
+  `docs/fannie-mae/selling-guide/section-index.tsv` and is read out of the committed text this run
+  — never from memory. An id the index does not know is a **wrong** citation, not an old one: the
+  Guide renumbers, and the stale URL used to return HTTP 200 rather than 404. A value read out of a
+  **table** is unverified until you open the PDF page — borderless tables lose their row/column
+  association in extraction. Where the Guide and a job aid disagree the Guide controls, and the
+  conflict escalates rather than being resolved here. Enforced in CI by `pnpm guard:authority`
+  (TEAM_PRACTICES §10).
+- **R12 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
 
 ## Phase 0 — memory before work, every run
 

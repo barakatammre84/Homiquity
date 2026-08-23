@@ -103,12 +103,12 @@ Every claim: `path:line` · the symbol there · the command that shows it (outpu
   main is a production deploy."
 - **The app-guide has 12 chapters.** `ls knowledge-base/handbook/app-guide/*.md | wc -l` → `12`.
   (The root `README.md:62` said "11-chapter" until 2026-08-23 — LEDGER HO-0822-07, done.)
-- **Stack versions.** `package.json:7` `"node": "24"` · `:87` `drizzle-orm ^0.45.2` · `:89`
-  `express ^5.2.1` · `:106` `react ^19.2.8` · `:111` `zod ^4.4.3` · `:136` `tailwindcss ^4.3.3` ·
-  `:140` `vite ^7.3.6` · `:141` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
-  → `39a42bfc 2026-08-04 …bump react… (#301)`), while two app-guide chapters still say React 18
-  (LEDGER HO-0822-06).
-- **Two package scripts are fuses, not commands.** `package.json:26` `db:generate` and `:29`
+- **Stack versions.** `package.json:7` `"node": "24"` · `:98` `drizzle-orm ^0.45.2` · `:100`
+  `express ^5.2.1` · `:113` `react ^19.2.8` · `:122` `zod ^4.4.3` · `:147` `tailwindcss ^4.3.3` ·
+  `:151` `vite ^7.3.6` · `:152` `vitest ^4.1.10`. React 19 landed 2026-08-04 (`git log -S '"react": "^19' --format="%h %ad %s" --date=short -- package.json`
+  → `39a42bfc 2026-08-04 …bump react… (#301)`), while two app-guide chapters said React 18
+  until the handbook fix of 2026-08-23 (LEDGER HO-0822-06, done).
+- **Two package scripts are fuses, not commands.** `package.json:30` `db:generate` and `:34`
   `db:push` both begin `echo 'BLOCKED: …' && exit 1` — generate has snapshot drift; push drops
   columns owned by other branches on the shared dev DB, and prod is migrate-only (chapter 10).
 
@@ -132,7 +132,7 @@ ls -1 knowledge-base/handbook/app-guide/*.md | wc -l
 grep -n '^### Tier' README.md
 # → 55 / 65 / 81 / 85 / 101 — Tier 1 … Tier 5 @ 12d7cbec
 grep -rn "React 18" knowledge-base/handbook/app-guide/ ; grep -n '"react":' package.json
-# → app-guide/07-frontend.md:5 and 01-start-here.md:22 said React 18 until the handbook fix of 2026-08-23; package.json:106 "react": "^19.2.8" @ 6377727e
+# → app-guide/07-frontend.md:5 and 01-start-here.md:22 said React 18 until the handbook fix of 2026-08-23; package.json:113 "react": "^19.2.8" @ d9e8f79d
 wc -l PRODUCT_SPINE.md
 # → 8 @ 12d7cbec
 ```
@@ -143,7 +143,7 @@ wc -l PRODUCT_SPINE.md
 |---|---|---|
 | `isStaffRole()` includes `broker` and `lender`; `isInternalStaffRole()` does not. Using the wrong predicate on an object-level check hands an external partner every borrower record. | `shared/roles.ts:102` vs `:110`; rationale `:77-79` | Partially — `tests/adminPredicate.test.ts` guards only the `isAdmin` predicate; nothing greps a new call site for the wrong pair. Chapter 02 names the storage predicate to use instead. |
 | Adding a self-registerable role to `STAFF_ROLES` opens every `isStaffRole()`-gated endpoint. | `shared/roles.ts:10-13`, `:31-35` | Nothing automated — the protection is the comment. |
-| Two app-guide chapters said React 18 for nineteen days after the tree shipped React 19 (2026-08-04); fixed 2026-08-23. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:106` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06 (done). |
+| Two app-guide chapters said React 18 for nineteen days after the tree shipped React 19 (2026-08-04); fixed 2026-08-23. | `app-guide/01-start-here.md:22`, `app-guide/07-frontend.md:5` vs `package.json:113` | Nothing — `guard:docs` checks dates, `guard:citations` checks paths; no guard compares a prose version to the manifest. LEDGER HO-0822-06 (done). |
 | The two indexes disagreed on the chapter count (root README 11, KB README 12, disk 12) until 2026-08-23. | `README.md:62` vs `knowledge-base/README.md:36` | Nothing — `guard:kb` checks that files are indexed, not that counts are right. LEDGER HO-0822-07 (done). |
 | `FEATURE_MAP.md` "Last reviewed" is a *domain* review date, not an area walk; 23 of 41 areas have never been reviewed. | `FEATURE_MAP.md:754-757`, `:769-771` | The file warns about itself; the record is `knowledge-base/routines/feature-coverage/LEDGER.md`. |
 | Two rival taxonomies: 41 feature areas vs 13 review domains in `knowledge-base/feature-review/DOMAINS.md`. | `FEATURE_MAP.md:702-704` | Nothing — reconciliation is manual, by design ("when the two disagree, one of them is wrong"). |

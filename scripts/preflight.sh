@@ -2,9 +2,11 @@
 #
 # Preflight — run the WHOLE CI gate locally, before it costs anything.
 #
-# `.githooks/pre-push` runs the typecheck and the nine guards (the unit suite is
+# `.githooks/pre-push` runs the typecheck and the twelve guards (the unit suite is
 # opt-in there: PREPUSH_TESTS=1) and is deliberately cheap enough to leave on.
-# This runs all sixteen, including the three that only ever ran in CI and are
+# This runs the whole gate — the count is deliberately not written here, because it was
+# wrong before anyone noticed (it said sixteen while running eighteen). It includes the
+# three that only ever ran in CI and are
 # the ones that catch a broken DEPLOY rather than a broken diff: the production
 # build, the self-host boot, and the integration lane.
 #
@@ -92,6 +94,9 @@ step "doc staleness ratchet"          node scripts/doc-staleness-guard.cjs
 # the check that would have caught it.
 step "guard scripts parse"            bash -c 'for f in scripts/*.cjs; do node --check "$f" || exit 1; done'
 step "query-key convergence"          node scripts/query-key-guard.cjs
+step "query-key reachability"         node scripts/query-key-reachability.cjs
+step "query-key transport"            node scripts/query-key-transport-guard.cjs
+step "citation ratchet"               node scripts/citation-guard.cjs
 
 # §9 needs the PR's changed-file set, which CI computes from the pull request.
 # Locally the equivalent is the diff against origin/main. If origin/main is not

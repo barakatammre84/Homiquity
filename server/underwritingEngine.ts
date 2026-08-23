@@ -198,6 +198,60 @@ export interface UnderwritingInput {
    */
   propertyType?: string;
   /**
+   * Loan purpose — `purchase`, `refinance` (rate/term, i.e. limited cash-out),
+   * `cash_out` / `cash_out_refinance`. The funnel collects this (it is driven by
+   * the `?type=` entry point), and Fannie's maximum LTV/CLTV/HCLTV ratios differ
+   * by purpose: B2-1.3-02 and B2-1.3-03 both route the numbers to the
+   * **Eligibility Matrix**, a companion document this repo does not hold.
+   *
+   * This engine prices the PURCHASE grid. Rather than silently apply a purchase
+   * ceiling to a cash-out file — which would approve loans well above the
+   * cash-out limit — a non-purchase file is routed to human review. Omitted
+   * defaults to purchase, preserving prior behavior for the files that are
+   * genuinely purchases.
+   */
+  loanPurpose?: string;
+  /**
+   * Amortization type — `fixed` or `adjustable`. The URLA Section 4a form offers
+   * "Adjustable Rate (ARM)" and `loan_applications.amortization_type` stores it,
+   * so a borrower can declare an ARM today.
+   *
+   * B3-6-04 does NOT qualify an ARM at the note rate: an initial fixed period of
+   * five years qualifies at the greater of (note rate + first rate-change cap) or
+   * the fully indexed rate, and three years or less at the maximum rate that
+   * could apply during the first five years. `derivePricing` prices a 30-year
+   * fixed regardless, so an ARM would be qualified at its teaser rate —
+   * understating the payment and the DTI.
+   *
+   * The eight `arm_*` columns that would let us compute the correct rate
+   * (index, margin, initial/periodic/lifetime caps, adjustment frequency) exist
+   * on the table and are read by `mismoValidation` at delivery — but nothing
+   * writes them. So the qualifying rate is not merely unimplemented, it is
+   * uncomputable from captured data. Route to a human rather than qualify at the
+   * teaser rate.
+   */
+  amortizationType?: string;
+  /**
+   * Significant derogatory credit events declared on URLA Section 5, across ALL
+   * borrowers — bankruptcy, foreclosure, deed-in-lieu, preforeclosure/short
+   * sale — plus outstanding judgments and delinquency on federal debt.
+   *
+   * B3-5.3-07 sets a WAITING PERIOD after each, measured from the discharge,
+   * dismissal or completion date: 4 years for Chapter 7/11, 2 years from
+   * discharge (4 from dismissal) for Chapter 13, 5 years for multiple filings
+   * within 7 years, 7 years for foreclosure, 4 years for a deed-in-lieu,
+   * preforeclosure sale or charge-off.
+   *
+   * `borrower_declarations` stores these as BOOLEANS with no dates, so the
+   * waiting period is uncomputable from captured data — the same shape as the
+   * ARM terms above. A declared event therefore routes to a human rather than
+   * being ignored, which is what happened before: the entire declarations table
+   * (33 columns) reached document generation and MISMO scoring and never the
+   * decision path, so a borrower could declare a foreclosure and be decisioned
+   * as though they had not.
+   */
+  declaredDerogatoryEvents?: string[];
+  /**
    * Property type and unit count as OBSERVED by an external source (e.g. the
    * address/AVM lookup), when available. Reconciled against the declared values
    * to surface a possible misrepresentation. Optional and additive: when absent,
@@ -354,6 +408,48 @@ export class ConsolidatedUnderwritingEngine {
       if (input.originalLoanAmount > conformingLimit) {
         reviewReasons.push(
           `Loan amount of $${Math.round(input.originalLoanAmount).toLocaleString()} exceeds the conforming limit of $${Math.round(conformingLimit).toLocaleString()} — jumbo product review required`,
+        );
+      }
+
+      // B2-1.3-02 / B2-1.3-03: the maximum LTV, CLTV and HCLTV ratios for a
+      // limited cash-out or cash-out refinance are NOT the purchase ratios —
+      // both topics defer the figures to the Eligibility Matrix, which this
+      // repo does not hold (the Selling Guide defers to it 39 times). The
+      // CONVENTIONAL_MAX_LTV matrix here is keyed on units x occupancy only,
+      // with no purpose dimension, so a cash-out file would be measured against
+      // a purchase ceiling — approving loans above the cash-out limit.
+      //
+      // Route it to a human instead. This tightens a gate rather than inventing
+      // a ratio we cannot source, which is the only direction a reading is
+      // allowed to move without the authority in hand.
+      const purpose = (input.loanPurpose ?? "purchase").toLowerCase().trim();
+      if (purpose !== "purchase" && purpose !== "") {
+        reviewReasons.push(
+          `Loan purpose "${purpose}" is not a purchase — refinance LTV ceilings come from the Fannie Mae Eligibility Matrix (B2-1.3-02 / B2-1.3-03), which this system does not yet encode. Manual review required.`,
+        );
+      }
+
+      // B3-6-04, Qualifying Payment Requirements: the qualifying rate is the note
+      // rate for FIXED-RATE mortgages only. An ARM qualifies at the greater of
+      // the note rate plus its first rate-change cap or the fully indexed rate
+      // (five-year initial period), or at the maximum rate reachable in the
+      // first five years (three years or less). We price a 30-year fixed, and
+      // the arm_* terms needed to compute the real figure are never captured —
+      // so the honest move is a human, not a teaser-rate approval.
+      const amortization = (input.amortizationType ?? "fixed").toLowerCase().trim();
+      if (amortization === "adjustable" || amortization === "arm") {
+        reviewReasons.push(
+          `Adjustable-rate loan: B3-6-04 requires qualifying at the greater of the note rate plus the first rate-change cap or the fully indexed rate, not the initial rate. The ARM terms needed to compute that (index, margin, caps) are not captured, so this file cannot be qualified automatically. Manual review required.`,
+        );
+      }
+
+      // B3-5.3-07, Significant Derogatory Credit Events. Every one of these
+      // carries a waiting period measured from a date this system does not
+      // capture, so none of them can be cleared automatically — and being
+      // unable to clear an event is not a reason to ignore it.
+      if (input.declaredDerogatoryEvents && input.declaredDerogatoryEvents.length > 0) {
+        reviewReasons.push(
+          `Declared on the application: ${input.declaredDerogatoryEvents.join("; ")}. B3-5.3-07 sets a waiting period for each, measured from the discharge, dismissal or completion date — dates this system does not capture, so eligibility cannot be determined automatically. Manual review required.`,
         );
       }
 
