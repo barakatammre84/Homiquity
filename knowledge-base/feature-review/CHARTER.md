@@ -10,7 +10,30 @@ after any significant change — the teams are durable agents in `.claude/agents
 > end-to-end workflows. The register was seeded 2026-07-08 from a 9-dimension audit — see
 > `FINDINGS.md`.
 
-## The teams
+## The mental model
+
+The program is a **standing inspection layer that never holds the wrench**. Reviewers, verifiers,
+walkers and auditors are structurally separated from fixing — a finding is the program's only
+product, and a finding survives only if it carries evidence a stranger can re-run and an
+adversarial verifier failed to kill it. The model to hold: **discovery and repair are different
+jobs with opposite incentives**, and every rule below exists to keep the boundary between them
+sharp. (The suite-wide contract — clocks, claims, territory — is
+[`../routines/CHARTER.md`](../routines/CHARTER.md); this charter binds the review program that
+feeds it.)
+
+## Explain it to a new hire — one review round
+
+A round starts with a scope: one domain from `DOMAINS.md`, one workflow from `WORKFLOWS.md`, or
+one journey from `JOURNEYS.md`/`STAFF_JOURNEYS.md`. A reviewer reads the intended use, reads the
+code against it, runs the domain's tests, probes the live dev server (port 5002), and writes up
+what it found — including a CLEAN section for what it checked and found conforming. Every
+proposed finding then goes to the `finding-verifier`, whose whole job is to refute it; what
+survives (plus a `compliance-auditor` verdict where flagged) enters `FINDINGS.md` with evidence.
+Fixes happen later, in triaged fix waves, by other hands, citing finding ids. The walkers do the
+same loop in a real browser, filing only the seams between surfaces. Read the Reality Map before
+your first round — most false positives are filed by people who skipped it.
+
+## The mechanism — the teams
 
 | Agent | Job |
 |---|---|
@@ -147,7 +170,7 @@ false positive:
 Plus a **compliance-risk flag**: `yes (<regime>)` or `no`. Any `yes` requires a
 compliance-auditor verdict before the finding is actionable.
 
-## Finding lifecycle
+## The finding lifecycle — the mechanism, end to end
 
 ```
 proposed (reviewer) → verified (finding-verifier CONFIRMED/DOWNGRADE)
@@ -208,3 +231,69 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
   freezes at process start while the client is Vite-transformed per request and stays current.
   Compare process start time against `server/**` mtimes before attributing any server-side finding
   to HEAD.
+
+## Prove it yourself
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+ls .claude/agents/journey-walker-*.md | wc -l        # → 10 walker seats (5 client, 5 staff)
+ls .claude/agents/ | grep -c ".md"                   # the durable review teams live here
+grep -c "^| " knowledge-base/feature-review/FINDINGS.md   # the register's row count — the census moves
+grep -n "Program rules" knowledge-base/feature-review/CHARTER.md  # the binding rules, cited by name
+grep -rn "journey-walk\b" .claude/skills/journey-walk/SKILL.md | head -2  # walkers reachable by /journey-walk
+```
+
+The census in the header ("~95 backend subsystems · 88 client pages · ~14 workflows") is a
+2026-07-08 measurement — re-derive before quoting it (routines charter §7 rule: probe, never
+trust the page's age).
+
+## Where this breaks — the paid-for lessons
+
+| Failure mode | The incident | The rule it bought |
+|---|---|---|
+| Two agents file the same defect independently | the flat-0.5% PMI claim — filed twice, wrong on both grounds | rule 7's HANDOFF discipline |
+| A suppression list goes stale | `Market-data` sat on the dead-surface list while it was WIRED — a stale entry teaches reviewers to dismiss real findings | the Reality Map's own re-verify warning |
+| Trusting the port, not the process | the `:5002` "worktree" server was a **14-day-old orphan** from a deleted worktree | the operational conventions' staleness traps |
+| HTTP substituted for a browser | a walk reported without a browser cannot see a stale nav or a blank render | rule 9 — `BLOCKED` beats a fake pass |
+| Findings minted from "next free number" | six sessions minted six different `F-20`s (suite-wide) | rule 8's date-qualified ids |
+
+## What we don't know
+
+- The **census is approximate by design** (~95 / 88 / ~14) — exact counts drift weekly; the
+  register, not this header, is the record.
+- The **`lender` persona is deferred by policy** — `STAFF_JOURNEYS.md` records why, so the
+  question is not reopened per walk.
+- **`complianceInvariants.test.ts` executes nothing** (F-014) — a green run there is not evidence
+  of correct regulated math; the gap is registered, not resolved.
+
+## The analogy
+
+A building inspector who also does the repairs stops writing up what they cannot fix — so the
+inspectorate here is barred from holding tools. The findings register is the inspection report;
+the verifier is the second inspector who tries to fail the first one's write-up; the fix waves
+are the licensed contractors, who must cite the report line they are closing; and the Reality Map
+is the building's as-built drawings, read before inspecting so nobody condemns a wall that was
+always meant to be load-bearing.
+
+## Teach-back
+
+1. A walker sees a broken empty state on a single page. What does it do, and what does it never do?
+2. What must be true before any proposed finding appears in `FINDINGS.md`?
+3. The dev server answers on 5002. What do you verify before trusting a measurement from it?
+4. Your review found nothing wrong in a subsystem. What do you write?
+
+**Key:** 1 — a HANDOFF line naming the surface's owner (feature-reviewer / ux-reviewer /
+app-walker / the `hq-*-owner`); it never mints a `J-` id for a single-surface issue (rule 7).
+2 — adversarial verification by `finding-verifier`, plus a `compliance-auditor` verdict when
+compliance-flagged, plus `file:line` evidence (rules 2–3). 3 — that the serving process is the
+checkout and vintage you think it is — `lsof -a -p <pid> -d cwd` + process start time vs
+`server/**` mtimes; stale listeners are the norm (operational conventions). 4 — a CLEAN section
+naming what was checked and found conforming — "inspected, works" is a result, silence is not
+(rule 4).
+
+## Go deeper
+
+[`DOMAINS.md`](DOMAINS.md) · [`WORKFLOWS.md`](WORKFLOWS.md) · [`JOURNEYS.md`](JOURNEYS.md) ·
+[`STAFF_JOURNEYS.md`](STAFF_JOURNEYS.md) · [`FINDINGS.md`](FINDINGS.md) — the register ·
+[`../routines/CHARTER.md`](../routines/CHARTER.md) — the suite contract this program feeds.
+
