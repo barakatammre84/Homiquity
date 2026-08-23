@@ -4,7 +4,7 @@
 > **Verified against** `origin/main` @ 12d7cbec · **Authoritative:** [app-guide 10 — Deploy & Operations](../handbook/app-guide/10-deploy-ops.md) plus the runbooks `../runbooks/CICD.md`, `../runbooks/DB_MIGRATIONS.md`, `../runbooks/ROLLBACK.md` (they win on conflict; the code wins over both — and on the one fact that matters most this month, all four are silent; see *Where this breaks*).
 
 > **Dated status box (re-verify on every refresh — these change):** at 12d7cbec both deploy jobs
-> are **live again**. `migrate-prod` runs on push and dispatch (`.github/workflows/ci.yml:574`);
+> are **live again**. `migrate-prod` runs on push and dispatch (`.github/workflows/ci.yml:583`);
 > `verify-deploy` runs on push (`:647`). They had been paused on 2026-08-19/20 on the premise that
 > the Railway service "was being taken down" — a premise that silently expired while the pause held,
 > and `76c96751` (#669) re-armed both on 2026-08-22 with the finding that "the migration journal ran
@@ -51,13 +51,13 @@ flowchart TD
   SCOPE -- "code=false" --> DOCG["doc guards only"]
   SCOPE -- "code=true" --> GATE["gate job - ci.yml:107 - pull_request only"]
   GATE --> TC["typecheck, unit lanes, audit, 11 guards"]
-  TC --> BUILD["production build - ci.yml:456"]
-  BUILD --> BOOT["self-host boot probe - ci.yml:501 - db:migrate then node dist/index.js on 3999, poll /api/health 45x1s"]
+  TC --> BUILD["production build - ci.yml:465"]
+  BUILD --> BOOT["self-host boot probe - ci.yml:510 - db:migrate then node dist/index.js on 3999, poll /api/health 45x1s"]
   BOOT --> GREEN{{"gate green"}}
   GREEN --> MERGE["squash merge to main = a production deploy"]
   MERGE --> RW["Railway builds from GitHub - RAILPACK - pnpm install --frozen-lockfile and pnpm build - pnpm start - healthcheck /api/health 300s"]
-  MERGE --> MIG["migrate-prod - ci.yml:540 - ledger pre-flight, then migrate-prod.cjs over a minted direct URL"]
-  MERGE --> VD["verify-deploy - ci.yml:630 - poll the Railway origin for this SHA - reddens but cannot fail the workflow"]
+  MERGE --> MIG["migrate-prod - ci.yml:549 - ledger pre-flight, then migrate-prod.cjs over a minted direct URL"]
+  MERGE --> VD["verify-deploy - ci.yml:639 - poll the Railway origin for this SHA - reddens but cannot fail the workflow"]
   RW -- "build fails" --> STALE[["previous container keeps serving - site up, health 200, checks green, prod stale"]]
   RW -- "build succeeds" --> LIVE[["prod serves the merged SHA"]]
   STALE --> PROOF["curl /api/health and compare commit with git rev-parse origin/main"]
@@ -98,7 +98,7 @@ flowchart TD
   `knowledge-base/runbooks/DB_MIGRATIONS.md:160-164`: it "answers *is the ledger in sync?*, never
   *will this DDL succeed?*" — the 2026-07-13 outage class.
 - **The ledger guard runs twice — and the second run is the only one that ever sees `main`.**
-  `.github/workflows/ci.yml:278` (gate) and `:567-573` (`migrate-prod`'s first step: "the gate job
+  `.github/workflows/ci.yml:287` (gate) and `:567-573` (`migrate-prod`'s first step: "the gate job
   is if: pull_request, so nothing validates the ledger on the push that actually triggers an
   apply"). Six checks (`scripts/migration-ledger-guard.cjs:18-24`); born of two branches authoring
   `0038` on the same day (`:12-16`).
@@ -108,7 +108,7 @@ flowchart TD
 - **58 migrations, 58 journal entries, latest `0057`.** `ls migrations/*.sql | wc -l` → `58`;
   `python3 -c "import json;print(len(json.load(open('migrations/meta/_journal.json'))['entries']))"`
   → `58`; last entry `{"idx": 57, "version": "7", "when": 1786147200003, "tag": "0057_login_lockout_last_failed_at", "breakpoints": true}`.
-  `db:push` and `db:generate` are blocked in `package.json:25,29`.
+  `db:push` and `db:generate` are blocked in `package.json:26,29`.
 - **A copy-pasted journal `when` makes prod silently skip a migration.** `DB_MIGRATIONS.md:145-150`;
   mechanism `scripts/migrate-prod.cjs:71,81`. Green job, missing DDL.
 - **Environment shape.** `.env.example` has 9 uncommented keys and 65 documented keys
@@ -135,7 +135,7 @@ flowchart TD
 - **ROLLBACK §0 distinguishes "bad deploy" from "stale prod" in thirty seconds.**
   `knowledge-base/runbooks/ROLLBACK.md:20-39`: commit matches `origin/main` → roll back; commit is
   older or null → prod is stale and rolling back makes it worse.
-- **`verify-deploy` must poll the Railway origin, never `www`.** `.github/workflows/ci.yml:687-695`
+- **`verify-deploy` must poll the Railway origin, never `www`.** `.github/workflows/ci.yml:696-704`
   — Squarespace DNS, a redirect or a cached edge response "can all make it answer for something
   other than the Railway service"; pinned by `tests/ciTriggers.test.ts:153`. It is
   `continue-on-error: true` (`:635`) to break a deadlock with Railway's "Wait for CI" that otherwise
@@ -185,15 +185,15 @@ git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/work
 
 | Trap | Where | Caught by |
 |---|---|---|
-| `verify-deploy` is live again but `continue-on-error: true` (`ci.yml:663`), so its red is advisory. With `contexts: []` on `main`, a failed deploy check blocks nothing. The four runbooks describe it as live, which is now true but incomplete — none records that it cannot fail a merge. | `.github/workflows/ci.yml:647,663` | `tests/ciTriggers.test.ts:106-118` accepts LIVE **or** PAUSED for both jobs — it could not have told you the pause happened, and cannot tell you it ended. LEDGER HO-0822-14. |
-| Migrations merged now reach no database; the journal runs ahead of prod for as long as the pause lasts (stated at `ci.yml:537-540`), while `DB_MIGRATIONS.md:19-39` still diagrams an automatic apply on push. | `.github/workflows/ci.yml:553` | Nothing — `guard:migrations` validates the ledger, not whether it was applied. |
-| `ci.yml:536` says the Railway service "is being taken down"; it is up and serving this exact commit. | `.github/workflows/ci.yml:535-536` vs the live curl | Nothing — CHARTER §7 retired the prod-commit-drift check with the pause. |
+| `verify-deploy` is live again but `continue-on-error: true` (`ci.yml:672`), so its red is advisory. With `contexts: []` on `main`, a failed deploy check blocks nothing. The four runbooks describe it as live, which is now true but incomplete — none records that it cannot fail a merge. | `.github/workflows/ci.yml:656,663` | `tests/ciTriggers.test.ts:106-118` accepts LIVE **or** PAUSED for both jobs — it could not have told you the pause happened, and cannot tell you it ended. LEDGER HO-0822-14. |
+| Migrations merged now reach no database; the journal runs ahead of prod for as long as the pause lasts (stated at `ci.yml:546-549`), while `DB_MIGRATIONS.md:19-39` still diagrams an automatic apply on push. | `.github/workflows/ci.yml:562` | Nothing — `guard:migrations` validates the ledger, not whether it was applied. |
+| `ci.yml:545` says the Railway service "is being taken down"; it is up and serving this exact commit. | `.github/workflows/ci.yml:544-545` vs the live curl | Nothing — CHARTER §7 retired the prod-commit-drift check with the pause. |
 | `main` requires no status checks; `enforce_admins` binds admins to an empty list. Four docs still say direct pushes are "blocked by branch protection" (`README.md:110`, `app-guide/10-deploy-ops.md:19`, `app-guide/01-start-here.md:62-63`, `LOCAL_DEV.md:309`). | `.github/workflows/ci.yml:30-41` | Nothing automated. LEDGER HO-0822-15. |
 | A copy-pasted journal `when` silently skips a migration in prod. The ledger guard checks duplicate `idx` and `tag` but **not** duplicate `when`. | `scripts/migrate-prod.cjs:71,81`; `scripts/migration-ledger-guard.cjs:19-20` | Partially — a real hole in an otherwise six-check guard. Proposed ticket in chapter 12. |
 | A dry run is not a pre-flight for a contract migration. | `scripts/migrate-prod.cjs:84-87` | Documented, not enforced — the read-only prod probe in `DB_MIGRATIONS.md:171-205` is manual. |
 | `/api/health` 200 proves reachability, not identity; a wrong-branch `DATABASE_URL` passes the Railway healthcheck and 500s every data route. | `server/routes.ts:78`; `CICD.md:205-210` | Nothing — also hit `/api/articles` and `/sitemap.xml` by hand. |
 | `engines.node` range syntax kills every Railway build while CI stays green: CI's `setup-node` uses `24.x` (`ci.yml:187`), which resolves fine there. | `package.json:7` | Only `verify-deploy` — which is off. |
-| Turning on Railway "Wait for CI" makes `verify-deploy` decorative and can freeze deploys terminally. | `app-guide/10-deploy-ops.md:58-69`; `ci.yml:648-634` | Nothing — a dashboard setting. |
+| Turning on Railway "Wait for CI" makes `verify-deploy` decorative and can freeze deploys terminally. | `app-guide/10-deploy-ops.md:58-69`; `ci.yml:657-643` | Nothing — a dashboard setting. |
 | `.githooks` are opt-in (`git config core.hooksPath .githooks`); a fresh clone pushes ungated. | `LOCAL_DEV.md:281-283` | Nothing — and with no required check on `main`, a red PR can still merge. |
 | `scripts/local-db.sh` seeds and `seedLendingGrids` wipes pricing matrices — destructive against a shared DB. | `scripts/local-db.sh:23-27` | Nothing but the comment and the non-default port 5433. |
 
@@ -201,8 +201,8 @@ git log -S "PAUSED 2026-08-19" --format="%h %ad %s" --date=short -- .github/work
 
 | Question | What resolves it |
 |---|---|
-| Whether the production database caught up on the first push after the re-arm, and whether anything was pending when it did. | A `workflow_dispatch` of `ci.yml` with `dry_run=true` (`ci.yml:545`), then read the `pending <tag>` list — remembering the dry run reconciles the **journal** and never executes a migration's SQL. Needs repo write access; not run here. |
-| Whether the Railway takedown is still planned at all. `ci.yml:568-573` still carries the warning that if it is, re-arming was "the wrong half of the fix" and prod should stop receiving deploys instead. Prod kept auto-deploying throughout the pause, which is how it reached `12d7cbec` with `verify-deploy` off. | The founder, or Railway → service → Deployments and Settings → Source. |
+| Whether the production database caught up on the first push after the re-arm, and whether anything was pending when it did. | A `workflow_dispatch` of `ci.yml` with `dry_run=true` (`ci.yml:554`), then read the `pending <tag>` list — remembering the dry run reconciles the **journal** and never executes a migration's SQL. Needs repo write access; not run here. |
+| Whether the Railway takedown is still planned at all. `ci.yml:577-582` still carries the warning that if it is, re-arming was "the wrong half of the fix" and prod should stop receiving deploys instead. Prod kept auto-deploying throughout the pause, which is how it reached `12d7cbec` with `verify-deploy` off. | The founder, or Railway → service → Deployments and Settings → Source. |
 | Whether GitHub Actions billing has fully recovered (the protection was removed 2026-08-19 because of a billing failure, `ci.yml:37-39`). | `gh run list --branch main`; CHARTER §7 warns that zero check-runs can mean an outage rather than a change. |
 | Whether `CSP_ENFORCE`, `BETA_ACCESS_CODE`, `VITE_PRELAUNCH_GATED` are set in the live service. | Railway Variables (founder-only). The live health body shows `email.configured: true`, so the email secret at least is set. |
 
@@ -212,7 +212,7 @@ A smoke detector wired to chirp but not to the sprinklers. For two days in Augus
 out entirely — the building (prod) was fine the whole time, which is exactly why nobody noticed,
 and the manual still said "the detector will alert you". The battery is back in as of `76c96751`.
 But `continue-on-error: true` is the deliberate choice not to wire it to the sprinklers, because
-the sprinklers and the detector were found triggering each other into a lock-up (`ci.yml:648-662`).
+the sprinklers and the detector were found triggering each other into a lock-up (`ci.yml:657-671`).
 So it chirps, and someone has to be listening. That is the 2026-08-06 shape one level up: not a
 failed deploy nobody noticed, but a deploy *verifier* whose warning nothing is obliged to act on. And the journal is the ship's logbook:
 `migrate-prod` is the navigator who reconciles it with the ship's real position on every merge —
