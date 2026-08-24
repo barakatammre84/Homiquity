@@ -35,9 +35,9 @@ const COLUMNS = [
   "seatId", "displayName", "fleet", "taskId", "cron", "fires", "cadence",
   "writesCode", "definitionPath", "status", "statusReason", "reviewBy", "produces",
 ];
-const STATUSES = new Set(["active", "paused", "unregistered", "retired"]);
+const STATUSES = new Set(["active", "paused", "broken", "unregistered", "retired"]);
 /** These must justify themselves and carry an expiry — DA-0820-09's lesson. */
-const NEEDS_REASON = new Set(["paused", "unregistered", "retired"]);
+const NEEDS_REASON = new Set(["paused", "broken", "unregistered", "retired"]);
 
 const BEGIN_LOCAL = "<!-- BEGIN GENERATED seats:local — do not hand-edit; run `pnpm guard:seats --write-table` -->";
 const BEGIN_CCR = "<!-- BEGIN GENERATED seats:ccr — do not hand-edit; run `pnpm guard:seats --write-table` -->";
@@ -110,6 +110,7 @@ function bySchedule(a, b) {
 const REGISTERED_CELL = {
   active: "✅ **enabled**",
   paused: "⏸️ registered, **paused**",
+  broken: "⚠️ registered and enabled — **NOT DISPATCHING**",
   unregistered: "⛔ **NO** — definition on disk, not in the scheduler (§11)",
   retired: "— retired",
 };
@@ -129,16 +130,26 @@ function renderGroup(rows, firesHeader) {
 
 function renderFleet(rows, fleet, firesHeader) {
   const mine = rows.filter((r) => r.fleet === fleet || (fleet === "local" && r.fleet === "hand"));
-  const live = mine.filter((r) => r.status === "active" || r.status === "paused");
+  const live = mine.filter((r) => r.status === "active");
+  const stopped = mine.filter((r) => r.status === "paused" || r.status === "broken");
   const fossil = mine.filter((r) => r.status === "unregistered");
   const retired = mine.filter((r) => r.status === "retired");
 
   const out = [];
   if (live.length) {
-    out.push("**Registered in the scheduler.**\n");
+    out.push("**Registered and running.**\n");
     out.push(renderGroup(live, firesHeader));
   } else {
-    out.push("**Registered in the scheduler:** *(none)*");
+    out.push("**Registered and running:** *(none)*");
+  }
+  if (stopped.length) {
+    out.push("");
+    out.push(
+      "**Registered but not running.** A paused seat is a decision; a `NOT DISPATCHING` seat is a " +
+      "fault — its slot advances and no session is created, which looks identical to a healthy seat " +
+      "from the outside. Neither is a control.\n"
+    );
+    out.push(renderGroup(stopped, firesHeader));
   }
   if (fossil.length) {
     out.push("");

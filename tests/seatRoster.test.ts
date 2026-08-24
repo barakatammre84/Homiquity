@@ -235,6 +235,29 @@ describe("seat-roster-guard", () => {
     }
   });
 
+  it("renders `broken` as registered-but-not-running, not as staffed", () => {
+    // Discovered 2026-08-24: the Selling Guide Steward's trigger is registered AND enabled, its
+    // next_run_at advances, and no session is ever created. `active` would be a lie and
+    // `unregistered` would be a different lie, so the vocabulary has a fifth state.
+    const parsed = parseSeats(
+      [HEADER, row({ seatId: "sg", displayName: "SG Steward", taskId: "sg", status: "broken", statusReason: "slot advances, no session created", reviewBy: "2026-12-01" })].join("\n"),
+    ).rows;
+    const table = renderFleet(parsed, "local", "Fires");
+    expect(table).toMatch(/Registered but not running/);
+    expect(table).toMatch(/NOT DISPATCHING/);
+    expect(table).not.toMatch(/Registered and running\.\n/);
+  });
+
+  it("FAILS a broken seat with no reason and no reviewBy, like any other stopped seat", () => {
+    const f = fixture([row({ status: "broken" })]);
+    try {
+      const r = run(f);
+      expect(r.failures.join()).toMatch(/no statusReason/);
+    } finally {
+      f.cleanup();
+    }
+  });
+
   it("FAILS an unknown status rather than passing it through", () => {
     const f = fixture([row({ status: "sortof" })]);
     try {

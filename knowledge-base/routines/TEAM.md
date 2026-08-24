@@ -70,7 +70,7 @@ is the map, and a map nobody re-measures is how five seats came to look staffed.
 
 | Seat | Routine (`taskId`) | Cadence | Writes code? | Registered? (generated from `SEATS.tsv`) |
 |---|---|---|---|---|
-| **Selling Guide Steward** | `selling-guide-steward` | daily | yes — Guide fact layer + its watch state only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Selling Guide Steward** | `selling-guide-steward` | daily | yes — Guide fact layer + its watch state only | ⚠️ registered and enabled — **NOT DISPATCHING** |
 | **Primary Engineer** | `primary-engineer` | daily | yes — company-wide lane | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
 | **Trunk Health** | `launch-gate` | daily | no — tickets only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
 | **Capture Path Engineer** | `act-as-a-senior-frontend-architect-i-need-you-to-audit-the-wiring-and-structural-integrity-of-mortgage-streamhomiquity` | daily | yes — capture path | ⛔ **NO** — definition on disk, not in the scheduler (§11) |

@@ -189,17 +189,22 @@ not yet registered; see that row and the Handoff Corpus Steward note.)*
 
 <!-- BEGIN GENERATED seats:local — do not hand-edit; run `pnpm guard:seats --write-table` -->
 
-**Registered in the scheduler.**
+**Registered and running.**
 
 | Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
 |---|---|---|---|---|---|---|
-| 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | ⏸️ registered, **paused** | one end-to-end workflow driven in a browser, first seam fixed |
 | 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | ✅ **enabled** | the highest-value completion gap in one domain, shipped |
-| 13:46 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | ⏸️ registered, **paused** | one staff desk walked as the seat and its counterpart, own port 5003 |
 | 17:06 | `5 17 * * *` | **Handoff Corpus Steward** (`client-journey-walk`) | daily | no — `knowledge-base/handoff/**` docs only | ✅ **enabled** | corpus refresh PR + drift/aging report |
 | 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | ✅ **enabled** | one docs PR per tick at most + the `DA-…` ledger |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | ✅ **enabled** | roadmap update + the founder's tomorrow list |
 | Sat 15:33 | `30 15 * * 6` | **UI Conformance Sweep** (`ui-conformance-sweep`) | weekly | yes — `client/src/**` visual only | ✅ **enabled** | one conformance PR + the `UC-…` ledger |
+
+**Registered but not running.** A paused seat is a decision; a `NOT DISPATCHING` seat is a fault — its slot advances and no session is created, which looks identical to a healthy seat from the outside. Neither is a control.
+
+| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
+| 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | ⏸️ registered, **paused** | one end-to-end workflow driven in a browser, first seam fixed |
+| 13:46 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | ⏸️ registered, **paused** | one staff desk walked as the seat and its counterpart, own port 5003 |
 
 **Not registered — 10 definition(s) on disk with no scheduler entry.** §11: *"a definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and fossils are what produced §0."* These do **not** run. Nothing may plan around them.
 
@@ -377,13 +382,18 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 
 <!-- BEGIN GENERATED seats:ccr — do not hand-edit; run `pnpm guard:seats --write-table` -->
 
-**Registered in the scheduler:** *(none)*
+**Registered and running:** *(none)*
 
-**Not registered — 2 definition(s) on disk with no scheduler entry.** §11: *"a definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and fossils are what produced §0."* These do **not** run. Nothing may plan around them.
+**Registered but not running.** A paused seat is a decision; a `NOT DISPATCHING` seat is a fault — its slot advances and no session is created, which looks identical to a healthy seat from the outside. Neither is a control.
 
 | Fires (UTC) | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
 |---|---|---|---|---|---|---|
-| 05:30 UTC | `30 5 * * *` | **Selling Guide Steward** (`selling-guide-steward`) | daily | yes — Guide fact layer + its watch state only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | extraction drill verdict + edition/amendment/link sweep + <=1 draft PR |
+| 05:30 UTC | `30 5 * * *` | **Selling Guide Steward** (`selling-guide-steward`) | daily | yes — Guide fact layer + its watch state only | ⚠️ registered and enabled — **NOT DISPATCHING** | extraction drill verdict + edition/amendment/link sweep + <=1 draft PR |
+
+**Not registered — 1 definition(s) on disk with no scheduler entry.** §11: *"a definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and fossils are what produced §0."* These do **not** run. Nothing may plan around them.
+
+| Fires (UTC) | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
 | 11:00 UTC | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | yes — `server/**`, `shared/**` + same-PR migration | ⛔ **NO** — definition on disk, not in the scheduler (§11) | <=2 PRs + the `BD-…` ledger |
 
 <!-- END GENERATED -->
