@@ -225,3 +225,28 @@ describe("ROUTE_GATES.partnerHub mirrors the server gate on /api/partners/me", (
     expect(gates.slice(at, gates.indexOf("]", at) + 1)).toContain('"cpa"');
   });
 });
+
+describe("TaskDetail's verify controls mirror the server gate on document verification", () => {
+  // F-0820-58. The client side is pinned BEHAVIOURALLY in
+  // client/src/pages/borrower/TaskDetail.test.tsx — it renders the page as
+  // every staff role and asserts which of them are offered the controls, which
+  // a source scan cannot do. What belongs HERE is the other half: if someone
+  // later widens the server to admit broker or lender, this fails and forces
+  // the decision to be made deliberately instead of the two sides converging
+  // by accident.
+  const routes = read("server/routes/task-engine.ts");
+
+  it("the server still restricts verification to internal staff", () => {
+    const at = routes.indexOf('"/api/tasks/:taskId/documents/:docId/verify"');
+    expect(at, "verify route registration not found").toBeGreaterThan(-1);
+    const handler = routes.slice(at, at + 600);
+    expect(handler, "verify must stay internal-staff only").toContain("isInternalStaff(userRole)");
+  });
+
+  it("isInternalStaff excludes exactly the external partner roles", () => {
+    // The set difference IS the finding: broker and lender are the two roles a
+    // client gate on isStaffRole would have admitted and the server refuses.
+    const external = STAFF_ROLES.filter((r) => !INTERNAL_STAFF_ROLES.includes(r as never));
+    expect([...external].sort()).toEqual(["broker", "lender"]);
+  });
+});

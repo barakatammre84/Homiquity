@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { taskKeys } from "@/lib/queryClient";
+import { INTERNAL_STAFF_ROLES, STAFF_ROLES } from "@shared/roles";
 
 // #484 — Approve and Reject both acted on `documents[documents.length - 1]`.
 //
@@ -21,8 +22,11 @@ vi.mock("@/lib/queryClient", async (importOriginal) => {
   return { ...actual, apiRequest: apiRequestMock };
 });
 
+// Mutable so a test can re-render the same page as a different role — the
+// role gate below is a property of WHO is looking, not of the task.
+const viewer = vi.hoisted(() => ({ current: { id: "staff-1", role: "processor" } }));
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({ user: { id: "staff-1", role: "processor" }, isLoading: false }),
+  useAuth: () => ({ user: viewer.current, isLoading: false }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/hooks/use-upload", () => ({ useUpload: () => ({ upload: vi.fn() }) }));
@@ -136,5 +140,42 @@ describe("TaskDetail — verifying a task with more than one document", () => {
     );
     expect(screen.getByTestId("verify-row-td-a").textContent).toContain("Verified");
     expect(screen.getByTestId("verify-row-td-b").textContent).toContain("Not yet verified");
+  });
+});
+
+// F-0820-58 — the Verify/Reject controls were gated on `isStaffRole`, the
+// 8-role set, while PATCH /api/tasks/:taskId/documents/:docId/verify answers
+// 403 "Only internal staff can verify documents" to anyone outside the 6-role
+// INTERNAL set. A broker or lender on a deal team therefore saw two buttons
+// that could only ever fail. Fixed by NARROWING the client, per
+// tests/routeGateDrift.test.ts: document verification is an underwriting act,
+// and shared/roles.ts records that broker and lender are external partners.
+describe("TaskDetail — who may verify a document", () => {
+  beforeEach(() => {
+    apiRequestMock.mockClear();
+    viewer.current = { id: "staff-1", role: "processor" };
+  });
+
+  for (const role of INTERNAL_STAFF_ROLES) {
+    it(`offers the controls to ${role}, which the server accepts`, () => {
+      viewer.current = { id: "staff-1", role };
+      renderPage();
+      expect(screen.queryByTestId("button-approve-document-td-2023")).toBeTruthy();
+    });
+  }
+
+  for (const role of STAFF_ROLES.filter((r) => !INTERNAL_STAFF_ROLES.includes(r as never))) {
+    it(`does not offer a control to ${role} that the server would 403`, () => {
+      viewer.current = { id: "partner-1", role };
+      renderPage();
+      expect(screen.queryByTestId("button-approve-document-td-2023")).toBeNull();
+      expect(screen.queryByTestId("button-reject-document-td-2023")).toBeNull();
+    });
+  }
+
+  it("does not offer them to the borrower either", () => {
+    viewer.current = { id: "borrower-1", role: "active_buyer" };
+    renderPage();
+    expect(screen.queryByTestId("button-approve-document-td-2023")).toBeNull();
   });
 });

@@ -94,6 +94,47 @@ function getDocumentCategoryLabel(category: string) {
   return labels[category] || titleCaseFromSnake(category);
 }
 
+/**
+ * The task's own title, as the door to /task/:id.
+ *
+ * That page is the only surface in the borrower app that answers "which file
+ * did I send you for this, and what did you make of it" — it lists every
+ * document linked to the task with its per-document verdict, alongside the
+ * full instructions. Nothing linked to it: the entire client held two
+ * references to the route, App.tsx's declaration and the page's own
+ * `useRoute`, so it was reachable only by typing the URL. This list is its
+ * front door.
+ *
+ * The link wraps the TITLE ONLY, never the card. A Link around a card that
+ * contains an Upload button nests two interactive controls, which
+ * DESIGN_SYSTEM.md §12 holds at zero occurrences. One door per task for the
+ * same reason: the upload controls stay the fast path beside it, not a second
+ * competing route to the same place.
+ */
+function TaskDetailLink({
+  taskId,
+  className = "",
+  children,
+}: {
+  taskId: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={`/task/${taskId}`}
+      // `py-3` on an INLINE anchor grows the hit box without moving the line
+      // box, so the tap target clears 40px on a phone while the row keeps its
+      // height and the truncating checklist row keeps its rhythm. A block
+      // `.touch-target` (min-height: 44px) would relayout every row it sits in.
+      className={`rounded-sm py-3 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+      data-testid={`link-task-detail-${taskId}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export default function Tasks() {
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
@@ -317,7 +358,9 @@ export default function Tasks() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
-                                  <h4 className="font-medium">{task.title}</h4>
+                                  <h4 className="font-medium">
+                                    <TaskDetailLink taskId={task.id}>{task.title}</TaskDetailLink>
+                                  </h4>
                                   {getTaskStatusBadge(task)}
                                   {task.priority && getPriorityBadge(task.priority)}
                                 </div>
@@ -378,12 +421,14 @@ export default function Tasks() {
                                 </div>
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-medium">
-                                    {task.documentCategory
-                                      ? getDocumentCategoryLabel(task.documentCategory)
-                                      : task.title}
-                                    {task.documentYear && (
-                                      <span className="text-muted-foreground"> · {task.documentYear}</span>
-                                    )}
+                                    <TaskDetailLink taskId={task.id}>
+                                      {task.documentCategory
+                                        ? getDocumentCategoryLabel(task.documentCategory)
+                                        : task.title}
+                                      {task.documentYear && (
+                                        <span className="text-muted-foreground"> · {task.documentYear}</span>
+                                      )}
+                                    </TaskDetailLink>
                                   </p>
                                   {task.documentInstructions && (
                                     <p className="truncate text-xs text-muted-foreground">
@@ -422,7 +467,9 @@ export default function Tasks() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
-                                  <h4 className="font-medium">{task.title}</h4>
+                                  <h4 className="font-medium">
+                                    <TaskDetailLink taskId={task.id}>{task.title}</TaskDetailLink>
+                                  </h4>
                                   {getTaskStatusBadge(task)}
                                   {task.priority && getPriorityBadge(task.priority)}
                                 </div>
@@ -479,7 +526,9 @@ export default function Tasks() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
-                                  <h4 className="font-medium">{task.title}</h4>
+                                  <h4 className="font-medium">
+                                    <TaskDetailLink taskId={task.id}>{task.title}</TaskDetailLink>
+                                  </h4>
                                   {getTaskStatusBadge(task)}
                                 </div>
                                 {task.documentCategory && (
@@ -514,7 +563,9 @@ export default function Tasks() {
                             <div className="flex items-center gap-4">
                               <CheckCircle2 className="h-5 w-5 text-status-success flex-shrink-0" />
                               <div className="flex-1">
-                                <h4 className="font-medium">{task.title}</h4>
+                                <h4 className="font-medium">
+                                    <TaskDetailLink taskId={task.id}>{task.title}</TaskDetailLink>
+                                  </h4>
                                 {task.documentCategory && (
                                   <p className="text-sm text-muted-foreground">
                                     {getDocumentCategoryLabel(task.documentCategory)}

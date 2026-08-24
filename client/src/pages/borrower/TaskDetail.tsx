@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { useLocation, useRoute } from "wouter";
-import { isStaffRole } from "@shared/roles";
+import { isInternalStaffRole, isStaffRole } from "@shared/roles";
 import type { Task, Document, TaskDocument, TaskPriority } from "@shared/schema";
 import {
   ArrowLeft,
@@ -198,7 +198,17 @@ export default function TaskDetail() {
   // initial request and a reopened-after-rejection task); verify once a
   // document is submitted and the verdict is still pending.
   const canUpload = isAssignedUser && task.status === "OPEN";
-  const canVerify = isStaff && task.status === "IN_PROGRESS" && task.verificationStatus === "pending";
+  // INTERNAL staff, not all 8 staff roles (F-0820-58). The server answers
+  // 403 "Only internal staff can verify documents" to broker and lender
+  // (server/routes/task-engine.ts), so gating on isStaffRole offered those
+  // two partners a pair of buttons that could only ever fail. Narrowed on the
+  // client side, never widened on the server: verification is an underwriting
+  // act, and shared/roles.ts records broker/lender as external partners who
+  // reach a file only through deal-team membership.
+  const canVerify =
+    isInternalStaffRole(user?.role || "") &&
+    task.status === "IN_PROGRESS" &&
+    task.verificationStatus === "pending";
 
   return (
     <PageShell

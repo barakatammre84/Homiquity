@@ -116,3 +116,74 @@ describe("Tasks — empty state scope", () => {
     expect(empty).toContain("loan officer will assign");
   });
 });
+
+// REACHABILITY — /task/:id is where a borrower finds out WHICH file they sent
+// for a task and what the reviewer made of it. Nothing in the app linked to
+// it: the whole client held exactly two references to the route, App.tsx's
+// declaration and the page's own useRoute. This list is its front door, so
+// every bucket that renders a task must offer a way in — including the two
+// terminal buckets, which is where the question is actually asked ("you said
+// you're reviewing it — reviewing WHAT?").
+function detailHrefs(): string[] {
+  return Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href^="/task/"]')).map(
+    (a) => a.getAttribute("href")!,
+  );
+}
+
+describe("Tasks — every task can be opened", () => {
+  it("links a pending document request to its detail page", () => {
+    renderTasks([task({ id: "t-doc", status: "OPEN", taskType: "document_request", documentCategory: "pay_stub" })]);
+
+    expect(detailHrefs()).toContain("/task/t-doc");
+  });
+
+  it("links a non-document to-do to its detail page", () => {
+    renderTasks([task({ id: "t-todo", status: "OPEN", taskType: "other" })]);
+
+    expect(detailHrefs()).toContain("/task/t-todo");
+  });
+
+  it("links a rejected task to its detail page", () => {
+    renderTasks([
+      task({ id: "t-rej", status: "OPEN", taskType: "document_request", verificationStatus: "rejected" }),
+    ]);
+
+    expect(detailHrefs()).toContain("/task/t-rej");
+  });
+
+  // The two that matter most: these buckets have no upload dialog, so before
+  // this the borrower had no route to the file at all.
+  it("links an under-review task to its detail page", () => {
+    renderTasks([task({ id: "t-sub", status: "IN_PROGRESS", verificationStatus: "pending" })]);
+
+    expect(screen.getByText("Awaiting review")).toBeTruthy();
+    expect(detailHrefs()).toContain("/task/t-sub");
+  });
+
+  it("links a completed task to its detail page", () => {
+    renderTasks([task({ id: "t-done", status: "COMPLETED" })]);
+
+    expect(detailHrefs()).toContain("/task/t-done");
+  });
+
+  // One task in every bucket at once: this is what pins "exactly one door",
+  // and it must cover all five, or a duplicate link added to an unexercised
+  // bucket walks past the assertion (it did, on the first draft).
+  it("offers one door per task, not one per control", () => {
+    renderTasks([
+      task({ id: "t-rej", status: "OPEN", taskType: "document_request", verificationStatus: "rejected" }),
+      task({ id: "t-doc", status: "OPEN", taskType: "document_request" }),
+      task({ id: "t-todo", status: "OPEN", taskType: "other" }),
+      task({ id: "t-sub", status: "IN_PROGRESS", verificationStatus: "pending" }),
+      task({ id: "t-done", status: "COMPLETED" }),
+    ]);
+
+    expect(detailHrefs().sort()).toEqual([
+      "/task/t-doc",
+      "/task/t-done",
+      "/task/t-rej",
+      "/task/t-sub",
+      "/task/t-todo",
+    ]);
+  });
+});
