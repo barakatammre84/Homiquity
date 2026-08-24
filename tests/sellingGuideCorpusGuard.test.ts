@@ -28,6 +28,8 @@ function extractorSource(overrides: Partial<Record<string, string>> = {}) {
     `PDF_BYTES = ${overrides.PDF_BYTES ?? "1234"}`,
     `PDF_GIT_BLOB = "${overrides.PDF_GIT_BLOB ?? BLOB}"`,
     `PYMUPDF_PINNED = "${overrides.PYMUPDF_PINNED ?? "1.28.2"}"`,
+    `PYMUPDF4LLM_PINNED = "${overrides.PYMUPDF4LLM_PINNED ?? "1.28.2"}"`,
+    `MD_STREAM_NAME = "${overrides.MD_STREAM_NAME ?? "selling-guide.md"}"`,
     "",
   ].join("\n");
 }
@@ -39,6 +41,8 @@ type Fix = {
   coverageEdition?: string;
   extractor?: string;
   skipIndex?: boolean;
+  /** Replace INDEX.md wholesale, to drive the per-rendering link-count checks. */
+  indexMd?: string;
 };
 
 /** A tiny but fully coherent corpus: one group node, two sections, one URL. */
@@ -106,6 +110,15 @@ function writeCorpus(fix: Fix = {}) {
     pdf: { pages: 3, toc_entries: 3, highlight_annotations: 1 },
     structure: { leaf_sections: 2, group_nodes: 1, front_matter_nodes: 0 },
     links: { unique_urls: 1 },
+    renderings: {
+      text: { stream: "selling-guide-text.txt", sections: "extracted/sections/", requires: "pymupdf==1.28.2" },
+      markdown: {
+        stream: "selling-guide.md",
+        sections: "extracted/markdown/",
+        requires: "pymupdf4llm==1.28.2",
+        optional: true,
+      },
+    },
     tracked: ["section-index.tsv", "toc.json", "links.json", "manifest.json", "INDEX.md", "revised-sections.tsv"],
   };
   fix.manifest?.(manifest);
@@ -113,9 +126,10 @@ function writeCorpus(fix: Fix = {}) {
 
   writeFileSync(
     join(dir, "INDEX.md"),
-    `# index — edition ${EDITION}\n` +
-      "- [`A1-1-01`](extracted/sections/A1-1-01.txt)\n" +
-      "- [`B3-6-05`](extracted/sections/B3-6-05.txt)\n",
+    fix.indexMd ??
+      `# index — edition ${EDITION}\n` +
+        "- `A1-1-01` · [md](extracted/markdown/A1-1-01.md) · [txt](extracted/sections/A1-1-01.txt)\n" +
+        "- `B3-6-05` · [md](extracted/markdown/B3-6-05.md) · [txt](extracted/sections/B3-6-05.txt)\n",
   );
   writeFileSync(
     join(dir, "revised-sections.tsv"),
@@ -129,16 +143,23 @@ function writeCorpus(fix: Fix = {}) {
 }
 
 describe("constant parsing (derive, never duplicate)", () => {
-  it("parses all five constants out of the REAL extractor and they match the REAL manifest", () => {
+  it("parses every constant out of the REAL extractor and they match the REAL manifest", () => {
     const real = defaultPaths();
     const constants = parseExtractorConstants(real.extractor);
     expect(constants.EDITION).toMatch(/^\d{2}-\d{2}-\d{4}$/);
     expect(constants.PDF_SHA256).toMatch(/^[0-9a-f]{64}$/);
     expect(constants.PYMUPDF_PINNED).toMatch(/^\d+\.\d+/);
+    expect(constants.PYMUPDF4LLM_PINNED).toMatch(/^\d+\.\d+/);
+    expect(constants.MD_STREAM_NAME).toMatch(/\.md$/);
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const manifest = require("../docs/fannie-mae/selling-guide/manifest.json");
     expect(manifest.source_pdf.sha256).toBe(constants.PDF_SHA256);
     expect(manifest.edition).toBe(constants.EDITION);
+    // The manifest advertises what produced each rendering; both pins are derived from
+    // the extractor, so a version bump that forgets the manifest reds here.
+    expect(manifest.renderings.text.requires).toBe(`pymupdf==${constants.PYMUPDF_PINNED}`);
+    expect(manifest.renderings.markdown.requires).toBe(`pymupdf4llm==${constants.PYMUPDF4LLM_PINNED}`);
+    expect(manifest.renderings.markdown.stream).toBe(constants.MD_STREAM_NAME);
   });
 
   it("FAILS loudly (never silently passes) when an anchor cannot be found", () => {
@@ -198,6 +219,44 @@ describe("failing directions", () => {
       manifest: (m) => (m.links.unique_urls = 2),
     });
     expect(runChecks(paths).errors.join("\n")).toContain("not sorted");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  // The markdown rendering is the one people READ (docs/…/selling-guide/README.md), so
+  // its half of the index and its half of the manifest get the same treatment as the
+  // text layer's: a drift that would leave a reader clicking a link the extractor never
+  // wrote, or trusting a pin the extractor no longer carries, must red.
+  it("an INDEX.md missing a markdown link per section fails", () => {
+    const { paths, root } = writeCorpus({
+      indexMd:
+        `# index — edition ${EDITION}\n` +
+        "- `A1-1-01` · [md](extracted/markdown/A1-1-01.md) · [txt](extracted/sections/A1-1-01.txt)\n" +
+        "- `B3-6-05` · [txt](extracted/sections/B3-6-05.txt)\n",
+    });
+    expect(runChecks(paths).errors.join("\n")).toContain("markdown section files");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("a manifest markdown pin that drifts from the extractor fails", () => {
+    const { paths, root } = writeCorpus({
+      manifest: (m) => (m.renderings.markdown.requires = "pymupdf4llm==0.0.1"),
+    });
+    expect(runChecks(paths).errors.join("\n")).toContain("pymupdf4llm==1.28.2");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("a manifest claiming the markdown rendering is mandatory fails", () => {
+    // --check and the CI extraction proof install only pymupdf. If the manifest ever
+    // says markdown is required, the corpus is advertising a dependency the gate does
+    // not have — which is how a green CI would start meaning less than it says.
+    const { paths, root } = writeCorpus({ manifest: (m) => (m.renderings.markdown.optional = false) });
+    expect(runChecks(paths).errors.join("\n")).toContain("optional must be true");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("a manifest that describes only one rendering fails", () => {
+    const { paths, root } = writeCorpus({ manifest: (m) => delete m.renderings.markdown });
+    expect(runChecks(paths).errors.join("\n")).toContain("both the text and markdown");
     rmSync(root, { recursive: true, force: true });
   });
 

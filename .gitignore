@@ -31,8 +31,10 @@ mismo-*.xml
 # deploy target. It is not; Railway is.
 .vercel
 
-# Fannie Mae Selling Guide — the source PDF and every artifact carrying its text
-# (the page-marked stream and the per-section files under extracted/).
+# Fannie Mae Selling Guide — the source PDF and every artifact carrying its text,
+# in EITHER rendering: the page-marked text stream, the markdown stream, and the
+# per-section files under extracted/ (both extracted/sections/ and
+# extracted/markdown/).
 #
 # This repository is PUBLIC. The Guide is Fannie Mae's copyrighted work, and a
 # complete text extraction is the same content in another format, not a lesser
@@ -43,8 +45,11 @@ mismo-*.xml
 # Tracked instead — the FACT layer, which carries no Guide prose: README.md,
 # INDEX.md, section-index.tsv, revised-sections.tsv, toc.json, manifest.json,
 # plus our own analysis in knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
+# NOTE: named one by one, never as *.md — README.md and INDEX.md are the tracked
+# fact layer and must keep being committed.
 docs/fannie-mae/selling-guide/*.pdf
 docs/fannie-mae/selling-guide/selling-guide-text.txt
+docs/fannie-mae/selling-guide/selling-guide.md
 docs/fannie-mae/selling-guide/highlights.json
 docs/fannie-mae/selling-guide/extracted/
 # Content fetched from the Guide’s own links by the steward/watch — third-party

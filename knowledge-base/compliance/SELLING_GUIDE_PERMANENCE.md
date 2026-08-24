@@ -1,6 +1,6 @@
 # Selling Guide permanence — the program that keeps the source of truth true
 
-> **Freshness:** last verified 2026-08-23 · review every 30 days
+> **Freshness:** last verified 2026-08-24 · review every 30 days
 > **Authority (L1/L2):** CLAUDE.md "Compliance first" ·
 > [governance/TEAM_PRACTICES.md](../governance/TEAM_PRACTICES.md) §10 ·
 > [routines/CHARTER.md](../routines/CHARTER.md) §3a/§6. This file is the program map;
@@ -9,7 +9,10 @@
 The Fannie Mae *Selling Guide* (edition **08-05-2026**) is the policy authority for every
 conventional-loan rule this company builds — the founder's direction (2026-08-23) is that it
 is the core foundation of everything built, everything already built, and everything that
-will be built. A source of truth is only worth what its verification is worth, so the Guide
+will be built, and (2026-08-24) that it is **the core document every seat refers to when
+making a decision, the CEO's included** — which is why the corpus now carries a *readable*
+rendering with the Guide's tables intact, and a one-page rule for readers who will never run
+a guard: [SELLING_GUIDE_DECISION_RULE.md](SELLING_GUIDE_DECISION_RULE.md). A source of truth is only worth what its verification is worth, so the Guide
 does not sit on a shelf here: it is **extracted, organized, gated, watched and taught**, and
 every layer of that is a command you can run. Every claim below carries its receipt.
 
@@ -17,7 +20,9 @@ every layer of that is a command you can run. Every claim below carries its rece
 
 | Layer | What it guarantees | Receipt (run it) |
 |---|---|---|
-| **Extraction** | Any clone materializes the full corpus — 1,185 pages, 423 heading-anchored section files, page-marked stream — with no network: the PDF recovers from this repo's own git history, SHA-256-verified | `python3 scripts/extract-selling-guide.py` → `… sha256=✓ pages=1185 toc=554 sections=423 …` in ~3s |
+| **Extraction** | Any clone materializes the full corpus — 1,185 pages, 423 heading-anchored section files, page-marked stream — with no network: the PDF recovers from this repo's own git history, SHA-256-verified | `python3 scripts/extract-selling-guide.py --no-markdown` → `… sha256=✓ pages=1185 toc=554 sections=423 …` in ~3s |
+| **Readable rendering** (2026-08-24) | The same 1,185 pages as **markdown**, with the Guide's TABLES reconstructed — 840 of them across 701 pages, the borderless ones included. This is the rendering to read policy from; the text layer flattens tables and always did. Optional dependency, so `--check` and the CI proof keep one pinned package | `python3 scripts/extract-selling-guide.py --markdown` → `markdown: … 840 tables rendered on 701 pages; 98 page(s) rescued by the graphics pass; every page ≥90% of the text layer` |
+| **Rendering completeness** | No page of the readable rendering is silently blank. The markdown renderer discards 98 of 1,185 graphics-heavy pages outright; every extraction re-measures each page against the text layer's character count, re-renders the short ones with `ignore_graphics`, and **fails** if any page is still under 90% | the same run's `every page ≥90% of the text layer`; residue in `extracted/extraction-report.json` → `markdown_thin_pages` |
 | **Fact layer** | Titles, pages, dates, structure, links — tracked, machine-readable, no Guide prose (the repo is public; the Guide is copyrighted; the split is a founder decision) | `ls docs/fannie-mae/selling-guide/{section-index.tsv,toc.json,links.json,manifest.json,INDEX.md}` |
 | **Link corpus** | Every link the Guide itself carries is a documented fact: 319 unique external URLs (295 probeable / 22 mailto / 2 corrupt-in-the-PDF), the 989-edge section-to-section citation graph, each section's canonical HTML-edition URL | `python3 -c "import json; print(json.load(open('docs/fannie-mae/selling-guide/links.json'))['summary'])"` |
 | **Coherence gate** | The fact layer agrees with itself and with the extractor's pinned identity, on every PR, never skippable by the docs-are-inert classifier | `pnpm guard:corpus` → `ok — edition 08-05-2026, 554 TOC entries, 423 sections, 319 link URLs …`; the always-run property is pinned by `tests/ciTriggers.test.ts` |
@@ -29,6 +34,7 @@ every layer of that is a command you can run. Every claim below carries its rece
 | **Daily steward** | The whole chain re-proven from a clean worktree every day at 05:30 UTC — before the rest of the fleet, corpus-first made literal; draft PRs only | [`.claude/skills/selling-guide-steward/SKILL.md`](../../.claude/skills/selling-guide-steward/SKILL.md); reports at `knowledge-base/routines/reports/<date>-selling-guide-steward.md` |
 | **Authority gate** | Guide-governed code names its section; an unresolvable id fails anywhere in the diff | `pnpm guard:authority` (TEAM_PRACTICES §10) |
 | **The teaching layer** | How the Guide touches every aspect of the build, in the handoff corpus's Feynman contract, with teach-back | [handoff chapter 13](../handoff/13-selling-guide-as-the-foundation.md) |
+| **The decision rule** (2026-08-24) | The Guide is the core document for decisions taken *above* the code too — product, pricing, marketing, founder calls. Written for a reader who will never run a test suite; the only layer here with no machine behind it, which is why it is written down | [SELLING_GUIDE_DECISION_RULE.md](SELLING_GUIDE_DECISION_RULE.md) |
 
 ## The blocked-network truth (recorded, not asserted)
 

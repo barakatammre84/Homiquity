@@ -1,561 +1,566 @@
 # Fannie Mae Selling Guide — section index
 
 Edition **08-05-2026** · 1185 PDF pages. This index is tracked (titles and
-page numbers are facts); the linked text files are **generated locally** by
+page numbers are facts); the linked files are **generated locally** by
 `python3 scripts/extract-selling-guide.py` and are gitignored — run it once and
 every link below resolves. See [README.md](README.md) for why.
+
+Each section links twice: **`md`** is the markdown rendering — read this one, it
+keeps the Guide's tables intact — and **`txt`** is the plain-text rendering, which
+flattens them. The markdown layer needs `pip3 install pymupdf4llm`; without it the
+`md` links do not resolve and the `txt` links still do.
 
 - **Table of Contents** — pp. 3–14
 - **Preface** — pp. 14–18
 - **Part A, Doing Business with Fannie Mae** — p. 19
   - **Subpart A1, Approval Qualification** — p. 20
     - **Chapter A1-1, Application and Approval of Seller/Servicer** — p. 20
-      - [`A1-1-01`](extracted/sections/A1-1-01.txt) Application and Approval of Seller/Servicer (09/04/2018) — p. 20
+      - `A1-1-01` Application and Approval of Seller/Servicer (09/04/2018) — p. 20 · [md](extracted/markdown/A1-1-01.md) · [txt](extracted/sections/A1-1-01.txt)
   - **Subpart A2, Lender Contract** — pp. 20–21
     - **Chapter A2-1, Contractual Obligations for Sellers/Servicers** — p. 21
-      - [`A2-1-01`](extracted/sections/A2-1-01.txt) Contractual Obligations for Sellers/Servicers (06/04/2025) — pp. 21–25
-      - [`A2-1-02`](extracted/sections/A2-1-02.txt) Nature of Mortgage Transaction (02/27/2018) — pp. 25–26
-      - [`A2-1-03`](extracted/sections/A2-1-03.txt) Indemnification for Losses (10/06/2021) — pp. 26–31
+      - `A2-1-01` Contractual Obligations for Sellers/Servicers (06/04/2025) — pp. 21–25 · [md](extracted/markdown/A2-1-01.md) · [txt](extracted/sections/A2-1-01.txt)
+      - `A2-1-02` Nature of Mortgage Transaction (02/27/2018) — pp. 25–26 · [md](extracted/markdown/A2-1-02.md) · [txt](extracted/sections/A2-1-02.txt)
+      - `A2-1-03` Indemnification for Losses (10/06/2021) — pp. 26–31 · [md](extracted/markdown/A2-1-03.md) · [txt](extracted/sections/A2-1-03.txt)
     - **Chapter A2-2, Contractual Representations and Warranties** — pp. 31–32
-      - [`A2-2-01`](extracted/sections/A2-2-01.txt) Representations and Warranties Overview (02/05/2020) — pp. 32–33
-      - [`A2-2-02`](extracted/sections/A2-2-02.txt) Delivery Information and Delivery-Option Specific Representations and Warranties (08/30/2016) — pp. 34–35
-      - [`A2-2-03`](extracted/sections/A2-2-03.txt) Document Warranties (10/06/2021) — pp. 35–38
-      - [`A2-2-04`](extracted/sections/A2-2-04.txt) Limited Waiver and Enforcement Relief of Representations and Warranties (04/01/2026) — pp. 38–44
-      - [`A2-2-05`](extracted/sections/A2-2-05.txt) Invalidation of Limited Waiver of Representations and Warranties (01/27/2015) — pp. 44–45
-      - [`A2-2-06`](extracted/sections/A2-2-06.txt) Representations and Warranties on Property Value (06/03/2026) — pp. 45–48
-      - [`A2-2-07`](extracted/sections/A2-2-07.txt) Life-of-Loan Representations and Warranties (08/02/2023) — pp. 48–56
+      - `A2-2-01` Representations and Warranties Overview (02/05/2020) — pp. 32–33 · [md](extracted/markdown/A2-2-01.md) · [txt](extracted/sections/A2-2-01.txt)
+      - `A2-2-02` Delivery Information and Delivery-Option Specific Representations and Warranties (08/30/2016) — pp. 34–35 · [md](extracted/markdown/A2-2-02.md) · [txt](extracted/sections/A2-2-02.txt)
+      - `A2-2-03` Document Warranties (10/06/2021) — pp. 35–38 · [md](extracted/markdown/A2-2-03.md) · [txt](extracted/sections/A2-2-03.txt)
+      - `A2-2-04` Limited Waiver and Enforcement Relief of Representations and Warranties (04/01/2026) — pp. 38–44 · [md](extracted/markdown/A2-2-04.md) · [txt](extracted/sections/A2-2-04.txt)
+      - `A2-2-05` Invalidation of Limited Waiver of Representations and Warranties (01/27/2015) — pp. 44–45 · [md](extracted/markdown/A2-2-05.md) · [txt](extracted/sections/A2-2-05.txt)
+      - `A2-2-06` Representations and Warranties on Property Value (06/03/2026) — pp. 45–48 · [md](extracted/markdown/A2-2-06.md) · [txt](extracted/sections/A2-2-06.txt)
+      - `A2-2-07` Life-of-Loan Representations and Warranties (08/02/2023) — pp. 48–56 · [md](extracted/markdown/A2-2-07.md) · [txt](extracted/sections/A2-2-07.txt)
     - **Chapter A2-3, Lender Breach of Contract** — p. 56
       - **Section A2-3.1, Lender Breach of Contract** — p. 56
-        - [`A2-3.1-01`](extracted/sections/A2-3.1-01.txt) Lender Breach of Contract (08/05/2020) — pp. 56–58
-        - [`A2-3.1-02`](extracted/sections/A2-3.1-02.txt) Sanctions, Suspensions, and Terminations (02/23/2016) — pp. 58–60
+        - `A2-3.1-01` Lender Breach of Contract (08/05/2020) — pp. 56–58 · [md](extracted/markdown/A2-3.1-01.md) · [txt](extracted/sections/A2-3.1-01.txt)
+        - `A2-3.1-02` Sanctions, Suspensions, and Terminations (02/23/2016) — pp. 58–60 · [md](extracted/markdown/A2-3.1-02.md) · [txt](extracted/sections/A2-3.1-02.txt)
       - **Section A2-3.2, Loan Repurchases and Make Whole Payments Requested by Fannie Mae** — p. 60
-        - [`A2-3.2-01`](extracted/sections/A2-3.2-01.txt) Loan Repurchases and Make Whole Payments Requested by Fannie Mae (08/29/2017) — pp. 60–65
-        - [`A2-3.2-02`](extracted/sections/A2-3.2-02.txt) Enforcement Relief for Breaches of Certain Representations and Warranties Related to Underwriting and Eligibility (08/06/2025) — pp. 65–70
-        - [`A2-3.2-03`](extracted/sections/A2-3.2-03.txt) Remedies Framework (08/30/2016) — pp. 70–76
+        - `A2-3.2-01` Loan Repurchases and Make Whole Payments Requested by Fannie Mae (08/29/2017) — pp. 60–65 · [md](extracted/markdown/A2-3.2-01.md) · [txt](extracted/sections/A2-3.2-01.txt)
+        - `A2-3.2-02` Enforcement Relief for Breaches of Certain Representations and Warranties Related to Underwriting and Eligibility (08/06/2025) — pp. 65–70 · [md](extracted/markdown/A2-3.2-02.md) · [txt](extracted/sections/A2-3.2-02.txt)
+        - `A2-3.2-03` Remedies Framework (08/30/2016) — pp. 70–76 · [md](extracted/markdown/A2-3.2-03.md) · [txt](extracted/sections/A2-3.2-03.txt)
       - **Section A2-3.3, Compensatory Fees** — p. 76
-        - [`A2-3.3-01`](extracted/sections/A2-3.3-01.txt) Compensatory Fees (07/30/2013) — pp. 76–78
+        - `A2-3.3-01` Compensatory Fees (07/30/2013) — pp. 76–78 · [md](extracted/markdown/A2-3.3-01.md) · [txt](extracted/sections/A2-3.3-01.txt)
     - **Chapter A2-4, Loan Files and Records** — p. 78
       - **Section A2-4.1, Establishment, Ownership, and Retention of Loan Files and Records** — p. 78
-        - [`A2-4.1-01`](extracted/sections/A2-4.1-01.txt) Establishing Loan Files (09/04/2024) — pp. 78–83
-        - [`A2-4.1-02`](extracted/sections/A2-4.1-02.txt) Ownership and Retention of Loan Files and Records (12/19/2017) — pp. 83–89
-        - [`A2-4.1-03`](extracted/sections/A2-4.1-03.txt) Electronic Records, Signatures, and Transactions (05/06/2026) — pp. 89–98
-        - [`A2-4.1-04`](extracted/sections/A2-4.1-04.txt) Notarization Standards (06/02/2021) — pp. 98–102
+        - `A2-4.1-01` Establishing Loan Files (09/04/2024) — pp. 78–83 · [md](extracted/markdown/A2-4.1-01.md) · [txt](extracted/sections/A2-4.1-01.txt)
+        - `A2-4.1-02` Ownership and Retention of Loan Files and Records (12/19/2017) — pp. 83–89 · [md](extracted/markdown/A2-4.1-02.md) · [txt](extracted/sections/A2-4.1-02.txt)
+        - `A2-4.1-03` Electronic Records, Signatures, and Transactions (05/06/2026) — pp. 89–98 · [md](extracted/markdown/A2-4.1-03.md) · [txt](extracted/sections/A2-4.1-03.txt)
+        - `A2-4.1-04` Notarization Standards (06/02/2021) — pp. 98–102 · [md](extracted/markdown/A2-4.1-04.md) · [txt](extracted/sections/A2-4.1-04.txt)
     - **Chapter A2-5, Fannie Mae Trade Name and Trademarks** — p. 102
-      - [`A2-5-01`](extracted/sections/A2-5-01.txt) Fannie Mae Trade Name and Trademarks (08/29/2017) — pp. 102–105
+      - `A2-5-01` Fannie Mae Trade Name and Trademarks (08/29/2017) — pp. 102–105 · [md](extracted/markdown/A2-5-01.md) · [txt](extracted/sections/A2-5-01.txt)
   - **Subpart A3, Getting Started With Fannie Mae** — p. 105
     - **Chapter A3-1, Fannie Mae’s Technology Products** — pp. 105–106
-      - [`A3-1-01`](extracted/sections/A3-1-01.txt) Fannie Mae’s Technology Products (10/06/2021) — pp. 106–107
+      - `A3-1-01` Fannie Mae’s Technology Products (10/06/2021) — pp. 106–107 · [md](extracted/markdown/A3-1-01.md) · [txt](extracted/sections/A3-1-01.txt)
     - **Chapter A3-2, Compliance With Requirements and Laws** — p. 107
-      - [`A3-2-01`](extracted/sections/A3-2-01.txt) Compliance With Laws (12/10/2025) — pp. 107–119
-      - [`A3-2-02`](extracted/sections/A3-2-02.txt) Responsible Lending Practices (09/01/2021) — pp. 119–122
+      - `A3-2-01` Compliance With Laws (12/10/2025) — pp. 107–119 · [md](extracted/markdown/A3-2-01.md) · [txt](extracted/sections/A3-2-01.txt)
+      - `A3-2-02` Responsible Lending Practices (09/01/2021) — pp. 119–122 · [md](extracted/markdown/A3-2-02.md) · [txt](extracted/sections/A3-2-02.txt)
     - **Chapter A3-3, Third-Party Lending Functions and Servicing Arrangements** — pp. 122–123
-      - [`A3-3-01`](extracted/sections/A3-3-01.txt) Outsourcing of Mortgage Processing and Third-Party Originations (02/07/2024) — pp. 123–125
-      - [`A3-3-02`](extracted/sections/A3-3-02.txt) Concurrent Servicing Transfers (05/01/2024) — pp. 125–131
-      - [`A3-3-03`](extracted/sections/A3-3-03.txt) Other Servicing Arrangements (12/15/2015) — pp. 131–133
-      - [`A3-3-04`](extracted/sections/A3-3-04.txt) Document Custodians (05/04/2022) — pp. 133–135
-      - [`A3-3-05`](extracted/sections/A3-3-05.txt) Custody of Mortgage Documents (05/04/2022) — pp. 135–137
+      - `A3-3-01` Outsourcing of Mortgage Processing and Third-Party Originations (02/07/2024) — pp. 123–125 · [md](extracted/markdown/A3-3-01.md) · [txt](extracted/sections/A3-3-01.txt)
+      - `A3-3-02` Concurrent Servicing Transfers (05/01/2024) — pp. 125–131 · [md](extracted/markdown/A3-3-02.md) · [txt](extracted/sections/A3-3-02.txt)
+      - `A3-3-03` Other Servicing Arrangements (12/15/2015) — pp. 131–133 · [md](extracted/markdown/A3-3-03.md) · [txt](extracted/sections/A3-3-03.txt)
+      - `A3-3-04` Document Custodians (05/04/2022) — pp. 133–135 · [md](extracted/markdown/A3-3-04.md) · [txt](extracted/sections/A3-3-04.txt)
+      - `A3-3-05` Custody of Mortgage Documents (05/04/2022) — pp. 135–137 · [md](extracted/markdown/A3-3-05.md) · [txt](extracted/sections/A3-3-05.txt)
     - **Chapter A3-4, Lending Practices** — p. 137
-      - [`A3-4-01`](extracted/sections/A3-4-01.txt) Confidentiality of Information (02/05/2025) — pp. 137–141
-      - [`A3-4-02`](extracted/sections/A3-4-02.txt) Data Quality and Integrity (08/07/2018) — p. 141
-      - [`A3-4-03`](extracted/sections/A3-4-03.txt) Preventing, Detecting, and Reporting Mortgage Fraud (12/10/2025) — pp. 141–145
+      - `A3-4-01` Confidentiality of Information (02/05/2025) — pp. 137–141 · [md](extracted/markdown/A3-4-01.md) · [txt](extracted/sections/A3-4-01.txt)
+      - `A3-4-02` Data Quality and Integrity (08/07/2018) — p. 141 · [md](extracted/markdown/A3-4-02.md) · [txt](extracted/sections/A3-4-02.txt)
+      - `A3-4-03` Preventing, Detecting, and Reporting Mortgage Fraud (12/10/2025) — pp. 141–145 · [md](extracted/markdown/A3-4-03.md) · [txt](extracted/sections/A3-4-03.txt)
     - **Chapter A3-5, Fidelity Bond and Errors and Omissions Coverage** — p. 145
-      - [`A3-5-01`](extracted/sections/A3-5-01.txt) Fidelity Bond and Errors and Omissions Coverage Provisions (07/25/2017) — pp. 145–146
-      - [`A3-5-02`](extracted/sections/A3-5-02.txt) Fidelity Bond Policy Requirements (07/25/2017) — pp. 146–148
-      - [`A3-5-03`](extracted/sections/A3-5-03.txt) Errors and Omissions Policy Requirements (07/25/2017) — pp. 148–150
-      - [`A3-5-04`](extracted/sections/A3-5-04.txt) Reporting Fidelity Bond and Errors and Omissions Events (12/04/2019) — p. 150
+      - `A3-5-01` Fidelity Bond and Errors and Omissions Coverage Provisions (07/25/2017) — pp. 145–146 · [md](extracted/markdown/A3-5-01.md) · [txt](extracted/sections/A3-5-01.txt)
+      - `A3-5-02` Fidelity Bond Policy Requirements (07/25/2017) — pp. 146–148 · [md](extracted/markdown/A3-5-02.md) · [txt](extracted/sections/A3-5-02.txt)
+      - `A3-5-03` Errors and Omissions Policy Requirements (07/25/2017) — pp. 148–150 · [md](extracted/markdown/A3-5-03.md) · [txt](extracted/sections/A3-5-03.txt)
+      - `A3-5-04` Reporting Fidelity Bond and Errors and Omissions Events (12/04/2019) — p. 150 · [md](extracted/markdown/A3-5-04.md) · [txt](extracted/sections/A3-5-04.txt)
   - **Subpart A4, Maintaining Seller/Servicer Eligibility** — pp. 150–151
     - **Chapter A4-1, Maintaining Seller/Servicer Eligibility: Overview** — p. 151
-      - [`A4-1-01`](extracted/sections/A4-1-01.txt) Maintaining Seller/Servicer Eligibility (08/05/2026) — pp. 151–158
-      - [`A4-1-02`](extracted/sections/A4-1-02.txt) Submission of Financial Statements and Reports (05/01/2024) — pp. 158–162
-      - [`A4-1-03`](extracted/sections/A4-1-03.txt) Report of Changes in the Seller/Servicer’s Organization (05/01/2024) — pp. 162–164
-      - [`A4-1-04`](extracted/sections/A4-1-04.txt) Submission of Irrevocable Limited Powers of Attorney (05/04/2022) — pp. 164–165
+      - `A4-1-01` Maintaining Seller/Servicer Eligibility (08/05/2026) — pp. 151–158 · [md](extracted/markdown/A4-1-01.md) · [txt](extracted/sections/A4-1-01.txt)
+      - `A4-1-02` Submission of Financial Statements and Reports (05/01/2024) — pp. 158–162 · [md](extracted/markdown/A4-1-02.md) · [txt](extracted/sections/A4-1-02.txt)
+      - `A4-1-03` Report of Changes in the Seller/Servicer’s Organization (05/01/2024) — pp. 162–164 · [md](extracted/markdown/A4-1-03.md) · [txt](extracted/sections/A4-1-03.txt)
+      - `A4-1-04` Submission of Irrevocable Limited Powers of Attorney (05/04/2022) — pp. 164–165 · [md](extracted/markdown/A4-1-04.md) · [txt](extracted/sections/A4-1-04.txt)
 - **Part B, Origination Through Closing** — p. 166
   - **Subpart B1, Loan Application Package** — p. 167
     - **Chapter B1-1, Application Package Documentation** — p. 167
-      - [`B1-1-01`](extracted/sections/B1-1-01.txt) Contents of the Application Package (05/01/2024) — pp. 167–169
-      - [`B1-1-02`](extracted/sections/B1-1-02.txt) Blanket Authorization Form (04/01/2009) — pp. 169–170
-      - [`B1-1-03`](extracted/sections/B1-1-03.txt) Allowable Age of Credit Documents and Federal Income Tax Returns (04/02/2025) — pp. 170–175
+      - `B1-1-01` Contents of the Application Package (05/01/2024) — pp. 167–169 · [md](extracted/markdown/B1-1-01.md) · [txt](extracted/sections/B1-1-01.txt)
+      - `B1-1-02` Blanket Authorization Form (04/01/2009) — pp. 169–170 · [md](extracted/markdown/B1-1-02.md) · [txt](extracted/sections/B1-1-02.txt)
+      - `B1-1-03` Allowable Age of Credit Documents and Federal Income Tax Returns (04/02/2025) — pp. 170–175 · [md](extracted/markdown/B1-1-03.md) · [txt](extracted/sections/B1-1-03.txt)
   - **Subpart B2, Eligibility** — p. 175
     - **Chapter B2-1, Mortgage Eligibility** — p. 175
       - **Section B2-1.1, Occupancy Types** — p. 175
-        - [`B2-1.1-01`](extracted/sections/B2-1.1-01.txt) Occupancy Types (10/05/2022) — pp. 175–178
+        - `B2-1.1-01` Occupancy Types (10/05/2022) — pp. 175–178 · [md](extracted/markdown/B2-1.1-01.md) · [txt](extracted/sections/B2-1.1-01.txt)
       - **Section B2-1.2, LTV, CLTV, HCLTV, and Subordinate Financing** — pp. 178–179
-        - [`B2-1.2-01`](extracted/sections/B2-1.2-01.txt) Loan-to-Value (LTV) Ratios (06/01/2022) — pp. 179–181
-        - [`B2-1.2-02`](extracted/sections/B2-1.2-02.txt) Combined Loan-to-Value (CLTV) Ratios (12/04/2018) — pp. 181–182
-        - [`B2-1.2-03`](extracted/sections/B2-1.2-03.txt) Home Equity Combined Loan-to-Value (HCLTV) Ratios (02/23/2016) — pp. 182–183
-        - [`B2-1.2-04`](extracted/sections/B2-1.2-04.txt) Subordinate Financing (08/06/2025) — pp. 183–187
+        - `B2-1.2-01` Loan-to-Value (LTV) Ratios (06/01/2022) — pp. 179–181 · [md](extracted/markdown/B2-1.2-01.md) · [txt](extracted/sections/B2-1.2-01.txt)
+        - `B2-1.2-02` Combined Loan-to-Value (CLTV) Ratios (12/04/2018) — pp. 181–182 · [md](extracted/markdown/B2-1.2-02.md) · [txt](extracted/sections/B2-1.2-02.txt)
+        - `B2-1.2-03` Home Equity Combined Loan-to-Value (HCLTV) Ratios (02/23/2016) — pp. 182–183 · [md](extracted/markdown/B2-1.2-03.md) · [txt](extracted/sections/B2-1.2-03.txt)
+        - `B2-1.2-04` Subordinate Financing (08/06/2025) — pp. 183–187 · [md](extracted/markdown/B2-1.2-04.md) · [txt](extracted/sections/B2-1.2-04.txt)
       - **Section B2-1.3, Loan Purpose** — p. 188
-        - [`B2-1.3-01`](extracted/sections/B2-1.3-01.txt) Purchase Transactions (11/05/2025) — pp. 188–191
-        - [`B2-1.3-02`](extracted/sections/B2-1.3-02.txt) Limited Cash-Out Refinance Transactions (10/08/2025) — pp. 191–197
-        - [`B2-1.3-03`](extracted/sections/B2-1.3-03.txt) Cash-Out Refinance Transactions (12/10/2025) — pp. 197–202
-        - [`B2-1.3-04`](extracted/sections/B2-1.3-04.txt) Prohibited Refinancing Practices (08/04/2021) — pp. 202–205
-        - [`B2-1.3-05`](extracted/sections/B2-1.3-05.txt) Payoff of Installment Land Contract Requirements (12/11/2024) — pp. 205–206
+        - `B2-1.3-01` Purchase Transactions (11/05/2025) — pp. 188–191 · [md](extracted/markdown/B2-1.3-01.md) · [txt](extracted/sections/B2-1.3-01.txt)
+        - `B2-1.3-02` Limited Cash-Out Refinance Transactions (10/08/2025) — pp. 191–197 · [md](extracted/markdown/B2-1.3-02.md) · [txt](extracted/sections/B2-1.3-02.txt)
+        - `B2-1.3-03` Cash-Out Refinance Transactions (12/10/2025) — pp. 197–202 · [md](extracted/markdown/B2-1.3-03.md) · [txt](extracted/sections/B2-1.3-03.txt)
+        - `B2-1.3-04` Prohibited Refinancing Practices (08/04/2021) — pp. 202–205 · [md](extracted/markdown/B2-1.3-04.md) · [txt](extracted/sections/B2-1.3-04.txt)
+        - `B2-1.3-05` Payoff of Installment Land Contract Requirements (12/11/2024) — pp. 205–206 · [md](extracted/markdown/B2-1.3-05.md) · [txt](extracted/sections/B2-1.3-05.txt)
       - **Section B2-1.4, Loan Amortization Types** — p. 206
-        - [`B2-1.4-01`](extracted/sections/B2-1.4-01.txt) Fixed-Rate Loans (12/14/2022) — pp. 206–207
-        - [`B2-1.4-02`](extracted/sections/B2-1.4-02.txt) Adjustable-Rate Mortgages (ARMs) (12/10/2025) — pp. 207–215
-        - [`B2-1.4-03`](extracted/sections/B2-1.4-03.txt) Convertible ARMs (02/23/2016) — pp. 215–219
-        - [`B2-1.4-04`](extracted/sections/B2-1.4-04.txt) Temporary Interest Rate Buydowns (08/07/2024) — pp. 219–223
+        - `B2-1.4-01` Fixed-Rate Loans (12/14/2022) — pp. 206–207 · [md](extracted/markdown/B2-1.4-01.md) · [txt](extracted/sections/B2-1.4-01.txt)
+        - `B2-1.4-02` Adjustable-Rate Mortgages (ARMs) (12/10/2025) — pp. 207–215 · [md](extracted/markdown/B2-1.4-02.md) · [txt](extracted/sections/B2-1.4-02.txt)
+        - `B2-1.4-03` Convertible ARMs (02/23/2016) — pp. 215–219 · [md](extracted/markdown/B2-1.4-03.md) · [txt](extracted/sections/B2-1.4-03.txt)
+        - `B2-1.4-04` Temporary Interest Rate Buydowns (08/07/2024) — pp. 219–223 · [md](extracted/markdown/B2-1.4-04.md) · [txt](extracted/sections/B2-1.4-04.txt)
       - **Section B2-1.5, Other Loan Attributes and Related Policies** — p. 223
-        - [`B2-1.5-01`](extracted/sections/B2-1.5-01.txt) Loan Limits (02/02/2022) — pp. 224–225
-        - [`B2-1.5-02`](extracted/sections/B2-1.5-02.txt) Loan Eligibility (06/05/2024) — pp. 225–236
-        - [`B2-1.5-03`](extracted/sections/B2-1.5-03.txt) Legal Requirements (06/03/2020) — pp. 236–238
-        - [`B2-1.5-04`](extracted/sections/B2-1.5-04.txt) Escrow Accounts (04/01/2020) — pp. 238–239
-        - [`B2-1.5-05`](extracted/sections/B2-1.5-05.txt) Principal Curtailments (11/06/2024) — pp. 239–241
+        - `B2-1.5-01` Loan Limits (02/02/2022) — pp. 224–225 · [md](extracted/markdown/B2-1.5-01.md) · [txt](extracted/sections/B2-1.5-01.txt)
+        - `B2-1.5-02` Loan Eligibility (06/05/2024) — pp. 225–236 · [md](extracted/markdown/B2-1.5-02.md) · [txt](extracted/sections/B2-1.5-02.txt)
+        - `B2-1.5-03` Legal Requirements (06/03/2020) — pp. 236–238 · [md](extracted/markdown/B2-1.5-03.md) · [txt](extracted/sections/B2-1.5-03.txt)
+        - `B2-1.5-04` Escrow Accounts (04/01/2020) — pp. 238–239 · [md](extracted/markdown/B2-1.5-04.md) · [txt](extracted/sections/B2-1.5-04.txt)
+        - `B2-1.5-05` Principal Curtailments (11/06/2024) — pp. 239–241 · [md](extracted/markdown/B2-1.5-05.md) · [txt](extracted/sections/B2-1.5-05.txt)
     - **Chapter B2-2, Borrower Eligibility** — p. 241
-      - [`B2-2-01`](extracted/sections/B2-2-01.txt) General Borrower Eligibility Requirements (09/03/2025) — pp. 241–243
-      - [`B2-2-02`](extracted/sections/B2-2-02.txt) Non–U.S. Citizen Borrower Eligibility Requirements (07/28/2015) — pp. 243–244
-      - [`B2-2-03`](extracted/sections/B2-2-03.txt) Multiple Financed Properties for the Same Borrower (11/05/2025) — pp. 244–247
-      - [`B2-2-04`](extracted/sections/B2-2-04.txt) Guarantors, Co-Signers, or Non-Occupant Borrowers on the Subject Transaction (09/02/2020) — pp. 247–250
-      - [`B2-2-05`](extracted/sections/B2-2-05.txt) Inter Vivos Revocable Trusts (10/31/2017) — pp. 250–252
-      - [`B2-2-06`](extracted/sections/B2-2-06.txt) Homeownership Education and Housing Counseling (11/05/2025) — pp. 253–256
-      - [`B2-2-07`](extracted/sections/B2-2-07.txt) First-Generation Homebuyer Loans (05/01/2024) — pp. 256–257
+      - `B2-2-01` General Borrower Eligibility Requirements (09/03/2025) — pp. 241–243 · [md](extracted/markdown/B2-2-01.md) · [txt](extracted/sections/B2-2-01.txt)
+      - `B2-2-02` Non–U.S. Citizen Borrower Eligibility Requirements (07/28/2015) — pp. 243–244 · [md](extracted/markdown/B2-2-02.md) · [txt](extracted/sections/B2-2-02.txt)
+      - `B2-2-03` Multiple Financed Properties for the Same Borrower (11/05/2025) — pp. 244–247 · [md](extracted/markdown/B2-2-03.md) · [txt](extracted/sections/B2-2-03.txt)
+      - `B2-2-04` Guarantors, Co-Signers, or Non-Occupant Borrowers on the Subject Transaction (09/02/2020) — pp. 247–250 · [md](extracted/markdown/B2-2-04.md) · [txt](extracted/sections/B2-2-04.txt)
+      - `B2-2-05` Inter Vivos Revocable Trusts (10/31/2017) — pp. 250–252 · [md](extracted/markdown/B2-2-05.md) · [txt](extracted/sections/B2-2-05.txt)
+      - `B2-2-06` Homeownership Education and Housing Counseling (11/05/2025) — pp. 253–256 · [md](extracted/markdown/B2-2-06.md) · [txt](extracted/sections/B2-2-06.txt)
+      - `B2-2-07` First-Generation Homebuyer Loans (05/01/2024) — pp. 256–257 · [md](extracted/markdown/B2-2-07.md) · [txt](extracted/sections/B2-2-07.txt)
     - **Chapter B2-3, Property Eligibility** — p. 257
-      - [`B2-3-01`](extracted/sections/B2-3-01.txt) General Property Eligibility (09/03/2025) — pp. 258–261
-      - [`B2-3-02`](extracted/sections/B2-3-02.txt) Special Property Eligibility and Underwriting Considerations: Factory-Built Housing (02/04/2026) — pp. 261–268
-      - [`B2-3-03`](extracted/sections/B2-3-03.txt) Special Property Eligibility and Underwriting Considerations: Leasehold Estates (08/05/2026) — pp. 268–275
-      - [`B2-3-04`](extracted/sections/B2-3-04.txt) Special Property Eligibility Considerations (10/08/2025) — pp. 275–283
-      - [`B2-3-05`](extracted/sections/B2-3-05.txt) Properties Affected by a Disaster (09/03/2025) — pp. 283–285
+      - `B2-3-01` General Property Eligibility (09/03/2025) — pp. 258–261 · [md](extracted/markdown/B2-3-01.md) · [txt](extracted/sections/B2-3-01.txt)
+      - `B2-3-02` Special Property Eligibility and Underwriting Considerations: Factory-Built Housing (02/04/2026) — pp. 261–268 · [md](extracted/markdown/B2-3-02.md) · [txt](extracted/sections/B2-3-02.txt)
+      - `B2-3-03` Special Property Eligibility and Underwriting Considerations: Leasehold Estates (08/05/2026) — pp. 268–275 · [md](extracted/markdown/B2-3-03.md) · [txt](extracted/sections/B2-3-03.txt)
+      - `B2-3-04` Special Property Eligibility Considerations (10/08/2025) — pp. 275–283 · [md](extracted/markdown/B2-3-04.md) · [txt](extracted/sections/B2-3-04.txt)
+      - `B2-3-05` Properties Affected by a Disaster (09/03/2025) — pp. 283–285 · [md](extracted/markdown/B2-3-05.md) · [txt](extracted/sections/B2-3-05.txt)
   - **Subpart B3, Underwriting Borrowers** — p. 285
     - **Chapter B3-1, Manual Underwriting** — p. 286
-      - [`B3-1-01`](extracted/sections/B3-1-01.txt) Comprehensive Risk Assessment (11/05/2025) — pp. 286–287
+      - `B3-1-01` Comprehensive Risk Assessment (11/05/2025) — pp. 286–287 · [md](extracted/markdown/B3-1-01.md) · [txt](extracted/sections/B3-1-01.txt)
     - **Chapter B3-2, Desktop Underwriter (DU)** — pp. 287–288
-      - [`B3-2-01`](extracted/sections/B3-2-01.txt) General Information on DU (04/01/2026) — pp. 288–292
-      - [`B3-2-02`](extracted/sections/B3-2-02.txt) DU Validation Service (02/05/2025) — pp. 292–300
-      - [`B3-2-03`](extracted/sections/B3-2-03.txt) Risk Factors Evaluated by DU (02/05/2025) — pp. 300–306
-      - [`B3-2-04`](extracted/sections/B3-2-04.txt) DU Documentation Requirements (03/31/2015) — pp. 306–307
-      - [`B3-2-05`](extracted/sections/B3-2-05.txt) Approve/Eligible Recommendations (01/27/2015) — pp. 307–308
-      - [`B3-2-06`](extracted/sections/B3-2-06.txt) Approve/Ineligible Recommendations (02/01/2023) — pp. 308–310
-      - [`B3-2-07`](extracted/sections/B3-2-07.txt) Refer with Caution Recommendations (02/01/2023) — pp. 310–312
-      - [`B3-2-08`](extracted/sections/B3-2-08.txt) Out of Scope Recommendations (04/01/2009) — p. 312
-      - [`B3-2-09`](extracted/sections/B3-2-09.txt) Erroneous Credit Report Data (01/27/2015) — pp. 312–313
-      - [`B3-2-10`](extracted/sections/B3-2-10.txt) Accuracy of DU Data, DU Tolerances, and Errors in the Credit Report (12/04/2019) — pp. 314–317
-      - [`B3-2-11`](extracted/sections/B3-2-11.txt) DU Underwriting Findings Report (09/07/2022) — pp. 317–318
+      - `B3-2-01` General Information on DU (04/01/2026) — pp. 288–292 · [md](extracted/markdown/B3-2-01.md) · [txt](extracted/sections/B3-2-01.txt)
+      - `B3-2-02` DU Validation Service (02/05/2025) — pp. 292–300 · [md](extracted/markdown/B3-2-02.md) · [txt](extracted/sections/B3-2-02.txt)
+      - `B3-2-03` Risk Factors Evaluated by DU (02/05/2025) — pp. 300–306 · [md](extracted/markdown/B3-2-03.md) · [txt](extracted/sections/B3-2-03.txt)
+      - `B3-2-04` DU Documentation Requirements (03/31/2015) — pp. 306–307 · [md](extracted/markdown/B3-2-04.md) · [txt](extracted/sections/B3-2-04.txt)
+      - `B3-2-05` Approve/Eligible Recommendations (01/27/2015) — pp. 307–308 · [md](extracted/markdown/B3-2-05.md) · [txt](extracted/sections/B3-2-05.txt)
+      - `B3-2-06` Approve/Ineligible Recommendations (02/01/2023) — pp. 308–310 · [md](extracted/markdown/B3-2-06.md) · [txt](extracted/sections/B3-2-06.txt)
+      - `B3-2-07` Refer with Caution Recommendations (02/01/2023) — pp. 310–312 · [md](extracted/markdown/B3-2-07.md) · [txt](extracted/sections/B3-2-07.txt)
+      - `B3-2-08` Out of Scope Recommendations (04/01/2009) — p. 312 · [md](extracted/markdown/B3-2-08.md) · [txt](extracted/sections/B3-2-08.txt)
+      - `B3-2-09` Erroneous Credit Report Data (01/27/2015) — pp. 312–313 · [md](extracted/markdown/B3-2-09.md) · [txt](extracted/sections/B3-2-09.txt)
+      - `B3-2-10` Accuracy of DU Data, DU Tolerances, and Errors in the Credit Report (12/04/2019) — pp. 314–317 · [md](extracted/markdown/B3-2-10.md) · [txt](extracted/sections/B3-2-10.txt)
+      - `B3-2-11` DU Underwriting Findings Report (09/07/2022) — pp. 317–318 · [md](extracted/markdown/B3-2-11.md) · [txt](extracted/sections/B3-2-11.txt)
     - **Chapter B3-3, Income Assessment** — pp. 318–319
       - **Section B3-3.1, General Income Requirements** — p. 319
-        - [`B3-3.1-01`](extracted/sections/B3-3.1-01.txt) General Income Information (03/04/2026) — pp. 319–321
-        - [`B3-3.1-02`](extracted/sections/B3-3.1-02.txt) Tax Return and Transcript Documentation Requirements (06/03/2026) — pp. 321–324
-        - [`B3-3.1-03`](extracted/sections/B3-3.1-03.txt) Income Calculator (03/04/2026) — pp. 324–325
-        - [`B3-3.1-04`](extracted/sections/B3-3.1-04.txt) Verbal Verification of Employment (03/04/2026) — pp. 325–328
+        - `B3-3.1-01` General Income Information (03/04/2026) — pp. 319–321 · [md](extracted/markdown/B3-3.1-01.md) · [txt](extracted/sections/B3-3.1-01.txt)
+        - `B3-3.1-02` Tax Return and Transcript Documentation Requirements (06/03/2026) — pp. 321–324 · [md](extracted/markdown/B3-3.1-02.md) · [txt](extracted/sections/B3-3.1-02.txt)
+        - `B3-3.1-03` Income Calculator (03/04/2026) — pp. 324–325 · [md](extracted/markdown/B3-3.1-03.md) · [txt](extracted/sections/B3-3.1-03.txt)
+        - `B3-3.1-04` Verbal Verification of Employment (03/04/2026) — pp. 325–328 · [md](extracted/markdown/B3-3.1-04.md) · [txt](extracted/sections/B3-3.1-04.txt)
       - **Section B3-3.2, Requirements for Employment-Related Income** — p. 328
-        - [`B3-3.2-01`](extracted/sections/B3-3.2-01.txt) Standards for Employment and Income Documentation (03/04/2026) — pp. 328–331
-        - [`B3-3.2-02`](extracted/sections/B3-3.2-02.txt) Standards for Employment-Related Income (03/04/2026) — pp. 331–333
+        - `B3-3.2-01` Standards for Employment and Income Documentation (03/04/2026) — pp. 328–331 · [md](extracted/markdown/B3-3.2-01.md) · [txt](extracted/sections/B3-3.2-01.txt)
+        - `B3-3.2-02` Standards for Employment-Related Income (03/04/2026) — pp. 331–333 · [md](extracted/markdown/B3-3.2-02.md) · [txt](extracted/sections/B3-3.2-02.txt)
       - **Section B3-3.3, Sources of Employment-Related Income** — pp. 333–334
-        - [`B3-3.3-01`](extracted/sections/B3-3.3-01.txt) Base Income (03/04/2026) — pp. 334–336
-        - [`B3-3.3-02`](extracted/sections/B3-3.3-02.txt) Bonus, Commission, Overtime, and Tip Income (03/04/2026) — pp. 336–338
-        - [`B3-3.3-03`](extracted/sections/B3-3.3-03.txt) Employment Offers or Contracts (03/04/2026) — pp. 338–342
-        - [`B3-3.3-04`](extracted/sections/B3-3.3-04.txt) Housing (Parsonage) and Automobile Allowances (03/04/2026) — pp. 342–343
-        - [`B3-3.3-05`](extracted/sections/B3-3.3-05.txt) Military Income (03/04/2026) — pp. 343–344
-        - [`B3-3.3-06`](extracted/sections/B3-3.3-06.txt) Mortgage Differential Payments Income (03/04/2026) — pp. 344–345
-        - [`B3-3.3-07`](extracted/sections/B3-3.3-07.txt) Restricted Stock Units and Restricted Stock Employment Income (03/04/2026) — pp. 345–347
-        - [`B3-3.3-08`](extracted/sections/B3-3.3-08.txt) Seasonal Income (03/04/2026) — pp. 347–348
-        - [`B3-3.3-09`](extracted/sections/B3-3.3-09.txt) Temporary Leave Income (03/04/2026) — pp. 348–352
+        - `B3-3.3-01` Base Income (03/04/2026) — pp. 334–336 · [md](extracted/markdown/B3-3.3-01.md) · [txt](extracted/sections/B3-3.3-01.txt)
+        - `B3-3.3-02` Bonus, Commission, Overtime, and Tip Income (03/04/2026) — pp. 336–338 · [md](extracted/markdown/B3-3.3-02.md) · [txt](extracted/sections/B3-3.3-02.txt)
+        - `B3-3.3-03` Employment Offers or Contracts (03/04/2026) — pp. 338–342 · [md](extracted/markdown/B3-3.3-03.md) · [txt](extracted/sections/B3-3.3-03.txt)
+        - `B3-3.3-04` Housing (Parsonage) and Automobile Allowances (03/04/2026) — pp. 342–343 · [md](extracted/markdown/B3-3.3-04.md) · [txt](extracted/sections/B3-3.3-04.txt)
+        - `B3-3.3-05` Military Income (03/04/2026) — pp. 343–344 · [md](extracted/markdown/B3-3.3-05.md) · [txt](extracted/sections/B3-3.3-05.txt)
+        - `B3-3.3-06` Mortgage Differential Payments Income (03/04/2026) — pp. 344–345 · [md](extracted/markdown/B3-3.3-06.md) · [txt](extracted/sections/B3-3.3-06.txt)
+        - `B3-3.3-07` Restricted Stock Units and Restricted Stock Employment Income (03/04/2026) — pp. 345–347 · [md](extracted/markdown/B3-3.3-07.md) · [txt](extracted/sections/B3-3.3-07.txt)
+        - `B3-3.3-08` Seasonal Income (03/04/2026) — pp. 347–348 · [md](extracted/markdown/B3-3.3-08.md) · [txt](extracted/sections/B3-3.3-08.txt)
+        - `B3-3.3-09` Temporary Leave Income (03/04/2026) — pp. 348–352 · [md](extracted/markdown/B3-3.3-09.md) · [txt](extracted/sections/B3-3.3-09.txt)
       - **Section B3-3.4, Other Sources of Income** — p. 352
-        - [`B3-3.4-01`](extracted/sections/B3-3.4-01.txt) General Requirements for Other Sources of Income (03/04/2026) — pp. 352–353
-        - [`B3-3.4-02`](extracted/sections/B3-3.4-02.txt) Alimony, Child Support, Equalization Payments, or Separate Maintenance (03/04/2026) — pp. 353–354
-        - [`B3-3.4-03`](extracted/sections/B3-3.4-03.txt) Annuity, Pension, or Retirement Income (03/04/2026) — pp. 354–356
-        - [`B3-3.4-04`](extracted/sections/B3-3.4-04.txt) Boarder Income (03/04/2026) — pp. 356–358
-        - [`B3-3.4-05`](extracted/sections/B3-3.4-05.txt) Capital Gains Income (03/04/2026) — pp. 358–359
-        - [`B3-3.4-06`](extracted/sections/B3-3.4-06.txt) Employment Related Assets as Qualifying Income (03/04/2026) — pp. 359–362
-        - [`B3-3.4-07`](extracted/sections/B3-3.4-07.txt) Foster-Care Income (03/04/2026) — pp. 363–364
-        - [`B3-3.4-08`](extracted/sections/B3-3.4-08.txt) Interest and Dividend Income (03/04/2026) — pp. 364–365
-        - [`B3-3.4-09`](extracted/sections/B3-3.4-09.txt) Long-term Disability Income (03/04/2026) — pp. 365–366
-        - [`B3-3.4-10`](extracted/sections/B3-3.4-10.txt) Mortgage Credit Certificates (03/04/2026) — pp. 366–368
-        - [`B3-3.4-11`](extracted/sections/B3-3.4-11.txt) Notes Receivable Income (03/04/2026) — pp. 368–369
-        - [`B3-3.4-12`](extracted/sections/B3-3.4-12.txt) Public Assistance Income (03/04/2026) — pp. 369–370
-        - [`B3-3.4-13`](extracted/sections/B3-3.4-13.txt) Royalty Payment Income (03/04/2026) — pp. 370–371
-        - [`B3-3.4-14`](extracted/sections/B3-3.4-14.txt) Section 8 Housing Choice Voucher Homeownership Program Payments (03/04/2026) — pp. 371–372
-        - [`B3-3.4-15`](extracted/sections/B3-3.4-15.txt) Social Security Income (03/04/2026) — pp. 372–375
-        - [`B3-3.4-16`](extracted/sections/B3-3.4-16.txt) Trust Income (03/04/2026) — pp. 375–377
-        - [`B3-3.4-17`](extracted/sections/B3-3.4-17.txt) Unemployment Benefits Income (03/04/2026) — pp. 377–378
-        - [`B3-3.4-18`](extracted/sections/B3-3.4-18.txt) VA Benefits Income (03/04/2026) — pp. 378–379
-        - [`B3-3.4-19`](extracted/sections/B3-3.4-19.txt) Schedule K-1 Income <25% Ownership (03/04/2026) — pp. 379–380
+        - `B3-3.4-01` General Requirements for Other Sources of Income (03/04/2026) — pp. 352–353 · [md](extracted/markdown/B3-3.4-01.md) · [txt](extracted/sections/B3-3.4-01.txt)
+        - `B3-3.4-02` Alimony, Child Support, Equalization Payments, or Separate Maintenance (03/04/2026) — pp. 353–354 · [md](extracted/markdown/B3-3.4-02.md) · [txt](extracted/sections/B3-3.4-02.txt)
+        - `B3-3.4-03` Annuity, Pension, or Retirement Income (03/04/2026) — pp. 354–356 · [md](extracted/markdown/B3-3.4-03.md) · [txt](extracted/sections/B3-3.4-03.txt)
+        - `B3-3.4-04` Boarder Income (03/04/2026) — pp. 356–358 · [md](extracted/markdown/B3-3.4-04.md) · [txt](extracted/sections/B3-3.4-04.txt)
+        - `B3-3.4-05` Capital Gains Income (03/04/2026) — pp. 358–359 · [md](extracted/markdown/B3-3.4-05.md) · [txt](extracted/sections/B3-3.4-05.txt)
+        - `B3-3.4-06` Employment Related Assets as Qualifying Income (03/04/2026) — pp. 359–362 · [md](extracted/markdown/B3-3.4-06.md) · [txt](extracted/sections/B3-3.4-06.txt)
+        - `B3-3.4-07` Foster-Care Income (03/04/2026) — pp. 363–364 · [md](extracted/markdown/B3-3.4-07.md) · [txt](extracted/sections/B3-3.4-07.txt)
+        - `B3-3.4-08` Interest and Dividend Income (03/04/2026) — pp. 364–365 · [md](extracted/markdown/B3-3.4-08.md) · [txt](extracted/sections/B3-3.4-08.txt)
+        - `B3-3.4-09` Long-term Disability Income (03/04/2026) — pp. 365–366 · [md](extracted/markdown/B3-3.4-09.md) · [txt](extracted/sections/B3-3.4-09.txt)
+        - `B3-3.4-10` Mortgage Credit Certificates (03/04/2026) — pp. 366–368 · [md](extracted/markdown/B3-3.4-10.md) · [txt](extracted/sections/B3-3.4-10.txt)
+        - `B3-3.4-11` Notes Receivable Income (03/04/2026) — pp. 368–369 · [md](extracted/markdown/B3-3.4-11.md) · [txt](extracted/sections/B3-3.4-11.txt)
+        - `B3-3.4-12` Public Assistance Income (03/04/2026) — pp. 369–370 · [md](extracted/markdown/B3-3.4-12.md) · [txt](extracted/sections/B3-3.4-12.txt)
+        - `B3-3.4-13` Royalty Payment Income (03/04/2026) — pp. 370–371 · [md](extracted/markdown/B3-3.4-13.md) · [txt](extracted/sections/B3-3.4-13.txt)
+        - `B3-3.4-14` Section 8 Housing Choice Voucher Homeownership Program Payments (03/04/2026) — pp. 371–372 · [md](extracted/markdown/B3-3.4-14.md) · [txt](extracted/sections/B3-3.4-14.txt)
+        - `B3-3.4-15` Social Security Income (03/04/2026) — pp. 372–375 · [md](extracted/markdown/B3-3.4-15.md) · [txt](extracted/sections/B3-3.4-15.txt)
+        - `B3-3.4-16` Trust Income (03/04/2026) — pp. 375–377 · [md](extracted/markdown/B3-3.4-16.md) · [txt](extracted/sections/B3-3.4-16.txt)
+        - `B3-3.4-17` Unemployment Benefits Income (03/04/2026) — pp. 377–378 · [md](extracted/markdown/B3-3.4-17.md) · [txt](extracted/sections/B3-3.4-17.txt)
+        - `B3-3.4-18` VA Benefits Income (03/04/2026) — pp. 378–379 · [md](extracted/markdown/B3-3.4-18.md) · [txt](extracted/sections/B3-3.4-18.txt)
+        - `B3-3.4-19` Schedule K-1 Income <25% Ownership (03/04/2026) — pp. 379–380 · [md](extracted/markdown/B3-3.4-19.md) · [txt](extracted/sections/B3-3.4-19.txt)
       - **Section B3-3.5, Self-Employment Income** — p. 380
-        - [`B3-3.5-01`](extracted/sections/B3-3.5-01.txt) Underwriting Factors and Documentation for a Self-Employed Borrower (12/13/2023) — pp. 380–385
-        - [`B3-3.5-02`](extracted/sections/B3-3.5-02.txt) Business Structures (12/16/2014) — pp. 385–389
-        - [`B3-3.5-03`](extracted/sections/B3-3.5-03.txt) IRS Forms Quick Reference (12/16/2020) — pp. 389–391
+        - `B3-3.5-01` Underwriting Factors and Documentation for a Self-Employed Borrower (12/13/2023) — pp. 380–385 · [md](extracted/markdown/B3-3.5-01.md) · [txt](extracted/sections/B3-3.5-01.txt)
+        - `B3-3.5-02` Business Structures (12/16/2014) — pp. 385–389 · [md](extracted/markdown/B3-3.5-02.md) · [txt](extracted/sections/B3-3.5-02.txt)
+        - `B3-3.5-03` IRS Forms Quick Reference (12/16/2020) — pp. 389–391 · [md](extracted/markdown/B3-3.5-03.md) · [txt](extracted/sections/B3-3.5-03.txt)
       - **Section B3-3.6, Self-Employment Documentation Requirements for an Individual** — p. 391
-        - [`B3-3.6-01`](extracted/sections/B3-3.6-01.txt) General Information on Analyzing Individual Tax Returns (06/05/2019) — pp. 391–392
-        - [`B3-3.6-02`](extracted/sections/B3-3.6-02.txt) Income Reported on IRS Form 1040 (05/15/2012) — pp. 392–394
-        - [`B3-3.6-03`](extracted/sections/B3-3.6-03.txt) Income or Loss Reported on IRS Form 1040, Schedule C (04/01/2009) — pp. 394–395
-        - [`B3-3.6-04`](extracted/sections/B3-3.6-04.txt) Income or Loss Reported on IRS Form 1040, Schedule D (11/13/2012) — pp. 395–396
-        - [`B3-3.6-05`](extracted/sections/B3-3.6-05.txt) Income or Loss Reported on IRS Form 1040, Schedule E (09/30/2014) — pp. 396–397
-        - [`B3-3.6-06`](extracted/sections/B3-3.6-06.txt) Income or Loss Reported on IRS Form 1040, Schedule F (04/01/2009) — pp. 397–398
-        - [`B3-3.6-07`](extracted/sections/B3-3.6-07.txt) Income or Loss Reported on IRS Form 1065 or IRS Form 1120S, Schedule K-1 (05/07/2025) — pp. 398–400
+        - `B3-3.6-01` General Information on Analyzing Individual Tax Returns (06/05/2019) — pp. 391–392 · [md](extracted/markdown/B3-3.6-01.md) · [txt](extracted/sections/B3-3.6-01.txt)
+        - `B3-3.6-02` Income Reported on IRS Form 1040 (05/15/2012) — pp. 392–394 · [md](extracted/markdown/B3-3.6-02.md) · [txt](extracted/sections/B3-3.6-02.txt)
+        - `B3-3.6-03` Income or Loss Reported on IRS Form 1040, Schedule C (04/01/2009) — pp. 394–395 · [md](extracted/markdown/B3-3.6-03.md) · [txt](extracted/sections/B3-3.6-03.txt)
+        - `B3-3.6-04` Income or Loss Reported on IRS Form 1040, Schedule D (11/13/2012) — pp. 395–396 · [md](extracted/markdown/B3-3.6-04.md) · [txt](extracted/sections/B3-3.6-04.txt)
+        - `B3-3.6-05` Income or Loss Reported on IRS Form 1040, Schedule E (09/30/2014) — pp. 396–397 · [md](extracted/markdown/B3-3.6-05.md) · [txt](extracted/sections/B3-3.6-05.txt)
+        - `B3-3.6-06` Income or Loss Reported on IRS Form 1040, Schedule F (04/01/2009) — pp. 397–398 · [md](extracted/markdown/B3-3.6-06.md) · [txt](extracted/sections/B3-3.6-06.txt)
+        - `B3-3.6-07` Income or Loss Reported on IRS Form 1065 or IRS Form 1120S, Schedule K-1 (05/07/2025) — pp. 398–400 · [md](extracted/markdown/B3-3.6-07.md) · [txt](extracted/sections/B3-3.6-07.txt)
       - **Section B3-3.7, Self-Employment Documentation Requirements for a Business** — p. 400
-        - [`B3-3.7-01`](extracted/sections/B3-3.7-01.txt) Analyzing Partnership Returns for a Partnership or LLC (02/07/2024) — pp. 400–402
-        - [`B3-3.7-02`](extracted/sections/B3-3.7-02.txt) Analyzing Returns for an S Corporation (02/07/2024) — pp. 402–404
-        - [`B3-3.7-03`](extracted/sections/B3-3.7-03.txt) Analyzing Returns for a Corporation (06/05/2019) — pp. 405–406
-        - [`B3-3.7-04`](extracted/sections/B3-3.7-04.txt) Analyzing Profit and Loss Statements (04/01/2009) — pp. 406–407
+        - `B3-3.7-01` Analyzing Partnership Returns for a Partnership or LLC (02/07/2024) — pp. 400–402 · [md](extracted/markdown/B3-3.7-01.md) · [txt](extracted/sections/B3-3.7-01.txt)
+        - `B3-3.7-02` Analyzing Returns for an S Corporation (02/07/2024) — pp. 402–404 · [md](extracted/markdown/B3-3.7-02.md) · [txt](extracted/sections/B3-3.7-02.txt)
+        - `B3-3.7-03` Analyzing Returns for a Corporation (06/05/2019) — pp. 405–406 · [md](extracted/markdown/B3-3.7-03.md) · [txt](extracted/sections/B3-3.7-03.txt)
+        - `B3-3.7-04` Analyzing Profit and Loss Statements (04/01/2009) — pp. 406–407 · [md](extracted/markdown/B3-3.7-04.md) · [txt](extracted/sections/B3-3.7-04.txt)
       - **Section B3-3.8, Rental Income** — p. 407
-        - [`B3-3.8-01`](extracted/sections/B3-3.8-01.txt) Rental Income (10/08/2025) — pp. 407–418
+        - `B3-3.8-01` Rental Income (10/08/2025) — pp. 407–418 · [md](extracted/markdown/B3-3.8-01.md) · [txt](extracted/sections/B3-3.8-01.txt)
     - **Chapter B3-4, Asset Assessment** — p. 418
       - **Section B3-4.1, General Asset Requirements** — p. 418
-        - [`B3-4.1-01`](extracted/sections/B3-4.1-01.txt) Minimum Reserve Requirements (08/07/2024) — pp. 418–424
-        - [`B3-4.1-02`](extracted/sections/B3-4.1-02.txt) Interested Party Contributions (IPCs) (05/07/2025) — pp. 424–429
-        - [`B3-4.1-03`](extracted/sections/B3-4.1-03.txt) Lender Incentives (07/02/2025) — pp. 429–430
-        - [`B3-4.1-04`](extracted/sections/B3-4.1-04.txt) Virtual Currency (05/04/2022) — pp. 430–431
+        - `B3-4.1-01` Minimum Reserve Requirements (08/07/2024) — pp. 418–424 · [md](extracted/markdown/B3-4.1-01.md) · [txt](extracted/sections/B3-4.1-01.txt)
+        - `B3-4.1-02` Interested Party Contributions (IPCs) (05/07/2025) — pp. 424–429 · [md](extracted/markdown/B3-4.1-02.md) · [txt](extracted/sections/B3-4.1-02.txt)
+        - `B3-4.1-03` Lender Incentives (07/02/2025) — pp. 429–430 · [md](extracted/markdown/B3-4.1-03.md) · [txt](extracted/sections/B3-4.1-03.txt)
+        - `B3-4.1-04` Virtual Currency (05/04/2022) — pp. 430–431 · [md](extracted/markdown/B3-4.1-04.md) · [txt](extracted/sections/B3-4.1-04.txt)
       - **Section B3-4.2, Verification of Depository Assets** — p. 431
-        - [`B3-4.2-01`](extracted/sections/B3-4.2-01.txt) Verification of Deposits and Assets (05/04/2022) — pp. 431–433
-        - [`B3-4.2-02`](extracted/sections/B3-4.2-02.txt) Depository Accounts (12/14/2022) — pp. 433–436
-        - [`B3-4.2-03`](extracted/sections/B3-4.2-03.txt) Individual Development Accounts (02/06/2019) — pp. 436–439
-        - [`B3-4.2-04`](extracted/sections/B3-4.2-04.txt) Pooled Savings (Community Savings Funds) (04/01/2009) — p. 439
-        - [`B3-4.2-05`](extracted/sections/B3-4.2-05.txt) Foreign Assets (05/04/2022) — pp. 439–440
+        - `B3-4.2-01` Verification of Deposits and Assets (05/04/2022) — pp. 431–433 · [md](extracted/markdown/B3-4.2-01.md) · [txt](extracted/sections/B3-4.2-01.txt)
+        - `B3-4.2-02` Depository Accounts (12/14/2022) — pp. 433–436 · [md](extracted/markdown/B3-4.2-02.md) · [txt](extracted/sections/B3-4.2-02.txt)
+        - `B3-4.2-03` Individual Development Accounts (02/06/2019) — pp. 436–439 · [md](extracted/markdown/B3-4.2-03.md) · [txt](extracted/sections/B3-4.2-03.txt)
+        - `B3-4.2-04` Pooled Savings (Community Savings Funds) (04/01/2009) — p. 439 · [md](extracted/markdown/B3-4.2-04.md) · [txt](extracted/sections/B3-4.2-04.txt)
+        - `B3-4.2-05` Foreign Assets (05/04/2022) — pp. 439–440 · [md](extracted/markdown/B3-4.2-05.md) · [txt](extracted/sections/B3-4.2-05.txt)
       - **Section B3-4.3, Verification of Non-Depository Assets** — p. 440
-        - [`B3-4.3-01`](extracted/sections/B3-4.3-01.txt) Stocks, Stock Options, Bonds, and Mutual Funds (06/30/2015) — pp. 440–441
-        - [`B3-4.3-02`](extracted/sections/B3-4.3-02.txt) Trust Accounts (04/01/2009) — pp. 441–442
-        - [`B3-4.3-03`](extracted/sections/B3-4.3-03.txt) Retirement Accounts (06/30/2015) — pp. 442–443
-        - [`B3-4.3-04`](extracted/sections/B3-4.3-04.txt) Personal Gifts (02/04/2026) — pp. 443–446
-        - [`B3-4.3-05`](extracted/sections/B3-4.3-05.txt) Gifts of Equity (10/07/2020) — pp. 446–447
-        - [`B3-4.3-06`](extracted/sections/B3-4.3-06.txt) Grants and Lender Contributions (05/07/2025) — pp. 447–450
-        - [`B3-4.3-07`](extracted/sections/B3-4.3-07.txt) Disaster Relief Grants or Loans (04/01/2009) — pp. 450–451
-        - [`B3-4.3-08`](extracted/sections/B3-4.3-08.txt) Employer Assistance (09/29/2015) — pp. 451–453
-        - [`B3-4.3-09`](extracted/sections/B3-4.3-09.txt) Earnest Money Deposit (05/04/2022) — pp. 453–454
-        - [`B3-4.3-10`](extracted/sections/B3-4.3-10.txt) Anticipated Sales Proceeds (02/23/2016) — pp. 454–455
-        - [`B3-4.3-11`](extracted/sections/B3-4.3-11.txt) Trade Equity (12/16/2020) — pp. 455–457
-        - [`B3-4.3-12`](extracted/sections/B3-4.3-12.txt) Rent-Related Credits (08/07/2024) — pp. 457–458
-        - [`B3-4.3-13`](extracted/sections/B3-4.3-13.txt) Sweat Equity (04/15/2014) — p. 458
-        - [`B3-4.3-14`](extracted/sections/B3-4.3-14.txt) Bridge/Swing Loans (04/01/2009) — p. 459
-        - [`B3-4.3-15`](extracted/sections/B3-4.3-15.txt) Borrowed Funds Secured by an Asset (10/30/2009) — pp. 459–460
-        - [`B3-4.3-16`](extracted/sections/B3-4.3-16.txt) Credit Card Financing and Reward Points (08/04/2021) — pp. 460–462
-        - [`B3-4.3-17`](extracted/sections/B3-4.3-17.txt) Personal Unsecured Loans (09/20/2010) — p. 462
-        - [`B3-4.3-18`](extracted/sections/B3-4.3-18.txt) Sale of Personal Assets (12/16/2020) — pp. 462–463
-        - [`B3-4.3-19`](extracted/sections/B3-4.3-19.txt) Cash Value of Life Insurance (05/27/2014) — pp. 463–464
-        - [`B3-4.3-20`](extracted/sections/B3-4.3-20.txt) Anticipated Savings and Cash-on-Hand (04/01/2009) — pp. 464–465
-        - [`B3-4.3-21`](extracted/sections/B3-4.3-21.txt) Borrower's Earned Real Estate Commission (04/05/2023) — pp. 465–466
+        - `B3-4.3-01` Stocks, Stock Options, Bonds, and Mutual Funds (06/30/2015) — pp. 440–441 · [md](extracted/markdown/B3-4.3-01.md) · [txt](extracted/sections/B3-4.3-01.txt)
+        - `B3-4.3-02` Trust Accounts (04/01/2009) — pp. 441–442 · [md](extracted/markdown/B3-4.3-02.md) · [txt](extracted/sections/B3-4.3-02.txt)
+        - `B3-4.3-03` Retirement Accounts (06/30/2015) — pp. 442–443 · [md](extracted/markdown/B3-4.3-03.md) · [txt](extracted/sections/B3-4.3-03.txt)
+        - `B3-4.3-04` Personal Gifts (02/04/2026) — pp. 443–446 · [md](extracted/markdown/B3-4.3-04.md) · [txt](extracted/sections/B3-4.3-04.txt)
+        - `B3-4.3-05` Gifts of Equity (10/07/2020) — pp. 446–447 · [md](extracted/markdown/B3-4.3-05.md) · [txt](extracted/sections/B3-4.3-05.txt)
+        - `B3-4.3-06` Grants and Lender Contributions (05/07/2025) — pp. 447–450 · [md](extracted/markdown/B3-4.3-06.md) · [txt](extracted/sections/B3-4.3-06.txt)
+        - `B3-4.3-07` Disaster Relief Grants or Loans (04/01/2009) — pp. 450–451 · [md](extracted/markdown/B3-4.3-07.md) · [txt](extracted/sections/B3-4.3-07.txt)
+        - `B3-4.3-08` Employer Assistance (09/29/2015) — pp. 451–453 · [md](extracted/markdown/B3-4.3-08.md) · [txt](extracted/sections/B3-4.3-08.txt)
+        - `B3-4.3-09` Earnest Money Deposit (05/04/2022) — pp. 453–454 · [md](extracted/markdown/B3-4.3-09.md) · [txt](extracted/sections/B3-4.3-09.txt)
+        - `B3-4.3-10` Anticipated Sales Proceeds (02/23/2016) — pp. 454–455 · [md](extracted/markdown/B3-4.3-10.md) · [txt](extracted/sections/B3-4.3-10.txt)
+        - `B3-4.3-11` Trade Equity (12/16/2020) — pp. 455–457 · [md](extracted/markdown/B3-4.3-11.md) · [txt](extracted/sections/B3-4.3-11.txt)
+        - `B3-4.3-12` Rent-Related Credits (08/07/2024) — pp. 457–458 · [md](extracted/markdown/B3-4.3-12.md) · [txt](extracted/sections/B3-4.3-12.txt)
+        - `B3-4.3-13` Sweat Equity (04/15/2014) — p. 458 · [md](extracted/markdown/B3-4.3-13.md) · [txt](extracted/sections/B3-4.3-13.txt)
+        - `B3-4.3-14` Bridge/Swing Loans (04/01/2009) — p. 459 · [md](extracted/markdown/B3-4.3-14.md) · [txt](extracted/sections/B3-4.3-14.txt)
+        - `B3-4.3-15` Borrowed Funds Secured by an Asset (10/30/2009) — pp. 459–460 · [md](extracted/markdown/B3-4.3-15.md) · [txt](extracted/sections/B3-4.3-15.txt)
+        - `B3-4.3-16` Credit Card Financing and Reward Points (08/04/2021) — pp. 460–462 · [md](extracted/markdown/B3-4.3-16.md) · [txt](extracted/sections/B3-4.3-16.txt)
+        - `B3-4.3-17` Personal Unsecured Loans (09/20/2010) — p. 462 · [md](extracted/markdown/B3-4.3-17.md) · [txt](extracted/sections/B3-4.3-17.txt)
+        - `B3-4.3-18` Sale of Personal Assets (12/16/2020) — pp. 462–463 · [md](extracted/markdown/B3-4.3-18.md) · [txt](extracted/sections/B3-4.3-18.txt)
+        - `B3-4.3-19` Cash Value of Life Insurance (05/27/2014) — pp. 463–464 · [md](extracted/markdown/B3-4.3-19.md) · [txt](extracted/sections/B3-4.3-19.txt)
+        - `B3-4.3-20` Anticipated Savings and Cash-on-Hand (04/01/2009) — pp. 464–465 · [md](extracted/markdown/B3-4.3-20.md) · [txt](extracted/sections/B3-4.3-20.txt)
+        - `B3-4.3-21` Borrower's Earned Real Estate Commission (04/05/2023) — pp. 465–466 · [md](extracted/markdown/B3-4.3-21.md) · [txt](extracted/sections/B3-4.3-21.txt)
       - **Section B3-4.4, DU Requirements for Asset Assessment** — p. 466
-        - [`B3-4.4-01`](extracted/sections/B3-4.4-01.txt) DU Asset Verification (12/16/2020) — pp. 466–468
-        - [`B3-4.4-02`](extracted/sections/B3-4.4-02.txt) Requirements for Certain Assets in DU (06/01/2022) — pp. 468–471
+        - `B3-4.4-01` DU Asset Verification (12/16/2020) — pp. 466–468 · [md](extracted/markdown/B3-4.4-01.md) · [txt](extracted/sections/B3-4.4-01.txt)
+        - `B3-4.4-02` Requirements for Certain Assets in DU (06/01/2022) — pp. 468–471 · [md](extracted/markdown/B3-4.4-02.md) · [txt](extracted/sections/B3-4.4-02.txt)
     - **Chapter B3-5, Credit Assessment** — p. 471
       - **Section B3-5.1, Credit Scores** — p. 471
-        - [`B3-5.1-01`](extracted/sections/B3-5.1-01.txt) General Requirements for Credit Scores (04/22/2026) — pp. 471–475
-        - [`B3-5.1-02`](extracted/sections/B3-5.1-02.txt) Determining the Credit Score for a Mortgage Loan (04/22/2026) — pp. 475–477
+        - `B3-5.1-01` General Requirements for Credit Scores (04/22/2026) — pp. 471–475 · [md](extracted/markdown/B3-5.1-01.md) · [txt](extracted/sections/B3-5.1-01.txt)
+        - `B3-5.1-02` Determining the Credit Score for a Mortgage Loan (04/22/2026) — pp. 475–477 · [md](extracted/markdown/B3-5.1-02.md) · [txt](extracted/sections/B3-5.1-02.txt)
       - **Section B3-5.2, Credit Reports** — p. 477
-        - [`B3-5.2-01`](extracted/sections/B3-5.2-01.txt) Requirements for Credit Reports (11/05/2025) — pp. 477–481
-        - [`B3-5.2-02`](extracted/sections/B3-5.2-02.txt) Types of Credit Reports (11/05/2025) — pp. 481–483
-        - [`B3-5.2-03`](extracted/sections/B3-5.2-03.txt) Accuracy of Credit Information in a Credit Report (07/25/2017) — pp. 483–484
+        - `B3-5.2-01` Requirements for Credit Reports (11/05/2025) — pp. 477–481 · [md](extracted/markdown/B3-5.2-01.md) · [txt](extracted/sections/B3-5.2-01.txt)
+        - `B3-5.2-02` Types of Credit Reports (11/05/2025) — pp. 481–483 · [md](extracted/markdown/B3-5.2-02.md) · [txt](extracted/sections/B3-5.2-02.txt)
+        - `B3-5.2-03` Accuracy of Credit Information in a Credit Report (07/25/2017) — pp. 483–484 · [md](extracted/markdown/B3-5.2-03.md) · [txt](extracted/sections/B3-5.2-03.txt)
       - **Section B3-5.3, Traditional Credit History** — p. 484
-        - [`B3-5.3-01`](extracted/sections/B3-5.3-01.txt) Number and Age of Accounts (04/01/2009) — pp. 484–485
-        - [`B3-5.3-02`](extracted/sections/B3-5.3-02.txt) Payment History (04/01/2009) — p. 485
-        - [`B3-5.3-03`](extracted/sections/B3-5.3-03.txt) Previous Mortgage Payment History (07/25/2017) — pp. 485–487
-        - [`B3-5.3-04`](extracted/sections/B3-5.3-04.txt) Inquiries: Recent Attempts to Obtain New Credit (04/01/2009) — pp. 487–488
-        - [`B3-5.3-05`](extracted/sections/B3-5.3-05.txt) Credit Utilization (05/31/2016) — p. 488
-        - [`B3-5.3-06`](extracted/sections/B3-5.3-06.txt) Authorized Users of Credit (10/30/2009) — pp. 488–489
-        - [`B3-5.3-07`](extracted/sections/B3-5.3-07.txt) Significant Derogatory Credit Events — Waiting Periods and Re-establishing Credit (08/07/2019) — pp. 489–495
-        - [`B3-5.3-08`](extracted/sections/B3-5.3-08.txt) Extenuating Circumstances for Derogatory Credit (12/16/2014) — pp. 495–496
-        - [`B3-5.3-09`](extracted/sections/B3-5.3-09.txt) DU Credit Report Analysis (08/05/2026) — pp. 496–504
+        - `B3-5.3-01` Number and Age of Accounts (04/01/2009) — pp. 484–485 · [md](extracted/markdown/B3-5.3-01.md) · [txt](extracted/sections/B3-5.3-01.txt)
+        - `B3-5.3-02` Payment History (04/01/2009) — p. 485 · [md](extracted/markdown/B3-5.3-02.md) · [txt](extracted/sections/B3-5.3-02.txt)
+        - `B3-5.3-03` Previous Mortgage Payment History (07/25/2017) — pp. 485–487 · [md](extracted/markdown/B3-5.3-03.md) · [txt](extracted/sections/B3-5.3-03.txt)
+        - `B3-5.3-04` Inquiries: Recent Attempts to Obtain New Credit (04/01/2009) — pp. 487–488 · [md](extracted/markdown/B3-5.3-04.md) · [txt](extracted/sections/B3-5.3-04.txt)
+        - `B3-5.3-05` Credit Utilization (05/31/2016) — p. 488 · [md](extracted/markdown/B3-5.3-05.md) · [txt](extracted/sections/B3-5.3-05.txt)
+        - `B3-5.3-06` Authorized Users of Credit (10/30/2009) — pp. 488–489 · [md](extracted/markdown/B3-5.3-06.md) · [txt](extracted/sections/B3-5.3-06.txt)
+        - `B3-5.3-07` Significant Derogatory Credit Events — Waiting Periods and Re-establishing Credit (08/07/2019) — pp. 489–495 · [md](extracted/markdown/B3-5.3-07.md) · [txt](extracted/sections/B3-5.3-07.txt)
+        - `B3-5.3-08` Extenuating Circumstances for Derogatory Credit (12/16/2014) — pp. 495–496 · [md](extracted/markdown/B3-5.3-08.md) · [txt](extracted/sections/B3-5.3-08.txt)
+        - `B3-5.3-09` DU Credit Report Analysis (08/05/2026) — pp. 496–504 · [md](extracted/markdown/B3-5.3-09.md) · [txt](extracted/sections/B3-5.3-09.txt)
       - **Section B3-5.4, Nontraditional Credit History** — p. 504
-        - [`B3-5.4-01`](extracted/sections/B3-5.4-01.txt) Eligibility Requirements for Loans with Nontraditional Credit (11/05/2025) — pp. 505–507
-        - [`B3-5.4-02`](extracted/sections/B3-5.4-02.txt) Number and Types of Nontraditional Credit References (02/04/2026) — pp. 507–510
-        - [`B3-5.4-03`](extracted/sections/B3-5.4-03.txt) Documentation and Assessment of a Nontraditional Credit History (02/07/2024) — pp. 510–513
+        - `B3-5.4-01` Eligibility Requirements for Loans with Nontraditional Credit (11/05/2025) — pp. 505–507 · [md](extracted/markdown/B3-5.4-01.md) · [txt](extracted/sections/B3-5.4-01.txt)
+        - `B3-5.4-02` Number and Types of Nontraditional Credit References (02/04/2026) — pp. 507–510 · [md](extracted/markdown/B3-5.4-02.md) · [txt](extracted/sections/B3-5.4-02.txt)
+        - `B3-5.4-03` Documentation and Assessment of a Nontraditional Credit History (02/07/2024) — pp. 510–513 · [md](extracted/markdown/B3-5.4-03.md) · [txt](extracted/sections/B3-5.4-03.txt)
     - **Chapter B3-6, Liability Assessment** — p. 513
-      - [`B3-6-01`](extracted/sections/B3-6-01.txt) General Information on Liabilities (05/04/2022) — pp. 513–515
-      - [`B3-6-02`](extracted/sections/B3-6-02.txt) Debt-to-Income Ratios (04/02/2025) — pp. 515–519
-      - [`B3-6-03`](extracted/sections/B3-6-03.txt) Monthly Housing Expense for the Subject Property (12/16/2020) — pp. 519–521
-      - [`B3-6-04`](extracted/sections/B3-6-04.txt) Qualifying Payment Requirements (02/07/2024) — pp. 521–523
-      - [`B3-6-05`](extracted/sections/B3-6-05.txt) Monthly Debt Obligations (08/05/2026) — pp. 523–530
-      - [`B3-6-06`](extracted/sections/B3-6-06.txt) Qualifying Impact of Other Real Estate Owned (06/30/2015) — pp. 530–531
-      - [`B3-6-07`](extracted/sections/B3-6-07.txt) Debts Paid Off At or Prior to Closing (04/05/2023) — pp. 531–533
-      - [`B3-6-08`](extracted/sections/B3-6-08.txt) DU: Requirements for Liability Assessment (01/27/2015) — pp. 533–534
+      - `B3-6-01` General Information on Liabilities (05/04/2022) — pp. 513–515 · [md](extracted/markdown/B3-6-01.md) · [txt](extracted/sections/B3-6-01.txt)
+      - `B3-6-02` Debt-to-Income Ratios (04/02/2025) — pp. 515–519 · [md](extracted/markdown/B3-6-02.md) · [txt](extracted/sections/B3-6-02.txt)
+      - `B3-6-03` Monthly Housing Expense for the Subject Property (12/16/2020) — pp. 519–521 · [md](extracted/markdown/B3-6-03.md) · [txt](extracted/sections/B3-6-03.txt)
+      - `B3-6-04` Qualifying Payment Requirements (02/07/2024) — pp. 521–523 · [md](extracted/markdown/B3-6-04.md) · [txt](extracted/sections/B3-6-04.txt)
+      - `B3-6-05` Monthly Debt Obligations (08/05/2026) — pp. 523–530 · [md](extracted/markdown/B3-6-05.md) · [txt](extracted/sections/B3-6-05.txt)
+      - `B3-6-06` Qualifying Impact of Other Real Estate Owned (06/30/2015) — pp. 530–531 · [md](extracted/markdown/B3-6-06.md) · [txt](extracted/sections/B3-6-06.txt)
+      - `B3-6-07` Debts Paid Off At or Prior to Closing (04/05/2023) — pp. 531–533 · [md](extracted/markdown/B3-6-07.md) · [txt](extracted/sections/B3-6-07.txt)
+      - `B3-6-08` DU: Requirements for Liability Assessment (01/27/2015) — pp. 533–534 · [md](extracted/markdown/B3-6-08.md) · [txt](extracted/sections/B3-6-08.txt)
   - **Subpart B4, Underwriting Property** — pp. 534–535
     - **Chapter B4-1, Property Assessment and Valuation** — p. 535
       - **Section B4-1.1, General Appraisal Requirements** — p. 535
-        - [`B4-1.1-01`](extracted/sections/B4-1.1-01.txt) Definition of Market Value (06/04/2025) — pp. 535–536
-        - [`B4-1.1-02`](extracted/sections/B4-1.1-02.txt) Lender Responsibilities (06/04/2025) — pp. 536–539
-        - [`B4-1.1-03`](extracted/sections/B4-1.1-03.txt) Appraiser Selection Criteria (06/04/2025) — pp. 539–542
-        - [`B4-1.1-04`](extracted/sections/B4-1.1-04.txt) Unacceptable Appraisal Practices (06/04/2025) — pp. 542–544
-        - [`B4-1.1-05`](extracted/sections/B4-1.1-05.txt) Disclosure of Information to Appraisers (06/04/2025) — pp. 544–546
-        - [`B4-1.1-06`](extracted/sections/B4-1.1-06.txt) Uniform Appraisal Dataset (UAD) and the Uniform Collateral Data Portal (UCDP) (06/04/2025) — pp. 546–548
+        - `B4-1.1-01` Definition of Market Value (06/04/2025) — pp. 535–536 · [md](extracted/markdown/B4-1.1-01.md) · [txt](extracted/sections/B4-1.1-01.txt)
+        - `B4-1.1-02` Lender Responsibilities (06/04/2025) — pp. 536–539 · [md](extracted/markdown/B4-1.1-02.md) · [txt](extracted/sections/B4-1.1-02.txt)
+        - `B4-1.1-03` Appraiser Selection Criteria (06/04/2025) — pp. 539–542 · [md](extracted/markdown/B4-1.1-03.md) · [txt](extracted/sections/B4-1.1-03.txt)
+        - `B4-1.1-04` Unacceptable Appraisal Practices (06/04/2025) — pp. 542–544 · [md](extracted/markdown/B4-1.1-04.md) · [txt](extracted/sections/B4-1.1-04.txt)
+        - `B4-1.1-05` Disclosure of Information to Appraisers (06/04/2025) — pp. 544–546 · [md](extracted/markdown/B4-1.1-05.md) · [txt](extracted/sections/B4-1.1-05.txt)
+        - `B4-1.1-06` Uniform Appraisal Dataset (UAD) and the Uniform Collateral Data Portal (UCDP) (06/04/2025) — pp. 546–548 · [md](extracted/markdown/B4-1.1-06.md) · [txt](extracted/sections/B4-1.1-06.txt)
       - **Section B4-1.2, Documentation Standards** — p. 548
-        - [`B4-1.2-01`](extracted/sections/B4-1.2-01.txt) Appraisal Report Forms and Exhibits (09/03/2025) — pp. 548–554
-        - [`B4-1.2-02`](extracted/sections/B4-1.2-02.txt) Desktop Appraisals (12/10/2025) — pp. 554–556
-        - [`B4-1.2-03`](extracted/sections/B4-1.2-03.txt) Hybrid Appraisals (12/10/2025) — pp. 557–560
-        - [`B4-1.2-04`](extracted/sections/B4-1.2-04.txt) Appraisal Age and Use Requirements (06/04/2025) — pp. 560–562
-        - [`B4-1.2-05`](extracted/sections/B4-1.2-05.txt) Requirements for Verifying Completion and Postponed Improvements (12/10/2025) — pp. 562–569
+        - `B4-1.2-01` Appraisal Report Forms and Exhibits (09/03/2025) — pp. 548–554 · [md](extracted/markdown/B4-1.2-01.md) · [txt](extracted/sections/B4-1.2-01.txt)
+        - `B4-1.2-02` Desktop Appraisals (12/10/2025) — pp. 554–556 · [md](extracted/markdown/B4-1.2-02.md) · [txt](extracted/sections/B4-1.2-02.txt)
+        - `B4-1.2-03` Hybrid Appraisals (12/10/2025) — pp. 557–560 · [md](extracted/markdown/B4-1.2-03.md) · [txt](extracted/sections/B4-1.2-03.txt)
+        - `B4-1.2-04` Appraisal Age and Use Requirements (06/04/2025) — pp. 560–562 · [md](extracted/markdown/B4-1.2-04.md) · [txt](extracted/sections/B4-1.2-04.txt)
+        - `B4-1.2-05` Requirements for Verifying Completion and Postponed Improvements (12/10/2025) — pp. 562–569 · [md](extracted/markdown/B4-1.2-05.md) · [txt](extracted/sections/B4-1.2-05.txt)
       - **Section B4-1.3, Appraisal Report Assessment** — p. 569
-        - [`B4-1.3-01`](extracted/sections/B4-1.3-01.txt) Review of the Appraisal Report (06/04/2025) — pp. 570–571
-        - [`B4-1.3-02`](extracted/sections/B4-1.3-02.txt) Subject and Contract Sections of the Appraisal Report (06/04/2025) — pp. 571–573
-        - [`B4-1.3-03`](extracted/sections/B4-1.3-03.txt) Neighborhood Section of the Appraisal Report (06/04/2025) — pp. 573–578
-        - [`B4-1.3-04`](extracted/sections/B4-1.3-04.txt) Site Section of the Appraisal Report (06/04/2025) — pp. 578–581
-        - [`B4-1.3-05`](extracted/sections/B4-1.3-05.txt) Improvements Section of the Appraisal Report (06/04/2025) — pp. 581–588
-        - [`B4-1.3-06`](extracted/sections/B4-1.3-06.txt) Property Condition and Quality of Construction of the Improvements (06/04/2025) — pp. 588–596
-        - [`B4-1.3-07`](extracted/sections/B4-1.3-07.txt) Sales Comparison Approach Section of the Appraisal Report (06/04/2025) — pp. 596–598
-        - [`B4-1.3-08`](extracted/sections/B4-1.3-08.txt) Comparable Sales (06/04/2025) — pp. 598–602
-        - [`B4-1.3-09`](extracted/sections/B4-1.3-09.txt) Adjustments to Comparable Sales (06/04/2025) — pp. 602–605
-        - [`B4-1.3-10`](extracted/sections/B4-1.3-10.txt) Cost and Income Approach to Value (06/04/2025) — pp. 605–607
-        - [`B4-1.3-11`](extracted/sections/B4-1.3-11.txt) Valuation Analysis and Reconciliation (06/04/2025) — pp. 607–608
-        - [`B4-1.3-12`](extracted/sections/B4-1.3-12.txt) Appraisal Quality Matters (09/03/2025) — pp. 608–612
+        - `B4-1.3-01` Review of the Appraisal Report (06/04/2025) — pp. 570–571 · [md](extracted/markdown/B4-1.3-01.md) · [txt](extracted/sections/B4-1.3-01.txt)
+        - `B4-1.3-02` Subject and Contract Sections of the Appraisal Report (06/04/2025) — pp. 571–573 · [md](extracted/markdown/B4-1.3-02.md) · [txt](extracted/sections/B4-1.3-02.txt)
+        - `B4-1.3-03` Neighborhood Section of the Appraisal Report (06/04/2025) — pp. 573–578 · [md](extracted/markdown/B4-1.3-03.md) · [txt](extracted/sections/B4-1.3-03.txt)
+        - `B4-1.3-04` Site Section of the Appraisal Report (06/04/2025) — pp. 578–581 · [md](extracted/markdown/B4-1.3-04.md) · [txt](extracted/sections/B4-1.3-04.txt)
+        - `B4-1.3-05` Improvements Section of the Appraisal Report (06/04/2025) — pp. 581–588 · [md](extracted/markdown/B4-1.3-05.md) · [txt](extracted/sections/B4-1.3-05.txt)
+        - `B4-1.3-06` Property Condition and Quality of Construction of the Improvements (06/04/2025) — pp. 588–596 · [md](extracted/markdown/B4-1.3-06.md) · [txt](extracted/sections/B4-1.3-06.txt)
+        - `B4-1.3-07` Sales Comparison Approach Section of the Appraisal Report (06/04/2025) — pp. 596–598 · [md](extracted/markdown/B4-1.3-07.md) · [txt](extracted/sections/B4-1.3-07.txt)
+        - `B4-1.3-08` Comparable Sales (06/04/2025) — pp. 598–602 · [md](extracted/markdown/B4-1.3-08.md) · [txt](extracted/sections/B4-1.3-08.txt)
+        - `B4-1.3-09` Adjustments to Comparable Sales (06/04/2025) — pp. 602–605 · [md](extracted/markdown/B4-1.3-09.md) · [txt](extracted/sections/B4-1.3-09.txt)
+        - `B4-1.3-10` Cost and Income Approach to Value (06/04/2025) — pp. 605–607 · [md](extracted/markdown/B4-1.3-10.md) · [txt](extracted/sections/B4-1.3-10.txt)
+        - `B4-1.3-11` Valuation Analysis and Reconciliation (06/04/2025) — pp. 607–608 · [md](extracted/markdown/B4-1.3-11.md) · [txt](extracted/sections/B4-1.3-11.txt)
+        - `B4-1.3-12` Appraisal Quality Matters (09/03/2025) — pp. 608–612 · [md](extracted/markdown/B4-1.3-12.md) · [txt](extracted/sections/B4-1.3-12.txt)
       - **Section B4-1.4, Special Appraisal and Other Valuation Considerations** — p. 612
-        - [`B4-1.4-01`](extracted/sections/B4-1.4-01.txt) Factory-Built Housing: Manufactured Housing (02/04/2026) — pp. 612–617
-        - [`B4-1.4-02`](extracted/sections/B4-1.4-02.txt) Factory-Built Housing: Modular, Prefabricated, Panelized, or Sectional Housing (10/06/2021) — pp. 617–619
-        - [`B4-1.4-03`](extracted/sections/B4-1.4-03.txt) Condo Appraisal Requirements (04/15/2014) — p. 619
-        - [`B4-1.4-04`](extracted/sections/B4-1.4-04.txt) Co-op Appraisal Requirements (04/15/2014) — pp. 619–622
-        - [`B4-1.4-05`](extracted/sections/B4-1.4-05.txt) Leasehold Interests Appraisal Requirements (06/04/2025) — pp. 622–624
-        - [`B4-1.4-06`](extracted/sections/B4-1.4-06.txt) Community Land Trust Appraisal Requirements (06/04/2025) — pp. 624–627
-        - [`B4-1.4-07`](extracted/sections/B4-1.4-07.txt) Mixed-Use Property Appraisal Requirements (06/04/2025) — pp. 627–628
-        - [`B4-1.4-08`](extracted/sections/B4-1.4-08.txt) Environmental Hazards Appraisal Requirements (06/04/2025) — pp. 628–630
-        - [`B4-1.4-09`](extracted/sections/B4-1.4-09.txt) Special Assessment or Community Facilities Districts Appraisal Requirements (06/04/2025) — pp. 630–632
-        - [`B4-1.4-10`](extracted/sections/B4-1.4-10.txt) Value Acceptance (06/03/2026) — pp. 632–635
-        - [`B4-1.4-11`](extracted/sections/B4-1.4-11.txt) Value Acceptance + Property Data (12/10/2025) — pp. 635–639
+        - `B4-1.4-01` Factory-Built Housing: Manufactured Housing (02/04/2026) — pp. 612–617 · [md](extracted/markdown/B4-1.4-01.md) · [txt](extracted/sections/B4-1.4-01.txt)
+        - `B4-1.4-02` Factory-Built Housing: Modular, Prefabricated, Panelized, or Sectional Housing (10/06/2021) — pp. 617–619 · [md](extracted/markdown/B4-1.4-02.md) · [txt](extracted/sections/B4-1.4-02.txt)
+        - `B4-1.4-03` Condo Appraisal Requirements (04/15/2014) — p. 619 · [md](extracted/markdown/B4-1.4-03.md) · [txt](extracted/sections/B4-1.4-03.txt)
+        - `B4-1.4-04` Co-op Appraisal Requirements (04/15/2014) — pp. 619–622 · [md](extracted/markdown/B4-1.4-04.md) · [txt](extracted/sections/B4-1.4-04.txt)
+        - `B4-1.4-05` Leasehold Interests Appraisal Requirements (06/04/2025) — pp. 622–624 · [md](extracted/markdown/B4-1.4-05.md) · [txt](extracted/sections/B4-1.4-05.txt)
+        - `B4-1.4-06` Community Land Trust Appraisal Requirements (06/04/2025) — pp. 624–627 · [md](extracted/markdown/B4-1.4-06.md) · [txt](extracted/sections/B4-1.4-06.txt)
+        - `B4-1.4-07` Mixed-Use Property Appraisal Requirements (06/04/2025) — pp. 627–628 · [md](extracted/markdown/B4-1.4-07.md) · [txt](extracted/sections/B4-1.4-07.txt)
+        - `B4-1.4-08` Environmental Hazards Appraisal Requirements (06/04/2025) — pp. 628–630 · [md](extracted/markdown/B4-1.4-08.md) · [txt](extracted/sections/B4-1.4-08.txt)
+        - `B4-1.4-09` Special Assessment or Community Facilities Districts Appraisal Requirements (06/04/2025) — pp. 630–632 · [md](extracted/markdown/B4-1.4-09.md) · [txt](extracted/sections/B4-1.4-09.txt)
+        - `B4-1.4-10` Value Acceptance (06/03/2026) — pp. 632–635 · [md](extracted/markdown/B4-1.4-10.md) · [txt](extracted/sections/B4-1.4-10.txt)
+        - `B4-1.4-11` Value Acceptance + Property Data (12/10/2025) — pp. 635–639 · [md](extracted/markdown/B4-1.4-11.md) · [txt](extracted/sections/B4-1.4-11.txt)
     - **Chapter B4-2, Project Standards** — p. 639
       - **Section B4-2.1, General Project Standards** — p. 639
-        - [`B4-2.1-01`](extracted/sections/B4-2.1-01.txt) General Information on Project Standards (08/05/2026) — pp. 639–650
-        - [`B4-2.1-02`](extracted/sections/B4-2.1-02.txt) Waiver of Project Review (08/05/2026) — pp. 650–652
-        - [`B4-2.1-03`](extracted/sections/B4-2.1-03.txt) Ineligible Projects (08/05/2026) — pp. 652–666
-        - [`B4-2.1-04`](extracted/sections/B4-2.1-04.txt) Environmental Hazard Assessments (06/03/2020) — pp. 666–669
-        - [`B4-2.1-05`](extracted/sections/B4-2.1-05.txt) Unacceptable Environmental Hazards (06/03/2020) — pp. 669–672
-        - [`B4-2.1-06`](extracted/sections/B4-2.1-06.txt) Remedial Actions for Environmental Hazard Assessments Below Standards (06/03/2020) — pp. 672–674
+        - `B4-2.1-01` General Information on Project Standards (08/05/2026) — pp. 639–650 · [md](extracted/markdown/B4-2.1-01.md) · [txt](extracted/sections/B4-2.1-01.txt)
+        - `B4-2.1-02` Waiver of Project Review (08/05/2026) — pp. 650–652 · [md](extracted/markdown/B4-2.1-02.md) · [txt](extracted/sections/B4-2.1-02.txt)
+        - `B4-2.1-03` Ineligible Projects (08/05/2026) — pp. 652–666 · [md](extracted/markdown/B4-2.1-03.md) · [txt](extracted/sections/B4-2.1-03.txt)
+        - `B4-2.1-04` Environmental Hazard Assessments (06/03/2020) — pp. 666–669 · [md](extracted/markdown/B4-2.1-04.md) · [txt](extracted/sections/B4-2.1-04.txt)
+        - `B4-2.1-05` Unacceptable Environmental Hazards (06/03/2020) — pp. 669–672 · [md](extracted/markdown/B4-2.1-05.md) · [txt](extracted/sections/B4-2.1-05.txt)
+        - `B4-2.1-06` Remedial Actions for Environmental Hazard Assessments Below Standards (06/03/2020) — pp. 672–674 · [md](extracted/markdown/B4-2.1-06.md) · [txt](extracted/sections/B4-2.1-06.txt)
       - **Section B4-2.2, Project Eligibility** — p. 674
-        - [`B4-2.2-01`](extracted/sections/B4-2.2-01.txt) Full Review Process (08/05/2026) — pp. 674–683
-        - [`B4-2.2-02`](extracted/sections/B4-2.2-02.txt) Full Review: Additional Eligibility Requirements for Units in New and Newly Converted Condo Projects (08/05/2026) — pp. 683–687
-        - [`B4-2.2-03`](extracted/sections/B4-2.2-03.txt) FHA-Approved Condo Review Eligibility (09/04/2018) — pp. 687–689
-        - [`B4-2.2-04`](extracted/sections/B4-2.2-04.txt) Project Eligibility Review Service (PERS) (08/05/2026) — pp. 689–697
-        - [`B4-2.2-05`](extracted/sections/B4-2.2-05.txt) Projects with Special Considerations (08/06/2025) — p. 698
+        - `B4-2.2-01` Full Review Process (08/05/2026) — pp. 674–683 · [md](extracted/markdown/B4-2.2-01.md) · [txt](extracted/sections/B4-2.2-01.txt)
+        - `B4-2.2-02` Full Review: Additional Eligibility Requirements for Units in New and Newly Converted Condo Projects (08/05/2026) — pp. 683–687 · [md](extracted/markdown/B4-2.2-02.md) · [txt](extracted/sections/B4-2.2-02.txt)
+        - `B4-2.2-03` FHA-Approved Condo Review Eligibility (09/04/2018) — pp. 687–689 · [md](extracted/markdown/B4-2.2-03.md) · [txt](extracted/sections/B4-2.2-03.txt)
+        - `B4-2.2-04` Project Eligibility Review Service (PERS) (08/05/2026) — pp. 689–697 · [md](extracted/markdown/B4-2.2-04.md) · [txt](extracted/sections/B4-2.2-04.txt)
+        - `B4-2.2-05` Projects with Special Considerations (08/06/2025) — p. 698 · [md](extracted/markdown/B4-2.2-05.md) · [txt](extracted/sections/B4-2.2-05.txt)
       - **Section B4-2.3, PUD and Co-op Eligibility Requirements** — p. 698
-        - [`B4-2.3-01`](extracted/sections/B4-2.3-01.txt) Eligibility Requirements for Units in PUD Projects (08/05/2026) — pp. 698–700
-        - [`B4-2.3-02`](extracted/sections/B4-2.3-02.txt) Co-op Project Eligibility (05/06/2026) — pp. 700–707
-        - [`B4-2.3-03`](extracted/sections/B4-2.3-03.txt) Legal Requirements for Co-op Projects (11/06/2024) — pp. 707–710
-        - [`B4-2.3-04`](extracted/sections/B4-2.3-04.txt) Loan Eligibility for Co-op Share Loans (08/06/2025) — pp. 710–712
+        - `B4-2.3-01` Eligibility Requirements for Units in PUD Projects (08/05/2026) — pp. 698–700 · [md](extracted/markdown/B4-2.3-01.md) · [txt](extracted/sections/B4-2.3-01.txt)
+        - `B4-2.3-02` Co-op Project Eligibility (05/06/2026) — pp. 700–707 · [md](extracted/markdown/B4-2.3-02.md) · [txt](extracted/sections/B4-2.3-02.txt)
+        - `B4-2.3-03` Legal Requirements for Co-op Projects (11/06/2024) — pp. 707–710 · [md](extracted/markdown/B4-2.3-03.md) · [txt](extracted/sections/B4-2.3-03.txt)
+        - `B4-2.3-04` Loan Eligibility for Co-op Share Loans (08/06/2025) — pp. 710–712 · [md](extracted/markdown/B4-2.3-04.md) · [txt](extracted/sections/B4-2.3-04.txt)
   - **Subpart B5, Unique Eligibility and Underwriting Considerations** — p. 713
     - **Chapter B5-1, High-Balance Mortgage Loans** — p. 713
-      - [`B5-1-01`](extracted/sections/B5-1-01.txt) High-Balance Mortgage Loan Eligibility and Underwriting (07/02/2025) — pp. 713–714
-      - [`B5-1-02`](extracted/sections/B5-1-02.txt) High-Balance Pricing, Mortgage Insurance, Special Feature Codes, and Delivery Limitations (02/01/2023) — pp. 714–716
+      - `B5-1-01` High-Balance Mortgage Loan Eligibility and Underwriting (07/02/2025) — pp. 713–714 · [md](extracted/markdown/B5-1-01.md) · [txt](extracted/sections/B5-1-01.txt)
+      - `B5-1-02` High-Balance Pricing, Mortgage Insurance, Special Feature Codes, and Delivery Limitations (02/01/2023) — pp. 714–716 · [md](extracted/markdown/B5-1-02.md) · [txt](extracted/sections/B5-1-02.txt)
     - **Chapter B5-2, Manufactured Housing** — p. 716
-      - [`B5-2-01`](extracted/sections/B5-2-01.txt) Manufactured Housing (11/06/2024) — pp. 716–717
-      - [`B5-2-02`](extracted/sections/B5-2-02.txt) Manufactured Housing Loan Eligibility (12/10/2025) — pp. 717–719
-      - [`B5-2-03`](extracted/sections/B5-2-03.txt) Manufactured Housing Underwriting Requirements (10/08/2025) — pp. 719–725
-      - [`B5-2-04`](extracted/sections/B5-2-04.txt) Manufactured Housing Pricing, Mortgage Insurance, and Loan Delivery Requirements (12/10/2025) — pp. 725–726
-      - [`B5-2-05`](extracted/sections/B5-2-05.txt) Manufactured Housing Legal Considerations (12/10/2025) — pp. 726–732
+      - `B5-2-01` Manufactured Housing (11/06/2024) — pp. 716–717 · [md](extracted/markdown/B5-2-01.md) · [txt](extracted/sections/B5-2-01.txt)
+      - `B5-2-02` Manufactured Housing Loan Eligibility (12/10/2025) — pp. 717–719 · [md](extracted/markdown/B5-2-02.md) · [txt](extracted/sections/B5-2-02.txt)
+      - `B5-2-03` Manufactured Housing Underwriting Requirements (10/08/2025) — pp. 719–725 · [md](extracted/markdown/B5-2-03.md) · [txt](extracted/sections/B5-2-03.txt)
+      - `B5-2-04` Manufactured Housing Pricing, Mortgage Insurance, and Loan Delivery Requirements (12/10/2025) — pp. 725–726 · [md](extracted/markdown/B5-2-04.md) · [txt](extracted/sections/B5-2-04.txt)
+      - `B5-2-05` Manufactured Housing Legal Considerations (12/10/2025) — pp. 726–732 · [md](extracted/markdown/B5-2-05.md) · [txt](extracted/sections/B5-2-05.txt)
     - **Chapter B5-3, Construction and Energy Financing** — p. 732
       - **Section B5-3.1, Conversion of Construction-to-Permanent Financing** — p. 732
-        - [`B5-3.1-01`](extracted/sections/B5-3.1-01.txt) Conversion of Construction-to-Permanent Financing: Overview (06/04/2025) — pp. 732–734
-        - [`B5-3.1-02`](extracted/sections/B5-3.1-02.txt) Conversion of Construction-to-Permanent Financing: Single-Closing Transactions (05/06/2026) — pp. 734–740
-        - [`B5-3.1-03`](extracted/sections/B5-3.1-03.txt) Conversion of Construction-to-Permanent Financing: Two-Closing Transactions (08/07/2019) — pp. 740–742
+        - `B5-3.1-01` Conversion of Construction-to-Permanent Financing: Overview (06/04/2025) — pp. 732–734 · [md](extracted/markdown/B5-3.1-01.md) · [txt](extracted/sections/B5-3.1-01.txt)
+        - `B5-3.1-02` Conversion of Construction-to-Permanent Financing: Single-Closing Transactions (05/06/2026) — pp. 734–740 · [md](extracted/markdown/B5-3.1-02.md) · [txt](extracted/sections/B5-3.1-02.txt)
+        - `B5-3.1-03` Conversion of Construction-to-Permanent Financing: Two-Closing Transactions (08/07/2019) — pp. 740–742 · [md](extracted/markdown/B5-3.1-03.md) · [txt](extracted/sections/B5-3.1-03.txt)
       - **Section B5-3.2, HomeStyle Renovation Mortgage** — p. 742
-        - [`B5-3.2-01`](extracted/sections/B5-3.2-01.txt) HomeStyle Renovation Mortgages (12/10/2025) — pp. 742–745
-        - [`B5-3.2-02`](extracted/sections/B5-3.2-02.txt) HomeStyle Renovation Mortgages: Loan and Borrower Eligibility (12/10/2025) — pp. 745–749
-        - [`B5-3.2-03`](extracted/sections/B5-3.2-03.txt) HomeStyle Renovation Mortgages: Collateral Considerations (12/10/2025) — pp. 749–751
-        - [`B5-3.2-04`](extracted/sections/B5-3.2-04.txt) HomeStyle Renovation Mortgages: Costs and Escrow Accounts (12/10/2025) — pp. 751–754
-        - [`B5-3.2-05`](extracted/sections/B5-3.2-05.txt) HomeStyle Renovation Mortgages: Completion Certification (08/05/2026) — pp. 754–755
-        - [`B5-3.2-06`](extracted/sections/B5-3.2-06.txt) HomeStyle Renovation: Renovation Contract, Renovation Loan Agreement, and Lien Waiver (12/11/2024) — pp. 755–758
+        - `B5-3.2-01` HomeStyle Renovation Mortgages (12/10/2025) — pp. 742–745 · [md](extracted/markdown/B5-3.2-01.md) · [txt](extracted/sections/B5-3.2-01.txt)
+        - `B5-3.2-02` HomeStyle Renovation Mortgages: Loan and Borrower Eligibility (12/10/2025) — pp. 745–749 · [md](extracted/markdown/B5-3.2-02.md) · [txt](extracted/sections/B5-3.2-02.txt)
+        - `B5-3.2-03` HomeStyle Renovation Mortgages: Collateral Considerations (12/10/2025) — pp. 749–751 · [md](extracted/markdown/B5-3.2-03.md) · [txt](extracted/sections/B5-3.2-03.txt)
+        - `B5-3.2-04` HomeStyle Renovation Mortgages: Costs and Escrow Accounts (12/10/2025) — pp. 751–754 · [md](extracted/markdown/B5-3.2-04.md) · [txt](extracted/sections/B5-3.2-04.txt)
+        - `B5-3.2-05` HomeStyle Renovation Mortgages: Completion Certification (08/05/2026) — pp. 754–755 · [md](extracted/markdown/B5-3.2-05.md) · [txt](extracted/sections/B5-3.2-05.txt)
+        - `B5-3.2-06` HomeStyle Renovation: Renovation Contract, Renovation Loan Agreement, and Lien Waiver (12/11/2024) — pp. 755–758 · [md](extracted/markdown/B5-3.2-06.md) · [txt](extracted/sections/B5-3.2-06.txt)
       - **Section B5-3.3, HomeStyle Refresh Mortgages** — p. 758
-        - [`B5-3.3-01`](extracted/sections/B5-3.3-01.txt) HomeStyle Refresh for Improvements on Existing Properties (08/05/2026) — pp. 758–763
+        - `B5-3.3-01` HomeStyle Refresh for Improvements on Existing Properties (08/05/2026) — pp. 758–763 · [md](extracted/markdown/B5-3.3-01.md) · [txt](extracted/sections/B5-3.3-01.txt)
       - **Section B5-3.4, Property Assessed Clean Energy Loans** — pp. 763–764
-        - [`B5-3.4-01`](extracted/sections/B5-3.4-01.txt) Property Assessed Clean Energy Loans (10/08/2025) — pp. 764–765
+        - `B5-3.4-01` Property Assessed Clean Energy Loans (10/08/2025) — pp. 764–765 · [md](extracted/markdown/B5-3.4-01.md) · [txt](extracted/sections/B5-3.4-01.txt)
     - **Chapter B5-4, Property-Specific Products** — pp. 765–766
       - **Section B5-4.1, General Requirements of Texas Section 50(a)(6) Loans** — p. 766
-        - [`B5-4.1-01`](extracted/sections/B5-4.1-01.txt) Texas Section 50(a)(6) Loans (12/19/2017) — pp. 766–768
-        - [`B5-4.1-02`](extracted/sections/B5-4.1-02.txt) Texas Section 50(a)(6) Loan Eligibility (12/16/2020) — pp. 768–771
-        - [`B5-4.1-03`](extracted/sections/B5-4.1-03.txt) Texas Section 50(a)(6) Loan Underwriting, Collateral, and Closing Considerations (03/04/2026) — pp. 771–773
-        - [`B5-4.1-04`](extracted/sections/B5-4.1-04.txt) Texas Section 50(a)(6) Loan Delivery and Servicing Considerations (12/19/2017) — pp. 773–774
+        - `B5-4.1-01` Texas Section 50(a)(6) Loans (12/19/2017) — pp. 766–768 · [md](extracted/markdown/B5-4.1-01.md) · [txt](extracted/sections/B5-4.1-01.txt)
+        - `B5-4.1-02` Texas Section 50(a)(6) Loan Eligibility (12/16/2020) — pp. 768–771 · [md](extracted/markdown/B5-4.1-02.md) · [txt](extracted/sections/B5-4.1-02.txt)
+        - `B5-4.1-03` Texas Section 50(a)(6) Loan Underwriting, Collateral, and Closing Considerations (03/04/2026) — pp. 771–773 · [md](extracted/markdown/B5-4.1-03.md) · [txt](extracted/sections/B5-4.1-03.txt)
+        - `B5-4.1-04` Texas Section 50(a)(6) Loan Delivery and Servicing Considerations (12/19/2017) — pp. 773–774 · [md](extracted/markdown/B5-4.1-04.md) · [txt](extracted/sections/B5-4.1-04.txt)
       - **Section B5-4.2, Other Property-Specific Products** — p. 774
-        - [`B5-4.2-01`](extracted/sections/B5-4.2-01.txt) Native American Conventional Lending Initiative (NACLI) (06/26/2012) — pp. 775–776
-        - [`B5-4.2-02`](extracted/sections/B5-4.2-02.txt) Disaster-Related Limited Cash-Out Refinance Flexibilities (10/08/2025) — pp. 776–778
-        - [`B5-4.2-03`](extracted/sections/B5-4.2-03.txt) Loans Secured by HomePath Properties (05/07/2025) — pp. 778–780
+        - `B5-4.2-01` Native American Conventional Lending Initiative (NACLI) (06/26/2012) — pp. 775–776 · [md](extracted/markdown/B5-4.2-01.md) · [txt](extracted/sections/B5-4.2-01.txt)
+        - `B5-4.2-02` Disaster-Related Limited Cash-Out Refinance Flexibilities (10/08/2025) — pp. 776–778 · [md](extracted/markdown/B5-4.2-02.md) · [txt](extracted/sections/B5-4.2-02.txt)
+        - `B5-4.2-03` Loans Secured by HomePath Properties (05/07/2025) — pp. 778–780 · [md](extracted/markdown/B5-4.2-03.md) · [txt](extracted/sections/B5-4.2-03.txt)
     - **Chapter B5-5, Community Seconds, Loans with Resale Restrictions, and Shared Equity Transactions** — p. 780
       - **Section B5-5.1, Community Seconds** — pp. 780–781
-        - [`B5-5.1-01`](extracted/sections/B5-5.1-01.txt) Community Seconds Loans (05/03/2023) — pp. 781–782
-        - [`B5-5.1-02`](extracted/sections/B5-5.1-02.txt) Community Seconds Loan Eligibility (05/03/2023) — pp. 782–787
-        - [`B5-5.1-03`](extracted/sections/B5-5.1-03.txt) Community Seconds: Shared Appreciation Transactions (11/01/2023) — pp. 787–790
+        - `B5-5.1-01` Community Seconds Loans (05/03/2023) — pp. 781–782 · [md](extracted/markdown/B5-5.1-01.md) · [txt](extracted/sections/B5-5.1-01.txt)
+        - `B5-5.1-02` Community Seconds Loan Eligibility (05/03/2023) — pp. 782–787 · [md](extracted/markdown/B5-5.1-02.md) · [txt](extracted/sections/B5-5.1-02.txt)
+        - `B5-5.1-03` Community Seconds: Shared Appreciation Transactions (11/01/2023) — pp. 787–790 · [md](extracted/markdown/B5-5.1-03.md) · [txt](extracted/sections/B5-5.1-03.txt)
       - **Section B5-5.2, Loans with Resale Restrictions** — p. 791
-        - [`B5-5.2-01`](extracted/sections/B5-5.2-01.txt) Loans With Resale Restrictions: General Information (05/03/2023) — pp. 791–792
-        - [`B5-5.2-02`](extracted/sections/B5-5.2-02.txt) Loans with Resale Restrictions: Eligibility, Collateral and Delivery Requirements (08/05/2026) — pp. 792–794
+        - `B5-5.2-01` Loans With Resale Restrictions: General Information (05/03/2023) — pp. 791–792 · [md](extracted/markdown/B5-5.2-01.md) · [txt](extracted/sections/B5-5.2-01.txt)
+        - `B5-5.2-02` Loans with Resale Restrictions: Eligibility, Collateral and Delivery Requirements (08/05/2026) — pp. 792–794 · [md](extracted/markdown/B5-5.2-02.md) · [txt](extracted/sections/B5-5.2-02.txt)
       - **Section B5-5.3, Shared Equity Transactions** — p. 794
-        - [`B5-5.3-01`](extracted/sections/B5-5.3-01.txt) Shared Equity Overview (02/05/2025) — pp. 795–796
-        - [`B5-5.3-02`](extracted/sections/B5-5.3-02.txt) Shared Equity Transactions: General Requirements (02/05/2025) — pp. 796–800
-        - [`B5-5.3-03`](extracted/sections/B5-5.3-03.txt) Shared Equity Transactions: Eligibility, Underwriting and Collateral Requirements (02/05/2025) — pp. 800–805
-        - [`B5-5.3-04`](extracted/sections/B5-5.3-04.txt) Massachusetts Resale Restriction Loan Eligibility Requirements (05/03/2023) — pp. 805–806
+        - `B5-5.3-01` Shared Equity Overview (02/05/2025) — pp. 795–796 · [md](extracted/markdown/B5-5.3-01.md) · [txt](extracted/sections/B5-5.3-01.txt)
+        - `B5-5.3-02` Shared Equity Transactions: General Requirements (02/05/2025) — pp. 796–800 · [md](extracted/markdown/B5-5.3-02.md) · [txt](extracted/sections/B5-5.3-02.txt)
+        - `B5-5.3-03` Shared Equity Transactions: Eligibility, Underwriting and Collateral Requirements (02/05/2025) — pp. 800–805 · [md](extracted/markdown/B5-5.3-03.md) · [txt](extracted/sections/B5-5.3-03.txt)
+        - `B5-5.3-04` Massachusetts Resale Restriction Loan Eligibility Requirements (05/03/2023) — pp. 805–806 · [md](extracted/markdown/B5-5.3-04.md) · [txt](extracted/sections/B5-5.3-04.txt)
     - **Chapter B5-6, HomeReady Mortgage** — p. 806
-      - [`B5-6-01`](extracted/sections/B5-6-01.txt) HomeReady Mortgage Loan and Borrower Eligibility (06/04/2025) — pp. 806–811
-      - [`B5-6-02`](extracted/sections/B5-6-02.txt) HomeReady Mortgage Underwriting Methods and Requirements (11/05/2025) — pp. 811–816
-      - [`B5-6-03`](extracted/sections/B5-6-03.txt) HomeReady Mortgage Loan Pricing, Mortgage Insurance, and Special Feature Codes (06/05/2024) — pp. 816–817
+      - `B5-6-01` HomeReady Mortgage Loan and Borrower Eligibility (06/04/2025) — pp. 806–811 · [md](extracted/markdown/B5-6-01.md) · [txt](extracted/sections/B5-6-01.txt)
+      - `B5-6-02` HomeReady Mortgage Underwriting Methods and Requirements (11/05/2025) — pp. 811–816 · [md](extracted/markdown/B5-6-02.md) · [txt](extracted/sections/B5-6-02.txt)
+      - `B5-6-03` HomeReady Mortgage Loan Pricing, Mortgage Insurance, and Special Feature Codes (06/05/2024) — pp. 816–817 · [md](extracted/markdown/B5-6-03.md) · [txt](extracted/sections/B5-6-03.txt)
     - **Chapter B5-7, High Loan-to-Value Refinance Option** — p. 817
-      - [`B5-7-01`](extracted/sections/B5-7-01.txt) High LTV Refinance Loan and Borrower Eligibility (08/06/2025) — pp. 817–822
-      - [`B5-7-02`](extracted/sections/B5-7-02.txt) High LTV Refinance Underwriting, Documentation, and Collateral Requirements for the New Loan (09/03/2025) — pp. 822–826
-      - [`B5-7-03`](extracted/sections/B5-7-03.txt) High LTV Refinance Alternative Qualification Path (06/04/2025) — pp. 826–831
-      - [`B5-7-04`](extracted/sections/B5-7-04.txt) High LTV Refinance Representations and Warranties (03/01/2023) — pp. 831–832
-      - [`B5-7-05`](extracted/sections/B5-7-05.txt) High LTV Refinance Pricing, Mortgage Insurance, and Special Feature Codes (08/07/2018) — pp. 832–834
+      - `B5-7-01` High LTV Refinance Loan and Borrower Eligibility (08/06/2025) — pp. 817–822 · [md](extracted/markdown/B5-7-01.md) · [txt](extracted/sections/B5-7-01.txt)
+      - `B5-7-02` High LTV Refinance Underwriting, Documentation, and Collateral Requirements for the New Loan (09/03/2025) — pp. 822–826 · [md](extracted/markdown/B5-7-02.md) · [txt](extracted/sections/B5-7-02.txt)
+      - `B5-7-03` High LTV Refinance Alternative Qualification Path (06/04/2025) — pp. 826–831 · [md](extracted/markdown/B5-7-03.md) · [txt](extracted/sections/B5-7-03.txt)
+      - `B5-7-04` High LTV Refinance Representations and Warranties (03/01/2023) — pp. 831–832 · [md](extracted/markdown/B5-7-04.md) · [txt](extracted/sections/B5-7-04.txt)
+      - `B5-7-05` High LTV Refinance Pricing, Mortgage Insurance, and Special Feature Codes (08/07/2018) — pp. 832–834 · [md](extracted/markdown/B5-7-05.md) · [txt](extracted/sections/B5-7-05.txt)
   - **Subpart B6, Government Programs Eligibility and Underwriting Requirements** — pp. 834–835
     - **Chapter B6-1, Government Insured and Guaranteed Mortgages** — p. 835
-      - [`B6-1-01`](extracted/sections/B6-1-01.txt) General Government Mortgage Loan Requirements (07/05/2023) — pp. 835–838
-      - [`B6-1-02`](extracted/sections/B6-1-02.txt) Eligible FHA-Insured Mortgage Loans (08/05/2020) — pp. 838–839
-      - [`B6-1-03`](extracted/sections/B6-1-03.txt) Eligible VA-Guaranteed Mortgages (02/02/2022) — pp. 839–840
-      - [`B6-1-04`](extracted/sections/B6-1-04.txt) Eligible HUD-Guaranteed Section 184 Mortgages (12/14/2022) — pp. 840–842
-      - [`B6-1-05`](extracted/sections/B6-1-05.txt) Eligible RD-Guaranteed Mortgages (12/14/2022) — pp. 842–844
+      - `B6-1-01` General Government Mortgage Loan Requirements (07/05/2023) — pp. 835–838 · [md](extracted/markdown/B6-1-01.md) · [txt](extracted/sections/B6-1-01.txt)
+      - `B6-1-02` Eligible FHA-Insured Mortgage Loans (08/05/2020) — pp. 838–839 · [md](extracted/markdown/B6-1-02.md) · [txt](extracted/sections/B6-1-02.txt)
+      - `B6-1-03` Eligible VA-Guaranteed Mortgages (02/02/2022) — pp. 839–840 · [md](extracted/markdown/B6-1-03.md) · [txt](extracted/sections/B6-1-03.txt)
+      - `B6-1-04` Eligible HUD-Guaranteed Section 184 Mortgages (12/14/2022) — pp. 840–842 · [md](extracted/markdown/B6-1-04.md) · [txt](extracted/sections/B6-1-04.txt)
+      - `B6-1-05` Eligible RD-Guaranteed Mortgages (12/14/2022) — pp. 842–844 · [md](extracted/markdown/B6-1-05.md) · [txt](extracted/sections/B6-1-05.txt)
   - **Subpart B7, Insurance** — p. 844
     - **Chapter B7-1, Mortgage Insurance/Loan Guaranty** — p. 844
-      - [`B7-1-01`](extracted/sections/B7-1-01.txt) Provision of Mortgage Insurance (04/02/2025) — pp. 844–849
-      - [`B7-1-02`](extracted/sections/B7-1-02.txt) Mortgage Insurance Coverage Requirements (08/07/2019) — pp. 850–851
-      - [`B7-1-03`](extracted/sections/B7-1-03.txt) Lender-Purchased Mortgage Insurance (05/27/2010) — pp. 851–852
-      - [`B7-1-04`](extracted/sections/B7-1-04.txt) Financed Borrower-Purchased Mortgage Insurance (12/15/2021) — pp. 853–855
-      - [`B7-1-05`](extracted/sections/B7-1-05.txt) Government Mortgage Loan Guaranty or Insurance (02/23/2016) — pp. 855–857
+      - `B7-1-01` Provision of Mortgage Insurance (04/02/2025) — pp. 844–849 · [md](extracted/markdown/B7-1-01.md) · [txt](extracted/sections/B7-1-01.txt)
+      - `B7-1-02` Mortgage Insurance Coverage Requirements (08/07/2019) — pp. 850–851 · [md](extracted/markdown/B7-1-02.md) · [txt](extracted/sections/B7-1-02.txt)
+      - `B7-1-03` Lender-Purchased Mortgage Insurance (05/27/2010) — pp. 851–852 · [md](extracted/markdown/B7-1-03.md) · [txt](extracted/sections/B7-1-03.txt)
+      - `B7-1-04` Financed Borrower-Purchased Mortgage Insurance (12/15/2021) — pp. 853–855 · [md](extracted/markdown/B7-1-04.md) · [txt](extracted/sections/B7-1-04.txt)
+      - `B7-1-05` Government Mortgage Loan Guaranty or Insurance (02/23/2016) — pp. 855–857 · [md](extracted/markdown/B7-1-05.md) · [txt](extracted/sections/B7-1-05.txt)
     - **Chapter B7-2, Title Insurance** — p. 857
-      - [`B7-2-01`](extracted/sections/B7-2-01.txt) Provision of Title Insurance (04/06/2022) — p. 858
-      - [`B7-2-02`](extracted/sections/B7-2-02.txt) Title Insurer Requirements (06/05/2019) — pp. 858–859
-      - [`B7-2-03`](extracted/sections/B7-2-03.txt) General Title Insurance Coverage (07/06/2022) — pp. 859–861
-      - [`B7-2-04`](extracted/sections/B7-2-04.txt) Special Title Insurance Coverage Considerations (05/03/2023) — pp. 861–865
-      - [`B7-2-05`](extracted/sections/B7-2-05.txt) Title Exceptions and Impediments (07/06/2022) — pp. 865–867
-      - [`B7-2-06`](extracted/sections/B7-2-06.txt) Attorney Title Opinion Letter Requirements (12/10/2025) — pp. 868–870
+      - `B7-2-01` Provision of Title Insurance (04/06/2022) — p. 858 · [md](extracted/markdown/B7-2-01.md) · [txt](extracted/sections/B7-2-01.txt)
+      - `B7-2-02` Title Insurer Requirements (06/05/2019) — pp. 858–859 · [md](extracted/markdown/B7-2-02.md) · [txt](extracted/sections/B7-2-02.txt)
+      - `B7-2-03` General Title Insurance Coverage (07/06/2022) — pp. 859–861 · [md](extracted/markdown/B7-2-03.md) · [txt](extracted/sections/B7-2-03.txt)
+      - `B7-2-04` Special Title Insurance Coverage Considerations (05/03/2023) — pp. 861–865 · [md](extracted/markdown/B7-2-04.md) · [txt](extracted/sections/B7-2-04.txt)
+      - `B7-2-05` Title Exceptions and Impediments (07/06/2022) — pp. 865–867 · [md](extracted/markdown/B7-2-05.md) · [txt](extracted/sections/B7-2-05.txt)
+      - `B7-2-06` Attorney Title Opinion Letter Requirements (12/10/2025) — pp. 868–870 · [md](extracted/markdown/B7-2-06.md) · [txt](extracted/sections/B7-2-06.txt)
     - **Chapter B7-3, Property and Flood Insurance** — p. 870
-      - [`B7-3-01`](extracted/sections/B7-3-01.txt) General Property Insurance Requirements for All Property Types (12/14/2022) — pp. 870–873
-      - [`B7-3-02`](extracted/sections/B7-3-02.txt) Property Insurance Requirements for One-to Four-Unit Properties (08/05/2026) — pp. 873–875
-      - [`B7-3-03`](extracted/sections/B7-3-03.txt) Master Property Insurance Requirements for Project Developments (08/05/2026) — pp. 875–882
-      - [`B7-3-04`](extracted/sections/B7-3-04.txt) Property Insurance Requirements for Individual Units in a Project Development (08/05/2026) — pp. 882–884
-      - [`B7-3-05`](extracted/sections/B7-3-05.txt) Additional Insurance Requirements (12/14/2022) — pp. 884–887
-      - [`B7-3-06`](extracted/sections/B7-3-06.txt) Flood Insurance Requirements for All Property Types (02/07/2024) — pp. 887–894
-      - [`B7-3-07`](extracted/sections/B7-3-07.txt) Evidence of Property Insurance (08/05/2026) — pp. 894–897
-      - [`B7-3-08`](extracted/sections/B7-3-08.txt) Mortgagee Clause, Named Insured, and Notice of Cancellation Requirements (12/14/2022) — pp. 897–899
+      - `B7-3-01` General Property Insurance Requirements for All Property Types (12/14/2022) — pp. 870–873 · [md](extracted/markdown/B7-3-01.md) · [txt](extracted/sections/B7-3-01.txt)
+      - `B7-3-02` Property Insurance Requirements for One-to Four-Unit Properties (08/05/2026) — pp. 873–875 · [md](extracted/markdown/B7-3-02.md) · [txt](extracted/sections/B7-3-02.txt)
+      - `B7-3-03` Master Property Insurance Requirements for Project Developments (08/05/2026) — pp. 875–882 · [md](extracted/markdown/B7-3-03.md) · [txt](extracted/sections/B7-3-03.txt)
+      - `B7-3-04` Property Insurance Requirements for Individual Units in a Project Development (08/05/2026) — pp. 882–884 · [md](extracted/markdown/B7-3-04.md) · [txt](extracted/sections/B7-3-04.txt)
+      - `B7-3-05` Additional Insurance Requirements (12/14/2022) — pp. 884–887 · [md](extracted/markdown/B7-3-05.md) · [txt](extracted/sections/B7-3-05.txt)
+      - `B7-3-06` Flood Insurance Requirements for All Property Types (02/07/2024) — pp. 887–894 · [md](extracted/markdown/B7-3-06.md) · [txt](extracted/sections/B7-3-06.txt)
+      - `B7-3-07` Evidence of Property Insurance (08/05/2026) — pp. 894–897 · [md](extracted/markdown/B7-3-07.md) · [txt](extracted/sections/B7-3-07.txt)
+      - `B7-3-08` Mortgagee Clause, Named Insured, and Notice of Cancellation Requirements (12/14/2022) — pp. 897–899 · [md](extracted/markdown/B7-3-08.md) · [txt](extracted/sections/B7-3-08.txt)
     - **Chapter B7-4, Liability and Fidelity/Crime Insurance Requirements for Project Developments** — pp. 899–900
-      - [`B7-4-01`](extracted/sections/B7-4-01.txt) General Liability Insurance Requirements for Project Developments (08/05/2026) — pp. 900–901
-      - [`B7-4-02`](extracted/sections/B7-4-02.txt) Fidelity/Crime Insurance Requirements for Project Developments (08/05/2026) — pp. 901–903
+      - `B7-4-01` General Liability Insurance Requirements for Project Developments (08/05/2026) — pp. 900–901 · [md](extracted/markdown/B7-4-01.md) · [txt](extracted/sections/B7-4-01.txt)
+      - `B7-4-02` Fidelity/Crime Insurance Requirements for Project Developments (08/05/2026) — pp. 901–903 · [md](extracted/markdown/B7-4-02.md) · [txt](extracted/sections/B7-4-02.txt)
   - **Subpart B8, Closing: Legal Documents** — p. 903
     - **Chapter B8-1, General Information on Legal Documents** — p. 903
-      - [`B8-1-01`](extracted/sections/B8-1-01.txt) Publication of Legal Documents (06/28/2011) — pp. 903–904
+      - `B8-1-01` Publication of Legal Documents (06/28/2011) — pp. 903–904 · [md](extracted/markdown/B8-1-01.md) · [txt](extracted/sections/B8-1-01.txt)
     - **Chapter B8-2, Security Instruments** — pp. 904–905
-      - [`B8-2-01`](extracted/sections/B8-2-01.txt) Security Instruments for Conventional Mortgages (02/06/2019) — pp. 905–906
-      - [`B8-2-02`](extracted/sections/B8-2-02.txt) Special-Purpose Security Instruments (12/10/2025) — pp. 906–908
-      - [`B8-2-03`](extracted/sections/B8-2-03.txt) Signature Requirements for Security Instruments (10/22/2013) — pp. 908–909
+      - `B8-2-01` Security Instruments for Conventional Mortgages (02/06/2019) — pp. 905–906 · [md](extracted/markdown/B8-2-01.md) · [txt](extracted/sections/B8-2-01.txt)
+      - `B8-2-02` Special-Purpose Security Instruments (12/10/2025) — pp. 906–908 · [md](extracted/markdown/B8-2-02.md) · [txt](extracted/sections/B8-2-02.txt)
+      - `B8-2-03` Signature Requirements for Security Instruments (10/22/2013) — pp. 908–909 · [md](extracted/markdown/B8-2-03.md) · [txt](extracted/sections/B8-2-03.txt)
     - **Chapter B8-3, Notes** — pp. 909–910
-      - [`B8-3-01`](extracted/sections/B8-3-01.txt) Notes for Conventional Mortgages (09/02/2020) — pp. 910–911
-      - [`B8-3-02`](extracted/sections/B8-3-02.txt) Special Note Provisions and Language Requirements (06/03/2020) — pp. 911–912
-      - [`B8-3-03`](extracted/sections/B8-3-03.txt) Signature Requirements for Notes (02/07/2024) — pp. 912–913
-      - [`B8-3-04`](extracted/sections/B8-3-04.txt) Note Endorsement (10/02/2019) — pp. 913–915
+      - `B8-3-01` Notes for Conventional Mortgages (09/02/2020) — pp. 910–911 · [md](extracted/markdown/B8-3-01.md) · [txt](extracted/sections/B8-3-01.txt)
+      - `B8-3-02` Special Note Provisions and Language Requirements (06/03/2020) — pp. 911–912 · [md](extracted/markdown/B8-3-02.md) · [txt](extracted/sections/B8-3-02.txt)
+      - `B8-3-03` Signature Requirements for Notes (02/07/2024) — pp. 912–913 · [md](extracted/markdown/B8-3-03.md) · [txt](extracted/sections/B8-3-03.txt)
+      - `B8-3-04` Note Endorsement (10/02/2019) — pp. 913–915 · [md](extracted/markdown/B8-3-04.md) · [txt](extracted/sections/B8-3-04.txt)
     - **Chapter B8-4, Riders and Addenda** — p. 915
-      - [`B8-4-01`](extracted/sections/B8-4-01.txt) Riders and Addenda (06/05/2018) — pp. 915–918
+      - `B8-4-01` Riders and Addenda (06/05/2018) — pp. 915–918 · [md](extracted/markdown/B8-4-01.md) · [txt](extracted/sections/B8-4-01.txt)
     - **Chapter B8-5, Special-Purpose Legal Documents** — p. 918
-      - [`B8-5-01`](extracted/sections/B8-5-01.txt) General Information on Special-Purpose Legal Documents (05/01/2019) — pp. 918–919
-      - [`B8-5-02`](extracted/sections/B8-5-02.txt) Inter Vivos Revocable Trust Mortgage Documentation and Signature Requirements (10/31/2017) — pp. 919–922
-      - [`B8-5-03`](extracted/sections/B8-5-03.txt) HomeStyle Renovation Mortgage Documentation Requirements (06/05/2018) — pp. 922–923
-      - [`B8-5-04`](extracted/sections/B8-5-04.txt) Sample Legal Documents (02/05/2025) — pp. 923–924
-      - [`B8-5-05`](extracted/sections/B8-5-05.txt) Requirements for Use of a Power of Attorney (10/05/2022) — pp. 924–928
+      - `B8-5-01` General Information on Special-Purpose Legal Documents (05/01/2019) — pp. 918–919 · [md](extracted/markdown/B8-5-01.md) · [txt](extracted/sections/B8-5-01.txt)
+      - `B8-5-02` Inter Vivos Revocable Trust Mortgage Documentation and Signature Requirements (10/31/2017) — pp. 919–922 · [md](extracted/markdown/B8-5-02.md) · [txt](extracted/sections/B8-5-02.txt)
+      - `B8-5-03` HomeStyle Renovation Mortgage Documentation Requirements (06/05/2018) — pp. 922–923 · [md](extracted/markdown/B8-5-03.md) · [txt](extracted/sections/B8-5-03.txt)
+      - `B8-5-04` Sample Legal Documents (02/05/2025) — pp. 923–924 · [md](extracted/markdown/B8-5-04.md) · [txt](extracted/sections/B8-5-04.txt)
+      - `B8-5-05` Requirements for Use of a Power of Attorney (10/05/2022) — pp. 924–928 · [md](extracted/markdown/B8-5-05.md) · [txt](extracted/sections/B8-5-05.txt)
     - **Chapter B8-6, Mortgage Assignments** — p. 928
-      - [`B8-6-01`](extracted/sections/B8-6-01.txt) Authorized Use of Intervening and Blanket Assignments (05/04/2022) — pp. 928–930
+      - `B8-6-01` Authorized Use of Intervening and Blanket Assignments (05/04/2022) — pp. 928–930 · [md](extracted/markdown/B8-6-01.md) · [txt](extracted/sections/B8-6-01.txt)
     - **Chapter B8-7, Mortgage Electronic Registration System (MERS)** — p. 930
-      - [`B8-7-01`](extracted/sections/B8-7-01.txt) Mortgage Electronic Registration Systems (MERS), Inc. (05/01/2024) — pp. 930–934
+      - `B8-7-01` Mortgage Electronic Registration Systems (MERS), Inc. (05/01/2024) — pp. 930–934 · [md](extracted/markdown/B8-7-01.md) · [txt](extracted/sections/B8-7-01.txt)
     - **Chapter B8-8, Sale of eMortgages to Fannie Mae** — p. 934
-      - [`B8-8-01`](extracted/sections/B8-8-01.txt) General Information on eMortgages (11/05/2025) — pp. 934–937
-      - [`B8-8-02`](extracted/sections/B8-8-02.txt) Requirements for Creating, Closing, and Correcting eNotes (12/13/2023) — pp. 937–939
+      - `B8-8-01` General Information on eMortgages (11/05/2025) — pp. 934–937 · [md](extracted/markdown/B8-8-01.md) · [txt](extracted/sections/B8-8-01.txt)
+      - `B8-8-02` Requirements for Creating, Closing, and Correcting eNotes (12/13/2023) — pp. 937–939 · [md](extracted/markdown/B8-8-02.md) · [txt](extracted/sections/B8-8-02.txt)
 - **Part C, Selling, Securitizing, and Delivering Loans** — p. 940
   - **Subpart C1, General Information on Execution Options and Loan Delivery** — p. 941
     - **Chapter C1-1, Execution Options Overview** — p. 941
-      - [`C1-1-01`](extracted/sections/C1-1-01.txt) Execution Options (02/05/2025) — pp. 941–945
+      - `C1-1-01` Execution Options (02/05/2025) — pp. 941–945 · [md](extracted/markdown/C1-1-01.md) · [txt](extracted/sections/C1-1-01.txt)
     - **Chapter C1-2, Loan Delivery Overview** — p. 945
-      - [`C1-2-01`](extracted/sections/C1-2-01.txt) General Information on Delivering Loan Data and Documents (05/01/2019) — pp. 946–947
-      - [`C1-2-02`](extracted/sections/C1-2-02.txt) Loan Data and Documentation Delivery Requirements (10/04/2023) — pp. 947–950
-      - [`C1-2-03`](extracted/sections/C1-2-03.txt) Ownership of Mortgage Loans Prior to Purchase or Securitization and Third-Party Security Interests (04/06/2022) — pp. 950–952
-      - [`C1-2-04`](extracted/sections/C1-2-04.txt) Delivering eMortgages to Fannie Mae (12/13/2023) — pp. 952–955
-      - [`C1-2-05`](extracted/sections/C1-2-05.txt) Bailee Letters (04/06/2022) — pp. 955–956
+      - `C1-2-01` General Information on Delivering Loan Data and Documents (05/01/2019) — pp. 946–947 · [md](extracted/markdown/C1-2-01.md) · [txt](extracted/sections/C1-2-01.txt)
+      - `C1-2-02` Loan Data and Documentation Delivery Requirements (10/04/2023) — pp. 947–950 · [md](extracted/markdown/C1-2-02.md) · [txt](extracted/sections/C1-2-02.txt)
+      - `C1-2-03` Ownership of Mortgage Loans Prior to Purchase or Securitization and Third-Party Security Interests (04/06/2022) — pp. 950–952 · [md](extracted/markdown/C1-2-03.md) · [txt](extracted/sections/C1-2-03.txt)
+      - `C1-2-04` Delivering eMortgages to Fannie Mae (12/13/2023) — pp. 952–955 · [md](extracted/markdown/C1-2-04.md) · [txt](extracted/sections/C1-2-04.txt)
+      - `C1-2-05` Bailee Letters (04/06/2022) — pp. 955–956 · [md](extracted/markdown/C1-2-05.md) · [txt](extracted/sections/C1-2-05.txt)
     - **Chapter C1-3, Loan Remittance Types Overview** — pp. 956–957
-      - [`C1-3-01`](extracted/sections/C1-3-01.txt) General Information on Remittance Types (08/26/2014) — pp. 957–958
+      - `C1-3-01` General Information on Remittance Types (08/26/2014) — pp. 957–958 · [md](extracted/markdown/C1-3-01.md) · [txt](extracted/sections/C1-3-01.txt)
   - **Subpart C2, Whole Loan Transactions** — p. 958
     - **Chapter C2-1, Mandatory and Best Efforts Commitments to Sell Whole Loans** — p. 958
       - **Section C2-1.1, Mandatory Commitments to Sell Whole Loans** — p. 958
-        - [`C2-1.1-01`](extracted/sections/C2-1.1-01.txt) Mandatory Commitment Process (10/30/2009) — pp. 958–959
-        - [`C2-1.1-02`](extracted/sections/C2-1.1-02.txt) General Information about Mandatory Commitment Pricing and Fees (06/07/2023) — pp. 959–962
-        - [`C2-1.1-03`](extracted/sections/C2-1.1-03.txt) Mandatory Commitment Terms, Amounts, Periods and Other Requirements (07/05/2023) — pp. 962–964
-        - [`C2-1.1-04`](extracted/sections/C2-1.1-04.txt) Mandatory Commitment Extensions and Pair-Offs (05/30/2017) — pp. 964–967
-        - [`C2-1.1-05`](extracted/sections/C2-1.1-05.txt) Servicing Fees (05/01/2019) — pp. 967–968
-        - [`C2-1.1-06`](extracted/sections/C2-1.1-06.txt) Accrued Interest Payments for Regularly Amortizing Mortgages (06/28/2011) — pp. 968–969
-        - [`C2-1.1-07`](extracted/sections/C2-1.1-07.txt) Standard ARM and Converted ARM Resale Commitments (05/30/2017) — pp. 969–971
+        - `C2-1.1-01` Mandatory Commitment Process (10/30/2009) — pp. 958–959 · [md](extracted/markdown/C2-1.1-01.md) · [txt](extracted/sections/C2-1.1-01.txt)
+        - `C2-1.1-02` General Information about Mandatory Commitment Pricing and Fees (06/07/2023) — pp. 959–962 · [md](extracted/markdown/C2-1.1-02.md) · [txt](extracted/sections/C2-1.1-02.txt)
+        - `C2-1.1-03` Mandatory Commitment Terms, Amounts, Periods and Other Requirements (07/05/2023) — pp. 962–964 · [md](extracted/markdown/C2-1.1-03.md) · [txt](extracted/sections/C2-1.1-03.txt)
+        - `C2-1.1-04` Mandatory Commitment Extensions and Pair-Offs (05/30/2017) — pp. 964–967 · [md](extracted/markdown/C2-1.1-04.md) · [txt](extracted/sections/C2-1.1-04.txt)
+        - `C2-1.1-05` Servicing Fees (05/01/2019) — pp. 967–968 · [md](extracted/markdown/C2-1.1-05.md) · [txt](extracted/sections/C2-1.1-05.txt)
+        - `C2-1.1-06` Accrued Interest Payments for Regularly Amortizing Mortgages (06/28/2011) — pp. 968–969 · [md](extracted/markdown/C2-1.1-06.md) · [txt](extracted/sections/C2-1.1-06.txt)
+        - `C2-1.1-07` Standard ARM and Converted ARM Resale Commitments (05/30/2017) — pp. 969–971 · [md](extracted/markdown/C2-1.1-07.md) · [txt](extracted/sections/C2-1.1-07.txt)
       - **Section C2-1.2, Best Efforts Commitments to Sell Whole Loans** — p. 971
-        - [`C2-1.2-01`](extracted/sections/C2-1.2-01.txt) Best Efforts Commitment Process (08/06/2025) — pp. 971–972
-        - [`C2-1.2-02`](extracted/sections/C2-1.2-02.txt) Best Efforts Commitment Pricing, Periods, and Fees (03/03/2021) — pp. 972–973
-        - [`C2-1.2-03`](extracted/sections/C2-1.2-03.txt) Best Efforts Commitment Terms, Amounts, and Other Requirements (03/03/2021) — pp. 973–975
+        - `C2-1.2-01` Best Efforts Commitment Process (08/06/2025) — pp. 971–972 · [md](extracted/markdown/C2-1.2-01.md) · [txt](extracted/sections/C2-1.2-01.txt)
+        - `C2-1.2-02` Best Efforts Commitment Pricing, Periods, and Fees (03/03/2021) — pp. 972–973 · [md](extracted/markdown/C2-1.2-02.md) · [txt](extracted/sections/C2-1.2-02.txt)
+        - `C2-1.2-03` Best Efforts Commitment Terms, Amounts, and Other Requirements (03/03/2021) — pp. 973–975 · [md](extracted/markdown/C2-1.2-03.md) · [txt](extracted/sections/C2-1.2-03.txt)
       - **Section C2-1.3, Servicing Execution Tool to Sell Whole Loans** — p. 975
-        - [`C2-1.3-01`](extracted/sections/C2-1.3-01.txt) Servicing Marketplace (03/03/2021) — pp. 975–977
+        - `C2-1.3-01` Servicing Marketplace (03/03/2021) — pp. 975–977 · [md](extracted/markdown/C2-1.3-01.md) · [txt](extracted/sections/C2-1.3-01.txt)
     - **Chapter C2-2, Whole Loan Deliveries to and Purchasing by Fannie Mae** — p. 977
-      - [`C2-2-01`](extracted/sections/C2-2-01.txt) General Requirements for Good Delivery of Whole Loans (08/07/2018) — pp. 977–980
-      - [`C2-2-02`](extracted/sections/C2-2-02.txt) Documentation Requirements for Whole Loan Deliveries (05/01/2019) — pp. 980–982
-      - [`C2-2-03`](extracted/sections/C2-2-03.txt) General Information on Whole Loan Purchasing Policies (05/04/2022) — pp. 982–984
-      - [`C2-2-04`](extracted/sections/C2-2-04.txt) Timing of Distribution of Whole Loan Purchase Proceeds (05/04/2022) — pp. 984–985
-      - [`C2-2-05`](extracted/sections/C2-2-05.txt) Whole Loan Purchasing Process (10/04/2023) — pp. 985–987
-      - [`C2-2-06`](extracted/sections/C2-2-06.txt) Authorization to Transfer Funds (05/01/2024) — pp. 987–989
-      - [`C2-2-07`](extracted/sections/C2-2-07.txt) Purchase Payee Codes (05/01/2024) — pp. 989–991
+      - `C2-2-01` General Requirements for Good Delivery of Whole Loans (08/07/2018) — pp. 977–980 · [md](extracted/markdown/C2-2-01.md) · [txt](extracted/sections/C2-2-01.txt)
+      - `C2-2-02` Documentation Requirements for Whole Loan Deliveries (05/01/2019) — pp. 980–982 · [md](extracted/markdown/C2-2-02.md) · [txt](extracted/sections/C2-2-02.txt)
+      - `C2-2-03` General Information on Whole Loan Purchasing Policies (05/04/2022) — pp. 982–984 · [md](extracted/markdown/C2-2-03.md) · [txt](extracted/sections/C2-2-03.txt)
+      - `C2-2-04` Timing of Distribution of Whole Loan Purchase Proceeds (05/04/2022) — pp. 984–985 · [md](extracted/markdown/C2-2-04.md) · [txt](extracted/sections/C2-2-04.txt)
+      - `C2-2-05` Whole Loan Purchasing Process (10/04/2023) — pp. 985–987 · [md](extracted/markdown/C2-2-05.md) · [txt](extracted/sections/C2-2-05.txt)
+      - `C2-2-06` Authorization to Transfer Funds (05/01/2024) — pp. 987–989 · [md](extracted/markdown/C2-2-06.md) · [txt](extracted/sections/C2-2-06.txt)
+      - `C2-2-07` Purchase Payee Codes (05/01/2024) — pp. 989–991 · [md](extracted/markdown/C2-2-07.md) · [txt](extracted/sections/C2-2-07.txt)
   - **Subpart C3, Mortgage-Backed Securities (MBS)** — p. 991
     - **Chapter C3-1, MBS Program Overview** — p. 991
-      - [`C3-1-01`](extracted/sections/C3-1-01.txt) General Information About Fannie Mae’s MBS Program (10/06/2021) — pp. 991–995
-      - [`C3-1-02`](extracted/sections/C3-1-02.txt) Preparing to Pool Loans into MBS (05/01/2019) — pp. 995–996
+      - `C3-1-01` General Information About Fannie Mae’s MBS Program (10/06/2021) — pp. 991–995 · [md](extracted/markdown/C3-1-01.md) · [txt](extracted/sections/C3-1-01.txt)
+      - `C3-1-02` Preparing to Pool Loans into MBS (05/01/2019) — pp. 995–996 · [md](extracted/markdown/C3-1-02.md) · [txt](extracted/sections/C3-1-02.txt)
     - **Chapter C3-2, MBS Securitization Process** — p. 996
-      - [`C3-2-01`](extracted/sections/C3-2-01.txt) Determining Eligibility for Loans Pooled into MBS (09/07/2022) — pp. 996–1000
-      - [`C3-2-02`](extracted/sections/C3-2-02.txt) Selecting a Servicing Option (04/01/2009) — pp. 1000–1001
-      - [`C3-2-03`](extracted/sections/C3-2-03.txt) MBS Remittance Type and Selecting a Remittance Cycle (10/25/2011) — pp. 1001–1002
-      - [`C3-2-04`](extracted/sections/C3-2-04.txt) Mandatory MBS Commitments (12/06/2016) — pp. 1002–1003
+      - `C3-2-01` Determining Eligibility for Loans Pooled into MBS (09/07/2022) — pp. 996–1000 · [md](extracted/markdown/C3-2-01.md) · [txt](extracted/sections/C3-2-01.txt)
+      - `C3-2-02` Selecting a Servicing Option (04/01/2009) — pp. 1000–1001 · [md](extracted/markdown/C3-2-02.md) · [txt](extracted/sections/C3-2-02.txt)
+      - `C3-2-03` MBS Remittance Type and Selecting a Remittance Cycle (10/25/2011) — pp. 1001–1002 · [md](extracted/markdown/C3-2-03.md) · [txt](extracted/sections/C3-2-03.txt)
+      - `C3-2-04` Mandatory MBS Commitments (12/06/2016) — pp. 1002–1003 · [md](extracted/markdown/C3-2-04.md) · [txt](extracted/sections/C3-2-04.txt)
     - **Chapter C3-3, MBS Guaranty Fees and Guaranty Fee Buyups and Buydowns** — pp. 1003–1004
-      - [`C3-3-01`](extracted/sections/C3-3-01.txt) Determining and Remitting Guaranty Fees (10/25/2011) — pp. 1004–1005
-      - [`C3-3-02`](extracted/sections/C3-3-02.txt) Accessing Buyup and Buydown Ratios and Calculating Payments or Charges (12/04/2019) — pp. 1005–1007
-      - [`C3-3-03`](extracted/sections/C3-3-03.txt) Buying Up and Buying Down the Guaranty Fee for MBS (05/07/2025) — pp. 1007–1008
+      - `C3-3-01` Determining and Remitting Guaranty Fees (10/25/2011) — pp. 1004–1005 · [md](extracted/markdown/C3-3-01.md) · [txt](extracted/sections/C3-3-01.txt)
+      - `C3-3-02` Accessing Buyup and Buydown Ratios and Calculating Payments or Charges (12/04/2019) — pp. 1005–1007 · [md](extracted/markdown/C3-3-02.md) · [txt](extracted/sections/C3-3-02.txt)
+      - `C3-3-03` Buying Up and Buying Down the Guaranty Fee for MBS (05/07/2025) — pp. 1007–1008 · [md](extracted/markdown/C3-3-03.md) · [txt](extracted/sections/C3-3-03.txt)
     - **Chapter C3-4, Pooling Loans into Fixed-Rate MBS** — p. 1009
-      - [`C3-4-01`](extracted/sections/C3-4-01.txt) Term-Related Fixed-Rate Mortgage Pooling Parameters (05/01/2019) — pp. 1009–1011
+      - `C3-4-01` Term-Related Fixed-Rate Mortgage Pooling Parameters (05/01/2019) — pp. 1009–1011 · [md](extracted/markdown/C3-4-01.md) · [txt](extracted/sections/C3-4-01.txt)
     - **Chapter C3-5, Pooling Loans into ARM MBS** — p. 1011
-      - [`C3-5-01`](extracted/sections/C3-5-01.txt) Creating Weighted-Average ARM MBS (08/26/2014) — pp. 1011–1012
-      - [`C3-5-02`](extracted/sections/C3-5-02.txt) Calculating the Weighted-Average Pool Accrual Rates for ARM Flex Pools Using a Fixed MBS Margin (04/01/2009) — pp. 1012–1015
-      - [`C3-5-03`](extracted/sections/C3-5-03.txt) Calculating the Weighted-Average Pool Accrual Rates for ARM Flex Pools Using a Weighted-Average MBS Margin (04/01/2009) — pp. 1015–1019
-      - [`C3-5-04`](extracted/sections/C3-5-04.txt) Pooling ARMs with a Conversion Option (05/01/2019) — pp. 1019–1020
-      - [`C3-5-05`](extracted/sections/C3-5-05.txt) Commingling ARMs in MBS (02/23/2016) — pp. 1020–1021
+      - `C3-5-01` Creating Weighted-Average ARM MBS (08/26/2014) — pp. 1011–1012 · [md](extracted/markdown/C3-5-01.md) · [txt](extracted/sections/C3-5-01.txt)
+      - `C3-5-02` Calculating the Weighted-Average Pool Accrual Rates for ARM Flex Pools Using a Fixed MBS Margin (04/01/2009) — pp. 1012–1015 · [md](extracted/markdown/C3-5-02.md) · [txt](extracted/sections/C3-5-02.txt)
+      - `C3-5-03` Calculating the Weighted-Average Pool Accrual Rates for ARM Flex Pools Using a Weighted-Average MBS Margin (04/01/2009) — pp. 1015–1019 · [md](extracted/markdown/C3-5-03.md) · [txt](extracted/sections/C3-5-03.txt)
+      - `C3-5-04` Pooling ARMs with a Conversion Option (05/01/2019) — pp. 1019–1020 · [md](extracted/markdown/C3-5-04.md) · [txt](extracted/sections/C3-5-04.txt)
+      - `C3-5-05` Commingling ARMs in MBS (02/23/2016) — pp. 1020–1021 · [md](extracted/markdown/C3-5-05.md) · [txt](extracted/sections/C3-5-05.txt)
     - **Chapter C3-6, Pooling Loans into Fannie Majors** — p. 1021
-      - [`C3-6-01`](extracted/sections/C3-6-01.txt) Parameters for Pooling Loans Into Fannie Majors (08/05/2026) — pp. 1021–1023
+      - `C3-6-01` Parameters for Pooling Loans Into Fannie Majors (08/05/2026) — pp. 1021–1023 · [md](extracted/markdown/C3-6-01.md) · [txt](extracted/sections/C3-6-01.txt)
     - **Chapter C3-7, Delivering and Trading MBS** — pp. 1023–1024
-      - [`C3-7-01`](extracted/sections/C3-7-01.txt) Establishing an MBS Trading Account (10/06/2021) — pp. 1024–1031
-      - [`C3-7-02`](extracted/sections/C3-7-02.txt) Initiating an MBS Sale (07/07/2021) — pp. 1031–1033
-      - [`C3-7-03`](extracted/sections/C3-7-03.txt) Making Good Delivery (05/01/2019) — pp. 1033–1037
-      - [`C3-7-04`](extracted/sections/C3-7-04.txt) Delivering MBS Pool Data and Documents (04/01/2026) — pp. 1037–1040
-      - [`C3-7-05`](extracted/sections/C3-7-05.txt) Confirming Presettlement Information (04/01/2009) — pp. 1040–1042
-      - [`C3-7-06`](extracted/sections/C3-7-06.txt) Settling the Trade (05/05/2021) — pp. 1042–1046
-      - [`C3-7-07`](extracted/sections/C3-7-07.txt) Sale of Fannie Mae Securities to Third Parties (05/05/2021) — pp. 1046–1048
+      - `C3-7-01` Establishing an MBS Trading Account (10/06/2021) — pp. 1024–1031 · [md](extracted/markdown/C3-7-01.md) · [txt](extracted/sections/C3-7-01.txt)
+      - `C3-7-02` Initiating an MBS Sale (07/07/2021) — pp. 1031–1033 · [md](extracted/markdown/C3-7-02.md) · [txt](extracted/sections/C3-7-02.txt)
+      - `C3-7-03` Making Good Delivery (05/01/2019) — pp. 1033–1037 · [md](extracted/markdown/C3-7-03.md) · [txt](extracted/sections/C3-7-03.txt)
+      - `C3-7-04` Delivering MBS Pool Data and Documents (04/01/2026) — pp. 1037–1040 · [md](extracted/markdown/C3-7-04.md) · [txt](extracted/sections/C3-7-04.txt)
+      - `C3-7-05` Confirming Presettlement Information (04/01/2009) — pp. 1040–1042 · [md](extracted/markdown/C3-7-05.md) · [txt](extracted/sections/C3-7-05.txt)
+      - `C3-7-06` Settling the Trade (05/05/2021) — pp. 1042–1046 · [md](extracted/markdown/C3-7-06.md) · [txt](extracted/sections/C3-7-06.txt)
+      - `C3-7-07` Sale of Fannie Mae Securities to Third Parties (05/05/2021) — pp. 1046–1048 · [md](extracted/markdown/C3-7-07.md) · [txt](extracted/sections/C3-7-07.txt)
 - **Part D, Ensuring Quality Control (QC)** — p. 1049
   - **Subpart D1, Lender QC Process** — p. 1050
     - **Chapter D1-1, Lender Quality Control Process** — p. 1050
-      - [`D1-1-01`](extracted/sections/D1-1-01.txt) Lender Quality Control Programs, Plans, and Processes (04/01/2026) — pp. 1050–1056
-      - [`D1-1-02`](extracted/sections/D1-1-02.txt) Lender Quality Control Staffing and Outsourcing of the Quality Control Process (04/01/2026) — pp. 1056–1058
-      - [`D1-1-03`](extracted/sections/D1-1-03.txt) Lender Quality Control Reporting (04/01/2026) — pp. 1058–1059
+      - `D1-1-01` Lender Quality Control Programs, Plans, and Processes (04/01/2026) — pp. 1050–1056 · [md](extracted/markdown/D1-1-01.md) · [txt](extracted/sections/D1-1-01.txt)
+      - `D1-1-02` Lender Quality Control Staffing and Outsourcing of the Quality Control Process (04/01/2026) — pp. 1056–1058 · [md](extracted/markdown/D1-1-02.md) · [txt](extracted/sections/D1-1-02.txt)
+      - `D1-1-03` Lender Quality Control Reporting (04/01/2026) — pp. 1058–1059 · [md](extracted/markdown/D1-1-03.md) · [txt](extracted/sections/D1-1-03.txt)
     - **Chapter D1-2, Lender Prefunding QC Mortgage Review** — p. 1059
-      - [`D1-2-01`](extracted/sections/D1-2-01.txt) Lender Prefunding Quality Control Review Process (04/01/2026) — pp. 1060–1062
+      - `D1-2-01` Lender Prefunding Quality Control Review Process (04/01/2026) — pp. 1060–1062 · [md](extracted/markdown/D1-2-01.md) · [txt](extracted/sections/D1-2-01.txt)
     - **Chapter D1-3, Lender Post-Closing QC Mortgage Review** — p. 1062
-      - [`D1-3-01`](extracted/sections/D1-3-01.txt) Lender Post-Closing Quality Control Review Process (04/01/2026) — pp. 1062–1065
-      - [`D1-3-02`](extracted/sections/D1-3-02.txt) Lender Post-Closing Quality Control Review of Approval Conditions, Underwriting Decisions, Data, and Documentation (04/01/2026) — pp. 1065–1069
-      - [`D1-3-03`](extracted/sections/D1-3-03.txt) Lender Post-Closing Quality Control Reverifications (04/01/2026) — pp. 1069–1073
+      - `D1-3-01` Lender Post-Closing Quality Control Review Process (04/01/2026) — pp. 1062–1065 · [md](extracted/markdown/D1-3-01.md) · [txt](extracted/sections/D1-3-01.txt)
+      - `D1-3-02` Lender Post-Closing Quality Control Review of Approval Conditions, Underwriting Decisions, Data, and Documentation (04/01/2026) — pp. 1065–1069 · [md](extracted/markdown/D1-3-02.md) · [txt](extracted/sections/D1-3-02.txt)
+      - `D1-3-03` Lender Post-Closing Quality Control Reverifications (04/01/2026) — pp. 1069–1073 · [md](extracted/markdown/D1-3-03.md) · [txt](extracted/sections/D1-3-03.txt)
   - **Subpart D2, Fannie Mae QC Process** — pp. 1073–1074
     - **Chapter D2-1, General Information on Fannie Mae QC Process** — p. 1074
-      - [`D2-1-01`](extracted/sections/D2-1-01.txt) General Information on Fannie Mae QC Reviews (04/03/2019) — pp. 1074–1075
-      - [`D2-1-02`](extracted/sections/D2-1-02.txt) Fannie Mae QC File Request and Submission Requirements (03/06/2024) — pp. 1075–1077
-      - [`D2-1-03`](extracted/sections/D2-1-03.txt) Outcomes of Fannie Mae QC Reviews (11/03/2015) — pp. 1077–1080
-      - [`D2-1-04`](extracted/sections/D2-1-04.txt) Identifying and Remedying Origination Defects Under the Remedies Framework (08/30/2016) — pp. 1080–1083
+      - `D2-1-01` General Information on Fannie Mae QC Reviews (04/03/2019) — pp. 1074–1075 · [md](extracted/markdown/D2-1-01.md) · [txt](extracted/sections/D2-1-01.txt)
+      - `D2-1-02` Fannie Mae QC File Request and Submission Requirements (03/06/2024) — pp. 1075–1077 · [md](extracted/markdown/D2-1-02.md) · [txt](extracted/sections/D2-1-02.txt)
+      - `D2-1-03` Outcomes of Fannie Mae QC Reviews (11/03/2015) — pp. 1077–1080 · [md](extracted/markdown/D2-1-03.md) · [txt](extracted/sections/D2-1-03.txt)
+      - `D2-1-04` Identifying and Remedying Origination Defects Under the Remedies Framework (08/30/2016) — pp. 1080–1083 · [md](extracted/markdown/D2-1-04.md) · [txt](extracted/sections/D2-1-04.txt)
 - **Part E, Quick Reference Materials** — p. 1084
   - **Chapter E-1, Selling Guide Resources** — p. 1085
-    - [`E-1-01`](extracted/sections/E-1-01.txt) References to Fannie Mae's Website (06/04/2025) — pp. 1085–1086
-    - [`E-1-02`](extracted/sections/E-1-02.txt) List of Contacts (02/04/2026) — pp. 1086–1092
-    - [`E-1-03`](extracted/sections/E-1-03.txt) List of Lender Contracts (08/05/2020) — pp. 1092–1094
+    - `E-1-01` References to Fannie Mae's Website (06/04/2025) — pp. 1085–1086 · [md](extracted/markdown/E-1-01.md) · [txt](extracted/sections/E-1-01.txt)
+    - `E-1-02` List of Contacts (02/04/2026) — pp. 1086–1092 · [md](extracted/markdown/E-1-02.md) · [txt](extracted/sections/E-1-02.txt)
+    - `E-1-03` List of Lender Contracts (08/05/2020) — pp. 1092–1094 · [md](extracted/markdown/E-1-03.md) · [txt](extracted/sections/E-1-03.txt)
   - **Chapter E-2, Exhibits** — p. 1094
-    - [`E-2-01`](extracted/sections/E-2-01.txt) Required Custodial Documents (05/04/2022) — pp. 1094–1097
-    - [`E-2-02`](extracted/sections/E-2-02.txt) Suggested Format for Phase I Environmental Hazard Assessments (06/04/2025) — pp. 1097–1109
-    - [`E-2-03`](extracted/sections/E-2-03.txt) Revocable Trust Rider (Sample Language) (01/17/2013) — pp. 1109–1110
-    - [`E-2-04`](extracted/sections/E-2-04.txt) Signature Requirements for Mortgages to Inter Vivos Revocable Trusts (08/05/2026) — pp. 1110–1114
-    - [`E-2-05`](extracted/sections/E-2-05.txt) Servicing Marketplace — Mortgage Loan Servicing Purchase and Sale Agreement (12/15/2021) — pp. 1114–1129
-    - [`E-2-06`](extracted/sections/E-2-06.txt) Correcting Errors in eNotes (12/13/2023) — pp. 1129–1130
-    - [`E-2-07`](extracted/sections/E-2-07.txt) Description of eNote Header, Footer, and eNote Clause (12/13/2023) — pp. 1130–1132
+    - `E-2-01` Required Custodial Documents (05/04/2022) — pp. 1094–1097 · [md](extracted/markdown/E-2-01.md) · [txt](extracted/sections/E-2-01.txt)
+    - `E-2-02` Suggested Format for Phase I Environmental Hazard Assessments (06/04/2025) — pp. 1097–1109 · [md](extracted/markdown/E-2-02.md) · [txt](extracted/sections/E-2-02.txt)
+    - `E-2-03` Revocable Trust Rider (Sample Language) (01/17/2013) — pp. 1109–1110 · [md](extracted/markdown/E-2-03.md) · [txt](extracted/sections/E-2-03.txt)
+    - `E-2-04` Signature Requirements for Mortgages to Inter Vivos Revocable Trusts (08/05/2026) — pp. 1110–1114 · [md](extracted/markdown/E-2-04.md) · [txt](extracted/sections/E-2-04.txt)
+    - `E-2-05` Servicing Marketplace — Mortgage Loan Servicing Purchase and Sale Agreement (12/15/2021) — pp. 1114–1129 · [md](extracted/markdown/E-2-05.md) · [txt](extracted/sections/E-2-05.txt)
+    - `E-2-06` Correcting Errors in eNotes (12/13/2023) — pp. 1129–1130 · [md](extracted/markdown/E-2-06.md) · [txt](extracted/sections/E-2-06.txt)
+    - `E-2-07` Description of eNote Header, Footer, and eNote Clause (12/13/2023) — pp. 1130–1132 · [md](extracted/markdown/E-2-07.md) · [txt](extracted/sections/E-2-07.txt)
   - **Chapter E-3, Acronyms and Glossary of Defined Terms** — p. 1132
-    - [`E-3-01`](extracted/sections/E-3-01.txt) Acronyms and Glossary of Defined Terms: A (09/03/2025) — pp. 1132–1135
-    - [`E-3-02`](extracted/sections/E-3-02.txt) Acronyms and Glossary of Defined Terms: B (02/07/2024) — pp. 1135–1137
-    - [`E-3-03`](extracted/sections/E-3-03.txt) Acronyms and Glossary of Defined Terms: C (04/22/2026) — pp. 1137–1142
-    - [`E-3-04`](extracted/sections/E-3-04.txt) Acronyms and Glossary of Defined Terms: D (03/01/2023) — pp. 1142–1145
-    - [`E-3-05`](extracted/sections/E-3-05.txt) Acronyms and Glossary of Defined Terms: E (12/14/2022) — pp. 1145–1147
-    - [`E-3-06`](extracted/sections/E-3-06.txt) Acronyms and Glossary of Defined Terms: F (09/03/2025) — pp. 1147–1151
-    - [`E-3-07`](extracted/sections/E-3-07.txt) Acronyms and Glossary of Defined Terms: G (06/04/2025) — pp. 1151–1152
-    - [`E-3-08`](extracted/sections/E-3-08.txt) Acronyms and Glossary of Defined Terms: H (04/05/2023) — pp. 1152–1154
-    - [`E-3-09`](extracted/sections/E-3-09.txt) Acronyms and Glossary of Defined Terms: I (02/04/2026) — pp. 1154–1157
-    - [`E-3-10`](extracted/sections/E-3-10.txt) Acronyms and Glossary of Defined Terms: J (04/01/2009) — p. 1157
-    - [`E-3-11`](extracted/sections/E-3-11.txt) Acronyms and Glossary of Defined Terms: K (12/14/2022) — p. 1157
-    - [`E-3-12`](extracted/sections/E-3-12.txt) Acronyms and Glossary of Defined Terms: L (10/08/2025) — pp. 1157–1160
-    - [`E-3-13`](extracted/sections/E-3-13.txt) Acronyms and Glossary of Defined Terms: M (11/06/2024) — pp. 1160–1165
-    - [`E-3-14`](extracted/sections/E-3-14.txt) Acronyms and Glossary of Defined Terms: N (06/04/2025) — pp. 1165–1166
-    - [`E-3-15`](extracted/sections/E-3-15.txt) Acronyms and Glossary of Defined Terms: O (11/10/2014) — pp. 1166–1167
-    - [`E-3-16`](extracted/sections/E-3-16.txt) Acronyms and Glossary of Defined Terms: P (02/07/2024) — pp. 1167–1171
-    - [`E-3-17`](extracted/sections/E-3-17.txt) Acronyms and Glossary of Defined Terms: Q (04/01/2009) — pp. 1171–1172
-    - [`E-3-18`](extracted/sections/E-3-18.txt) Acronyms and Glossary of Defined Terms: R (05/06/2026) — pp. 1172–1175
-    - [`E-3-19`](extracted/sections/E-3-19.txt) Acronyms and Glossary of Defined Terms: S (02/07/2024) — pp. 1175–1180
-    - [`E-3-20`](extracted/sections/E-3-20.txt) Acronyms and Glossary of Defined Terms: T (02/07/2024) — pp. 1180–1182
-    - [`E-3-21`](extracted/sections/E-3-21.txt) Acronyms and Glossary of Defined Terms: U (05/01/2019) — pp. 1182–1183
-    - [`E-3-22`](extracted/sections/E-3-22.txt) Acronyms and Glossary of Defined Terms: V (09/03/2025) — pp. 1183–1184
-    - [`E-3-23`](extracted/sections/E-3-23.txt) Acronyms and Glossary of Defined Terms: W (11/10/2019) — p. 1184
-    - [`E-3-24`](extracted/sections/E-3-24.txt) Acronyms and Glossary of Defined Terms: X (04/01/2009) — p. 1184
-    - [`E-3-25`](extracted/sections/E-3-25.txt) Acronyms and Glossary of Defined Terms: Y (05/30/2017) — pp. 1184–1185
-    - [`E-3-26`](extracted/sections/E-3-26.txt) Acronyms and Glossary of Defined Terms: Z (04/01/2009) — p. 1185
+    - `E-3-01` Acronyms and Glossary of Defined Terms: A (09/03/2025) — pp. 1132–1135 · [md](extracted/markdown/E-3-01.md) · [txt](extracted/sections/E-3-01.txt)
+    - `E-3-02` Acronyms and Glossary of Defined Terms: B (02/07/2024) — pp. 1135–1137 · [md](extracted/markdown/E-3-02.md) · [txt](extracted/sections/E-3-02.txt)
+    - `E-3-03` Acronyms and Glossary of Defined Terms: C (04/22/2026) — pp. 1137–1142 · [md](extracted/markdown/E-3-03.md) · [txt](extracted/sections/E-3-03.txt)
+    - `E-3-04` Acronyms and Glossary of Defined Terms: D (03/01/2023) — pp. 1142–1145 · [md](extracted/markdown/E-3-04.md) · [txt](extracted/sections/E-3-04.txt)
+    - `E-3-05` Acronyms and Glossary of Defined Terms: E (12/14/2022) — pp. 1145–1147 · [md](extracted/markdown/E-3-05.md) · [txt](extracted/sections/E-3-05.txt)
+    - `E-3-06` Acronyms and Glossary of Defined Terms: F (09/03/2025) — pp. 1147–1151 · [md](extracted/markdown/E-3-06.md) · [txt](extracted/sections/E-3-06.txt)
+    - `E-3-07` Acronyms and Glossary of Defined Terms: G (06/04/2025) — pp. 1151–1152 · [md](extracted/markdown/E-3-07.md) · [txt](extracted/sections/E-3-07.txt)
+    - `E-3-08` Acronyms and Glossary of Defined Terms: H (04/05/2023) — pp. 1152–1154 · [md](extracted/markdown/E-3-08.md) · [txt](extracted/sections/E-3-08.txt)
+    - `E-3-09` Acronyms and Glossary of Defined Terms: I (02/04/2026) — pp. 1154–1157 · [md](extracted/markdown/E-3-09.md) · [txt](extracted/sections/E-3-09.txt)
+    - `E-3-10` Acronyms and Glossary of Defined Terms: J (04/01/2009) — p. 1157 · [md](extracted/markdown/E-3-10.md) · [txt](extracted/sections/E-3-10.txt)
+    - `E-3-11` Acronyms and Glossary of Defined Terms: K (12/14/2022) — p. 1157 · [md](extracted/markdown/E-3-11.md) · [txt](extracted/sections/E-3-11.txt)
+    - `E-3-12` Acronyms and Glossary of Defined Terms: L (10/08/2025) — pp. 1157–1160 · [md](extracted/markdown/E-3-12.md) · [txt](extracted/sections/E-3-12.txt)
+    - `E-3-13` Acronyms and Glossary of Defined Terms: M (11/06/2024) — pp. 1160–1165 · [md](extracted/markdown/E-3-13.md) · [txt](extracted/sections/E-3-13.txt)
+    - `E-3-14` Acronyms and Glossary of Defined Terms: N (06/04/2025) — pp. 1165–1166 · [md](extracted/markdown/E-3-14.md) · [txt](extracted/sections/E-3-14.txt)
+    - `E-3-15` Acronyms and Glossary of Defined Terms: O (11/10/2014) — pp. 1166–1167 · [md](extracted/markdown/E-3-15.md) · [txt](extracted/sections/E-3-15.txt)
+    - `E-3-16` Acronyms and Glossary of Defined Terms: P (02/07/2024) — pp. 1167–1171 · [md](extracted/markdown/E-3-16.md) · [txt](extracted/sections/E-3-16.txt)
+    - `E-3-17` Acronyms and Glossary of Defined Terms: Q (04/01/2009) — pp. 1171–1172 · [md](extracted/markdown/E-3-17.md) · [txt](extracted/sections/E-3-17.txt)
+    - `E-3-18` Acronyms and Glossary of Defined Terms: R (05/06/2026) — pp. 1172–1175 · [md](extracted/markdown/E-3-18.md) · [txt](extracted/sections/E-3-18.txt)
+    - `E-3-19` Acronyms and Glossary of Defined Terms: S (02/07/2024) — pp. 1175–1180 · [md](extracted/markdown/E-3-19.md) · [txt](extracted/sections/E-3-19.txt)
+    - `E-3-20` Acronyms and Glossary of Defined Terms: T (02/07/2024) — pp. 1180–1182 · [md](extracted/markdown/E-3-20.md) · [txt](extracted/sections/E-3-20.txt)
+    - `E-3-21` Acronyms and Glossary of Defined Terms: U (05/01/2019) — pp. 1182–1183 · [md](extracted/markdown/E-3-21.md) · [txt](extracted/sections/E-3-21.txt)
+    - `E-3-22` Acronyms and Glossary of Defined Terms: V (09/03/2025) — pp. 1183–1184 · [md](extracted/markdown/E-3-22.md) · [txt](extracted/sections/E-3-22.txt)
+    - `E-3-23` Acronyms and Glossary of Defined Terms: W (11/10/2019) — p. 1184 · [md](extracted/markdown/E-3-23.md) · [txt](extracted/sections/E-3-23.txt)
+    - `E-3-24` Acronyms and Glossary of Defined Terms: X (04/01/2009) — p. 1184 · [md](extracted/markdown/E-3-24.md) · [txt](extracted/sections/E-3-24.txt)
+    - `E-3-25` Acronyms and Glossary of Defined Terms: Y (05/30/2017) — pp. 1184–1185 · [md](extracted/markdown/E-3-25.md) · [txt](extracted/sections/E-3-25.txt)
+    - `E-3-26` Acronyms and Glossary of Defined Terms: Z (04/01/2009) — p. 1185 · [md](extracted/markdown/E-3-26.md) · [txt](extracted/sections/E-3-26.txt)
