@@ -56,8 +56,9 @@ test`, to every guard, and to a reviewer reading the diff.
   ([knowledge-base/routines/HANDOFF.md](../../../knowledge-base/routines/HANDOFF.md)). You may
   **never** commit to `client/**`, `server/**`, `shared/**`, `tests/**` or `migrations/**`. A
   missing test is a **proposed ticket** naming the file and the case — a builder seat writes it.
-- **R6 — Prove the lane, not just the assertion.** A new test file under `tests/` runs **only** if
-  it is in `vitest.config.ts`'s `include:` array, and `vitest run <file>` defaults to the **node**
+- **R6 — Prove the lane, not just the assertion.** A new test file under `tests/` is glob-collected
+  by `vitest.config.ts` (#725, 2026-08-24 deleted the hand-typed `include:` allowlist) — but it is
+  still droppable via that file's `exclude:` block — and `vitest run <file>` defaults to the **node**
   config — so a `client/src` test invoked that way silently runs nothing. **Assert the test's
   filename appears in the run output** before believing any verdict. An unrun test is `UNPROVEN`,
   never `PROVEN`.

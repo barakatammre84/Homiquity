@@ -72,7 +72,8 @@ type — no scraping, no re-keying.
   payment, then qualified-or-not, payment, cash-to-close, and APR render in under 2 seconds
   and a `scenario_runs` row exists for the run.
 - [ ] Unit tests pin determinism (same inputs → byte-identical outputs) and the safe-harbor
-  set's presence (A/B/C labels) — added to `vitest.config.ts`.
+  set's presence (A/B/C labels) — under `tests/`, where `vitest.config.ts`'s glob collects them;
+  assert the filename appears in the run output.
 - [ ] Simulator endpoint returns 403 for non-deal-team staff (IDOR guard) and non-staff.
 - [ ] No persisted income evaluation → structured `NEEDS_INCOME_EVALUATION` response, never a
   re-derivation.

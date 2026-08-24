@@ -65,8 +65,10 @@ The six that must survive even if you skip that read:
 `knowledge-base/governance/TEAM_PRACTICES.md` §5 in full, and specifically:
 
 1. `pnpm check` clean.
-2. `pnpm test` green in **both** lanes. A new file under `tests/` does not run until it is in
-   `vitest.config.ts`'s `include` — assert its filename appears in the run output. Client tests are
+2. `pnpm test` green in **both** lanes. A new file under `tests/` is glob-collected by
+   `vitest.config.ts` automatically (the hand-typed `include` allowlist was deleted by #725,
+   2026-08-24; `scripts/test-collection-guard.cjs` is the floor that fails when a lane runs
+   fewer files than exist) — assert its filename appears in the run output. Client tests are
    colocated and glob-picked; UI behaviour gets a component test here *first*.
 3. This area's owned tests green: `tests/securityReviewGuard.test.ts`, `tests/migrationLedgerGuard.test.ts`, `tests/queryKeyConvergence.test.ts`, `tests/clientSchemaImports.test.ts`, `tests/ciTriggers.test.ts`, `tests/dependabotReactGrouping.test.ts`, `tests/apiRequestConvergence.test.ts`, `tests/zodSchemaSemantics.test.ts`.
 4. Guards this area trips, green locally: the specific guard you changed, plus `pnpm guard:citations` and `pnpm guard:staleness`.
@@ -87,7 +89,7 @@ The six that must survive even if you skip that read:
 Dated. **Re-verify before citing one** — `git log -S '<symbol>' -- <path>`. A trap that was fixed and
 is still asserted costs a whole run.
 
-- **There are three vitest lanes** — Node (an explicit allowlist) and client (a glob) run together; integration never does. **A bare `vitest run <file>` defaults to the node config**, so a client test invoked that way silently runs nothing — and an unlisted node test never runs at all.
+- **There are three vitest lanes** — Node and client, both globs, run together under `pnpm test`; integration runs in the gate's own step (`.github/workflows/ci.yml:689-690`, #704, 2026-08-23) when the change-scope step reports code changed, and never under `pnpm test`. **A bare `vitest run <file>` defaults to the node config**, so a client test invoked that way silently runs nothing. *(Both lanes were allowlists once; the node one was deleted by #725, 2026-08-24 — the floor is now `scripts/test-collection-guard.cjs`, which fails when a lane collects fewer files than exist on disk or when one file is claimed by two lanes.)*
 - **The security guard reads the PR body from the event payload** — So a dropped run needs a body edit to re-trigger, not just a re-run.
 - **A clean merge state means no merge conflicts — never that CI passed** — Confirm with the checks list. Zero check-runs may be an outage or a trigger that never matched.
 - **The bundle guard measures a build** — Green locally and red in CI unless you build first.

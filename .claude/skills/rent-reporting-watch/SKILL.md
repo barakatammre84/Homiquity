@@ -117,7 +117,9 @@ source-text assertions whose subject may have been renamed out from under them.
 For each of `tests/metro2Gate.test.ts`, `tests/rentFurnishing.test.ts`,
 `tests/creditMonitoring.test.ts`, `tests/rentReportingSurface.test.ts`, `tests/leaseCapture.test.ts`:
 
-1. Assert the filename appears in `vitest.config.ts`'s `include:` array.
+1. Assert the filename is **not** in `vitest.config.ts`'s `exclude:` block (`:77-96`) — since
+   #725 (2026-08-24) the node lane's `include` is a glob, so `exclude` is the only list that can
+   drop a file, and it is the only list left to read.
 2. Assert it appears in the **actual run output** of the node lane — not merely on disk.
 3. `client/src/pages/**/MyLease.test.tsx` and `RentReporting.test.tsx` are glob-picked by
    `vitest.client.config.ts`; assert they appear in the client-lane output.

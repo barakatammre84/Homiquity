@@ -161,7 +161,12 @@ Keep the last ~10 for collision forensics; trim older rows freely.
 Several routines legitimately touch these. Expect conflicts and resolve **additively** rather than
 taking one side wholesale:
 
-- **`vitest.config.ts`** — the node-lane `include:` array; more than one routine adds test files.
+- **`knowledge-base/doc-accuracy/LEDGER.md`** and the other routine ledgers — one writer each,
+  but a catch-up tick and a founder-directed session can both hold one; merge additively, keeping
+  both row sets in date order.
+  *(Retired 2026-08-24: `vitest.config.ts`'s node-lane `include:` array was this list's original
+  entry — every routine adding a test file conflicted on it. #725 replaced the array with a glob,
+  so there is nothing left to contend; `scripts/test-collection-guard.cjs` is now the floor.)*
 - **`knowledge-base/README.md`** — the doc index; keep both entries, in date order.
 - **`tests/__snapshots__/zod-schema-semantics.json`** — re-recorded by any schema change. **Never
   take one side wholesale**: re-record after merging and re-read every delta, because the snapshot

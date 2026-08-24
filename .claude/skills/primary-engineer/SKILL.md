@@ -181,8 +181,8 @@ registration order is a correctness invariant.
 ## Phase 3 — Verify (per item; the ship gate)
 
 `pnpm check` · `pnpm test` (node **and** client lanes) · `pnpm build` · the `pnpm guard:*` suite.
-A new file under `tests/` runs **only** if added to `vitest.config.ts`'s `include:` array;
-`vitest run <file>` defaults to the **node** config (`pnpm test:client` for `client/src` tests);
+A new file under `tests/` is glob-collected by `vitest.config.ts` (#725, 2026-08-24 deleted the
+hand-typed `include:` allowlist); `vitest run <file>` defaults to the **node** config (`pnpm test:client` for `client/src` tests);
 colocating under `client/src` is the safer default. **Assert new test filenames appear in the run
 output.** Prove fixes by the silent-success rule: demonstrate the bug (failing test or reproduced
 behavior), then the fix. Then R5's `detectTriggers()` on the final diff.

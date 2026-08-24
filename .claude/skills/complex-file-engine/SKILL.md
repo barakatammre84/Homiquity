@@ -62,8 +62,8 @@ defect and its detector are on opposite sides of the same gate.
 - `server/services/preUnderwriting.ts` (flag derivation only — never the condition/stage gates)
 - `shared/incomePaths.ts`, `shared/incomePackage.ts`, `shared/situationProfile.ts`,
   `shared/borrowerIncomeView.ts`
-- `tests/**` for the behaviour you change (add the file to `vitest.config.ts` `include:` or **it
-  never runs** — assert its filename appears in the run output)
+- `tests/**` for the behaviour you change (glob-collected by `vitest.config.ts` since #725,
+  2026-08-24 — assert its filename appears in the run output; that is the proof, not a config edit)
 - `knowledge-base/complex-file-engine/**` and your report
 
 **Never edits** — each is a rail below, not a preference:
@@ -173,7 +173,8 @@ Do not read this from a doc (C8). Derive it each run and paste the evidence:
 - **Cited-math drift**: for one live path per run, re-read its cited section in `docs/` and confirm
   the code still implements it. Rotate paths across runs; record which in the ledger.
 - **Test reality**: `pnpm test` node lane, and confirm the complex-income tests actually ran by
-  name. A `tests/**` file absent from `vitest.config.ts` `include:` **never runs**.
+  name. `vitest.config.ts` glob-collects every `tests/**` file (#725, 2026-08-24); the floor that catches
+  a lane running fewer files than exist is `scripts/test-collection-guard.cjs`.
 
 Report the matrix as a table. Its trend across runs is this routine's product.
 

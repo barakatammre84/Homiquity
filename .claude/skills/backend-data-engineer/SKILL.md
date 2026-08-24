@@ -117,8 +117,8 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   data-admission rule changed. Re-record it and **read every delta**; on a merge conflict never
   take one side wholesale (REGISTER's shared-file hazards). Its `all-keys-null` probe is what pins
   which fields accept `null` — the exact class that slipped past it before. A new file under
-  `tests/` **never runs** unless added to the `include:` array in `vitest.config.ts`; `vitest run
-  <file>` defaults to the node config. Assert your new test's filename appears in the run output.
+  `tests/` is glob-collected by `vitest.config.ts` (the hand-typed `include:` allowlist was deleted
+  by #725, 2026-08-24); `vitest run <file>` defaults to the node config. Assert your new test's filename appears in the run output.
 
 - **R10 — The register is the lock.** Claim in
   [`routines/REGISTER.md`](../../../knowledge-base/routines/REGISTER.md) **before writing a line**,

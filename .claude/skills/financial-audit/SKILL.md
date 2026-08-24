@@ -169,9 +169,10 @@ Permitted only for a ledger row at `authorized`, one per run (R7), within R8–R
    `pnpm check` → `pnpm test` → the guards (`design-token`, `kb-index`,
    `doc-freshness`, `schema-migration`, `delivery-stack-freeze`) → `pnpm build` for a
    client-touching change.
-5. **Test-ran assertion:** a new file under `tests/` NEVER runs unless added to the
-   `include:` array in `vitest.config.ts`. Confirm the filename appears in the output.
-   (Client tests under `client/src/**` are glob-included and need no edit.)
+5. **Test-ran assertion:** a new file under `tests/` is glob-collected by `vitest.config.ts`
+   (the hand-typed `include:` allowlist was deleted by #725, 2026-08-24). Confirm the filename
+   appears in the output — that is the proof either way.
+   (Client tests under `client/src/**` are glob-included too.)
 6. Snapshot guards: if `zod-schema-semantics` reports a delta, READ EVERY LINE and
    state in the PR body what changed and why, before re-recording.
 

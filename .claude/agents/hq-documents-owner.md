@@ -75,8 +75,10 @@ The six that must survive even if you skip that read:
 `knowledge-base/governance/TEAM_PRACTICES.md` §5 in full, and specifically:
 
 1. `pnpm check` clean.
-2. `pnpm test` green in **both** lanes. A new file under `tests/` does not run until it is in
-   `vitest.config.ts`'s `include` — assert its filename appears in the run output. Client tests are
+2. `pnpm test` green in **both** lanes. A new file under `tests/` is glob-collected by
+   `vitest.config.ts` automatically (the hand-typed `include` allowlist was deleted by #725,
+   2026-08-24; `scripts/test-collection-guard.cjs` is the floor that fails when a lane runs
+   fewer files than exist) — assert its filename appears in the run output. Client tests are
    colocated and glob-picked; UI behaviour gets a component test here *first*.
 3. This area's owned tests green: `tests/documentChecklist.test.ts`, `tests/documentConfidence.test.ts`, `tests/documentFacts.test.ts`, `tests/documentReview.test.ts`, `tests/documentStatus.test.ts`, `tests/documentTypeAliases.test.ts`, `tests/documentConditionRevert.test.ts`, `tests/documentUploadTerminalGuard.test.ts`, `tests/documentNotesTrustBoundary.test.ts`, `tests/documentTaskOwnerRole.test.ts`, `tests/extractionService.test.ts`, `tests/extractionReadinessWiring.test.ts`, `tests/extractionPersistence.test.ts`, `tests/uploadValidation.test.ts`, `tests/uploadsPresignedOnly.test.ts`, `tests/uploadsUnavailableCopy.test.ts`, `tests/fileHealth.test.ts`.
 4. Guards this area trips, green locally: `pnpm guard:security`, `pnpm guard:schema`, `pnpm guard:querykeys`, `pnpm guard:citations`.

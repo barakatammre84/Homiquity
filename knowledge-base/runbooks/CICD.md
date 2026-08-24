@@ -320,7 +320,8 @@ The required `gate` check runs these on every PR (same commands locally):
 pnpm check                             # typecheck
 pnpm test                              # BOTH unit lanes, behind the collected-count floor
                                        #   (scripts/test-collection-guard.cjs): node suite
-                                       #   (vitest.config.ts include list) + client component
+                                       #   (vitest.config.ts, glob: tests/**/*.test.{ts,tsx}
+                                       #   minus an 18-file integration exclude) + client component
                                        #   suite (vitest.client.config.ts, happy-dom, glob:
                                        #   client/src/**/*.test.{ts,tsx}), then a check that
                                        #   vitest actually RAN every file on disk

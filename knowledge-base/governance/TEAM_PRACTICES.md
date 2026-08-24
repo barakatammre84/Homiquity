@@ -93,10 +93,15 @@ coherent push once — one CI cycle, one deploy, one review.
 ## 5. Definition of done (every PR, no exceptions)
 
 1. `pnpm check` clean (tsc).
-2. `pnpm test` fully green — it runs the node suite **and** the client component suite. New
-   server/logic test files must be added to `vitest.config.ts`'s include list; client
-   component tests are colocated `client/src/**/*.test.tsx` and glob-included by
-   `vitest.client.config.ts` automatically. **UI behavior gets a component test here first**
+2. `pnpm test` fully green — it runs the node suite **and** the client component suite, behind
+   the collected-count floor in `scripts/test-collection-guard.cjs`. New server/logic test files
+   go in `tests/` and are glob-included by `vitest.config.ts` automatically; client component
+   tests are colocated `client/src/**/*.test.tsx` and glob-included by
+   `vitest.client.config.ts` automatically. **Assert your new file's name appears in the run
+   output** — that, not a config edit, is what proves it was collected. *(Until #725 on
+   2026-08-24 the node lane was a hand-typed `include` allowlist and this rule said to add your
+   path to it; there is no such list any more, and the only hand-maintained `"tests/…"` block
+   left in that file is `exclude` — `vitest.config.ts:77-96`.)* **UI behavior gets a component test here first**
    (render/interaction against `data-testid`s, in happy-dom — no server); the §5.4 browser
    pass is for what a component test can't prove (visuals, full E2E).
 3. Integration suite green against a live worktree server

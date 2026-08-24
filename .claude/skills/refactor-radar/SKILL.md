@@ -176,9 +176,10 @@ Run in order; any failure → fix → restart from step 1. Attempts > 5 → Phas
 1. `pnpm check`
 2. `pnpm test`   # node lane THEN client lane
 3. TEST-RAN ASSERTION: step-2 output must name every new test file. A new file
-   under tests/ (node lane) NEVER runs unless added to the `include:` array in
-   vitest.config.ts — make that edit, rerun, confirm the filename appears in
-   `pnpm test:unit` output. (Default: colocate under client/src instead.)
+   under tests/ (node lane) is glob-collected by vitest.config.ts automatically
+   (#725, 2026-08-24 deleted the hand-typed `include:` allowlist) — no config edit
+   to make; confirm the filename appears in `pnpm test:unit` output, which is the
+   only proof either way. (Default: colocate under client/src instead.)
 4. `pnpm guard:tokens && pnpm guard:querykeys && pnpm guard:schema && pnpm guard:migrations && pnpm guard:channel && pnpm guard:kb`
 5. `pnpm build`
 6. Draft the PR body to $TMP/pr-body.md (template below), then rehearse §9 exactly
