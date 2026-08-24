@@ -68,7 +68,7 @@ reading it should be **frozen, not deleted** — deleting would destroy correct 
 valuable the moment reading B is chosen, and the maintenance burden (ULDD spec updates, annual QM
 threshold tables, SFC catalog drift) is the real recurring cost, not the disk space.
 
-**This is what the code currently asserts**, and it is enforced: `pnpm guard:channel`
+**This is what the code asserted while the stack existed**, enforced by `pnpm guard:channel`
 (the delivery-stack freeze guard *(removed 2026-08-24)*, itself removed 2026-08-24) ran
 in the CI gate and fails if the tracked files grow while the channel is `broker`. The stack may
 shrink freely. The guard turns itself off if the channel flips.

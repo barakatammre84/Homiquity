@@ -24,7 +24,7 @@ An entry leaves this register in exactly one of three ways:
 | Outcome | Meaning |
 |---|---|
 | **Consumed** | A real surface calls it. Delete the row; it is now product. |
-| **Frozen** | Kept, but a ratchet stops it growing (the `guard:channel` pattern). Move the row to a freeze note. |
+| **Frozen** | Kept, but a ratchet stops it growing (the `guard:channel` pattern — retired 2026-08-24 when the stack it guarded was removed, but the pattern stands). Move the row to a freeze note. |
 | **Removed** | Deleted from the codebase. Delete the row. |
 
 "Leave it and look again next month" is not an outcome. If a capability has survived two review

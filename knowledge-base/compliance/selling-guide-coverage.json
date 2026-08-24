@@ -58,9 +58,9 @@
       "verified": "2026-08-21"
     },
     "B2-2-03": {
-      "status": "partial",
-      "evidence": "TABLE-VERIFIED against PDF p.245 by coordinate reconstruction, not text order: principal residence non-HomeReady = no limit; principal residence HomeReady = 2; second home/investment = DU-10; high-LTV refi exempt (B5-7-01). CORRECTS FINDINGS U-23, which says the code ignores occupancy — it does not. shared/fannieMae/loanDeliveryEdits.ts:638 already scopes edit 6439 to SecondHome/Investment; the actual gap is the THRESHOLD (>6 vs DU-10) plus the unenforced HomeReady limit of 2. The 6 comes from a June-2020 EarlyCheck workbook; B2-2-03 moved to 10 effective 11/05/2025. Guide-vs-job-aid conflict => ESCALATE per CLAUDE.md, do not pick. Also note the edit lives in the frozen delivery stack (guard:channel, zero client callers), so changing it alters validation nothing currently reaches.",
-      "verified": "2026-08-21"
+      "status": "absent",
+      "evidence": "TABLE-VERIFIED against PDF p.245: principal residence non-HomeReady = no limit; principal residence HomeReady = 2; second home/investment = DU-10; high-LTV refi exempt (B5-7-01). STATUS CHANGED partial -> absent on 2026-08-24: the only code that scoped this (Loan Delivery edit 6439, in the delivery-edit mirror) was REMOVED with the GSE-delivery stack, so nothing implements it now. The prior gap was the THRESHOLD (>6 from a June-2020 EarlyCheck workbook vs B2-2-03's DU-10 effective 11/05/2025) plus the unenforced HomeReady limit of 2; that Guide-vs-job-aid conflict is now moot here (escalations U-23/U-24 marked moot in FINDINGS). If multiple-financed-property limits bind our own pre-qualification read, they must be implemented in the decision path, not in a delivery mirror.",
+      "verified": "2026-08-24"
     },
     "B3-2-01": {
       "status": "partial",

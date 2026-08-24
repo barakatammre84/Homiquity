@@ -76,7 +76,7 @@ doc-drift bug to fix):
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
 - [CHANNEL_DECISION.md](governance/CHANNEL_DECISION.md) — **OPEN, founder-owned:** broker or
   mini-correspondent. One constant in `shared/businessChannel.ts`; the largest unanswered question
-  about the capital structure. The Fannie delivery stack is frozen (`pnpm guard:channel`) until it lands.
+  about the capital structure. The Fannie delivery stack was **removed 2026-08-24** (frozen 2026-08-04, deleted after the freeze held and the answer did not change).
 - [CONTINGENT_LIABILITY_REGISTER.md](governance/CONTINGENT_LIABILITY_REGISTER.md) — what we could owe and
   whether the reserve covers it. For an asset-light broker the contingent exposures *are* the balance
   sheet; live figures at `GET /api/reports/contingent-liabilities`.
