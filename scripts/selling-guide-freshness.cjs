@@ -29,6 +29,35 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const WATCH_SILENT_AFTER_DAYS = 10;
 const SOURCE_BLOCKED_AFTER_DAYS = 14;
+/**
+ * The steward's own liveness, which is a DIFFERENT question from the watcher's.
+ *
+ * `lastRun` in the watch state proves the WATCHER ran. Nothing proved the STEWARD
+ * ran — and on 2026-08-24 that gap bit on the seat's very first firing: the CCR
+ * scheduler advanced `next_run_at` from 08-24 to 08-25 without ever dispatching a
+ * session. No session, no branch, no report, no PR, and every gate still green.
+ * Manually firing the same trigger minutes later spawned a session immediately, so
+ * the seat and its skill were fine; only the scheduled path failed, silently.
+ *
+ * Two facts from that morning are why this check reads the REPORT and not an API:
+ *   - `list_triggers` never populates `last_run` (empty for all 25 triggers, including
+ *     ones that provably ran), so its absence is not evidence of anything.
+ *   - A consumed cron slot is indistinguishable from a completed one from the outside.
+ * The artifact is the only honest proof, which is CHARTER §7: a routine that cannot be
+ * shown to have run is not a control.
+ *
+ * ⚠️ BE HONEST ABOUT WHAT THIS MEASURES. It is offline (it reads the committed tree), so
+ * it cannot see a draft PR — it sees a report only once that PR MERGES. So it measures
+ * "landed steward evidence", which folds the seat's health together with review latency.
+ * That is deliberate rather than sloppy: a report nobody merged for a week is also a
+ * control nobody can point at. But it is why the numbers are NOT the aggressive 2/4 the
+ * first draft of this check used — 2 days fails across any ordinary weekend, and a guard
+ * that cries wolf on Saturdays is one people learn to skip, which is the exact failure
+ * the sibling watcher's ratchet exists to avoid. 3 warns; 7 — a full week with nothing
+ * landed from a daily seat — fails.
+ */
+const STEWARD_REPORT_WARN_DAYS = 3;
+const STEWARD_REPORT_FAIL_DAYS = 7;
 const DAY = 24 * 3600 * 1000;
 
 function defaultPaths() {
@@ -37,7 +66,26 @@ function defaultPaths() {
       process.env.SELLING_GUIDE_WATCH_STATE_PATH ||
       path.join(ROOT, "data/regulatory/selling-guide-watch-state.json"),
     links: process.env.SG_LINKS_PATH || path.join(ROOT, "docs/fannie-mae/selling-guide/links.json"),
+    reports:
+      process.env.SG_REPORTS_DIR || path.join(ROOT, "knowledge-base/routines/reports"),
   };
+}
+
+/**
+ * Newest `<date>-selling-guide-steward.md`, by the date IN THE FILENAME rather than
+ * mtime — a fresh clone rewrites every mtime, and this must answer the same way on any
+ * machine. Returns { name, date } or null.
+ */
+function newestStewardReport(reportsDir) {
+  if (!fs.existsSync(reportsDir)) return null;
+  const rows = fs
+    .readdirSync(reportsDir)
+    .map((n) => /^(\d{4}-\d{2}-\d{2})-selling-guide-steward\.md$/.exec(n))
+    .filter(Boolean)
+    .map((m) => ({ name: m[0], date: Date.parse(`${m[1]}T00:00:00Z`) }))
+    .filter((r) => !isNaN(r.date))
+    .sort((a, b) => b.date - a.date);
+  return rows[0] ?? null;
 }
 
 /** Returns { failures: string[], warnings: string[], summary: string } */
@@ -129,8 +177,36 @@ function runFreshness(now = Date.now(), paths = defaultPaths()) {
     }
   }
 
+  // The steward's own liveness — see the constants' header for the 2026-08-24 incident
+  // this exists for. Honours the same acknowledgedBlocked ratchet as everything else, so
+  // a deliberate pause is recordable under `steward` rather than sitting permanently red.
+  const stewardAck = acknowledged.steward;
+  const report = newestStewardReport(paths.reports);
+  if (!report) {
+    const msg =
+      "selling-guide-steward: NO run report has ever landed " +
+      "(knowledge-base/routines/reports/<date>-selling-guide-steward.md) — the seat has never " +
+      "been shown to run. A scheduled slot that advances without dispatching looks identical to " +
+      "a healthy one from the outside; the report is the only proof (CHARTER §7).";
+    if (stewardAck) warnings.push(`${msg} — acknowledged ${stewardAck.since}: ${stewardAck.procurement}`);
+    else failures.push(msg);
+  } else {
+    const ageDays = Math.floor((now - report.date) / DAY);
+    if (ageDays > STEWARD_REPORT_FAIL_DAYS || ageDays > STEWARD_REPORT_WARN_DAYS) {
+      const msg =
+        `selling-guide-steward: newest LANDED run report is ${report.name} (${ageDays}d old) — ` +
+        `the seat runs daily, so either it stopped or its PRs are not being merged. Check the ` +
+        `trigger actually fired: on 2026-08-24 the scheduler advanced next_run_at without ` +
+        `dispatching a session, and no gate anywhere went red.`;
+      if (stewardAck) warnings.push(`${msg} — acknowledged ${stewardAck.since}: ${stewardAck.procurement}`);
+      else if (ageDays > STEWARD_REPORT_FAIL_DAYS) failures.push(msg);
+      else warnings.push(msg);
+    }
+  }
+
   const linkStates = Object.values(state.links ?? {});
   const summary =
+    `steward report ${report ? `${report.name} (${Math.floor((now - report.date) / DAY)}d)` : "NONE"}, ` +
     `edition sources ${Object.keys(state.sources ?? {}).length}, link rows ${linkStates.length} ` +
     `(${linkStates.filter((l) => l.status === "ok").length} ok, ` +
     `${linkStates.filter((l) => l.status === "rot").length} rot, ` +
@@ -152,6 +228,14 @@ function main() {
   process.exit(1);
 }
 
-module.exports = { runFreshness, defaultPaths, WATCH_SILENT_AFTER_DAYS, SOURCE_BLOCKED_AFTER_DAYS };
+module.exports = {
+  runFreshness,
+  defaultPaths,
+  newestStewardReport,
+  WATCH_SILENT_AFTER_DAYS,
+  SOURCE_BLOCKED_AFTER_DAYS,
+  STEWARD_REPORT_WARN_DAYS,
+  STEWARD_REPORT_FAIL_DAYS,
+};
 
 if (require.main === module) main();

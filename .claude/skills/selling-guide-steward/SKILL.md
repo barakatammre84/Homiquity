@@ -145,20 +145,35 @@ CHARTER §9 order — STATUS · ⛔ human actions (hardest first: edition cutove
 hosts, aged rot) · Summary ≤5 sentences · Evidence (command output for every claim) ·
 Proposed tickets (≤3). Commit `docs(routine): selling-guide-steward <date>` — the report plus
 whatever the sweep changed in the watch state — on branch
-`routine/selling-guide-steward-<date>`, open a **draft** PR only when there is a delta beyond
-the report's own timestamps worth review; otherwise the report rides alone. Remove the
-worktree. Never push `main` (R11).
+`routine/selling-guide-steward-<date>`, push it, and **open a draft PR. Every run. Without
+exception, including — especially — a completely clean one.**
+
+🚨 **A run that ends with no pushed report did not happen.** This paragraph previously read
+"open a draft PR *only when there is a delta* … otherwise the report rides alone", and on
+**2026-08-24** a real run did exactly what that sentence permits: it drilled and swept for
+nine minutes, found nothing to change, and landed **nothing at all** — no branch, no report,
+no PR. From the outside that is indistinguishable from the seat never having fired, which is
+the failure CHARTER §0 was written about and §7's rule exists to prevent. A quiet day is the
+result most worth recording, because it is the only evidence the corpus is still sound.
+
+The delta governs *what else rides in the PR*, never whether the PR exists. `pnpm checkup`
+now enforces this from the other side: `scripts/selling-guide-freshness.cjs` fails when no
+steward report has landed recently, so a silent run is a red gate rather than a quiet week.
+Remove the worktree. Never push `main` (R11).
 
 ## Status rules
 
-`OK` = drill byte-identical and green, sweep ran, state recorded, report filed. `WARN` = a
-signal needing a human (new edition/amendment, new blocked host, link rot), or a sweep that
-could not complete with every gap acknowledged. `FAIL` = the drill broke (recovery,
-extraction, determinism, or a guard), a NEW unacknowledged coverage gap, or this routine
-wrote outside R3.
+`OK` = drill byte-identical and green, sweep ran, state recorded, **report pushed and its
+draft PR open**. `WARN` = a signal needing a human (new edition/amendment, new blocked host,
+link rot), or a sweep that could not complete with every gap acknowledged. `FAIL` = the drill
+broke (recovery, extraction, determinism, or a guard), a NEW unacknowledged coverage gap,
+this routine wrote outside R3, **or the run ended without a pushed report and an open draft
+PR** — that last one is a FAIL no matter how clean everything else was, because a run nobody
+can point at is not a run (CHARTER §7).
 
 **A quiet day is a real result** — say what was drilled and swept so the next run inherits
-facts, not vibes.
+facts, not vibes. It is also the only day whose evidence proves the corpus is still sound, so
+it is the *last* result to leave uncommitted.
 
 ## What this routine deliberately does not do
 
