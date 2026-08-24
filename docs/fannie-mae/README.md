@@ -5,6 +5,12 @@ Per [CLAUDE.md](../../CLAUDE.md), any change touching Fannie Mae loan delivery m
 verified against these documents and the official Loan Delivery job aid — MISMO field
 names, enumerations, edit codes, and Special Feature Codes are never invented.
 
+> **2026-08-24 — several job aids above no longer map to code.** The GSE-delivery stack that
+> consumed them (ULDD readiness, the Loan Delivery / UCD / EarlyCheck edit mirror, Special
+> Feature Codes, UCD fee enumerations) was removed: a broker is not the seller/servicer, so
+> those edits are the wholesale lender's. The PDFs stay — they are still the authority if the
+> channel ever flips. `qmThresholds.ts` is the one consumer that survives.
+
 ## Source of truth
 
 - **Selling Guide, edition 08-05-2026 — the top of the hierarchy. Greppable locally,
@@ -138,12 +144,7 @@ gate (see the roadmap ticket) instead of relying solely on the hand-built valida
 | Document | Code |
 |---|---|
 | QM Edits Job Aid (2026) — threshold tables | `shared/fannieMae/qmThresholds.ts` |
-| QM Edits Job Aid + UCD Phase 3/3a/4 job aids + EarlyCheck workbook — edits | `shared/fannieMae/loanDeliveryEdits.ts` |
-| Guide Fees job aid appendix — fee/prepaid/escrow enumerations by CD section | `shared/fannieMae/ucdFeeEnumerations.ts` |
-| Taxes & Other Government Fees job aid — recording fee / transfer tax edits | `shared/fannieMae/loanDeliveryEdits.ts` |
-| Special Feature Codes (05-06-26) | `shared/fannieMae/specialFeatureCodes.ts` |
 | ULDD Implementation Guide — delivery LOAN states (Table 5), no ASSET container (Table 4) | `server/mismo.ts` (`purpose: "loanDelivery"`) |
-| Combined pre-delivery workflow | `server/services/loanDeliveryReadiness.ts` |
 | Self-employment income (B3-3.5 / B3-3.6) — Schedule C add-backs, K-1 distributions/liquidity, 2-yr averaging | `server/services/selfEmploymentIncome.ts` _(planned)_, `server/underwriting.ts` (`qualifyIncome`) |
 
 Reviewed with no code impact: the **Loan Delivery Edit Dashboard** job aid (Fannie Mae
@@ -156,7 +157,7 @@ fatal edit 2022 in Loan Delivery).
 
 When Fannie Mae publishes new threshold years or SFC editions, update the data in those
 modules from the replacement document — never from memory — and update the pinned values
-in `tests/qmThresholds.test.ts` / `tests/specialFeatureCodes.test.ts` in the same commit.
+in `tests/qmThresholds.test.ts` in the same commit.
 
 ## Reading these files (humans and Claude sessions)
 

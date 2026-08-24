@@ -250,7 +250,7 @@ wholesale lender can consume without understanding how we got there.
   for funders not yet under contract (I10).
 - **Gate:** in `brokerSubmissionReadiness.ts` stage 3, files with SE employment or a
   non-agency selected path block on (a) a current income-path evaluation and (b) zero open
-  *flagged* review items. `loanDeliveryReadiness.ts` (the GSE gate) is untouched.
+  *flagged* review items. the delivery-readiness service *(removed 2026-08-24)* (the GSE gate) is untouched.
 - Per-lender shaping: Angel Oak packages include the non-QM sections; agency lenders get the
   agency section.
 

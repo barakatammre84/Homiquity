@@ -43,7 +43,6 @@ step "unit tests"           pnpm test
 step "dep audit (prod)"     pnpm audit --prod --audit-level=high
 step "schema<->migrations"  node scripts/schema-migration-guard.cjs
 step "migration ledger"     node scripts/migration-ledger-guard.cjs
-step "delivery freeze"      node scripts/delivery-stack-freeze-guard.cjs
 step "design tokens"        node scripts/design-token-guard.cjs
 step "UI ratchet"           node scripts/ui-standard-guard.cjs
 step "kb index"             node scripts/kb-index-guard.cjs

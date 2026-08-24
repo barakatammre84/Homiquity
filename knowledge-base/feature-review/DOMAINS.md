@@ -186,7 +186,7 @@ Status ledger (updated by the orchestrator after each run):
 ## 8. GSE delivery & compliance export — *compliance-auditor mandatory on every finding*
 
 - **Server/shared**: `server/mismo.ts` (ULDD Phase 5 XML), `shared/mismo.ts` (types/enums),
-  `mismoValidation.ts`, `loanDeliveryReadiness.ts`, `shared/fannieMae/{loanDeliveryEdits,specialFeatureCodes,ucdFeeEnumerations}.ts`,
+  `mismoValidation.ts`, the delivery-readiness service *(removed 2026-08-24)*, the Fannie delivery-edit / SFC / UCD-enumeration modules *(all removed 2026-08-24)*,
   `shared/schema/delivery.ts`.
 - **Client**: MISMO export only — `LoCommandCenter.tsx:77` and `BorrowerFile.tsx:126`. **There is no
   delivery-readiness UI** (corrected 2026-08-17, D-011): `grep client/src` for `delivery-readiness`,
@@ -203,7 +203,7 @@ Status ledger (updated by the orchestrator after each run):
 - **Source docs**: `docs/fannie-mae/` (spec PDFs + XSDs + golden samples — validate against the
   XSDs), Loan Delivery job aid, `CLAUDE.md` compliance section.
 - **Owned tests**: `tests/mismo*`, `tests/loanDeliveryEdits*`, `tests/specialFeatureCodes*`,
-  integration `mismoExportAccess`. **F-015:** `loanDeliveryReadiness` (the caller of the tested
+  integration `mismoExportAccess`. **F-015:** the delivery-readiness service *(removed 2026-08-24)* (the caller of the tested
   edit engines) has zero tests.
 
 ## 9. Compliance analytics & adverse action

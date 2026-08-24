@@ -1,5 +1,24 @@
 # Channel Decision: Broker or Correspondent
 
+> ## ✅ RESOLVED 2026-08-24 — the stack was REMOVED, the channel stays `broker`
+>
+> The freeze held for twenty days and the answer did not change. On founder
+> direction *"we are only a broker — if we are going down a route we don't need to
+> go we need to refocus"*, the GSE-delivery stack was **deleted**: 1,482 lines
+> across four files, plus the fourth submission-readiness stage (which never
+> blocked anything by design) and two routes that never had a client caller for
+> their whole life. The freeze guard went with it — a ratchet protecting nothing
+> is just a check that cannot fail.
+>
+> `BUSINESS_CHANNEL` remains `"broker"` in `shared/businessChannel.ts` and is
+> still one edit away from `"correspondent"`. What it now guards is MERS
+> registration, not a delivery stack. **Flipping it no longer resurrects this
+> code — it would have to be rebuilt from `docs/fannie-mae/`, which is exactly
+> the trade this document set out to make explicit.** The job aids stay in the
+> repo for that reason.
+>
+> The sections below are preserved as the reasoning that led here.
+
 > **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **Status: OPEN — founder-owned. Current declared channel: `broker`.**
@@ -26,10 +45,6 @@ Yet the repo contains a full seller/servicer delivery stack:
 
 | File | Lines |
 |---|---|
-| `shared/fannieMae/loanDeliveryEdits.ts` | 677 |
-| `shared/fannieMae/specialFeatureCodes.ts` | 338 |
-| `server/services/loanDeliveryReadiness.ts` | 271 |
-| `shared/fannieMae/ucdFeeEnumerations.ts` | 196 |
 | **Total** | **1,482** |
 
 Plus ~690 lines of tests, the `loan_delivery_data` table, and a MERS org ID being pursued.
@@ -54,7 +69,7 @@ valuable the moment reading B is chosen, and the maintenance burden (ULDD spec u
 threshold tables, SFC catalog drift) is the real recurring cost, not the disk space.
 
 **This is what the code currently asserts**, and it is enforced: `pnpm guard:channel`
-([`scripts/delivery-stack-freeze-guard.cjs`](../../scripts/delivery-stack-freeze-guard.cjs)) runs
+(the delivery-stack freeze guard *(removed 2026-08-24)*, itself removed 2026-08-24) ran
 in the CI gate and fails if the tracked files grow while the channel is `broker`. The stack may
 shrink freely. The guard turns itself off if the channel flips.
 

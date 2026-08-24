@@ -23,7 +23,11 @@ import { loanApplications } from "./lending";
 // the UCD Phase 1/3/3a/4 critical edits, the closing-cost containers the
 // Phase 3 edits inspect, and the Special Feature Code set reported at
 // delivery. One row per application, written by internal staff during
-// closing/post-closing. Evaluated by shared/fannieMae/loanDeliveryEdits.ts.
+// closing/post-closing. ⚠️ ORPHANED 2026-08-24: its evaluator
+// (shared/fannieMae/loanDeliveryEdits.ts) was removed with the GSE-delivery
+// stack, and no surface ever wrote this row. The TABLE is left in place
+// deliberately — dropping it is a destructive migration and must not ship in
+// the same change as the code removal (CLAUDE.md, expand/contract).
 //
 // Sources: docs/fannie-mae/ QM Edits Job Aid (2026), UCD Phase 3 job aids,
 // UCD Phase 4 LPQIRP job aid, Special Feature Codes 2026-05-06.
@@ -61,7 +65,7 @@ export const loanDeliveryData = pgTable(
 
     // UCD Phase 3 closing-cost containers.
     // fees: FeeItemEntry[] — general FEE containers for CD sections A/B/C/E/H
-    // (see shared/fannieMae/loanDeliveryEdits.ts)
+    // (evaluator removed 2026-08-24 with the GSE-delivery stack)
     fees: jsonb("fees"),
     // discountPoints: { feeTotalPercent, feePaidToType, feePaidToTypeOtherDescription,
     //                   actualPaymentAmount, feePaymentPaidByType } | null (null = fee line absent)
@@ -69,7 +73,7 @@ export const loanDeliveryData = pgTable(
     discountPointsOccurrenceCount: integer("discount_points_occurrence_count"),
     // lenderCredits: { amount, toleranceCureAmount } | null
     lenderCredits: jsonb("lender_credits"),
-    // escrowItems: EscrowItemEntry[] — see shared/fannieMae/loanDeliveryEdits.ts
+    // escrowItems: EscrowItemEntry[] — evaluator removed 2026-08-24
     escrowItems: jsonb("escrow_items"),
     // prepaidItems: PrepaidItemEntry[]
     prepaidItems: jsonb("prepaid_items"),
@@ -90,7 +94,7 @@ export const loanDeliveryData = pgTable(
     manualSpecialFeatureCodes: text("manual_special_feature_codes").array(),
 
     // SFC derivation attributes with no application-level source of truth yet.
-    // Keys mirror SfcDerivationInput in shared/fannieMae/specialFeatureCodes.ts.
+    // Keys mirrored SfcDerivationInput, removed 2026-08-24 with the stack.
     sfcAttributes: jsonb("sfc_attributes"),
 
     createdAt: timestamp("created_at").defaultNow(),

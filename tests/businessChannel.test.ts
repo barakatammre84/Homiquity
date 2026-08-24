@@ -7,7 +7,6 @@ import { describe, it, expect } from "vitest";
 import {
   BUSINESS_CHANNEL,
   BUSINESS_CHANNELS,
-  deliveryStackApplicability,
   holdsFundingRisk,
   isSellerServicerChannel,
   mersOrgIdApplicable,
@@ -34,23 +33,11 @@ describe("F-14 — the channel is declared, not implied", () => {
   });
 });
 
-describe("F-14 — the delivery stack knows it is out of channel", () => {
-  it("marks GSE delivery readiness informational for a broker", () => {
-    const applicability = deliveryStackApplicability("broker");
-    expect(applicability.applicable).toBe(false);
-    expect(applicability.message).toMatch(/INFORMATIONAL ONLY/);
-    // The two claims that matter: whose obligation it is, and that it gates
-    // nothing on our side.
-    expect(applicability.message).toMatch(/wholesale lender is the seller\/servicer/i);
-    expect(applicability.message).toMatch(/gates a broker submission/i);
-  });
-
-  it("makes it binding for a correspondent", () => {
-    const applicability = deliveryStackApplicability("correspondent");
-    expect(applicability.applicable).toBe(true);
-    expect(applicability.message).toMatch(/binding obligations/i);
-  });
-});
+// The "delivery stack knows it is out of channel" suite was removed 2026-08-24
+// along with the stack itself. `deliveryStackApplicability` existed to label
+// those results INFORMATIONAL for a broker; with the stack gone there is
+// nothing left to label. The channel assertions above are the part that
+// survives, because MERS still follows the channel (below).
 
 describe("F-14 — MERS follows the channel", () => {
   it("is inapplicable for a broker — no notes held, nothing to register", () => {

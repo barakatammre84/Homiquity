@@ -470,7 +470,7 @@ that array are edited in the same PR** — the §9 pairing, for the same reason.
 | income policy | `server/services/selfEmploymentIncome.ts`, `server/services/income/`, `server/services/worksheetPrefill.ts`, `shared/incomePaths.ts`, `shared/taxFormExtraction.ts`, `shared/borrowerIncomeView.ts` |
 | scenario & classification | `server/services/scenarioCatalog.ts`, `server/services/situationClassifier.ts`, `server/services/loanAnalysis.ts` |
 | AUS / DU | `server/services/ausSubmission.ts`, `server/routes/aus.ts` |
-| delivery & submission readiness | `server/services/loanDeliveryReadiness.ts`, `server/services/brokerSubmissionReadiness.ts`, `server/services/lenderSubmission.ts`, `server/services/mismoValidation.ts`, `server/mismo.ts`, `shared/mismo.ts` |
+| delivery & submission readiness | the delivery-readiness service *(removed 2026-08-24)*, `server/services/brokerSubmissionReadiness.ts`, `server/services/lenderSubmission.ts`, `server/services/mismoValidation.ts`, `server/mismo.ts`, `shared/mismo.ts` |
 | policy data & schema | `server/scripts/seedLendingGrids.ts`, `shared/schema/lendingUrla.ts` |
 | borrower-facing policy surfaces | `server/services/autopilot/followUps.ts` |
 

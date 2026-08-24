@@ -53,7 +53,7 @@ describe("path triggers", () => {
   it("does not fire on shared/fannieMae — job-aid-sourced, excluded on purpose", () => {
     // Dual-gating delivery formats would teach people to paste Guide ids onto
     // job-aid data, which is worse than no citation at all.
-    expect(detectTriggers(["shared/fannieMae/loanDeliveryEdits.ts"])).toHaveLength(0);
+    expect(detectTriggers(["shared/fannieMae/qmThresholds.ts"])).toHaveLength(0);
   });
 
   it("does not fire on pricing — the LLPA Matrix is not procured", () => {

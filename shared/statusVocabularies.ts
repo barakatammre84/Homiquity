@@ -70,7 +70,7 @@ export type PreApprovalLetterStatus = typeof PRE_APPROVAL_LETTER_STATUS[number];
  *   - `amortizationType` is read lowercased by mismoValidation.validateArm
  *     ("adjustable" ⇒ the ARM term fields become required) and mapped to ULDD
  *     LoanAmortizationType {Fixed, AdjustableRate} by
- *     server/services/loanDeliveryReadiness.ts.
+ *     server/services/loanDeliveryReadiness.ts (removed 2026-08-24).
  * Never add a value here without extending those mappers first — an unmapped
  * value would fall through to a wrong MISMO enumeration.
  */

@@ -12,10 +12,10 @@ you **implement** — you land the change, you run the gate, you open the PR. Yo
 
 **Yours to write:**
 
-- **Server** — `server/mismo.ts`, `server/services/mismoValidation.ts`, `server/services/mismoXsdValidation.ts`, `server/services/loanDeliveryReadiness.ts`, `server/services/structureTranslation.ts`, `server/services/lenderIdentifiers.ts`, `server/services/lenderSubmission.ts`, `server/services/brokerSubmissionReadiness.ts`, `server/routes/lending/delivery.ts`
+- **Server** — `server/mismo.ts`, `server/services/mismoValidation.ts`, `server/services/mismoXsdValidation.ts`, `server/services/structureTranslation.ts`, `server/services/lenderIdentifiers.ts`, `server/services/lenderSubmission.ts`, `server/services/brokerSubmissionReadiness.ts`, `server/routes/lending/delivery.ts`
 - **Client** — `client/src/components/SubmissionReadinessDialog.tsx`, `client/src/components/SubmissionLifecycleControl.tsx`, `client/src/components/PackageConformanceBadge.tsx`, `client/src/components/BorrowerPackageView.tsx`
 - **Shared / schema** — `shared/mismo.ts`, `shared/schema/delivery.ts`, `shared/fannieMae/`
-- **Tests** — `tests/mismoExport.test.ts`, `tests/mismoValidation.test.ts`, `tests/mismoValidationBatch.test.ts`, `tests/mismoXsdValidation.test.ts`, `tests/mismoMersMin.test.ts`, `tests/mismoExportAccess.test.ts`, `tests/loanDeliveryEdits.test.ts`, `tests/specialFeatureCodes.test.ts`, `tests/structureTranslation.test.ts`, `tests/lenderSubmission.test.ts`, `tests/brokerSubmissionReadiness.test.ts`, `tests/lenderConditions.test.ts`, `tests/lenderApprovalControl.test.ts`
+- **Tests** — `tests/mismoExport.test.ts`, `tests/mismoValidation.test.ts`, `tests/mismoValidationBatch.test.ts`, `tests/mismoXsdValidation.test.ts`, `tests/mismoMersMin.test.ts`, `tests/mismoExportAccess.test.ts`, `tests/structureTranslation.test.ts`, `tests/lenderSubmission.test.ts`, `tests/brokerSubmissionReadiness.test.ts`, `tests/lenderConditions.test.ts`, `tests/lenderApprovalControl.test.ts`
 
 **Not yours** — read freely; anything wrong here is a line in your hand-back, never a fix:
 
@@ -72,7 +72,7 @@ The six that must survive even if you skip that read:
 2. `pnpm test` green in **both** lanes. A new file under `tests/` does not run until it is in
    `vitest.config.ts`'s `include` — assert its filename appears in the run output. Client tests are
    colocated and glob-picked; UI behaviour gets a component test here *first*.
-3. This area's owned tests green: `tests/mismoExport.test.ts`, `tests/mismoValidation.test.ts`, `tests/mismoValidationBatch.test.ts`, `tests/mismoXsdValidation.test.ts`, `tests/mismoMersMin.test.ts`, `tests/mismoExportAccess.test.ts`, `tests/loanDeliveryEdits.test.ts`, `tests/specialFeatureCodes.test.ts`, `tests/structureTranslation.test.ts`, `tests/lenderSubmission.test.ts`, `tests/brokerSubmissionReadiness.test.ts`, `tests/lenderConditions.test.ts`, `tests/lenderApprovalControl.test.ts`.
+3. This area's owned tests green: `tests/mismoExport.test.ts`, `tests/mismoValidation.test.ts`, `tests/mismoValidationBatch.test.ts`, `tests/mismoXsdValidation.test.ts`, `tests/mismoMersMin.test.ts`, `tests/mismoExportAccess.test.ts`, `tests/structureTranslation.test.ts`, `tests/lenderSubmission.test.ts`, `tests/brokerSubmissionReadiness.test.ts`, `tests/lenderConditions.test.ts`, `tests/lenderApprovalControl.test.ts`.
 4. Guards this area trips, green locally: `pnpm guard:channel`, `pnpm guard:schema`, `pnpm guard:citations`.
 5. Server-side changes: integration lane green against a live worktree server on port 5002, with
    `RATE_LIMIT_RELAXED=true` and `X-Forwarded-Proto: https` on every authenticated call.

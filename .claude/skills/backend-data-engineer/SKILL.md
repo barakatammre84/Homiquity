@@ -212,7 +212,7 @@ Rank by CHARTER §1 — question A first, then B — then the §1a Illinois tieb
 **(a) A red gate outranks everything.** If `pnpm check` or `pnpm test` is red on fresh `origin/main`
 (reinstall after a rebase before believing it), that failure is item one.
 **(b) A delivery-path defect** — the ULDD/UCD/URLA export, `server/services/mismoValidation.ts`,
-`shared/fannieMae/**`, `server/services/loanDeliveryReadiness.ts`, the AUS and lender-submission
+`shared/fannieMae/**`, the delivery-readiness service *(removed 2026-08-24)*, the AUS and lender-submission
 services. Question A, highest rank available.
 **(c) A capture→persistence gap** — a field the borrower supplies that the API drops, coerces, or
 cannot clear. The three wire states are the contract:

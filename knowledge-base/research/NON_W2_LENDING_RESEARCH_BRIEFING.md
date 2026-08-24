@@ -457,15 +457,15 @@ files arrive delivery-clean):
 - `server/services/mismoValidation.ts` — URLA completeness scoring per section
   (+ co-applicant), GSE hard-gating on sections 1a/4/5, TRID business-day clock, ATR/QM
   folds; produces the 422 payload for submit-gse.
-- `shared/fannieMae/specialFeatureCodes.ts` — full SFC catalog (2026-05-06 publication),
+- the Special Feature Codes catalog *(removed 2026-08-24)* — full SFC catalog (2026-05-06 publication),
   derivation + set validation (max 10, conjunction requirements, suspended flags).
-- `shared/fannieMae/loanDeliveryEdits.ts` — deterministic mirror of Loan Delivery / UCD /
+- the Loan Delivery/UCD edit mirror *(removed 2026-08-24)* — deterministic mirror of Loan Delivery / UCD /
   EarlyCheck edits (QM C-series, UCD Phase 3 critical fee edits, Phase 4 LPQIRP,
   EarlyCheck ULAD), each tagged by source + severity, with anything not locally evaluable
   reported honestly in `notEvaluated`.
-- `shared/fannieMae/ucdFeeEnumerations.ts` — UCD fee-type enumerations by CD section
+- the UCD fee enumerations *(removed 2026-08-24)* — UCD fee-type enumerations by CD section
   (fatal enforcement for sections A & E).
-- `server/services/loanDeliveryReadiness.ts` — the orchestrator combining all of the
+- the delivery-readiness service *(removed 2026-08-24)* — the orchestrator combining all of the
   above into one `DeliveryReadinessReport`; closing-stage data the broker never holds is
   reported "not evaluated," by design.
 
@@ -560,7 +560,7 @@ outcome.
 | Rate sheets / PPE | `server/services/pricingAdapter.ts` + seeded sheets | SIMULATED (`SIMULATED_RATE_DATA=true` provenance) | F11 — Lender Price + Mortech contract |
 | AMI lookup (FTHB LLPA waiver) | `server/pricing.ts` `getAreaMedianIncome` | STUB (returns 90,000 default) | HUD API integration |
 | Lender portal submission | `lenderSubmission.ts` `submitToLenderPortal` | SIMULATED acknowledgment | LS-10 slice 3 — signed broker agreements ("the single seam to replace") |
-| GSE loan delivery | `shared/fannieMae/*` + `loanDeliveryReadiness.ts` | REAL deterministic **mirror** — informational by design | n/a (the lender delivers, not the broker) |
+| GSE loan delivery | `shared/fannieMae/*` + the delivery-readiness service *(removed 2026-08-24)* | REAL deterministic **mirror** — informational by design | n/a (the lender delivers, not the broker) |
 
 Everything in the left column that is simulated is *seeded and flagged* — the product
 experience, data model, and downstream flows are fully exercised end-to-end today; the

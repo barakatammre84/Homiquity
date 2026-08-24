@@ -648,22 +648,24 @@ const COMPLIANCE_CRITICAL_FIELDS: ComplianceCriticalField[] = [
       "Required to mark a submission funded. Absent on an at-risk loan, the exposure is " +
       "reported indeterminate rather than $0 — an unknown is not an absence of risk.",
   },
-  {
-    field: "regulationZTotalPointsAndFeesAmount",
-    table: "loan_delivery_data",
-    gate: "Loan Delivery edit 3128 / C87-C88 (QM cap at delivery)",
-    readBy: "shared/fannieMae/loanDeliveryEdits.ts",
-    writtenBy: ["server/routes/underwriting/delivery.ts"],
-    indirectWrite:
-      "Written through insertLoanDeliveryDataSchema via `...parsed.data`, so the field name " +
-      "never appears literally in the route.",
-    why: "Edit 3128 fails when absent — the delivery edits already fail closed on this one.",
-  },
+  // REMOVED 2026-08-24 with the GSE-delivery stack: `regulationZTotalPointsAndFeesAmount`
+  // was read by shared/fannieMae/loanDeliveryEdits.ts and written by the
+  // /delivery-data route. Both are gone — a broker is not the seller/servicer, so
+  // Loan Delivery edit 3128 is the wholesale lender's gate, not ours. The QM
+  // points-and-fees cap we DO owe is still enforced on the lenderPackage stage via
+  // shared/fannieMae/qmThresholds.ts. Leaving the row would assert a control that
+  // no longer exists, which is the exact failure this registry exists to catch.
 ];
 
 describe("compliance-critical field registry (F-2 class: dead data feeding a live gate)", () => {
   it("registers at least the fields the 2026-08-04 audit identified", () => {
-    expect(COMPLIANCE_CRITICAL_FIELDS.length).toBeGreaterThanOrEqual(6);
+    // Floor lowered 6 -> 5 on 2026-08-24. The sixth row described
+    // `regulationZTotalPointsAndFeesAmount` reaching Loan Delivery edit 3128 —
+    // a gate that no longer exists here, because the GSE-delivery stack was
+    // removed (a broker is not the seller/servicer). Lowering the floor is
+    // honest; keeping the row would have asserted a live control that is gone,
+    // which is the exact failure this registry exists to catch.
+    expect(COMPLIANCE_CRITICAL_FIELDS.length).toBeGreaterThanOrEqual(5);
   });
 
   it.each(COMPLIANCE_CRITICAL_FIELDS.map((f) => [f.field, f] as const))(

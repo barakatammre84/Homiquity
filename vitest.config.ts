@@ -227,8 +227,6 @@ export default defineConfig({
       "tests/auditReanchor.test.ts",
       "tests/auditChainTruncation.test.ts",
       "tests/qmThresholds.test.ts",
-      "tests/specialFeatureCodes.test.ts",
-      "tests/loanDeliveryEdits.test.ts",
       "tests/brokerSubmissionReadiness.test.ts",
       "tests/incomeAnalysisPackage.test.ts",
       "tests/borrowerIncomeView.test.ts",

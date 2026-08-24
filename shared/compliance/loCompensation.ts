@@ -36,7 +36,8 @@
 // The evaluation below is three-valued for exactly that reason and never
 // returns "compliant" off the floor alone. The authoritative figure arrives at
 // closing as `loan_delivery_data.regulationZTotalPointsAndFeesAmount`, which
-// the delivery edits already hard-require (shared/fannieMae/loanDeliveryEdits.ts
+// the delivery edits used to hard-require (removed 2026-08-24; the QM cap we
+// still owe is shared/fannieMae/qmThresholds.ts
 // edit 3128). This module's job is to stop an over-cap structure from ever
 // being quoted — months before the delivery edit would catch it.
 // ---------------------------------------------------------------------------

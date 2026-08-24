@@ -71,14 +71,13 @@ Where this code lives:
 | MISMO 3.4 XML generation for GSE delivery | `server/mismo.ts` |
 | URLA section completeness scoring + GSE gating (sections 1a, 4, 5) | `server/services/mismoValidation.ts` |
 | QM points-and-fees / APR-APOR spread thresholds (note-date tables) | `shared/fannieMae/qmThresholds.ts` |
-| Special Feature Codes catalog + derivation + set validation | `shared/fannieMae/specialFeatureCodes.ts` |
-| Loan Delivery / UCD / EarlyCheck pre-delivery edit mirror | `shared/fannieMae/loanDeliveryEdits.ts` |
-| UCD fee/prepaid/escrow enumerations by CD section | `shared/fannieMae/ucdFeeEnumerations.ts` |
-| Delivery-readiness workflow + `loan_delivery_data` capture | `server/services/loanDeliveryReadiness.ts`, `shared/schema/delivery.ts` |
 | Broker submission workflow (intake → DU → lender package) | `server/services/brokerSubmissionReadiness.ts` |
 | AUS submission (dual: DU + simulated LPA leg) | `server/services/ausSubmission.ts`, `server/routes/aus.ts` |
 | Wholesale lender submissions (Target-5 catalog + status machine) | `server/services/lenderSubmission.ts`, `shared/wholesaleLenders.ts` |
 | Lending / underwriting routes | `server/routes/lending/`, `server/routes/underwriting/` (sub-registrar directories; `index.ts` order = Express matching order) |
+
+**Removed 2026-08-24** — the GSE-delivery stack (ULDD readiness, the Loan Delivery / UCD / EarlyCheck edit mirror, Special Feature Codes, UCD fee enumerations) was deleted. A broker is not the seller/servicer, so those are the wholesale lender's obligations; see [CHANNEL_DECISION.md](knowledge-base/governance/CHANNEL_DECISION.md). The QM points-and-fees cap we DO owe survives in `shared/fannieMae/qmThresholds.ts`.
+
 
 ## NMLS licensing: source of truth
 

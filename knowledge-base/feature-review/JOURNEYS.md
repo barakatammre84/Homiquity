@@ -371,10 +371,10 @@ Status ledger (updated by the orchestrator after each run):
 >    awareness exists where it costs nothing and is absent where the borrower relies on it. Find out
 >    whether that flag is ever rendered to anyone.
 > 2. **`isCooperative` is derived from a value the product cannot produce.**
->    `server/services/loanDeliveryReadiness.ts` sets
+>    the delivery-readiness service *(removed 2026-08-24)* sets
 >    `isCooperative: propertyType.includes("co-op") || propertyType.includes("coop")`, while the
 >    intake enum is exactly `single_family | condo | townhouse | multi_family`. Nothing writes
->    `co-op`, so the flag is permanently unset — yet `shared/fannieMae/loanDeliveryEdits.ts` carries
+>    `co-op`, so the flag is permanently unset — yet the Loan Delivery/UCD edit mirror *(removed 2026-08-24)* carries
 >    EarlyCheck edits **6158** and **6159** governing cooperatives. **Delivery-side rules for a
 >    property type intake cannot represent** is a two-surface seam (intake → delivery), squarely the
 >    *silent success* class.

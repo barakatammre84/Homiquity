@@ -135,7 +135,6 @@ const PATH_TRIGGERS = [
   {
     label: "delivery & submission readiness",
     paths: [
-      "server/services/loanDeliveryReadiness.ts",
       "server/services/brokerSubmissionReadiness.ts",
       "server/services/lenderSubmission.ts",
       "server/services/mismoValidation.ts",

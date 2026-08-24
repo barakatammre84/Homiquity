@@ -175,7 +175,7 @@ flowchart TD
   → `7`. Ratchets (down only; **auto-tighten on a shrink**): `bundle-size` (`:217-218`), `design-token`
   (`:116-119`), `citation`, `doc-staleness`, `schema-migration` (baseline allow-list), `ui-standard`,
   `delivery-stack-freeze` (= `pnpm guard:channel`: the four GSE-delivery files may shrink, never
-  grow, until the channel decision flips — `scripts/delivery-stack-freeze-guard.cjs`). Hard pass/fail with no baseline: `kb-index`,
+  grow, until the channel decision flips — the delivery-stack freeze guard *(removed 2026-08-24)*). Hard pass/fail with no baseline: `kb-index`,
   `migration-ledger`, `query-key`, `query-key-transport`, `security-review`, `hooks-installed`,
   `test-collection` (the collected-count floor; its orphan floor is zero, `scripts/test-collection-guard.cjs:464-468`),
   `selling-guide-authority` (TEAM_PRACTICES §10, `scripts/selling-guide-authority-guard.cjs`, #654).

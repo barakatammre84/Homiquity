@@ -197,7 +197,7 @@ What it does:
 - **Never invent** a data-point name, enumeration, container path, edit code or Special Feature Code. Unverifiable means stop and flag — a schema mismatch means **drop the field**.
 - Readiness scoring names what is missing, specifically enough to act on.
 
-- **Server** — `server/mismo.ts`, `server/services/mismoValidation.ts`, `server/services/mismoXsdValidation.ts`, `server/services/loanDeliveryReadiness.ts`, `server/services/structureTranslation.ts`, `server/services/lenderIdentifiers.ts`, `server/services/lenderSubmission.ts`, `server/services/brokerSubmissionReadiness.ts`, `server/routes/lending/delivery.ts`
+- **Server** — `server/mismo.ts`, `server/services/mismoValidation.ts`, `server/services/mismoXsdValidation.ts`, `server/services/structureTranslation.ts`, `server/services/lenderIdentifiers.ts`, `server/services/lenderSubmission.ts`, `server/services/brokerSubmissionReadiness.ts`, `server/routes/lending/delivery.ts`
 - **Client** — `client/src/components/SubmissionReadinessDialog.tsx`, `client/src/components/SubmissionLifecycleControl.tsx`, `client/src/components/PackageConformanceBadge.tsx`, `client/src/components/BorrowerPackageView.tsx`
 - **Shared / schema** — `shared/mismo.ts`, `shared/schema/delivery.ts`, `shared/fannieMae/`
 - **Owned tests** — 13 files, listed in the agent

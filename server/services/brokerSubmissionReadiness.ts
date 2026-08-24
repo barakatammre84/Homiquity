@@ -12,12 +12,13 @@
  *   3. lenderPackage     — MISMO export validity, outstanding docs, QM
  *                          pre-flight, anti-steering disclosure (Reg Z
  *                          §1026.36(e)(3)) before options are locked
- *   4. deliveryPreflight — the Fannie Mae Loan Delivery / UCD / EarlyCheck
- *                          edit mirror (shared/fannieMae/) run as a lender's-
- *                          eye view of the file. INFORMATIONAL for a broker:
- *                          closing data belongs to the lender, so this stage
- *                          never blocks submission — it predicts what the
- *                          lender's own delivery checks will say.
+ *
+ * A fourth stage, deliveryPreflight, mirrored the Fannie Loan Delivery / UCD /
+ * EarlyCheck edits as a "lender's-eye view". It was REMOVED 2026-08-24: it never
+ * blocked anything by design, and it evaluated nothing in practice because the
+ * closing-stage row it read had no writer anywhere in the product. Those edits
+ * belong to the wholesale lender as seller/servicer — see
+ * knowledge-base/governance/CHANNEL_DECISION.md.
  *
  * The stage derivation is a pure function (deriveSubmissionStages) so the
  * workflow decisions are unit-testable without a database.
@@ -26,12 +27,11 @@
 import { storage } from "../storage";
 import { hasBorrowerConsent } from "../consentGate";
 import { validateULDDCompliance, type ULDDValidationResult, type MISMOLoanDTO } from "../mismo";
-import type { LoanDeliveryEditResult } from "@shared/fannieMae/loanDeliveryEdits";
 
 export type StageStatus = "ready" | "blocked" | "attention" | "not_applicable";
 
 export interface SubmissionStage {
-  key: "intake" | "aus" | "lenderPackage" | "deliveryPreflight";
+  key: "intake" | "aus" | "lenderPackage";
   label: string;
   status: StageStatus;
   blockers: string[];
@@ -71,11 +71,6 @@ export interface StageDerivationInputs {
   consents: {
     eDisclosure: boolean;
     antiSteering: boolean;
-  };
-  deliveryEdits: Pick<LoanDeliveryEditResult, "deliverable"> & {
-    fatalCount: number;
-    warningCount: number;
-    notEvaluatedCount: number;
   };
   /**
    * TRID change-of-circumstance state (Reg Z §1026.19(e)(3)(iv) / (e)(4)(i)).
@@ -221,28 +216,16 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
     warnings: pkgWarnings,
   });
 
-  // --- Stage 4: delivery pre-flight (informational) ------------------------
-  const preflightWarnings: string[] = [];
-  if (inputs.deliveryEdits.fatalCount > 0) {
-    preflightWarnings.push(`${inputs.deliveryEdits.fatalCount} Loan Delivery/UCD edit(s) would fire at the lender's delivery — expect conditions`);
-  }
-  if (inputs.deliveryEdits.notEvaluatedCount > 0) {
-    preflightWarnings.push(`${inputs.deliveryEdits.notEvaluatedCount} delivery check(s) awaiting closing-stage data (lender-side)`);
-  }
-  stages.push({
-    key: "deliveryPreflight",
-    label: "Delivery pre-flight (lender's-eye view)",
-    // Never blocks a broker submission — closing data is the lender's.
-    status: inputs.deliveryEdits.fatalCount > 0 ? "attention" : "ready",
-    blockers: [],
-    warnings: preflightWarnings,
-  });
-
-  const gatingStages = stages.slice(0, 3);
+  // Stage 4 ("delivery pre-flight") REMOVED 2026-08-24. It mirrored the Fannie
+  // Loan Delivery / UCD / EarlyCheck edits, never blocked anything by design
+  // ("closing data is the lender's"), and evaluated nothing in practice — the
+  // row it read had no writer. A broker is not the seller/servicer; those edits
+  // are the wholesale lender's. See governance/CHANNEL_DECISION.md.
+  const gatingStages = stages;
   const readyToSubmitToLender = gatingStages.every(s => s.status === "ready" || s.status === "attention")
     && gatingStages.every(s => s.blockers.length === 0);
 
-  const currentStage = (stages.find(s => s.status === "blocked") ?? stages.find(s => s.status === "attention") ?? stages[2]).key;
+  const currentStage = (stages.find(s => s.status === "blocked") ?? stages.find(s => s.status === "attention") ?? stages[stages.length - 1]).key;
 
   const nextActions = stages.flatMap(s =>
     s.blockers.map(b => `[${s.label}] ${b}`),
@@ -272,9 +255,6 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
     hasBorrowerConsent("e_disclosure", applicationId),
     hasBorrowerConsent("anti_steering", applicationId),
   ]);
-
-  const { evaluateDeliveryReadiness } = await import("./loanDeliveryReadiness");
-  const delivery = await evaluateDeliveryReadiness(applicationId);
 
   // Income-analysis readiness (UAL P6): does this file need the income package,
   // and is it complete? A file needs it when the borrower has self-employment,
@@ -328,12 +308,6 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
       const { getCocReadinessSummary } = await import("./changeOfCircumstance");
       return getCocReadinessSummary(applicationId);
     })(),
-    deliveryEdits: {
-      deliverable: delivery.edits.deliverable,
-      fatalCount: delivery.edits.fatal.length,
-      warningCount: delivery.edits.warnings.length,
-      notEvaluatedCount: delivery.edits.notEvaluated.length,
-    },
     incomeAnalysis: {
       requiresIncomePackage,
       hasCurrentEvaluation: !!latestEval,

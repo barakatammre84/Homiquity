@@ -6,7 +6,8 @@ import {
 
 // ---------------------------------------------------------------------------
 // Broker workflow stage derivation. Pure function — no DB. The division of
-// labor under test: stages 1–3 gate the wholesale-lender submission; stage 4
+// labor under test: stages 1–3 gate the wholesale-lender submission. (A fourth
+// stage, delivery pre-flight, was removed 2026-08-24 with the GSE-delivery stack:
 // (Fannie Mae delivery edits) is informational only, because closing data
 // and loan delivery belong to the wholesale lender, not the broker.
 // ---------------------------------------------------------------------------
@@ -37,7 +38,6 @@ function cleanInputs(overrides: Partial<StageDerivationInputs> = {}): StageDeriv
       fatalCount: 0,
       warningCount: 0,
       notEvaluatedCount: 0,
-      ...(overrides.deliveryEdits ?? {}),
     },
     incomeAnalysis: {
       // Default: a clean wage-earner file that doesn't need the income package.
@@ -186,14 +186,3 @@ describe("stage 3 — wholesale lender package", () => {
   });
 });
 
-describe("stage 4 — delivery pre-flight is informational only", () => {
-  it("never blocks the broker submission, even with fatal delivery edits", () => {
-    const r = deriveSubmissionStages(cleanInputs({
-      deliveryEdits: { deliverable: false, fatalCount: 7, warningCount: 2, notEvaluatedCount: 5 },
-    }));
-    expect(stage(r, "deliveryPreflight").status).toBe("attention");
-    expect(stage(r, "deliveryPreflight").blockers).toEqual([]);
-    expect(r.readyToSubmitToLender).toBe(true);
-    expect(stage(r, "deliveryPreflight").warnings.some(w => w.includes("7 Loan Delivery/UCD edit(s)"))).toBe(true);
-  });
-});

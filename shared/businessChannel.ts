@@ -22,13 +22,17 @@
 // correspondent and nothing in the knowledge base said so.
 //
 // ---------------------------------------------------------------------------
-// WHY A CONSTANT RATHER THAN A DELETION
+// THE CONSTANT OUTLIVED THE STACK IT WAS PROTECTING
 // ---------------------------------------------------------------------------
-// Deleting the delivery stack would be right under one reading and destroy
-// months of correct work under the other. So the channel is DECLARED here, the
-// stack is frozen rather than removed (scripts/delivery-stack-freeze-guard.cjs
-// fails the build if it grows while the channel is "broker"), and flipping the
-// answer is one edit in this file.
+// This file originally DECLARED the channel and froze the GSE-delivery stack
+// behind a ratchet, because deleting it would be right under one reading and
+// destroy months of correct work under the other. The freeze held for twenty
+// days and the answer did not change: on 2026-08-24 the stack was REMOVED
+// (1,482 lines across four files, plus the fourth submission-readiness stage
+// and two routes that never had a caller). The constant stays, because
+// `mersOrgIdApplicable()` still reads it and flipping to "correspondent" is
+// still one edit here — but what it now guards is MERS registration, not a
+// delivery stack.
 //
 // The decision itself, its consequences and its cost are in
 // knowledge-base/governance/CHANNEL_DECISION.md. Read that before changing the
@@ -67,13 +71,6 @@ export function holdsFundingRisk(channel: BusinessChannel = BUSINESS_CHANNEL): b
   return channel === "correspondent";
 }
 
-export interface ChannelApplicability {
-  channel: BusinessChannel;
-  /** True when the surface is a function this channel actually performs. */
-  applicable: boolean;
-  /** Plain statement for staff reading a report they should not act on. */
-  message: string;
-}
 
 /**
  * Applicability of the Fannie Mae loan-delivery stack to the current channel.
@@ -82,28 +79,6 @@ export interface ChannelApplicability {
  * the report stays available (it is a useful pre-flight on data quality), but
  * it must never read as an obligation Homiquity owes when it does not.
  */
-export function deliveryStackApplicability(
-  channel: BusinessChannel = BUSINESS_CHANNEL,
-): ChannelApplicability {
-  if (isSellerServicerChannel(channel)) {
-    return {
-      channel,
-      applicable: true,
-      message:
-        "Homiquity is the seller/servicer in this channel — these Loan Delivery, UCD and Special " +
-        "Feature Code results are binding obligations before delivery to the GSE.",
-    };
-  }
-  return {
-    channel,
-    applicable: false,
-    message:
-      "INFORMATIONAL ONLY — Homiquity is a broker. The wholesale lender is the seller/servicer " +
-      "and owns GSE delivery, the UCD, the Loan Delivery edits, Special Feature Codes and MERS " +
-      "registration. These results are a data-quality pre-flight on our own file, not a " +
-      "delivery obligation we owe. Nothing here gates a broker submission.",
-  };
-}
 
 /**
  * Is a MERS organisation id meaningful in this channel?
