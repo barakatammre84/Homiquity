@@ -48,6 +48,28 @@ then, new editions arrive by founder-supplied PDF, the same path 08-05-2026 took
 Reachability is environment-dependent and has flipped before (CLAUDE.md's Reg Z lesson) —
 the watch re-probes every run and records `lastRunEnvironment`, and never asserts either way.
 
+**Re-measured 2026-08-24, and it has not flipped.** Four independent tools, each with a
+working control in the same session, so this is the host and not the tooling:
+
+| Tool | `selling-guide.fanniemae.com` | Control in the same session |
+|---|---|---|
+| `curl` | `CONNECT … 403 Forbidden` | `pypi.org` 200 |
+| Node `fetch` (the watcher itself) | all 4 edition sources `unreachable` | — |
+| `WebFetch` | `EGRESS_BLOCKED` | — |
+| headless Chromium (real browser) | `ERR_TUNNEL_CONNECTION_FAILED` | `pypi.org` 200, 1,558 chars |
+
+The gateway body says it outright: *"Host not in allowlist … Add this host to your network
+egress settings to allow access."* So the watcher is not merely untested against the live
+edition — **it has never once observed it**, and the signals queue has been empty since it
+was built. Correct code, honestly reporting, on a network that cannot reach the source.
+
+**A GitHub runner is a different network.** `.github/workflows/selling-guide-recon.yml`
+(manual dispatch, `contents: read`, commits nothing) is a one-off probe that goes and looks
+from there, before any monitoring is designed against markup nobody here has ever seen. Its
+first job is to establish whether a runner can reach Fannie at all — a clean negative is a
+useful result and leaves the founder allowlist as the only route. It is disposable by
+design: delete it or fold it into the watcher once it has answered.
+
 ## When the next edition or an amendment lands
 
 - **Amendment (SEL announcement):** the watch signals the id; the steward reports it ⛔; the

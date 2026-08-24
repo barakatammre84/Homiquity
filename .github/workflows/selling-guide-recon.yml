@@ -1,0 +1,131 @@
+# ONE-OFF reconnaissance of the live Selling Guide site. Manual dispatch only.
+#
+# ⚠️ DISPOSABLE BY DESIGN. This workflow answers a fixed list of questions once and is
+# then deleted or folded into the real watcher. It is not a monitor: no schedule, no
+# state, no signals, no commits, no pull requests. If it is still here in a month,
+# that is the bug — see scripts/selling-guide-recon.cjs.
+#
+# WHY IT EXISTS. The corpus is a snapshot of one PDF (edition 08-05-2026); the live HTML
+# edition is amended between editions, so the corpus can go stale silently. A watcher
+# for that already exists and is well built — and has never observed anything, because
+# the only place it runs is a Claude session in an environment whose egress gateway
+# refuses the host. Measured 2026-08-24 across four independent tools, each with a
+# working control in the same session: curl gets CONNECT 403, the watcher's own node
+# fetch marks all four sources unreachable, WebFetch returns EGRESS_BLOCKED, and a real
+# headless Chromium gets ERR_TUNNEL_CONNECTION_FAILED while pypi.org loads fine.
+#
+# So nobody here has ever seen this site, and every markup-dependent decision in a
+# monitoring design is a guess. A GitHub runner is a DIFFERENT network. This goes and
+# looks from there — and whether it can is itself the first thing being tested. A clean
+# negative is a useful result: it means the only route left is allowlisting
+# *.fanniemae.com on the environment, which is already the recorded procurement ask in
+# scripts/selling-guide-freshness.cjs.
+#
+# NOT in the merge gate, and never will be: a network probe must not decide whether
+# unrelated work can merge. Same argument as doc-freshness.yml and seat-roster.yml.
+#
+# THE ARTIFACT IS THE POINT, AND IT NEVER LANDS IN THE TREE. Guide HTML is Fannie Mae's
+# copyrighted work — the same reason the extracted corpus is gitignored. Bodies go to
+# the runner's temp dir and leave as a short-retention build artifact for a human to
+# read. Nothing is committed.
+
+name: Selling Guide recon (one-off site probe)
+
+on:
+  workflow_dispatch:
+    inputs:
+      render_check:
+        description: "Also render one section page in headless Chromium (answers: does the site need JS?)"
+        type: boolean
+        default: true
+
+# Read-only. The write permissions a real monitoring workflow would need
+# (contents: write, pull-requests: write) are deliberately NOT introduced here — this
+# job has no business changing anything.
+permissions:
+  contents: read
+
+concurrency:
+  group: selling-guide-recon
+  cancel-in-progress: false
+
+jobs:
+  recon:
+    name: probe the live Selling Guide
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+
+      - name: Probe (robots.txt first, then 6 URLs, serially)
+        id: probe
+        # Exit 3 means "incomplete" — at least one target unreachable, denied or
+        # robots-disallowed. That is an OBSERVATION, not a failure of this job: it is
+        # very possibly the answer we came for. Only exit 1 (the script itself broke)
+        # should red the run, so 3 is captured and reported rather than thrown.
+        env:
+          RECON_OUT: ${{ runner.temp }}/sg-recon
+        run: |
+          set +e
+          node scripts/selling-guide-recon.cjs
+          code=$?
+          set -e
+          echo "recon_exit=$code" >> "$GITHUB_OUTPUT"
+          case "$code" in
+            0) echo "::notice::All targets observed — the runner CAN reach Fannie Mae." ;;
+            3) echo "::warning::Incomplete run — see the per-target table above for which targets were unreachable, denied or robots-disallowed." ;;
+            *) echo "::error::The recon script itself failed (exit $code)."; exit "$code" ;;
+          esac
+
+      - name: Render check (does the site need JavaScript?)
+        # continue-on-error so a browser that will not install cannot cost us the
+        # plain-fetch recon, which is the main prize.
+        #
+        # Installed into RUNNER_TEMP, never the repo root: this repo is pnpm-managed,
+        # and `npm install` beside its package.json would try to resolve the entire
+        # dependency tree against a lockfile npm does not read. playwright-core is
+        # pinned to the same version as the browser it drives.
+        if: inputs.render_check
+        continue-on-error: true
+        env:
+          RECON_OUT: ${{ runner.temp }}/sg-recon
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/pw-browsers
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pw"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --silent playwright-core@1.62.1
+          npx --yes playwright@1.62.1 install --with-deps chromium
+          cd "$GITHUB_WORKSPACE"
+          NODE_PATH="$RUNNER_TEMP/pw/node_modules" node scripts/selling-guide-recon-render.cjs
+
+      - name: Upload the artifact (raw bodies + metadata)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selling-guide-recon
+          path: ${{ runner.temp }}/sg-recon
+          # Short on purpose: this is third-party copyrighted content captured for a
+          # one-time read, not a corpus.
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Selling Guide recon"
+            echo
+            echo "Probe exit code: \`${{ steps.probe.outputs.recon_exit }}\` (0 = every target observed, 3 = incomplete)"
+            echo
+            echo "Download the **selling-guide-recon** artifact for the raw HTML, \`robots.txt\`, and \`recon-report.json\`."
+            echo
+            echo "Questions this run is meant to answer: can a runner reach Fannie at all; does robots.txt permit it;"
+            echo "do the derived \`/sel/{id}/{slug}\` URLs resolve; is there an effective date on a section page;"
+            echo "is there a stable content container; are ETag/Last-Modified served; is the site server-rendered;"
+            echo "has the PDF endpoint moved past the pinned 08-05-2026 edition."
+          } >> "$GITHUB_STEP_SUMMARY"
