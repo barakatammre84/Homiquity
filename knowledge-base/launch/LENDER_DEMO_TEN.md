@@ -126,17 +126,37 @@ the package's own consent trail, and we are about to show that trail to the very
 **3. Co-borrower blindness, both layers.**
 (a) One `PARTY` is emitted for a two-borrower file while both employments ride under it — so the
 package states one person earns both incomes, under one SSN, and `validateULDDCompliance` returns
-`valid: true`. Authority is in-repo: `docs/fannie-mae/uldd-implementation-guide.pdf` p.14 — the
-PARTY container repeats per borrower.
-(b) **G-15:** the representative credit score ignores the co-borrower while counting their income.
-A 760/600 pair prices and gates at 760 where B3-5.1-02 requires 600 — **clearing a 620 floor it
-should fail.**
+`valid: true`. Authority is in-repo and reads, verbatim
+(`docs/fannie-mae/uldd-implementation-guide.pdf` p.14): *"Every loan delivery (DEAL container) will
+have a separate PARTY container for each party, such as: Borrower, Appraiser, Appraiser Supervisor,
+Loan Originator, and Loan Origination Company. The PARTY container will also be repeated for
+multiple borrowers."*
+(a-ii) **The same sentence names a second gap.** `grep -c "PartyRoleType" server/mismo.ts` → **1**,
+and it is `"Borrower"` (`:775`). We emit one PARTY carrying one role, so the **Loan Originator** and
+**Loan Origination Company** parties — where a broker-channel delivery's NMLS identifiers ride — are
+absent entirely. ⚠️ p.14's list is illustrative ("such as"); whether these are *required* is an
+Appendix D question, and Appendix D is unobtainable (see item 4). **Build the co-borrower fix;
+raise the LO/LOC parties with the AE rather than asserting a requirement we cannot verify.**
+(b) **G-15 — the representative credit score ignores the co-borrower while counting their income.**
+B3-5.1-02 p.476 Step 3, verbatim: *"If there are multiple borrowers … select the **lowest**
+applicable score from the group as the representative credit score for the loan."* So a 760/600 pair
+is a **600** file. p.475 scopes what that score drives: eligibility for manually underwritten loans
+*with only one borrower*, and **"pricing purposes (i.e., assessing LLPAs) on **all** loans."** We
+carry one `credit_score` integer per application, so **every LLPA on a two-borrower file is assessed
+on the wrong score.** *(Corrected 2026-08-23: an earlier draft of this line claimed the file
+"clears a 620 floor it should fail." That is wrong — multi-borrower manual loans use the **average
+median** for eligibility, and the Guide's own worked example puts 760/600 at 680. The pricing defect
+is real; the eligibility one was mine, not the Guide's.)*
 
 **4. Stop emitting guesses as facts** (F-055 / F-056 / G-16).
 Occupancy → `PrimaryResidence`, purpose → `Purchase`, lien → `FirstLien`, marital → `Unmarried`,
 `financedPropertiesCount` → `1` from an REO set the URLA cannot even capture. Escalation **U-22**
-(ULDD Appendix D, 403 from this environment) blocks knowing whether these are hard conformance
-failures — it does **not** block the honest fix, which is to emit nothing rather than a guess.
+blocks knowing whether these are hard conformance failures. Confirmed 2026-08-23: **Appendix D is
+absent from `docs/fannie-mae/`** and its host answers 403 — as does Appendix A, which the ULDD guide
+describes as *"a protected static view of Appendix D in PDF format."* The
+`ULDD_Phase_5_Extension_Visual.xlsx` we do hold is the **extension** schema view, not the delivery
+data dictionary, so it is not a substitute. None of that blocks the honest fix, which is to emit
+nothing rather than a guess.
 
 **5. The "emitted == stored" truth gate.**
 Assert every material datapoint in the XML equals the row it came from — names, SSN-last4 *per
@@ -195,9 +215,18 @@ of a three-week sprint on it. Raise it with the AE as roadmap — not as a gap t
 **Ten to build now. But there genuinely is a second ten, and it is not optional — it is later.**
 
 The Ten are on the **demo path**: what the AE clicks and reads. The second ten is a **TPO
-due-diligence pack**, and this repo already proves it is required rather than hypothetical —
-`sop/SOP-000-manual-charter.md` cites **Selling Guide A3-3-01: "no manual, no broker approval"**,
-and that SOP is an unsigned DRAFT whose four content directories hold nothing but `.gitkeep`.
+due-diligence pack**, and the Guide makes it a condition of approval rather than a nicety.
+**A3-3-01 p.124**, verbatim, among the management procedures a seller must have for third-party
+originations: *"A requirement that a third-party originator have a **written QC plan** and a method
+to validate the existence of that plan."*
+
+Read the mechanism precisely: A3-3-01 binds the **seller** — the wholesale lender — and reaches us
+as something they must require and verify before approving us. Our written QC plan is
+`sop/SOP-000-manual-charter.md`: an unsigned DRAFT whose four content directories hold nothing but
+`.gitkeep`. The same table is also the **actual approval checklist** — financial statements, current
+licences, principal officers' résumés, our QC procedures, background checks, and employee screening
+against the GSA Excluded Parties, HUD LDP and FHFA Suspended Counterparty lists. It is reproduced in
+[CEO_BUSINESS_QUEUE.md](../governance/CEO_BUSINESS_QUEUE.md).
 
 So the answer is a **sequence, not a number**:
 

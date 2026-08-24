@@ -20,14 +20,22 @@ Three separate forces require it, and they do not overlap:
 1. **Fannie Mae, through our wholesale lenders.** We originate as a **third-party originator (TPO)**.
    Selling Guide **A3-3-01** makes the *lender* fully responsible to Fannie Mae for functions
    outsourced to us, and requires the lender to review the TPO's QC procedures against its own
-   standards — including that the TPO maintain a written QC plan and a process for resolving QC
-   discrepancies and tracking corrective actions. No manual, no broker approval. This is the
-   commercial gate.
-   ⚠️ **Citation unverified in-repo** (2026-08-20): `docs/fannie-mae/` holds no Selling Guide
-   A3-3 text, so the requirements above restate the drafting session's reading rather than a
-   captured source — the original draft carried them as direct quotes, downgraded here to
-   paraphrase for that reason. Procure the section into `docs/fannie-mae/` and re-verify before
-   treating this wording as authoritative (CLAUDE.md compliance hierarchy).
+   standards — including a requirement that the TPO maintain a written QC plan, and a method to
+   validate that the plan exists. No manual, no broker approval. This is the commercial gate.
+   ✅ **Citation VERIFIED in-repo, 2026-08-23** (supersedes the 2026-08-20 ⚠️ unverified flag).
+   The Guide is now captured — edition 08-05-2026, **A3-3-01 at p.123–125**, materialised by
+   `scripts/extract-selling-guide.py`; locate it with
+   `grep -n "A3-3-01" docs/fannie-mae/selling-guide/section-index.tsv`. Every claim above is
+   supported verbatim: *"Sellers remain fully responsible to Fannie Mae for functions that are
+   outsourced to third parties"* (p.123); *"the third party's QC procedures so that the seller can
+   determine if the party and its originations meet the seller's standards for quality"* and
+   *"A requirement that a third-party originator have a written QC plan and a method to validate
+   the existence of that plan"* (p.124).
+   **One attribution corrected in the same pass:** the prior wording folded *"a process for
+   resolving QC discrepancies and tracking corrective actions"* into the TPO's obligations. In
+   A3-3-01 that is a row in the **seller's** management-procedures table, not a stated TPO duty —
+   so it is dropped from this sentence rather than restated. It remains a sound thing for our
+   manual to cover; it is simply not what A3-3-01 requires *of us*.
 2. **State examiners and the SAFE Act.** An Illinois RMLA examination asks for written policies
    before it asks for files. Our licence, our NMLS record, and our Mortgage Call Reports are all
    attached to procedures somebody has to be able to produce.

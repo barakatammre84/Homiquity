@@ -29,11 +29,39 @@ lane sets the meeting date.
 
 ## The item this queue now leads with
 
-**Selling Guide A3-3-01 — "no manual, no broker approval."** `sop/SOP-000-manual-charter.md` records
-the obligation; the manual itself is an unsigned DRAFT whose four content directories hold nothing
-but `.gitkeep`. ⚠️ Its A3-3-01 wording is marked unverified pending procurement — confirm the cite
-against `docs/fannie-mae/selling-guide/` before relying on it. Whatever the exact wording, a written
-QC plan is a standard TPO onboarding requirement and we do not have one.
+**Selling Guide A3-3-01 — the written QC plan.** ✅ **Verified against the corpus 2026-08-23**
+(edition 08-05-2026, p.124) — the previous ⚠️ "unverified pending procurement" caveat is retired.
+
+Verbatim, among the management procedures a seller must have for third-party originations:
+
+> *"A requirement that a third-party originator have a **written QC plan** and a method to validate
+> the existence of that plan."*
+
+The obligation binds the **seller** — the wholesale lender — and reaches us as something they must
+require and verify **before approving us**. Ours is `sop/SOP-000-manual-charter.md`: an unsigned
+DRAFT whose four content directories hold nothing but `.gitkeep`.
+
+### The approval checklist, from the authority rather than from desk research
+
+The same A3-3-01 table (p.124) states what a seller's evaluation of a third-party originator **must
+include a review of** — so this is what an AE will ask us for, and it is worth having ready before
+the first call rather than after it:
+
+- most recent **financial statements**
+- **current licences**
+- **résumés or other appropriate information of principal officers** managing the underwriting and
+  originating process
+- **our QC procedures**, so the seller can judge whether we meet their standards for quality
+- **results of background checks** for principal officers
+- our **hiring procedure** for screening every employee involved in origination (application through
+  closing) against the **GSA Excluded Parties List**, the **HUD Limited Denial of Participation
+  List**, and the **FHFA Suspended Counterparty Program List**
+
+Also from the same section, and relevant to delivery: *"Certain Special Feature Codes … are required
+at delivery for third-party originations."*
+
+The §A shortlist below still carries 2026-07-04 desk research describing these requirements as
+unknown or unpublished. For the items above, it is superseded by this section.
 
 **The question to ask the first AE, because it re-ranks everything:** *does your onboarding run the
 security/QC review before the technical demo, or after?* If before, the
@@ -151,6 +179,15 @@ doubles.
 ---
 
 ## §C Billing and infrastructure spend
+
+- [ ] **Allow `*.fanniemae.com` through the network policy.** Found 2026-08-23: `pnpm reg:watch`'s
+  Selling Guide watcher (`scripts/selling-guide-watch.cjs`) **cannot observe a single one of its
+  four edition sources** — every Fannie host answers 403. Of 295 probeable links: `0 ok, 0 rot,
+  22 denied, 273 host-blocked`. The local corpus is trustworthy and its guards pass, but **nothing
+  can detect a new edition, an amendment, or link rot** — we would not know if 08-05-2026 had been
+  superseded. The guard names the fix itself: *"the founder-side fix is the network allowlist
+  (`*.fanniemae.com`)."* Cheap, and it re-arms the only automated regulatory-change signal we have.
+
 
 Moot while development is local-only (founder direction 2026-08-19), and live again the day we
 redeploy. **`KTLO-4` did not move** — `main` still auto-deploys to a public site with no gate, and

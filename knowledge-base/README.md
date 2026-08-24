@@ -67,7 +67,7 @@ doc-drift bug to fix):
 - [LENDER_DEMO_SPRINT.md](launch/LENDER_DEMO_SPRINT.md) — the 15-working-day sequence for that ten, one PR a day, each day exiting on a command whose output you can paste. Ends in an **organic** dress rehearsal, not a seeded one.
 
 ### SOP Manual — written operating procedures (DRAFT) · [`sop/`](sop/)
-- [SOP-000-manual-charter.md](sop/SOP-000-manual-charter.md) — **DRAFT, unsigned** — charter for the operations/QC manual (TPO written-QC-plan obligation, examiner readiness, numbering scheme, approval workflow). Landed 2026-08-20 from the 08-19 orphan snapshot; its template, RACI table and SOP freshness guard are planned, not yet built; its Fannie A3-3-01 wording is ⚠️ unverified pending procurement.
+- [SOP-000-manual-charter.md](sop/SOP-000-manual-charter.md) — **DRAFT, unsigned** — charter for the operations/QC manual (TPO written-QC-plan obligation, examiner readiness, numbering scheme, approval workflow). Landed 2026-08-20 from the 08-19 orphan snapshot; its template, RACI table and SOP freshness guard are planned, not yet built; its Fannie A3-3-01 wording is ✅ **verified against the corpus 2026-08-23** (edition 08-05-2026, p.123–125), with one attribution corrected in the same pass.
 
 ### Governance — policies & session rules · [`governance/`](governance/)
 - [TEAM_PRACTICES.md](governance/TEAM_PRACTICES.md) — how we work (the house-style exemplar).

@@ -21,7 +21,7 @@ operation that did not happen while the tooling said it did.
 | Lane | Owner | Appears in `CTO_ROADMAP.md`? |
 |---|---|---|
 | **Build** — the Ten, below | Engineering | Yes — it is now the only thing that does |
-| **CEO** — converting relationships into signed broker agreements; starting the QC manual that Selling Guide A3-3-01 requires | Founder | No — moved to [CEO_BUSINESS_QUEUE.md](../governance/CEO_BUSINESS_QUEUE.md) per founder direction 2026-08-23 |
+| **CEO** — converting relationships into signed broker agreements; starting the written QC plan the lender must require of us under Selling Guide A3-3-01 p.124 | Founder | No — moved to [CEO_BUSINESS_QUEUE.md](../governance/CEO_BUSINESS_QUEUE.md) per founder direction 2026-08-23 |
 
 The lanes are independent by design. The build lane does not wait on paperwork, and the paperwork
 does not wait on the build — but the **demo is what converts the relationship**, so the build lane
@@ -92,7 +92,8 @@ grep -c "<PARTY>" /tmp/package.xml     # → 2 on a two-borrower file (was 1)
 # each employment under its own party, keyed by borrowerSequenceNumber
 
 # (b) underwriting: representative credit score
-# a 760 primary + 600 co-borrower must price and gate on 600, per B3-5.1-02
+# a 760 primary + 600 co-borrower must assess LLPAs on 600, per B3-5.1-02 p.476 Step 3
+# (pricing, not the eligibility floor — multi-borrower manual loans use the average median)
 ```
 
 **Day 5 · Item 4 · stop emitting guesses as facts.**
