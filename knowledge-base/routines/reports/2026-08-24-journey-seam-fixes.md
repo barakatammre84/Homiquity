@@ -84,6 +84,23 @@ sync with the database, the snapshot-drift CLAUDE.md warns about. Applied that o
 `ADD COLUMN IF NOT EXISTS` directly to the local DB. **No repo migration was authored and no
 `shared/schema/**` file was touched** — `0057` already exists on `main`; this was local repair only.
 
+## The bundle guard caught what the pre-push hook cannot
+
+CI went red on `guard:bundle`: the eager entry grew **23 raw bytes**. The pre-push hook
+deliberately does not run `pnpm build`, so this class is CI-only by design — not a hook gap.
+
+The guard says "never bump the baseline to make a red build green without reading why", so I
+attributed it before touching anything. Grepping the eager chunk for the *component name* was
+misleading (route names appear in the lazy-import registry); grepping for my **added string
+literals** was decisive — only `flex-1 min-w-0` appeared, i.e. `MobileBottomNav`, which is part of
+the authenticated shell and therefore eager.
+
+Reading it rather than paying it turned out to matter: `justify-center` in that class string was
+**redundant** — `flex-col` + `items-center` already centre the content. Removing it from both
+controls left the rendered geometry **byte-identical in layout terms** (re-measured at 320px: six
+controls, 52×53px, none off-screen) and put the bundle **7 bytes below** the old baseline, which
+the guard then tightened to 526,633 on its own. No baseline was raised.
+
 ## Observed, not fixed
 
 - `awaitingDecision` including `denied` means a **denied** borrower is shown *"Under Review"* on

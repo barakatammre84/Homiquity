@@ -99,7 +99,7 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                  "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium transition-colors",
+                  "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium transition-colors",
                   active
                     ? "text-primary"
                     : "text-muted-foreground"
@@ -120,7 +120,7 @@ export function MobileBottomNav() {
         })}
         <button
           onClick={toggleSidebar}
-          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors"
+          className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors"
           data-testid="mobile-nav-more"
         >
           <Menu className="h-5 w-5" />
