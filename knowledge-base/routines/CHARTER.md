@@ -382,19 +382,38 @@ audit reads both fleets. Trigger list read live 2026-08-18.
 
 <!-- BEGIN GENERATED seats:ccr — do not hand-edit; run `pnpm guard:seats --write-table` -->
 
-**Registered and running:** *(none)*
+**Registered and running.**
+
+| Fires (UTC) | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
+| 09:00 UTC | `0 9 * * *` | **Feature Completion Engine (CCR)** (`trig_016AQwLhqYbcp6zvmeeoAyvp`) | daily | yes — one domain per run | ✅ **enabled** | one domain's completion gap, shipped. ⛔ DOUBLE-SEATED: `feature-completion-engine` also sits on the local fleet at 12:34. Two fleets, one job — founder call which one keeps it. definitionPath blank on purpose: the trigger prompt was not read, so which definition it fires is unverified. |
+| 12:00 UTC | `0 12 * * *` | **Client Journey Walk (CCR)** (`trig_01PwYAKv4vt26HXbXEWR9xSU`) | daily | no — trace + tickets | ✅ **enabled** | one client persona walked in rotation. ⛔ CORRECTS the `client-journey-walk` row: that row records taskId `client-journey-walk-v2` as never having existed, which is true — but a DIFFERENT, enabled CCR trigger has been walking journeys daily. Last report 2026-08-20. |
+| 12:00 UTC | `0 12 * * *` | **Launch Readiness Audit** (`trig_01Le5WEHJhs9BzCb7MptcNqM`) | daily | no — audit only | ✅ **enabled** | pre-launch gate verdict across surfaces. Reports under the slug `launch-gate`; last report 2026-08-17. ⛔ Fires in the same minute as `client-journey-walk-ccr`. |
+| Sat 12:00 UTC | `0 12 * * 6` | **Founder Directive Review** (`trig_01LQd1iP6JuPnnKyR2g52VXk`) | weekly | no — review only | ✅ **enabled** | weekly pass over open founder directives. definitionPath blank: no in-repo definition; the trigger carries its own prompt. |
+| 1st 09:00 UTC | `0 9 1 * *` | **Vendor & Platform Risk (CCR)** (`trig_01L4SzhGVpzC4wUN9QtYC57Z`) | monthly | no | ✅ **enabled** | platform floor + vendor lead-time watch. ⛔ DOUBLE-SEATED with the local `vendor-platform-risk` row, which records the seat as unregistered — on CCR it is registered and enabled. Last report 2026-08-17. |
 
 **Registered but not running.** A paused seat is a decision; a `NOT DISPATCHING` seat is a fault — its slot advances and no session is created, which looks identical to a healthy seat from the outside. Neither is a control.
 
 | Fires (UTC) | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
 |---|---|---|---|---|---|---|
 | 05:30 UTC | `30 5 * * *` | **Selling Guide Steward** (`selling-guide-steward`) | daily | yes — Guide fact layer + its watch state only | ⚠️ registered and enabled — **NOT DISPATCHING** | extraction drill verdict + edition/amendment/link sweep + <=1 draft PR |
+| 10:20 UTC | `20 10 * * *` | **Frontend Wiring Audit** (`trig_01Gd2iz3fPNE6mTsAKCmwpbg`) | daily | no — report only | ⏸️ registered, **paused** | wiring findings — UI attached to nothing |
+| 11:00 UTC | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | yes — `server/**`, `shared/**` + same-PR migration | ⏸️ registered, **paused** | <=2 PRs + the `BD-…` ledger |
+| 12:00 UTC | `0 12 * * *` | **Better.com Competitive Review** (`trig_01ACv4XPGfSbStob1WDj2dN6`) | daily | no — report only | ⏸️ registered, **paused** | competitor delta |
+| 14:00 UTC | `0 14 * * *` | **Page-by-page Deep Inspection** (`trig_01JFfCyXrdyEp1uB1koQa5eM`) | daily | no — findings only | ⏸️ registered, **paused** | layout/overflow findings per page |
+| 16:10 UTC | `10 16 * * *` | **Deliverable QA Sweep (CCR)** (`trig_01TexCEgSS6EkAdZbbY9Cked`) | daily | no — findings only | ⏸️ registered, **paused** | verified buildable tickets in FINDINGS.md |
+| 16:25 UTC | `25 16 * * *` | **UI Conformance Sweep (CCR)** (`trig_01RmszhjvBozARMGF99ECCii`) | daily | yes — `client/src/**` visual only | ⏸️ registered, **paused** | one conformance PR + the `UC-…` ledger |
+| 22:30 UTC | `30 22 * * *` | **Doc Accuracy (CCR)** (`trig_01HNfBQUXKmkLb9kmCfQEBG2`) | daily | docs only — living `.md` (§6) | ⏸️ registered, **paused** | one docs PR per tick at most + the `DA-…` ledger |
+| hourly 08–20 UTC, Mon–Fri | `0 8-20 * * 1-5` | **PR Sync / Decide-or-Close Loop** (`trig_017XYBR3LZVZLSN6wPtEBHQ2`) | 13x daily | no — triage only | ⏸️ registered, **paused** | open PRs advanced, closed, or escalated |
+| Mon 12:30 UTC | `30 12 * * 1` | **Monday Better.com Deep-Dive** (`trig_018Mt5nrWa1teHP7hh57EbH9`) | weekly | no — reminder only | ⏸️ registered, **paused** | a reminder to run a logged-in competitor walkthrough |
+| Wed 13:00 UTC | `0 13 * * 3` | **Weekly UX Audit vs Better** (`trig_01VmRsDLsh96cSApXc3JHMa2`) | weekly | no — report only | ⏸️ registered, **paused** | UX gap list vs the Better standard |
+| 1st 13:00 UTC | `0 13 1 * *` | **Financial Architecture Audit** (`trig_01Drx251fEL1USvnuEYHab7X`) | monthly | no — report only | ⏸️ registered, **paused** | unit-economics + counterparty-integrity verdict |
 
-**Not registered — 1 definition(s) on disk with no scheduler entry.** §11: *"a definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and fossils are what produced §0."* These do **not** run. Nothing may plan around them.
+**Retired.** Kept as a record; their definitions belong in `_archive/` only.
 
 | Fires (UTC) | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
 |---|---|---|---|---|---|---|
-| 11:00 UTC | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | yes — `server/**`, `shared/**` + same-PR migration | ⛔ **NO** — definition on disk, not in the scheduler (§11) | <=2 PRs + the `BD-…` ledger |
+| Mon 14:00 UTC | `0 14 * * 1` | **Weekly Doc Hygiene Sweep** (`trig_011uNfD7y5GgBhjzm1RXgkVr`) | weekly | no | — retired | — |
 
 <!-- END GENERATED -->
 
