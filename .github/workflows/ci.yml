@@ -373,6 +373,23 @@ jobs:
         # doc-freshness guard does (see doc-freshness.yml) — it would go red on a date, for a
         # reason no PR caused. `pnpm checkup` and seat-roster.yml run the full check.
         run: pnpm guard:seats --no-freshness
+      - name: Gating reality (a required field nothing collects)
+        if: steps.scope.outputs.code == 'true'
+        # A completeness scorer marks a field `required`; nothing under client/src ever
+        # collects it. Every real file then fails the gate forever while every SEEDED file
+        # sails through — so the suite is green and the gate is impassable.
+        #
+        # WHY IT EXISTS. #491 (42813a0d0e2e): "section 5 required a citizenship column
+        # nothing writes, blocking every application". Its own commentary names the
+        # mechanism: "It went unnoticed because server/scripts/seedDemoFile.ts sets the
+        # field, so demo files passed the gate that no genuine file could." Scored against
+        # the 45 real shipped defects of 2026-07-03..08-23, this check is worth 2/45 — more
+        # than any intervention proposed at the time, none of which scored above zero.
+        #
+        # The baseline is a NAMED SET, not a count, unlike its sibling ratchets: fix one
+        # unsatisfiable field and introduce another and a count stays level and reports
+        # success. Swapping one instance of the defect for another IS the defect.
+        run: pnpm guard:gating
       - name: Doc staleness ratchet
         # Dead vocabulary in LIVING docs vs scripts/doc-staleness-baseline.json
         # (ratchet: counts may only go down). Metrics: kb/ paths, npm-as-instruction,

@@ -1,0 +1,11 @@
+{
+  "unsatisfiable": [
+    "server/services/mismoValidation.ts::collectionMethod",
+    "server/services/mismoValidation.ts::endDate",
+    "server/services/mismoValidation.ts::militaryBranch",
+    "server/services/mismoValidation.ts::militaryStatus",
+    "server/services/mismoValidation.ts::monthlyIncomeOrLoss",
+    "server/services/mismoValidation.ts::vaEntitlementUsed",
+    "server/services/mismoValidation.ts::vaFundingFeeExempt"
+  ]
+}
