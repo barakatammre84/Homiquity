@@ -24,6 +24,18 @@ interface LoanOptionsData {
   options: LoanOption[];
 }
 
+/**
+ * Statuses where the file is still being worked out — the analysis may still
+ * land, so this page's own view of it can still change.
+ *
+ * Deliberately narrower than `awaitingDecision` below, which drives the
+ * *header* and also covers `draft` and `denied`. `denied` is terminal
+ * (`LOAN_APP_TERMINAL_STATUSES`), so polling on it would never stop; reusing
+ * `awaitingDecision` as the poll predicate is the obvious-looking fix that
+ * turns this page into a 4-second heartbeat on every declined file forever.
+ */
+const UNDECIDED_STATUSES: readonly string[] = ["submitted", "analyzing", "under_review"];
+
 export default function LoanOptions() {
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
@@ -38,14 +50,21 @@ export default function LoanOptions() {
     // window-focus refetch — the page used to sit on "Analyzing…" until the
     // borrower happened to tab away and back. Terminal statuses (denied,
     // withdrawn, …) legitimately have no options; don't poll those.
+    //
+    // J-0820-12: the stop condition used to be `options.length > 0` alone, but
+    // this page renders TWO things off one fetch — the options list, and a
+    // header driven by `application.status`. When the options landed before
+    // the status flipped, polling stopped and the borrower sat on "Under
+    // Review" for a file that was already pre-approved, until they reloaded.
+    // So the decision has to track the status too, not just the payload.
     refetchInterval: (query) => {
       const current = query.state.data;
-      if (!current || current.options.length > 0) return false;
-      return ["submitted", "analyzing", "under_review", "pre_approved"].includes(
-        current.application.status,
-      )
-        ? 4000
-        : false;
+      if (!current) return false;
+      // One list, derived once. The bug was two overlapping-but-different
+      // status lists in this file disagreeing about what "still working" means.
+      const stillDeciding = UNDECIDED_STATUSES.includes(current.application.status);
+      if (!stillDeciding && current.options.length > 0) return false;
+      return stillDeciding ? 4000 : false;
     },
   });
 

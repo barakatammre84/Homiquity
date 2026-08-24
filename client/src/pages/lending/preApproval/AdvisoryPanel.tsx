@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { type PreApprovalFormData } from "@shared/schema";
 import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
+import { isLicensedState } from "@shared/companyIdentity";
 import type { MortgageRateWithProgram } from "@/types/rates";
 import { TrendingUp, Info } from "lucide-react";
 
@@ -24,6 +25,10 @@ export interface AdvisoryPanelProps {
 export const ADVISORY_HIDDEN_STEPS: string[] = ["intro"];
 
 export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
+  // Same predicate StateStep gates its notice on, so the two cannot disagree
+  // about whether we can quote this property. Only true once a state has been
+  // chosen — an unanswered step is not an unlicensed one.
+  const unlicensedState = Boolean(formValues.propertyState) && !isLicensedState(formValues.propertyState);
   // Payment estimates use the live advertised 30-year fixed rate — a payment
   // figure shown to a borrower must be reproducible from current pricing,
   // never a hardcoded constant. Falls back to a labeled illustrative rate.
@@ -208,7 +213,16 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
           </div>
         </div>
 
-        {stats.estMortgage > 0 && (
+        {/*
+          Suppressed for a state we are not licensed in. StateStep tells the
+          borrower, in these words, that we "can't yet accept applications or
+          provide quotes for properties in {state}" — and this panel sat beside
+          that notice still showing an estimated monthly payment for the
+          property in question. Two elements, one screen, opposite claims
+          (DESIGN_SYSTEM §13 Agreement), and the half that contradicted the
+          disclaimer was the half the disclaimer exists to prevent.
+        */}
+        {stats.estMortgage > 0 && !unlicensedState && (
           <div className="text-center pt-2 border-t">
             <div className="text-xs text-muted-foreground uppercase mb-1">Est. Monthly Payment</div>
             <div className="text-2xl font-bold text-foreground" data-testid="text-est-payment">

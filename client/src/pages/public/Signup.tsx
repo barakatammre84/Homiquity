@@ -180,6 +180,32 @@ export default function Signup() {
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Create account
               </Button>
+              {/*
+                ux-52: this page carried no link to either document. Every
+                other surface has them in its footer, but signup is a
+                BareLayout — so the one screen where someone agrees to become a
+                customer was the one screen showing them nothing to agree to,
+                on the account that will go on to hold their SSN, income and
+                credit data.
+              */}
+              <p
+                className="mt-4 text-center text-xs text-muted-foreground"
+                data-testid="text-signup-terms"
+              >
+                By creating an account you agree to our{" "}
+                <Link href="/terms">
+                  <span className="cursor-pointer underline hover:text-foreground" data-testid="link-signup-terms">
+                    Terms of Use
+                  </span>
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy">
+                  <span className="cursor-pointer underline hover:text-foreground" data-testid="link-signup-privacy">
+                    Privacy Policy
+                  </span>
+                </Link>
+                .
+              </p>
             </form>
 
             <div className="mt-6 text-center text-sm">

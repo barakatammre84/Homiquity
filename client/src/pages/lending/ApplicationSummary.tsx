@@ -161,7 +161,19 @@ export default function ApplicationSummary() {
                   },
                   {
                     label: "Debts",
-                    note: "From your soft credit check — the kind that never affects your credit score.",
+                    // J-0820-04: this said "From your soft credit check — the
+                    // kind that never affects your credit score." It was a
+                    // hardcoded string, so it rendered whether or not a pull
+                    // had ever happened — and for an organic file none has:
+                    // the figure is typed by the borrower at funnel step 11,
+                    // and the funnel captures the *authorisation*, not a pull.
+                    //
+                    // The section it sits in already declares
+                    // `DATA_PROVENANCE.SELF_REPORTED` (see `source` above), so
+                    // the note contradicted its own card — and in the harmful
+                    // direction, dressing self-reported data as bureau-sourced.
+                    // The honest note is the one that matches the declaration.
+                    note: "The monthly total you gave us — we'll check it against your credit report when you're verified.",
                     rows: [
                       {
                         label: "Monthly debts",

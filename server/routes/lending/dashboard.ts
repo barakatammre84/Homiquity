@@ -302,8 +302,27 @@ export function registerDashboardRoutes(
       // Get existing consents for this application
       const existingConsents = await storage.getBorrowerConsentsByApplication(applicationId);
       
-      // Check for required consent types that haven't been given
-      const requiredConsentTypes = ["credit_pull", "disclosure", "privacy_policy"];
+      // Check for required consent types that haven't been given.
+      //
+      // J-0820-02: this was the hardcoded list ["credit_pull", "disclosure",
+      // "privacy_policy"]. `credit_pull` is not a consent type at all — it is
+      // absent from CONSENT_TYPES, and its only other uses in the repo are a
+      // retention `dataType` and a decision-recalc trigger — and `disclosure`
+      // has no active template. Neither could ever appear in
+      // `givenConsentTypes`, so this count could never fall below 2: the
+      // borrower's "Sign Required Disclosures" to-do was unclearable by
+      // construction, and its number (3) disagreed with the six templates
+      // /e-consent actually renders.
+      //
+      // Deriving from the active templates makes /e-consent and this action
+      // item read one list, so they cannot drift apart again.
+      // `tests/dashboardRequiredConsents.test.ts` pins that every required
+      // type resolves to an active template — the assertion whose absence let
+      // `credit_pull` live here.
+      const activeConsentTemplates = await storage.getActiveConsentTemplates();
+      const requiredConsentTypes = [
+        ...new Set(activeConsentTemplates.map((t) => t.consentType)),
+      ];
       const givenConsentTypes = existingConsents
         .filter((c: any) => c.consentGiven && !c.isRevoked)
         .map((c: any) => c.consentType);

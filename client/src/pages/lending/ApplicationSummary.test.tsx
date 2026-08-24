@@ -72,7 +72,18 @@ describe("ApplicationSummary", () => {
     expect(debts).toContain("$6,000");
     expect(debts).toContain("$500");
 
-    expect(screen.getByText(/never affects your credit score/)).toBeTruthy();
+    // J-0820-04: this line used to assert the opposite — it pinned the note
+    // "From your soft credit check — the kind that never affects your credit
+    // score." That claim was false for every organic file: the figure is typed
+    // by the borrower at funnel step 11, and no pull has happened. The test
+    // was green because it asserted the defect, which is how a fixture keeps a
+    // bug alive.
+    //
+    // Now it asserts the honest direction, and asserts the absence of the
+    // false attribution so it cannot come back quietly. The section already
+    // declares SELF_REPORTED provenance — these two must agree.
+    expect(screen.queryByText(/from your soft credit check/i)).toBeNull();
+    expect(screen.getByText(/the monthly total you gave us/i)).toBeTruthy();
   });
 
   it("labels the client-computed loan amount Calculated", () => {

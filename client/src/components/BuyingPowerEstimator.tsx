@@ -57,7 +57,20 @@ function Chip({
       onClick={onClick}
       data-testid={testId}
       className={cn(
-        "rounded-lg border text-left font-medium transition-colors",
+        // ux-51: `min-h-[44px]` is load-bearing, not decoration. The compact
+        // branch used to be `px-2.5 py-2 text-xs`, which measures **34px** —
+        // the whole down-payment band row on the Landing page's primary
+        // capture widget, below the 44px floor at 320px. The debt row above it
+        // cleared 44px only by accident, because its longer labels wrap to two
+        // lines; shortening one would have silently dropped it under too.
+        //
+        // No guard could see this: the class is assembled inside `cn()`, and
+        // `guard:ui`'s className metrics read only literal double-quoted
+        // strings. That is how #605 could truthfully report the touch-target
+        // backlog as 232 → 0 while these five stayed at 34px. Verify with
+        // `scripts/browser-probe.cjs` against a real 320px viewport, never
+        // with the guard.
+        "flex min-h-[44px] items-center rounded-lg border text-left font-medium transition-colors",
         compact ? "px-2.5 py-2 text-xs" : "p-3 text-sm",
         selected
           ? "border-primary bg-primary/10 text-primary"
@@ -307,7 +320,9 @@ export function BuyingPowerEstimator() {
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="mt-3 w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
+              // ux-51: measured 16px tall — the only way back out of the
+              // estimate, and the smallest control on the page.
+              className="mt-3 min-h-[44px] w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
               data-testid="button-estimator-back"
             >
               ← Adjust my numbers

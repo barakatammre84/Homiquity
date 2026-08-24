@@ -76,7 +76,22 @@ export function MobileBottomNav() {
       data-testid="mobile-bottom-nav"
     >
       <div className="safe-area-bottom" />
-      <div className="flex items-center justify-around px-1 py-1">
+      {/*
+        J-0820-10: every control used to be `min-w-[56px] px-3` inside a
+        `justify-around` flex row. The borrower set is five items plus the
+        always-rendered "More" button — 6 × 56px plus padding is over 320px,
+        and a flex item will not shrink below its own `min-w`, so "More" ran
+        20px off the right edge on a 320px phone. The page itself does not
+        scroll horizontally, so no overflow guard could see it, and it was
+        present on every authenticated surface.
+
+        `flex-1 min-w-0` instead: N+1 controls always divide the width, whatever
+        N is. That matters because the set is role-dependent (`items` is one of
+        three lists below), so a fixed column count — `grid-cols-6` — would fix
+        the borrower and break staff and CPA. At 320px with six controls each
+        gets ~53px, still above the 44px touch floor.
+      */}
+      <div className="flex items-stretch px-1 py-1">
         {items.map((item) => {
           const active = isActive(item.href);
           return (
@@ -84,7 +99,7 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                  "relative flex min-w-[56px] flex-col items-center gap-0.5 rounded-lg px-3 py-2 text-[10px] font-medium transition-colors",
+                  "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium transition-colors",
                   active
                     ? "text-primary"
                     : "text-muted-foreground"
@@ -105,7 +120,7 @@ export function MobileBottomNav() {
         })}
         <button
           onClick={toggleSidebar}
-          className="flex min-w-[56px] flex-col items-center gap-0.5 rounded-lg px-3 py-2 text-[10px] font-medium text-muted-foreground transition-colors"
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors"
           data-testid="mobile-nav-more"
         >
           <Menu className="h-5 w-5" />

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { friendlyApiError } from "@/lib/errorMessage";
 import {
   ArrowLeft,
   Download,
@@ -158,14 +159,27 @@ export default function LoanEstimate() {
   }
 
   if (error || !le) {
+    // J-0820-08: `error` was in scope here and never read, so a borrower saw
+    // "Unable to generate the loan estimate for this application" no matter
+    // what went wrong. The most common case on an organic file is a 409
+    // carrying a message written for exactly this moment —
+    // "Your Loan Estimate is being prepared — a required pricing setup step by
+    // our team is still pending" (COMPENSATION_ELECTION_PENDING, F-079). That
+    // tells the borrower the ball is not in their court; the generic string
+    // implies it is.
+    //
+    // friendlyApiError already does the right thing per status: it surfaces a
+    // 4xx envelope's message and falls back for 5xx, so an internal fault
+    // still cannot leak here.
+    const explanation = error
+      ? friendlyApiError(error, "Unable to generate the loan estimate for this application.")
+      : "Unable to generate the loan estimate for this application.";
     return (
       <div className="flex-1 flex items-center justify-center">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Error Loading Loan Estimate</CardTitle>
-            <CardDescription>
-              Unable to generate the loan estimate for this application.
-            </CardDescription>
+            <CardDescription data-testid="text-le-error-detail">{explanation}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>

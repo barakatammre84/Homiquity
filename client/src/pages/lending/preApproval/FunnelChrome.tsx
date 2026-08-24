@@ -101,8 +101,24 @@ export function AffordabilityTeaserOverlay({
         <p className="text-3xl font-bold text-primary mb-1" data-testid="text-teaser-range">
           {formatCurrency(estimate.comfortablePrice)} &ndash; {formatCurrency(estimate.maxHomePrice)}
         </p>
-        <p className="text-sm text-muted-foreground mb-4">
-          Est. {formatCurrency(estimate.monthlyPITI)}/mo
+        {/*
+          J-0820-07: this figure is the PITI at `maxHomePrice` — the top of the
+          range — computed with a *derived* minimum down payment
+          (`requiredDownPayment = maxHomePrice * minDownPaymentPercent`), not
+          the borrower's own cash. Unlabelled, sitting directly above "Your
+          target of $X is within this range", every reader bound it to their
+          target; on a real walk the two were $544/mo apart and the Live
+          Analysis panel two inches away showed the other number.
+
+          Saying which price it belongs to is the honest minimum. Computing it
+          at `targetPrice` instead would be better still, but that needs the
+          borrower's actual down payment, which only PreApproval.tsx holds —
+          and that file is claimed by #634. Deferred with that batch; do not
+          "fix" this by passing the derived down payment down, which is the
+          wrong number wearing the right name.
+        */}
+        <p className="text-sm text-muted-foreground mb-4" data-testid="text-teaser-ceiling-payment">
+          Est. {formatCurrency(estimate.monthlyPITI)}/mo at the top of this range
         </p>
         {targetPrice != null && (
           <p className="text-sm text-muted-foreground mb-6" data-testid="text-teaser-target-comparison">

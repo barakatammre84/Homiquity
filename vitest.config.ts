@@ -29,6 +29,10 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/inertButtons.test.ts",
+      // J-0820-01/02 — a consent the borrower gave that no gate could see.
+      // /e-consent wrote application_id = NULL while consentGate matched on
+      // equality, so six green consents sat beside a refused Loan Estimate.
+      "tests/consentApplicationScope.test.ts",
       "tests/amortization.test.ts",
       // The reduced-motion accessibility floor — a presence ratchet against
       // someone deleting it while refactoring index.css.

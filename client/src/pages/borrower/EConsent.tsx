@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, consentKeys } from "@/lib/queryClient";
+import { apiRequest, consentKeys, loanApplicationKeys } from "@/lib/queryClient";
+import { useActiveApplication, type SelectableApplication } from "@/hooks/useActiveApplication";
 import { 
   CheckCircle, 
   Clock,
@@ -36,6 +37,14 @@ interface BorrowerConsent {
   consentGiven: boolean;
   consentedAt: string;
   consentMethod: string;
+  /**
+   * The loan file this signature was taken against. NULLABLE, and the null
+   * case is the whole reason this field is read here: every consent this page
+   * wrote before J-0820-01 was posted without one, and
+   * `getConsentByTypeAndApplication` matches with `eq(applicationId, …)` — so
+   * an unscoped row can never satisfy the gate it was collected for.
+   */
+  applicationId?: string | null;
   /**
    * Revocation is a separate flag: revoking sets `isRevoked` and leaves
    * `consentGiven: true` as the historical record of what was once given
@@ -81,10 +90,29 @@ export default function EConsent() {
     queryKey: consentKeys.me(),
   });
 
+  // Which loan file these signatures are taken against. Fed from
+  // `loanApplicationKeys.all()` because `useActiveApplication` sanctions only
+  // that key and `dashboardKeys.root()` — see its docstring and
+  // `tests/activeApplicationListParity.test.ts`; a third list would silently
+  // repoint every other borrower surface.
+  const { data: applications } = useQuery<SelectableApplication[]>({
+    queryKey: loanApplicationKeys.all(),
+  });
+  const { activeApplication } = useActiveApplication(applications ?? []);
+  const applicationId = activeApplication?.id;
+
   const recordConsentMutation = useMutation({
     mutationFn: async (data: { consentType: string; templateId?: string; templateVersion?: string }) => {
       return await apiRequest("POST", "/api/consents", {
         ...data,
+        // J-0820-01: without this the row lands with `application_id = NULL`,
+        // and `getConsentByTypeAndApplication` — the reader behind every
+        // `consentGate` check, including the Loan Estimate's — matches on
+        // `eq(applicationId, …)`. The borrower was told the consent was
+        // recorded and then refused the disclosure it was collected for.
+        // Omitted (not sent as null) when there is no workable file, so the
+        // server's optional-field branch keeps today's behaviour.
+        ...(applicationId ? { applicationId } : {}),
         consentGiven: true,
         consentMethod: "click",
         signatureType: "none",
@@ -142,10 +170,42 @@ export default function EConsent() {
   // the very same endpoint, correctly showed the consent as needed again.
   // Two surfaces cannot disagree about one fact (DESIGN_SYSTEM §13, Agreement),
   // so this predicate now matches that one.
+  //
+  // Scoped to the active file for the same reason (J-0820-01). This page used
+  // to answer "given?" from the user-scoped list while every gate answered it
+  // from the application-scoped one, so a borrower could see six green
+  // consents and still be refused their Loan Estimate. Now both ask the same
+  // question. With no workable file the predicate stays user-scoped — that is
+  // exactly the case where nothing application-scoped can exist yet.
   const isConsentGiven = (consentType: string): boolean => {
     return (
       myConsents?.some(
-        (c) => c.consentType === consentType && c.consentGiven && !c.isRevoked,
+        (c) =>
+          c.consentType === consentType &&
+          c.consentGiven &&
+          !c.isRevoked &&
+          (!applicationId || c.applicationId === applicationId),
+      ) || false
+    );
+  };
+
+  /**
+   * A signature this borrower really did give, which cannot satisfy the gate
+   * because it was written before J-0820-01 (or against another file). We
+   * re-ask rather than honour it: widening the gate to accept an unscoped
+   * consent would loosen a compliance check, and backfilling `application_id`
+   * would put a guessed value on an audit row. Both are forbidden — so the
+   * honest move is to say why the ask is back.
+   */
+  const isUnscopedElsewhere = (consentType: string): boolean => {
+    if (!applicationId) return false;
+    return (
+      myConsents?.some(
+        (c) =>
+          c.consentType === consentType &&
+          c.consentGiven &&
+          !c.isRevoked &&
+          c.applicationId !== applicationId,
       ) || false
     );
   };
@@ -235,6 +295,7 @@ export default function EConsent() {
             const isAgreed = agreedConsents.has(template.consentType);
             const typeInfo = consentTypeLabels[template.consentType] || { label: template.title, icon: FileText };
             const Icon = typeInfo.icon;
+            const signedElsewhere = isUnscopedElsewhere(template.consentType);
 
             return (
               <Card key={template.id} data-testid={`card-consent-${template.consentType}`}>
@@ -249,6 +310,15 @@ export default function EConsent() {
                     </div>
                     <Badge variant="outline">Required</Badge>
                   </div>
+                  {signedElsewhere && (
+                    <p
+                      className="mt-3 text-sm text-muted-foreground"
+                      data-testid={`text-unscoped-${template.consentType}`}
+                    >
+                      You signed this before, but not against this loan file — so we need it once
+                      more here. Your earlier signature is kept on your record.
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <Button
