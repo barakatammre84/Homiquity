@@ -192,7 +192,19 @@ and was not followed. **CHARTER read; no conflict with the skill found this tick
 
 ## ⛔ Human actions (hardest first)
 
-1. **`DA-0823-27` — stop the count in your own skill from needing a third correction.**
+1. ~~**`DA-0823-27` — stop the count in your own skill from needing a third correction.**~~
+   **✅ SETTLED by the founder in the same session, 2026-08-23 — and it grew a successor,
+   `DA-0823-28`, which is the part still open.** The number is deleted (`SKILL.md:29` now reads
+   "the docs in its `REQUIRED` list"), committed separately from the tick's own work so the audit
+   trail keeps a founder-directed self-amendment distinguishable from an autonomous one. The
+   founder's question — *how do we fix this permanently* — turned up the real answer, recorded as
+   `DA-0823-28`: **`scripts/handoff-facts.cjs` is a working generator-and-checker for exactly this
+   class, and no gate runs it** (`grep -c handoff` → **0** in `ci.yml`, `.githooks/pre-push` and
+   `scripts/checkup.sh`, measured on `origin/main`). Prune `FACTS.md`'s decision-free rows first
+   (F-31 has been rewritten six times and never changed a decision), then wire
+   `--check --cite` into pre-push and the gate, then move the rule from this routine's D5 into
+   TEAM_PRACTICES where it binds everyone. Ticket raised; code and doctrine, so not this PR's.
+   *(Original item, for the record:)*
    `.claude/skills/doc-accuracy/SKILL.md:12` says `pnpm guard:docs` re-verifies "**the eight docs**
    in its `REQUIRED` list". It is **ten** (`scripts/doc-freshness-guard.cjs:35-58`; `pnpm guard:docs`
    prints `10 living docs verified within interval. ✅`). This integer was corrected six→eight by
