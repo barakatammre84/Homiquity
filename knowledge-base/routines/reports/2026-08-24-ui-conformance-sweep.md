@@ -108,9 +108,39 @@ and introduces no colour value; the surface's `from-primary/5 to-surface` was al
 *(First assertion failed on a triplet I computed by hand — the provider's own conversion is
 authoritative and the expectation was corrected to it.)*
 
+### The bundle ratchet — 4 bytes, traced before the baseline was touched
+
+CI's `gate` went red on `guard:bundle`: the eager entry bundle grew **526,640 → 526,644 raw bytes**.
+The pre-push hook does not build, so this is exactly the class it cannot catch. Rather than bump the
+number, both sides were built and compared:
+
+```
+origin/main  → bundle-size-guard: 526,640 raw bytes (at baseline, no regression). ✅
+this branch  → bundle-size-guard: FAIL — grew 4 raw bytes (+0.0%)
+```
+
+So the bytes are this branch's. They are **one preload-manifest index**, not new eager code — the
+`__vite__mapDeps` list for the `LoanOptions` route gained the entry for the *already-existing*
+shared `PageShell` chunk:
+
+```
+main    import("./LoanOptions-DFGNFscq.js"),__vite__mapDeps([108,1,2,109,28,100,6,47,110,111,112,8,113,114,99,16,82,51])
+branch  import("./LoanOptions-Bjo1zhyX.js"),__vite__mapDeps([108,1,2,109,28,100,6,47,110,111,112,113,8,114,115,99,16,82,51])
+```
+
+Both builds emit **268 chunks** and `PageShell-*.js` exists in both, so nothing was newly bundled and
+nothing moved into the eager graph — the growth is the four characters `113,`. `eagerRawBytes` is
+raised to **526,644** in this PR with that accounting, which is the guard's own documented case.
+
+**For the next run, so it is not re-derived: every route that adopts `PageShell` costs ~4 eager bytes
+in the preload manifest.** A multi-route adoption PR will show a proportional, harmless bump — trace
+it to the manifest before believing it is real weight. Four open PRs (#716, #657, #648, #641) also
+carry this file; like §0's table, whoever lands second regenerates.
+
 ### Other gates
 
 ```
+pnpm guard:bundle  → 526,644 raw (baseline raised by the 4 accounted bytes above) ✅
 pnpm guard:tokens  → 0 raw palette occurrences · 97 white/black literals (both at baseline) ✅
 pnpm check         → clean (tsc, no output)
 pnpm test:client   → Test Files 125 passed (125) · Tests 846 passed (846)

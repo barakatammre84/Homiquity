@@ -109,6 +109,8 @@ capture path rather than the repo. **Proposing those two metrics is a founder de
 routine one** — put it in a report, do not add them unilaterally.
 
 
+**Adopting `PageShell` on a route costs ~4 eager bytes** — found by UC-014 when CI's `guard:bundle` went red at 526,640 → 526,644. It is **not** new eager code: the route's `__vite__mapDeps` preload list gains the index of the already-existing shared `PageShell` chunk (both builds emit 268 chunks). The pre-push hook does not build, so this class only shows up in CI. Build both sides and diff the manifest before believing the weight is real, and expect a proportional bump on any multi-route adoption PR.
+
 **This routine did not run between 2026-08-18 and 2026-08-24.** The gap is not neglect in the sweep: the routine was seated on a fleet whose triggers were all `enabled: false`, so six days of ticks produced nothing. The cost is visible above — UC-013 sat `open` here for four days after #605 closed it, and `main`'s baseline had moved under three metrics while this file still quoted the 08-18 numbers. **A ledger is only as good as the cadence that writes it**, which is why the first act of this run was to reconcile the table against `pnpm guard:ui` rather than trust it.
 
 ## Metric provenance — read before trusting a number in this file
