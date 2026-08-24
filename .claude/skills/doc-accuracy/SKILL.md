@@ -26,7 +26,7 @@ The `.md` corpus is the company's operating memory: every routine, every fresh s
 founder act on what it says. A stale doc is therefore an **active liability, not untidiness** —
 the dormant-suite disaster ([`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) §0)
 was five weeks of decisions taken on documentation nobody owned. The existing machines prove
-narrow things (`pnpm guard:kb`: indexed + no dead index links; `pnpm guard:docs`: the eight docs
+narrow things (`pnpm guard:kb`: indexed + no dead index links; `pnpm guard:docs`: the docs
 in its `REQUIRED` list re-verified on time) and the [2026-08-18 knowledge-file audit](../../../knowledge-base/logs/2026-08-18-knowledge-file-audit.md)
 §2b.1 showed exactly what they cannot see: a doc can be green on both while telling readers to run
 commands that no longer exist. **This routine owns the gap: semantic currency.** It verifies docs
