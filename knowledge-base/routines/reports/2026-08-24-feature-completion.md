@@ -1,11 +1,12 @@
 # Feature Completion Engine — 2026-08-24
 
 **Domain:** 11 — Staff, partner & pipeline ops · **Area:** [FEATURE_MAP](../../handbook/FEATURE_MAP.md) **#15, Task engine and SLA operations** (`Last reviewed: never`)
+**Also:** a real race in `tests/intakeActionItems.test.ts` that had been reddening the shared CI gate at random.
 **Gap:** `/task/:id` — the only borrower surface that says *which document you sent and what we made of it* — had **zero entry points anywhere in the client**.
 **PR:** [#732](https://github.com/barakatammre84/Homiquity/pull/732) (`routine/feature-completion-2026-08-24`)
 **Open findings:** 257 before → 257 after (**F-0820-58 closed**, **F-0824-01 opened** — found in passing, in a different area).
 
-STATUS: OK — one unreachable capability given a front door, one open P2 closed, one new P2 recorded and deliberately not fixed.
+STATUS: OK — one unreachable capability given a front door, one open P2 closed, one new P2 recorded and deliberately not fixed, and a flaky test in the shared gate diagnosed to its mechanism and fixed.
 
 ---
 
@@ -81,6 +82,35 @@ M5 is the one worth recording: **the first draft of the one-door test did not ca
 `TaskDetail.tsx:195` computed `canVerify` from `isStaffRole` (the 8-role set) while `PATCH /api/tasks/:taskId/documents/:docId/verify` (`server/routes/task-engine.ts:521-523`) answers `403 "Only internal staff can verify documents"` to anyone outside `isInternalStaff` (6 roles). A broker or lender on a deal team was shown two buttons that could only ever fail.
 
 Fixed by **narrowing the client**, which is the rule `tests/routeGateDrift.test.ts:193` already states in its own words (*"It is fixed by NARROWING the client, never by widening the server"*) — document verification is an underwriting act, and `shared/roles.ts:78-79` records broker/lender as external partners. Pinned **behaviourally**: `TaskDetail.test.tsx` now renders the page as each of the 8 staff roles plus a borrower and asserts which are offered the controls (6 yes, 3 no). The server half is pinned in `routeGateDrift.test.ts`, which had **zero** mentions of this surface — if the server is ever widened, that test fails and forces the decision.
+
+### A third item, unplanned — the shared gate was flaky, and it is not any more
+
+CI went red on this PR in `tests/intakeActionItems.test.ts`, a lane my diff cannot reach (two client
+pages, two client tests, one node test that only *reads* server source, and docs). `main` was green
+on the identical base commit, and re-running the failed job passed — **37 steps, a real run, not a
+billing corpse**. That is the point where the honest options are "call it a flake and move on" or
+"find out". CHARTER §5's assist ladder says a red gate is never someone else's job, so:
+
+The test polls `GET /api/applications/:id/action-items` until `items.length > 0`, then asserts a
+**document** item exists. Those are not the same condition. The consent item is built from the
+consents table (`server/routes/lending/dashboard.ts:338-350`) and therefore exists the instant the
+application row does, because a fresh file has no `disclosure`/`privacy_policy` consent — while the
+document items come from tasks `initializeLoanPipeline` writes afterwards. Sampling the live
+endpoint every 100 ms after the 201:
+
+```
+create 201
+t=0ms    items=1   documents=0  types=[consent]
+t=100ms  items=10  documents=9  types=[document,consent]
+```
+
+**The window is real and the first sample is inside it.** On a loaded runner the poll returns at
+t=0 and the next line fails on a file that was about to be correct. Fixed by polling for the
+document item rather than for a non-empty list — a strict tightening, and it still fails (through
+`pollUntil`'s timeout) if the document tasks never arrive, which is the regression the test exists
+for. **Mutation-proven:** point the poll at a type that never appears → `Timed out waiting for
+document action items for an under_review file`, red. Verified against the local server, restored,
+green.
 
 ### Gates
 

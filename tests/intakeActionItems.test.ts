@@ -104,11 +104,27 @@ describe("under_review intake produces action items", () => {
     expect(settled.status, "profile chosen to land under_review").toBe("under_review");
 
     // (a) Action items exist and every link resolves to a registered route.
+    //
+    // Poll for the DOCUMENT item, not merely for a non-empty list. The consent
+    // item is built from the consents table and therefore exists the instant
+    // the row does (`server/routes/lending/dashboard.ts:338-350` — a fresh
+    // application is missing `disclosure`/`privacy_policy`), while the document
+    // items come from tasks that initializeLoanPipeline writes afterwards.
+    // Sampling the live endpoint every 100 ms after the 201 shows the window:
+    //
+    //     t=0ms    items=1   documents=0  types=[consent]
+    //     t=100ms  items=10  documents=9  types=[document,consent]
+    //
+    // `items.length > 0` therefore returns at t=0 on a loaded runner, and the
+    // assertion below fails on a file that was about to be correct. This still
+    // fails — via pollUntil's timeout — if the document tasks never arrive,
+    // which is the regression the test is actually for.
     const actionItems = await pollUntil(async () => {
       const { status, body } = await getJson(borrower, `/api/applications/${app.id}/action-items`);
       if (status !== 200) return null;
-      return body.items?.length > 0 ? body : null;
-    }, "action items for an under_review file");
+      const items = body.items ?? [];
+      return items.some((i: any) => i.type === "document") ? body : null;
+    }, "document action items for an under_review file");
 
     const documentItems = actionItems.items.filter((i: any) => i.type === "document");
     expect(documentItems.length, "document upload items exist").toBeGreaterThan(0);
