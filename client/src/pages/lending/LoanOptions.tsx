@@ -5,6 +5,7 @@ import { useParams, Link } from "wouter";
 import { ConsentGateCard } from "@/components/ConsentGateCard";
 import { LoanComparisonMatrix } from "@/components/LoanComparisonMatrix";
 import { Footer } from "@/components/Footer";
+import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,34 +90,30 @@ export default function LoanOptions() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-8 text-center">
-            <Skeleton className="mx-auto h-8 w-64" />
-            <Skeleton className="mx-auto mt-4 h-4 w-96" />
-          </div>
-          <div className="grid gap-6 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-96 w-full" />
-            ))}
-          </div>
+      <PageShell width="full">
+        <div className="mb-8 text-center">
+          <Skeleton className="mx-auto h-8 w-64" />
+          <Skeleton className="mx-auto mt-4 h-4 w-96" />
         </div>
-      </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-96 w-full" />
+          ))}
+        </div>
+      </PageShell>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
-          <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-          <h2 className="mt-4 text-xl font-semibold">Unable to load loan options</h2>
-          <p className="mt-2 text-muted-foreground">Please try again later.</p>
-          <Button asChild className="mt-6">
-            <Link href="/apply">Start New Application</Link>
-          </Button>
-        </div>
-      </div>
+      <PageShell width="full" className="text-center">
+        <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+        <h2 className="mt-4 text-xl font-semibold">Unable to load loan options</h2>
+        <p className="mt-2 text-muted-foreground">Please try again later.</p>
+        <Button asChild className="mt-6">
+          <Link href="/apply">Start New Application</Link>
+        </Button>
+      </PageShell>
     );
   }
 
@@ -131,7 +128,11 @@ export default function LoanOptions() {
   );
 
   return (
-    <div className="min-h-screen">
+    // No page-height wrapper here: PrivateLayout's <main> is `flex-1
+    // overflow-y-auto`, so a 100vh child is taller than its own scroll
+    // container. The hero band below is deliberately full-bleed, which is why
+    // this branch is a fragment rather than a <PageShell> (DESIGN_SYSTEM.md §15).
+    <>
       <div className="bg-gradient-to-b from-primary/5 to-surface py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -287,6 +288,6 @@ export default function LoanOptions() {
       </div>
 
       <Footer />
-    </div>
+    </>
   );
 }

@@ -92,10 +92,10 @@ export function LoanComparisonMatrix({
                     </span>
                     <span className="flex gap-1">
                       {parseFloat(o.points || "0") > 0 && (
-                        <Badge variant="secondary" className="text-[10px]">with points</Badge>
+                        <Badge variant="secondary" className="text-xs">with points</Badge>
                       )}
                       {o.isRecommended && (
-                        <Badge className="gap-0.5 text-[10px]">
+                        <Badge className="gap-0.5 text-xs">
                           <Star className="h-2.5 w-2.5" />
                           Recommended
                         </Badge>
@@ -114,7 +114,7 @@ export function LoanComparisonMatrix({
               >
                 <td className="sticky left-0 z-10 bg-card p-2 pl-4 text-left">
                   {row.section && (
-                    <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="mb-0.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {row.section}
                     </span>
                   )}
@@ -139,7 +139,7 @@ export function LoanComparisonMatrix({
                           <Lock className="h-3 w-3" />
                           Locked
                         </Badge>
-                        <span className="text-[11px] text-muted-foreground" data-testid={`matrix-lock-expiry-${o.id}`}>
+                        <span className="text-xs text-muted-foreground" data-testid={`matrix-lock-expiry-${o.id}`}>
                           Expires {expiry.label} ({expiry.daysLeft}d left)
                         </span>
                       </div>
@@ -162,7 +162,7 @@ export function LoanComparisonMatrix({
           </tbody>
         </table>
       </div>
-      <p className="border-t px-4 py-2.5 text-[11px] text-muted-foreground">
+      <p className="border-t px-4 py-2.5 text-xs text-muted-foreground">
         Taxes and insurance are estimates used for payment illustration; actual escrow is set at
         closing. Rates shown with APR reflect your profile and are not a commitment to lend.
       </p>
