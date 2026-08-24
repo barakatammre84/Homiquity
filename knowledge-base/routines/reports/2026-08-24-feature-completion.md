@@ -2,7 +2,7 @@
 
 **Domain:** 11 — Staff, partner & pipeline ops · **Area:** [FEATURE_MAP](../../handbook/FEATURE_MAP.md) **#15, Task engine and SLA operations** (`Last reviewed: never`)
 **Gap:** `/task/:id` — the only borrower surface that says *which document you sent and what we made of it* — had **zero entry points anywhere in the client**.
-**PR:** `routine/feature-completion-2026-08-24`
+**PR:** [#732](https://github.com/barakatammre84/Homiquity/pull/732) (`routine/feature-completion-2026-08-24`)
 **Open findings:** 257 before → 257 after (**F-0820-58 closed**, **F-0824-01 opened** — found in passing, in a different area).
 
 STATUS: OK — one unreachable capability given a front door, one open P2 closed, one new P2 recorded and deliberately not fixed.
