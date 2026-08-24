@@ -41,6 +41,14 @@ export interface MISMOLoanDTO {
   // storage.getMISMOLoanData() decrypts the full value onto the record because
   // GSE loan delivery (TaxpayerIdentifierValue) requires it.
   personalInfo: (UrlaPersonalInfo & { ssn?: string | null }) | null;
+  /**
+   * Every borrower on the file, primary first (F-080). Optional so existing
+   * callers that build a DTO by hand keep working: when absent, the emitter
+   * falls back to the single `personalInfo` borrower.
+   */
+  allPersonalInfo?: (UrlaPersonalInfo & { ssn?: string | null })[];
+  /** Declarations per borrower, keyed by `borrowerSequenceNumber`. */
+  allDeclarations?: BorrowerDeclarations[];
   employment: EmploymentHistory[];
   // Asset/liability `accountNumber` is likewise a decrypted virtual field.
   assets: (UrlaAsset & { accountNumber?: string | null })[];
@@ -394,8 +402,59 @@ function buildAddressNode(
   return { tag: tagName, children };
 }
 
-function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
-  const { personalInfo, employment, declarations } = dto;
+/**
+ * One borrower's slice of the file.
+ *
+ * F-080: the ULDD Implementation Guide p.14 is explicit — "Every loan delivery
+ * (DEAL container) will have a separate PARTY container for each party… The
+ * PARTY container will also be repeated for multiple borrowers." Before this,
+ * `PARTIES` held exactly one node built from `dto.personalInfo`, while
+ * `dto.employment` carried EVERY borrower's jobs — so a two-borrower file
+ * delivered both incomes under the primary's name and SSN, and
+ * `validateULDDCompliance` returned `valid: true`.
+ *
+ * Keyed on `borrowerSequenceNumber`, never array position: position is not a
+ * valid discriminator (`storage/urla.ts` makes the same point for its writes).
+ */
+interface BorrowerPartyContext {
+  sequenceNumber: number;
+  personalInfo: (UrlaPersonalInfo & { ssn?: string | null }) | null;
+  employment: EmploymentHistory[];
+  declarations: BorrowerDeclarations | null;
+}
+
+const borrowerSeq = (row: { borrowerSequenceNumber?: number | null } | null | undefined): number =>
+  row?.borrowerSequenceNumber ?? 1;
+
+export function derivePartyContexts(dto: MISMOLoanDTO): BorrowerPartyContext[] {
+  const rows =
+    dto.allPersonalInfo && dto.allPersonalInfo.length > 0
+      ? dto.allPersonalInfo
+      : dto.personalInfo
+        ? [dto.personalInfo]
+        : [];
+
+  // No personal info at all: keep emitting one (empty) PARTY rather than none,
+  // so the structural gate's "Missing PARTY element" still means what it did.
+  if (rows.length === 0) {
+    return [{ sequenceNumber: 1, personalInfo: null, employment: dto.employment, declarations: dto.declarations }];
+  }
+
+  const sorted = [...rows].sort((a, b) => borrowerSeq(a) - borrowerSeq(b));
+  return sorted.map((row) => {
+    const seq = borrowerSeq(row);
+    // Employment rows default to sequence 1, so a single-borrower file keeps
+    // every job it had before this change.
+    const employment = dto.employment.filter((e) => borrowerSeq(e) === seq);
+    const declarations =
+      (dto.allDeclarations ?? []).find((d) => borrowerSeq(d) === seq)
+      ?? (seq === 1 ? dto.declarations : null);
+    return { sequenceNumber: seq, personalInfo: row, employment, declarations };
+  });
+}
+
+function buildBorrowerNode(dto: MISMOLoanDTO, borrower: BorrowerPartyContext): XMLNode {
+  const { personalInfo, employment, declarations } = borrower;
   const borrowerChildren: XMLNode[] = [];
 
   const borrowerDetail: XMLNode[] = [];
@@ -406,7 +465,13 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
   // schema's BORROWER_DETAIL (verified against MISMO_3_0.xsd). The SSN's one
   // schema-valid home is PARTY/TAXPAYER_IDENTIFIERS, which buildPartyNode
   // already emits; duplicating it here was both invalid and a wider PII spill.
-  borrowerDetail.push({ tag: "BorrowerClassificationType", text: "Primary" });
+  // Primary | Secondary are the only values MISMO_3_0.xsd allows here (read
+  // from the schema, not recalled). This was the literal "Primary" and was
+  // correct only while exactly one PARTY was ever emitted.
+  borrowerDetail.push({
+    tag: "BorrowerClassificationType",
+    text: borrower.sequenceNumber === 1 ? "Primary" : "Secondary",
+  });
   if (personalInfo?.maritalStatus) {
     const maritalMap: Record<string, string> = {
       married: "Married",
@@ -683,8 +748,9 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
   return { tag: "BORROWER", children: borrowerChildren };
 }
 
-function buildPartyNode(dto: MISMOLoanDTO): XMLNode {
-  const { personalInfo, user } = dto;
+function buildPartyNode(dto: MISMOLoanDTO, borrower: BorrowerPartyContext): XMLNode {
+  const { personalInfo } = borrower;
+  const { user } = dto;
 
   // NAME children in this schema are FirstName / LastName / MiddleName /
   // SuffixName (no *Text variants), and the xsd:sequence puts LastName BEFORE
@@ -761,7 +827,7 @@ function buildPartyNode(dto: MISMOLoanDTO): XMLNode {
     partyChildren.push({ tag: "ADDRESSES", children: [addressNode] });
   }
 
-  const borrowerNode = buildBorrowerNode(dto);
+  const borrowerNode = buildBorrowerNode(dto, borrower);
   partyChildren.push({
     tag: "ROLES",
     children: [
@@ -1318,7 +1384,7 @@ export function generateMISMO34XML(
 
   dealChildren.push({
     tag: "PARTIES",
-    children: [buildPartyNode(dto)],
+    children: derivePartyContexts(dto).map((borrower) => buildPartyNode(dto, borrower)),
   });
 
   const relationshipsNode = buildRelationshipsNode(dto);

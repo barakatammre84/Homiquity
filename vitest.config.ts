@@ -346,6 +346,12 @@ export default defineConfig({
       // on the projection, plus a call-site scan. The durable guard is the
       // `PublicUser` type; this is the belt to its braces.
       "tests/credentialLeak.test.ts",
+      // F-080: PARTIES held one node built from `personalInfo` while `employment`
+      // carried every borrower's jobs, so a two-borrower file delivered both
+      // incomes under the primary's name and SSN — and validateULDDCompliance
+      // returned valid:true, because a structural gate cannot see a
+      // schema-valid falsehood. Content-level assertions, per PARTY.
+      "tests/mismoCoBorrowerParty.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

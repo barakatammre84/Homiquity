@@ -720,6 +720,23 @@ export class UrlaStorage extends TasksStorage {
     const personalInfo = urlaData.personalInfo
       ? { ...urlaData.personalInfo, ssn: fullSsn }
       : null;
+
+    // F-080: the delivered package emits one PARTY per borrower, and each one
+    // needs its OWN identifiers. Reusing borrower 1's SSN for a co-borrower is
+    // not a cosmetic defect — it states that one person earns both incomes,
+    // under one taxpayer id, and it validates clean against every gate we own.
+    // `getDecryptedUrlaSsn` is the single audited decryption path, so calling
+    // it per sequence keeps one audit entry per borrower actually delivered.
+    const coBorrowerRows = (urlaData.allPersonalInfo ?? []).filter(
+      (row) => (row.borrowerSequenceNumber ?? 1) !== 1,
+    );
+    const coBorrowers = await Promise.all(
+      coBorrowerRows.map(async (row) => ({
+        ...row,
+        ssn: await this.getDecryptedUrlaSsn(applicationId, row.borrowerSequenceNumber ?? 1),
+      })),
+    );
+    const allPersonalInfo = personalInfo ? [personalInfo, ...coBorrowers] : coBorrowers;
     const withAccountNumber = <T extends {
       accountNumberEncrypted: string | null;
       accountNumberIv: string | null;
@@ -737,6 +754,8 @@ export class UrlaStorage extends TasksStorage {
       application,
       user: user || null,
       personalInfo,
+      allPersonalInfo,
+      allDeclarations: urlaData.allDeclarations ?? [],
       employment: urlaData.employmentHistory,
       assets: urlaData.assets.map(withAccountNumber),
       liabilities: urlaData.liabilities.map(withAccountNumber),
