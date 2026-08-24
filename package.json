@@ -51,6 +51,7 @@
     "guard:conformance": "node scripts/selling-guide-conformance-guard.cjs",
     "guard:kb": "node scripts/kb-index-guard.cjs",
     "guard:seats": "node scripts/seat-roster-guard.cjs",
+    "guard:gating": "node scripts/gating-reality-guard.cjs",
     "guard:staleness": "node scripts/doc-staleness-guard.cjs",
     "guard:citations": "node scripts/citation-guard.cjs",
     "guard:bundle": "node scripts/bundle-size-guard.cjs",

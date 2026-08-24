@@ -73,6 +73,7 @@ check "living docs fresh"             node scripts/doc-freshness-guard.cjs
 # Full check here, freshness included: this is the daily umbrella, and the registry-read
 # date going stale is the one failure mode CI structurally cannot see.
 check "routine seat roster"           node scripts/seat-roster-guard.cjs
+check "gating reality"                 node scripts/gating-reality-guard.cjs
 check "production health ($PROD_URL)" prod_healthy
 
 if [ "$FAILED" -eq 0 ]; then
