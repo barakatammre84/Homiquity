@@ -111,6 +111,16 @@ const BANNER = [
 
 let tmpSeq = 0;
 
+// Returns { include, exclude } — both repo-relative pattern arrays, `exclude`
+// defaulting to [] for a config that declares none.
+//
+// EXCLUDE MATTERS AS MUCH AS INCLUDE. The node lane's include became the glob
+// `tests/**/*.test.{ts,tsx}` on 2026-08-24 (it was ~230 hand-typed paths, the
+// most-churned file in the repo). That glob also matches the 18 integration
+// files, which belong to a lane needing a live HTTP server, so the node config
+// excludes them. A guard that read only `include` would compute an expected set
+// 18 files larger than any correct run and fail every time — loudly, but for a
+// reason that is not the code. Read both, or verify neither.
 async function loadInclude(configFile) {
   let esbuild;
   try {
@@ -139,14 +149,22 @@ async function loadInclude(configFile) {
   fs.writeFileSync(tmp, code);
   try {
     const mod = await import(url.pathToFileURL(tmp).href);
-    const include = mod && mod.default && mod.default.test && mod.default.test.include;
+    const test = mod && mod.default && mod.default.test;
+    const include = test && test.include;
     if (!Array.isArray(include) || include.length === 0) {
       throw new Error(
         `${configFile}: could not read test.include (got ${JSON.stringify(include)}). ` +
           "Refusing to verify a collection count against an unknown expectation.",
       );
     }
-    return include;
+    const exclude = test && test.exclude;
+    if (exclude !== undefined && !Array.isArray(exclude)) {
+      throw new Error(
+        `${configFile}: test.exclude is present but not an array (got ${JSON.stringify(exclude)}). ` +
+          "Refusing to guess which files a lane drops.",
+      );
+    }
+    return { include, exclude: exclude ?? [] };
   } finally {
     fs.rmSync(tmp, { force: true });
   }
@@ -241,7 +259,18 @@ function staticPrefix(pattern) {
 }
 
 // Returns { files: string[], missingLiterals: string[] } — repo-relative, sorted.
-function expectedFor(include, root = ROOT) {
+//
+// `exclude` is subtracted AFTER the include set is built, which is the order
+// vitest itself applies them. Its patterns go through the same mini-glob, so an
+// unsupported construct throws here too rather than silently dropping nothing —
+// an exclude that quietly matches zero files would inflate the expected set and
+// fail the lane for a reason that is not the code.
+//
+// A literal exclude naming a file that does not exist is NOT an error the way a
+// literal include is: an include claims coverage it does not have, while an
+// exclude that matches nothing is merely inert. The double-claim check in main()
+// is what catches an exclude that has drifted away from the lane it protects.
+function expectedFor(include, exclude = [], root = ROOT) {
   const files = new Set();
   const missingLiterals = [];
   for (const pattern of include) {
@@ -263,6 +292,19 @@ function expectedFor(include, root = ROOT) {
       const rel = slash(path.relative(root, abs));
       if (re.test(rel)) files.add(rel);
     }
+  }
+  for (const pattern of exclude) {
+    // Only a pattern with NO glob metacharacter at all is treated as a literal
+    // path. Anything else — including a construct globToRegExp cannot translate,
+    // which carries none of `*` or `{` — goes through it and throws. Falling
+    // through to `files.delete()` on an untranslatable pattern would drop
+    // nothing, silently, and leave the expected set 18 files too large.
+    if (/[*{]/.test(pattern) || UNSUPPORTED_GLOB.test(pattern)) {
+      const re = globToRegExp(pattern);
+      for (const rel of [...files]) if (re.test(rel)) files.delete(rel);
+      continue;
+    }
+    files.delete(slash(pattern));
   }
   return { files: [...files].sort(), missingLiterals };
 }
@@ -374,12 +416,37 @@ async function main() {
   for (const lane of LANES) laneIncludes.set(lane.id, await loadInclude(lane.config));
   for (const cfg of COVERAGE_ONLY) laneIncludes.set(cfg, await loadInclude(cfg));
 
+  // ---- no file belongs to two lanes ----------------------------------------
+  // The orphan check at the bottom catches a file in ZERO lanes. This catches
+  // the opposite, which the node lane's glob made reachable: `tests/**` matches
+  // the integration files too, so the node config excludes them by name. Add an
+  // integration test and forget that exclude, and the file runs in BOTH lanes —
+  // in the node lane with no server, where it fails for a reason that is not the
+  // code. Neither list can drift from the other while this holds.
+  if (floorEnabled) {
+    const claims = new Map(); // repo-relative file -> [config, ...]
+    for (const [id, patterns] of laneIncludes) {
+      const cfg = LANES.find((l) => l.id === id)?.config ?? id;
+      for (const f of expectedFor(patterns.include, patterns.exclude).files) {
+        claims.set(f, [...(claims.get(f) ?? []), cfg]);
+      }
+    }
+    const doubles = [...claims.entries()].filter(([, cfgs]) => cfgs.length > 1);
+    if (doubles.length) {
+      failures.push(`${doubles.length} test file(s) are claimed by more than one lane`);
+      console.log(`\n  ✗ ${doubles.length} test file(s) belong to two lanes at once:`);
+      console.log(listSome(doubles.map(([f, cfgs]) => `${f}  (${cfgs.join(" + ")})`)));
+      console.log("    A file must run in exactly one lane. If this is an integration test,");
+      console.log("    add it to the node lane's `exclude` in vitest.config.ts.");
+    }
+  }
+
   let skippedLanes = [];
   for (const lane of LANES) {
-    const include = laneIncludes.get(lane.id);
+    const { include, exclude } = laneIncludes.get(lane.id);
 
     const { files: expected, missingLiterals } = floorEnabled
-      ? expectedFor(include)
+      ? expectedFor(include, exclude)
       : { files: [], missingLiterals: [] };
 
     const run = runLane(lane, passthrough);
@@ -450,9 +517,14 @@ async function main() {
   // matches never runs at all, and nothing anywhere says so. Floor is zero; no
   // baseline constant, because a baseline is a place to hide one more.
   if (floorEnabled) {
+    // Coverage is what a lane actually RUNS, so exclude counts here too: a file
+    // the node lane globs in and then excludes is covered only if some other
+    // lane includes it. Ignoring exclude would let an integration test dropped
+    // from vitest.integration.config.ts still read as covered — by the very lane
+    // that refuses to run it.
     const covered = new Set();
-    for (const include of laneIncludes.values()) {
-      for (const f of expectedFor(include).files) covered.add(f);
+    for (const { include, exclude } of laneIncludes.values()) {
+      for (const f of expectedFor(include, exclude).files) covered.add(f);
     }
 
     const allTests = walkLoud(ROOT, [])
