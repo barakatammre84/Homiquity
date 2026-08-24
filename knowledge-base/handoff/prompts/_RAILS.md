@@ -70,9 +70,12 @@ generated block a guard tells you to regenerate (R5). Off-limits for every loop,
   both runs in the report. A fix without the red run is a belief.
 - A feature ships with a **characterisation test of its neighbours first** (what the code does
   today), then the new test. The characterisation test is what catches "nothing else broke".
-- The test's **file name must appear in the lane's output**. The node lane is an explicit
-  allowlist (`vitest.config.ts`): a file you did not append — **at the end of the list** — is
-  silently never run. Client tests are colocated `client/src/**/*.test.tsx` and run under
+- The test's **file name must appear in the lane's output**. The node lane **globs** since
+  2026-08-24 (`vitest.config.ts:71`), so a new `tests/*.test.ts` is collected the moment it
+  exists — there is no list to append to, and the collection guard fails the build if it is not
+  collected anyway. (Before that it was a hand-typed allowlist and an unappended file was silently
+  never run; the residual trap is the `exclude` list, where adding a path *strands* a test.)
+  Client tests are colocated `client/src/**/*.test.tsx` and run under
   `vitest.client.config.ts` only; `vitest run <file>` without `--config` uses the node config and
   reports "no tests" rather than failing.
 

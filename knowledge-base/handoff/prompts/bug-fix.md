@@ -8,7 +8,7 @@ if it exists; append to it before each iteration ends.
 ```
 TASK:   <one sentence: the wrong behaviour, the input that produces it, the right behaviour>
 WRITE:  <the one or two source files that own the defect>
-        tests/<name>.test.ts + vitest.config.ts (append at END)   — or —   client/src/<dir>/<Name>.test.tsx
+        tests/<name>.test.ts   (node lane globs — no config line)   — or —   client/src/<dir>/<Name>.test.tsx
 NEVER:  files outside WRITE; hand-back files (_RAILS.md R3); baselines; allowlists; package.json
 PROOF:  a test that is RED on origin/main and GREEN on the branch — both runs pasted
 MAX_ITER: 8

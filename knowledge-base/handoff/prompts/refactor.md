@@ -8,7 +8,7 @@ if it exists; append to it before each iteration ends.
 ```
 TASK:   <one sentence: what moves/splits/renames, and the observable behaviour that must not change>
 WRITE:  <the files being refactored and every importer the move touches — list them>
-        <characterisation tests if none exist: tests/<name>.test.ts + vitest.config.ts (END)>
+        <characterisation tests if none exist: tests/<name>.test.ts — node lane globs, no config line>
 NEVER:  behaviour changes; hand-back files; baselines; allowlists; package.json;
         client/src/pages/borrower/URLAForm.tsx helpers (knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md)
 PROOF:  every characterisation test green before AND after; `pnpm check` clean; the guards'

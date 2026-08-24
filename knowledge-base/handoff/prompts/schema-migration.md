@@ -13,7 +13,7 @@ WRITE:  shared/schema/<file>.ts
         migrations/meta/_journal.json             (one new entry; idx contiguous; `when` unique and > previous)
         server/storage/<domain>.ts                (the storage method, if one is needed)
         server/routes/<domain>/<file>.ts          (the one route that reads/writes the column)
-        tests/<name>.test.ts + vitest.config.ts   (append at END)
+        tests/<name>.test.ts   (node lane globs — no config line)
 NEVER:  contract steps (SET NOT NULL, CHECK, FK, type narrowing, DROP, RENAME); pnpm db:push;
         pnpm db:generate; any file outside WRITE; package.json; docs/**; data/regulatory/**
 PROOF:  a test red on origin/main (the column is absent from the insert shape, or the route drops

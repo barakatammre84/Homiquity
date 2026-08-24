@@ -26,7 +26,7 @@ The prompt is a **pointer** to a template plus the fill-ins; the template is re-
 every iteration, so the prompt stays short and the rails stay in one place:
 
 ```
-/ralph-loop Follow knowledge-base/handoff/prompts/bug-fix.md exactly. TASK="<one sentence>" WRITE="server/routes/lending/letters.ts, tests/letterExpiryWindow.test.ts, vitest.config.ts" PROOF="tests/letterExpiryWindow.test.ts" SCRATCH="$HOME/hq-scratch/<slug>" --completion-promise "LOOP TERMINAL" --max-iterations 8
+/ralph-loop Follow knowledge-base/handoff/prompts/bug-fix.md exactly. TASK="<one sentence>" WRITE="server/routes/lending/letters.ts, tests/letterExpiryWindow.test.ts" PROOF="tests/letterExpiryWindow.test.ts" SCRATCH="$HOME/hq-scratch/<slug>" --completion-promise "LOOP TERMINAL" --max-iterations 8
 ```
 
 - `--completion-promise "LOOP TERMINAL"` — always this constant; the hook does an exact,
