@@ -113,6 +113,10 @@ export default defineConfig({
       // pins the host short-circuit, the sha-based new-edition signal (founder
       // runbook, never auto-cutover), and the offline freshness ratchet.
       "tests/sellingGuideWatch.test.ts",
+      // The roster guard. This list is an ALLOWLIST — a test file that is not named here
+      // is collected by nothing and passes forever, which is the failure mode the guard
+      // itself is written to prevent one level up.
+      "tests/seatRoster.test.ts",
       "tests/decisionEngineGaps.test.ts",
       // WF1-002: the engine's compensation-independent pricing projection.
       "tests/paymentProjection.test.ts",

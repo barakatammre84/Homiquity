@@ -1,0 +1,54 @@
+# SEATS — the routine roster, single-sourced
+#
+# THIS FILE IS THE REGISTRATION RECORD. `knowledge-base/routines/CHARTER.md` §3 and §3a and
+# `TEAM.md`'s seating chart are GENERATED from it — run `pnpm guard:seats --write-table` and
+# commit the result. Editing those tables by hand fails the guard.
+#
+# > **Registry read:** last verified 2026-08-24 · review every 7 days
+#
+# WHY A FRESHNESS LINE. CI cannot read either scheduler, so this file is a SNAPSHOT taken by a
+# session that can. The line above is what forces someone to re-take it. Going stale is itself a
+# failure — that is the whole point, because a roster nobody re-measures is how ten seats came to
+# look staffed (CHARTER §0, §11; TEAM.md's own rule).
+#
+# HOW TO RE-TAKE THE SNAPSHOT:
+#   local fleet : list_scheduled_tasks           (MCP, laptop only)
+#   CCR fleet   : RemoteTrigger action:list      (MCP, cloud only) — FILTER cron_expression != ""
+#                 The list is dominated by ephemeral one-shot PR-watchers that carry an empty
+#                 cron and a run_once_at. They are not seats. Only cron rows belong here.
+# Then bump the date above, run `pnpm guard:seats --write-table`, and commit both.
+#
+# status: active | paused | unregistered | retired
+#   unregistered is a FIRST-CLASS state, not an omission. CHARTER §11: "a definition on disk that
+#   is not registered in the scheduler is not a routine — it is a fossil, and fossils are what
+#   produced §0." The roster must be able to say that out loud.
+# statusReason + reviewBy are REQUIRED for paused/unregistered/unverified. A pause with no expiry
+#   is the DA-0820-09 failure: a control paused because of a premise dies when the premise
+#   changes, and nothing re-checks it.
+#
+# Tab-separated. Columns:
+# seatId	displayName	fleet	taskId	cron	fires	cadence	writesCode	definitionPath	status	statusReason	reviewBy	produces
+
+seatId	displayName	fleet	taskId	cron	fires	cadence	writesCode	definitionPath	status	statusReason	reviewBy	produces
+feature-completion-engine	Feature Completion Engine	local	feature-completion-engine	30 12 * * *	12:34	daily	yes — one domain per run	~/.claude/scheduled-tasks/feature-completion-engine/SKILL.md	active			the highest-value completion gap in one domain, shipped
+staff-journey-walk	Staff Journey Walk	local	staff-journey-walk	40 13 * * *	13:46	daily	no — trace + tickets	~/.claude/scheduled-tasks/staff-journey-walk/SKILL.md	paused	the 8 GB laptop cannot host the local fleet (2026-08-22); a browser-driving seat is among the heaviest	2026-09-07	one staff desk walked as the seat and its counterpart, own port 5003
+handoff-steward	Handoff Corpus Steward	local	client-journey-walk	5 17 * * *	17:06	daily	no — `knowledge-base/handoff/**` docs only	.claude/skills/handoff-refresh/SKILL.md	active			corpus refresh PR + drift/aging report
+doc-accuracy	Doc Accuracy	local	doc-accuracy-daily	30 19 * * *	19:33	daily	docs only — living `.md` (§6)	.claude/skills/doc-accuracy/SKILL.md	active			one docs PR per tick at most + the `DA-…` ledger
+ui-conformance-sweep	UI Conformance Sweep	local	ui-conformance-sweep	30 15 * * 6	Sat 15:33	weekly	yes — `client/src/**` visual only	.claude/skills/ui-conformance-sweep/SKILL.md	active			one conformance PR + the `UC-…` ledger
+workflow-completion-engine	Workflow Completion Engine	local	workflow-completion-engine	50 9 * * *	10:00	daily	yes — one seam per run	~/.claude/scheduled-tasks/workflow-completion-engine/SKILL.md	paused	the 8 GB laptop cannot host the local fleet (2026-08-22)	2026-09-07	one end-to-end workflow driven in a browser, first seam fixed
+evening-triage	Evening Triage	local	evening-triage	0 21 * * *	21:10	daily	docs only	.claude/skills/evening-triage/SKILL.md	active			roadmap update + the founder's tomorrow list
+trunk-health	Trunk Health	local	launch-gate	45 7 * * *	07:48	daily	no — tickets only	~/.claude/scheduled-tasks/launch-gate/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read. Recommended for restoration BUT it runs `pnpm check` + both test lanes + every guard, which is the load the 2026-08-22 pause was about — founder call on local vs cloud.	2026-08-31	`TRUNK: healthy/degraded/broken` + the build queue + security delta
+primary-engineer	Primary Engineer	local	primary-engineer	15 7 * * *	07:21	daily	yes — company-wide lane	~/.claude/scheduled-tasks/primary-engineer/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read. A heavy build lane; restoring it recreates the 2026-08-22 load condition.	2026-09-07	up to 3 product-ranked PRs
+capture-path-engineer	Capture Path Engineer	local	act-as-a-senior-frontend-architect-i-need-you-to-audit-the-wiring-and-structural-integrity-of-mortgage-streamhomiquity	10 9 * * *	09:20	daily	yes — capture path	~/.claude/scheduled-tasks/act-as-a-senior-frontend-architect-i-need-you-to-audit-the-wiring-and-structural-integrity-of-mortgage-streamhomiquity/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read. Heavy build lane. Reports under the slug `wiring-audit`; the taskId is kept deliberately (CHARTER §11 lesson 3 — renaming discards run history and tool approvals).	2026-09-07	committed fix on a worktree branch
+deliverable-qa-sweep	Deliverable QA Sweep	local	deliverable-qa-sweep	0 15 * * *	15:05	daily	no — findings only	~/.claude/scheduled-tasks/deliverable-qa-sweep/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read. Reports under the slug `qa-sweep`. NOTE: a CCR trigger still fires `/deliverable-qa-sweep` daily into its own STOP clause — the skill is not on origin/main.	2026-08-31	verified buildable tickets in FINDINGS.md
+lender-delivery-gate	Lender Package Gate	local	lender-delivery-gate	30 18 * * 1	Mon 18:31	weekly	small/safe only	~/.claude/scheduled-tasks/lender-delivery-gate/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read.	2026-09-07	organic-file delivery verdict + one field's write path cleared
+compliance-watch	Compliance Watch	local	compliance-watch	15 13 * * 2	Tue 13:21	weekly	no — ladder + drafts	.claude/skills/compliance-watch/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read. Licensing lead time runs in parallel with engineering (CHARTER §1a), so this one is cheap and time-sensitive.	2026-08-31	state compliance ladder + signature-ready drafts
+rent-reporting-watch	Rent Reporting Watch	local	rent-reporting-watch	0 11 * * 4	Thu 11:09	weekly	no — report only	.claude/skills/rent-reporting-watch/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read.	2026-09-07	furnishing-gate posture + the two procurement asks
+refactor-radar	Refactor Radar	local	refactor-radar-weekly	0 20 * * 0	Sun 20:00	weekly	yes — `client/src` only	.claude/skills/refactor-radar/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read.	2026-09-07	at most one PR
+vendor-platform-risk	Vendor & Platform Risk	local	vendor-procurement	35 9 1 * *	1st 09:35	monthly	no	~/.claude/scheduled-tasks/vendor-procurement/SKILL.md	unregistered	NOT REGISTERED as of the 2026-08-24 read. Railway and GitHub Actions billing still stop all work when they lapse (CHARTER §3).	2026-09-07	platform floor + vendor lead-time watch
+client-journey-walk	Client Journey Walk	hand	client-journey-walk-v2	10 16 * * *	16:10	daily — recommended, never registered	no — trace + tickets	.claude/skills/journey-walk/SKILL.md	unregistered	Recommended 2026-08-23 when #706 took its 17:06 slot for the Handoff Corpus Steward; the taskId `client-journey-walk-v2` has never existed in the scheduler. It is the UX instrument for the 2026-08-19 prove-it-first directive. Hand-invocable via /journey-walk meanwhile; rotation in journey-walk/LEDGER.md (next = Journey 3).	2026-08-31	one client persona walked in rotation, verified tickets in FINDINGS.md
+complex-file-engine	Complex File Engine	local	complex-file-engine		was daily 09:53	—	—	~/.claude/scheduled-tasks/complex-file-engine/SKILL.md	retired	Retired 2026-08-19 into the Feature Completion Engine's rotation. ⛔ Its definition is in BOTH the live task dir AND _archive/ — §11 says retired definitions are archived, never left registered-looking. Delete the live copy.	2026-08-31	—
+move-up-lane	Move-Up Lane	local	move-up-lane		was Wed 14:10	—	—	~/.claude/scheduled-tasks/move-up-lane/SKILL.md	retired	Retired 2026-08-19 into the Feature Completion Engine's rotation. ⛔ Same double-fossil as above — live copy still present alongside _archive/.	2026-08-31	—
+sprint-blitz	Sprint Blitz	local	sprint-blitz		was daily	—	—	~/.claude/scheduled-tasks/sprint-blitz/SKILL.md	retired	Retired 2026-08-17 into the Primary Engineer. ⛔ Same double-fossil — live copy still present alongside _archive/.	2026-08-31	—
+selling-guide-steward	Selling Guide Steward	ccr	selling-guide-steward	30 5 * * *	05:30 UTC	daily	yes — Guide fact layer + its watch state only	.claude/skills/selling-guide-steward/SKILL.md	unregistered	⛔ UNVERIFIED at the 2026-08-24 read — see the header. Trigger trig_0178zdN8Y27qPKtFWUGoNaFb is referenced by a peer trigger's prompt, which also records that its SCHEDULED firing silently did not happen while manual fires worked, and that no run report has ever landed. Treat as not-proven-live until a session re-reads the trigger list and a report lands.	2026-08-31	extraction drill verdict + edition/amendment/link sweep + <=1 draft PR
+backend-data-engineer	Backend Data Engineer	ccr	backend-data-engineer	0 11 * * *	11:00 UTC	daily	yes — `server/**`, `shared/**` + same-PR migration	.claude/skills/backend-data-engineer/SKILL.md	unregistered	⛔ UNVERIFIED at the 2026-08-24 read — two pages of the trigger list were sampled and contained only ephemeral one-shot PR-watchers. TEAM.md separately records this trigger as `enabled: false` with zero recorded runs since 2026-08-18.	2026-08-31	<=2 PRs + the `BD-…` ledger

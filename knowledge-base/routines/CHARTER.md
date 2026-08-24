@@ -187,24 +187,69 @@ walk seat was reshaped again — see the Handoff Corpus Steward note below the t
 `client-journey-walk-v2` — the old taskId stayed with the seat that took it over, and the new one is
 not yet registered; see that row and the Handoff Corpus Steward note.)*
 
-| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
-|---|---|---|---|---|---|
-| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | up to **3 product-ranked PRs** |
-| 07:48 | `45 7 * * *` | **Trunk Health** (`launch-gate`) | daily | no — tickets only | `TRUNK: healthy/degraded/broken` + the build queue + security delta |
-| 09:20 | `10 9 * * *` | **Capture Path Engineer** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
-| 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | one end-to-end workflow driven in a browser, first seam **fixed** |
-| 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | the highest-value completion gap in one domain, shipped |
-| 13:40 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | one staff desk walked as the seat **and** its counterpart, own port 5003, torn down after |
-| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified **buildable tickets** in `FINDINGS.md` |
-| 16:10 | `10 16 * * *` | **Client Journey Walk** (`client-journey-walk-v2`) | daily — **recommended 2026-08-23, scheduler registration pending founder action** | no — trace + tickets | one client persona walked in rotation (`journey-walk/LEDGER.md`), verified tickets in `FINDINGS.md` — definition `.claude/skills/journey-walk/SKILL.md` + `.claude/agents/_JOURNEY_WALK_RAILS.md`; sits between QA Sweep and the Handoff Corpus Steward, both docs/findings-only neighbors, so same-day findings still reach Evening Triage and next-morning's Primary Engineer as §4 already assumes |
-| 17:06 | `5 17 * * *` | **Handoff Corpus Steward** (`client-journey-walk`) | daily | no — `knowledge-base/handoff/**` docs only | corpus refresh PR + drift/aging report — definition `.claude/skills/handoff-refresh/SKILL.md`; seat reshaped 2026-08-23, **scheduler-prompt repoint pending** (replacement prompt in that file) |
-| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | one docs PR per tick at most + [`DA-…` ledger](../doc-accuracy/LEDGER.md); a read-only consistency check of `knowledge-base/handoff/` every tick (the 17:06 seat is its only writer) and the corpus's fresh-hire teach-back every 14th tick, reported to that seat |
-| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
-| Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | organic-file delivery verdict + one field's write path cleared |
-| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state compliance ladder + signature-ready drafts |
-| Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
-| Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
-| 1st 09:35 | `35 9 1 * *` | **Vendor & Platform Risk** (`vendor-procurement`) | monthly | no | platform floor + vendor lead-time watch |
+<!-- BEGIN GENERATED seats:local — do not hand-edit; run `pnpm guard:seats --write-table` -->
+
+**Registered in the scheduler.**
+
+| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
+| 10:00 | `50 9 * * *` | **Workflow Completion Engine** (`workflow-completion-engine`) | daily | yes — one seam per run | ⏸️ registered, **paused** | one end-to-end workflow driven in a browser, first seam fixed |
+| 12:34 | `30 12 * * *` | **Feature Completion Engine** (`feature-completion-engine`) | daily | yes — one domain per run | ✅ **enabled** | the highest-value completion gap in one domain, shipped |
+| 13:46 | `40 13 * * *` | **Staff Journey Walk** (`staff-journey-walk`) | daily | no — trace + tickets | ⏸️ registered, **paused** | one staff desk walked as the seat and its counterpart, own port 5003 |
+| 17:06 | `5 17 * * *` | **Handoff Corpus Steward** (`client-journey-walk`) | daily | no — `knowledge-base/handoff/**` docs only | ✅ **enabled** | corpus refresh PR + drift/aging report |
+| 19:33 | `30 19 * * *` | **Doc Accuracy** (`doc-accuracy-daily`) | daily | docs only — living `.md` (§6) | ✅ **enabled** | one docs PR per tick at most + the `DA-…` ledger |
+| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | ✅ **enabled** | roadmap update + the founder's tomorrow list |
+| Sat 15:33 | `30 15 * * 6` | **UI Conformance Sweep** (`ui-conformance-sweep`) | weekly | yes — `client/src/**` visual only | ✅ **enabled** | one conformance PR + the `UC-…` ledger |
+
+**Not registered — 10 definition(s) on disk with no scheduler entry.** §11: *"a definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and fossils are what produced §0."* These do **not** run. Nothing may plan around them.
+
+| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
+| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | ⛔ **NO** — definition on disk, not in the scheduler (§11) | up to 3 product-ranked PRs |
+| 07:48 | `45 7 * * *` | **Trunk Health** (`launch-gate`) | daily | no — tickets only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | `TRUNK: healthy/degraded/broken` + the build queue + security delta |
+| 09:20 | `10 9 * * *` | **Capture Path Engineer** (`act-as-a-senior-frontend-architect-i-need-you-to-audit-the-wiring-and-structural-integrity-of-mortgage-streamhomiquity`) | daily | yes — capture path | ⛔ **NO** — definition on disk, not in the scheduler (§11) | committed fix on a worktree branch |
+| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | verified buildable tickets in FINDINGS.md |
+| 16:10 | `10 16 * * *` | **Client Journey Walk** (`client-journey-walk-v2`) | daily — recommended, never registered | no — trace + tickets | ⛔ **NO** — definition on disk, not in the scheduler (§11) | one client persona walked in rotation, verified tickets in FINDINGS.md |
+| Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | at most one PR |
+| Mon 18:31 | `30 18 * * 1` | **Lender Package Gate** (`lender-delivery-gate`) | weekly | small/safe only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | organic-file delivery verdict + one field's write path cleared |
+| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | ⛔ **NO** — definition on disk, not in the scheduler (§11) | state compliance ladder + signature-ready drafts |
+| Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | furnishing-gate posture + the two procurement asks |
+| 1st 09:35 | `35 9 1 * *` | **Vendor & Platform Risk** (`vendor-procurement`) | monthly | no | ⛔ **NO** — definition on disk, not in the scheduler (§11) | platform floor + vendor lead-time watch |
+
+**Retired.** Kept as a record; their definitions belong in `_archive/` only.
+
+| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
+| was daily 09:53 | — | **Complex File Engine** (`complex-file-engine`) | — | — | — retired | — |
+| was Wed 14:10 | — | **Move-Up Lane** (`move-up-lane`) | — | — | — retired | — |
+| was daily | — | **Sprint Blitz** (`sprint-blitz`) | — | — | — retired | — |
+
+<!-- END GENERATED -->
+
+**This table is generated from [`SEATS.tsv`](SEATS.tsv).** It is not prose to keep in sync by hand,
+and that is deliberate: on 2026-08-24 this section presented sixteen live seats while
+`list_scheduled_tasks` returned six, because the roster was restated in a dozen places and every
+copy could rot independently. Change a seat by editing the roster, then running
+`pnpm guard:seats --write-table` — §11.
+
+**Seat notes** (the nuance that does not fit a cell):
+
+- **Doc Accuracy** also runs a read-only consistency check of `knowledge-base/handoff/` every tick —
+  the 17:06 seat is that corpus's only writer — and the corpus's fresh-hire teach-back every
+  fourteenth tick, reported to that seat. Its ledger is [`DA-…`](../doc-accuracy/LEDGER.md).
+- **Client Journey Walk** sits between the QA Sweep and the Handoff Corpus Steward, both
+  docs/findings-only neighbours, so same-day findings still reach Evening Triage and next morning's
+  Primary Engineer as §4 assumes. Its rails are `.claude/agents/_JOURNEY_WALK_RAILS.md`; its
+  rotation is in [`journey-walk/LEDGER.md`](journey-walk/LEDGER.md).
+- **Capture Path Engineer** keeps its unwieldy original `taskId` on purpose (§11 lesson 3 —
+  renaming discards run history and stored tool approvals) and reports under the slug
+  `wiring-audit`. Judge a seat by its description, never its slug.
+
+⛔ **Read the generated table above before this paragraph.** It describes the fleet as *designed*.
+As of the 2026-08-24 registry read, **three of the four build lanes named here are not registered**
+— Primary Engineer, the Capture Path Engineer and the Workflow Completion Engine (that last one
+registered but paused). Only the Feature Completion Engine runs. The design below is retained
+because it is the intent to restore toward, not a description of today.
 
 **The four build lanes are deliberately distinct, and the register is still the lock.** Primary
 Engineer takes anything company-wide; the Capture Path Engineer owns the flow a client walks;
@@ -330,17 +375,29 @@ report-only or PR-lane and bound by this charter — the monthly financial audit
 Financial Audit territory row, Doc Accuracy under its own §6 row — and the quarterly knowledge
 audit reads both fleets. Trigger list read live 2026-08-18.
 
-| Fires (UTC) | Cron | Trigger | Cadence | Writes? | Produces |
-|---|---|---|---|---|---|
-| 05:30 | `30 5 * * *` | **Selling Guide Steward** (`selling-guide-steward`) | daily | **yes — Guide fact layer + its watch state only (docs-lane draft PR, never merge)** | extraction drill verdict + edition/amendment/link sweep + ≤1 draft PR *(row lands with the corpus PR; the trigger is registered in the same session that sees that PR merge — §11's land-the-definition-first lesson)* |
-| 11:00 | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | **yes — `server/**`, `shared/**` + same-PR migration** | ≤2 PRs + `BD-…` ledger |
-| 12:00 | `0 12 * * *` | Daily Better.com competitive review | daily | GitHub issues only (`design-standard`) | competitive brief |
-| Mon 12:30 | `30 12 * * 1` | Better logged-in deep-dive reminder | weekly | no | founder reminder |
-| Wed 13:00 | `0 13 * * 3` | Weekly UX audit vs Better standard | weekly | no — report only | top-issues report |
-| 1st 13:00 | `0 13 1 * *` | Monthly financial-architecture audit | monthly | via [`/financial-audit`](../../.claude/skills/financial-audit/SKILL.md) rails | ledgered `F-…` findings |
-| 14:00 | `0 14 * * *` | Daily page-by-page deep inspection | daily | GitHub issues only (`page-audit`) | per-page audit |
-| 16:25 | `25 16 * * *` | **UI conformance sweep** (`ui-conformance-sweep`) | daily | **yes — `client/src/**` visual only** | one conformance PR + `UC-…` ledger |
-| hourly 8–20 Mon–Fri | `0 8-20 * * 1-5` | PR sync, review & **decide-or-close loop** | hourly | branch updates only | open-PR digest + §5's clock ⛔ dispositions |
+<!-- BEGIN GENERATED seats:ccr — do not hand-edit; run `pnpm guard:seats --write-table` -->
+
+**Registered in the scheduler:** *(none)*
+
+**Not registered — 2 definition(s) on disk with no scheduler entry.** §11: *"a definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and fossils are what produced §0."* These do **not** run. Nothing may plan around them.
+
+| Fires (UTC) | Cron | Routine (`taskId`) | Cadence | Writes code? | Registered? | Produces |
+|---|---|---|---|---|---|---|
+| 05:30 UTC | `30 5 * * *` | **Selling Guide Steward** (`selling-guide-steward`) | daily | yes — Guide fact layer + its watch state only | ⛔ **NO** — definition on disk, not in the scheduler (§11) | extraction drill verdict + edition/amendment/link sweep + <=1 draft PR |
+| 11:00 UTC | `0 11 * * *` | **Backend Data Engineer** (`backend-data-engineer`) | daily | yes — `server/**`, `shared/**` + same-PR migration | ⛔ **NO** — definition on disk, not in the scheduler (§11) | <=2 PRs + the `BD-…` ledger |
+
+<!-- END GENERATED -->
+
+**Generated from [`SEATS.tsv`](SEATS.tsv), and deliberately incomplete.** ⛔ The CCR rows were
+**not verified** at the 2026-08-24 registry read: two pages of `RemoteTrigger action:list` returned
+only ephemeral one-shot PR-watchers (empty `cron_expression`, a `run_once_at`), which are not seats.
+The cron-scheduled triggers sit further down that list and were not reached. **Recording them as
+unverified is the honest state; asserting them would be the failure this whole section exists to
+prevent.** Whoever next holds the trigger tool completes the read, filters to `cron_expression != ""`,
+and re-runs `pnpm guard:seats --write-table`.
+
+The prose below this block records what the CCR fleet was understood to contain, and is retained as
+the starting point for that read — not as a claim about today.
 
 **Moved off this table, kept as a record:** Doc Accuracy ran here as `40 3,9,15,21 * * *` (every
 6 h, UTC) from 2026-08-18 until the founder re-seated it on the local clock as `doc-accuracy-daily`,
@@ -371,6 +428,13 @@ binds it) and its proposed tickets go to Evening Triage like everyone's (§4).
 ---
 
 ## 4. The hand-off chain
+
+⛔ **A link in this chain is only real if its seat is registered — check the generated table in §3
+first.** As of the 2026-08-24 registry read, several seats named below are `unregistered`, including
+**Evening Triage**, which is the chain's terminus: every routine's proposed tickets are addressed to
+a seat that is not currently scheduled. The chain is the design; §3's table is the state. Where they
+disagree, §3's table is what is true today.
+
 
 The day is a pipeline, not a stack of independent jobs.
 
@@ -775,6 +839,12 @@ written to `reports/`. Evening Triage counts the day's expected reports against 
 names every routine that did not run. A silent suite is the failure mode this charter exists to
 prevent.
 
+⛔ **That counting is not currently happening: Evening Triage is `unregistered` (§3).** The half of
+§0's lesson that *is* mechanised is the roster itself — `pnpm guard:seats` keeps §3, §3a and
+`TEAM.md` in agreement with [`SEATS.tsv`](SEATS.tsv) and fails on a seat whose definition is
+missing, so the suite can no longer *look* staffed while it is not (§11). Counting the day's
+reports remains a routine's job, and that routine needs registering first.
+
 ---
 
 ## 8. Escalation — the runbook, corrected
@@ -894,10 +964,27 @@ New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section 
 
 ## 11. Changing the suite
 
-Adding, retiring or re-timing a routine means editing **this file and the scheduler together**, in
-the same session. A definition on disk that is not registered in the scheduler is not a routine —
-it is a fossil, and fossils are what produced §0. Retired definitions are archived under
+Adding, retiring or re-timing a routine means editing **three things together**, in the same
+session: **[`SEATS.tsv`](SEATS.tsv), the scheduler, and this file** — where "this file" now means
+running `pnpm guard:seats --write-table`, because §3 and §3a are generated from the roster. A
+definition on disk that is not registered in the scheduler is not a routine — it is a fossil, and
+fossils are what produced §0. Retired definitions are archived under
 `~/.claude/scheduled-tasks/_archive/`, never left registered-looking.
+
+**This rule now has an enforcement, and until 2026-08-24 it did not.** `pnpm guard:seats`
+([`scripts/seat-roster-guard.cjs`](../../scripts/seat-roster-guard.cjs)) fails when the generated
+tables disagree with the roster, when an `active` seat's definition is missing, when a living doc
+names a scheduled task the roster does not know, or when a `paused`/`unregistered` row has no
+reason and no `reviewBy`. It runs in the required gate. The one part it cannot check is whether the
+roster matches the *scheduler* — no CI job can read either fleet's registry — so the roster carries
+a `Registry read` freshness line instead, and going stale is itself a failure (checked in
+`pnpm checkup`, not the gate, per the calendar-guard precedent in `.github/workflows/doc-freshness.yml`).
+
+**What it cost to learn this.** The rule above has been written here since the charter was founded.
+On 2026-08-24 a measurement found §3 presenting **sixteen** live seats against a scheduler holding
+**six**, ten definitions sitting on disk unregistered, and `TEAM.md` marking three of those ten
+"✅ yes". Nothing had noticed, because nothing was looking — which is precisely §0, recurring inside
+the document that records it. A rule with no check is a wish.
 
 **Worked example (2026-08-17):** Sprint Blitz was retired into the Primary Engineer in one
 session — its definition copied to `_archive/sprint-blitz/` with a dated retirement note, the
