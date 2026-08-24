@@ -13,10 +13,23 @@ export default defineConfig({
     // work therefore crossed a 15s ceiling at random — tests/statusVocabulary.test.ts and
     // tests/intakeNeverDenies.test.ts both did, neither for a reason in the code.
     //
-    // That matters more than a slow suite. `main` no longer requires a CI status check
-    // (Actions billing failed; development is local-only), so .githooks/pre-push is the
-    // only gate there is. A gate that fails at random teaches --no-verify, and that habit
-    // disables it permanently — the exact failure the hook's own header warns about.
+    // That matters more than a slow suite, because a gate that fails at random teaches
+    // --no-verify, and that habit disables it permanently — the exact failure the
+    // pre-push hook's own header warns about.
+    //
+    // CORRECTED 2026-08-24. This paragraph used to read: "`main` no longer requires a
+    // CI status check (Actions billing failed; development is local-only), so
+    // .githooks/pre-push is the only gate there is." That was true for the 2026-08-19..22
+    // outage and false afterwards — .githooks/pre-push:70 already said "CI is back" while
+    // this file still said it was dead. Two load-bearing config files stating opposite
+    // facts about whether anything checks the code is worse than either being wrong
+    // alone: a session reads whichever it opens first and calibrates on it.
+    //
+    // What is true now: CI runs on every PR, the `gate` job is the required status check
+    // on `main`, and since 2026-08-24 it no longer exempts drafts. The pre-push hook is
+    // an early warning, not the gate. If CI ever goes dark again, fix THIS comment in the
+    // same commit that changes the posture — a stale reassurance is the failure mode this
+    // repo keeps paying for.
     //
     // Deliberately 45s and not 300s: a genuinely hung test must still be caught. If a test
     // needs more than this, the test is the problem — profile it, do not raise this again.
