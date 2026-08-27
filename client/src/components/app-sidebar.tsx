@@ -56,6 +56,7 @@ import {
   Palette,
   Gauge,
   Handshake,
+  Inbox,
   Building2,
   Bot,
   CircleUser,
@@ -139,6 +140,7 @@ const staffNavigation: NavSection[] = [
     items: [
       { title: "Dashboard", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "LO Command Center", href: "/lo-command-center", icon: Gauge, testId: "link-lo-command-center" },
+      { title: "Lead Inbox", href: "/lead-inbox", icon: Inbox, testId: "link-lead-inbox", roles: ROUTE_GATES.leadOps },
       // Task/Policy/Pricing governance is requireRole("admin","underwriter") on the
       // server — only show the links to roles that can actually load the pages.
       // The gate is shared with the router (ROUTE_GATES.underwriterOps) so the

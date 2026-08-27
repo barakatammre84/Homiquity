@@ -83,6 +83,9 @@ export const ROUTE_GATES = {
    */
   loTeam: ["admin", "lo", "loa"],
 
+  /** Inbound mortgage lead inbox. Mirrors LEAD_STAFF_ROLES in server/routes/leads.ts. */
+  leadOps: ["admin", "lo", "loa"],
+
   /** CPA partner portal — inviter-only surface, plus admin oversight. */
   cpaPortal: ["cpa", "admin"],
 

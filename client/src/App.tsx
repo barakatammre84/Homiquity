@@ -89,6 +89,7 @@ const HmdaDemographics = lazy(() => import("@/pages/borrower/HmdaDemographics"))
 
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
 const LoCommandCenter = lazy(() => import("@/pages/staff/LoCommandCenter"));
+const LeadInbox = lazy(() => import("@/pages/staff/LeadInbox"));
 const BorrowerFile = lazy(() => import("@/pages/staff/BorrowerFile"));
 const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
 const PricingMatrices = lazy(() => import("@/pages/staff/PricingMatrices"));
@@ -462,6 +463,9 @@ function Router() {
         </Route>
         <Route path="/lo-command-center">
           <InternalStaffPage><LoCommandCenter /></InternalStaffPage>
+        </Route>
+        <Route path="/lead-inbox">
+          <PrivateLayout requiredRoles={ROUTE_GATES.leadOps}><LeadInbox /></PrivateLayout>
         </Route>
         <Route path="/design-prototype">
           <InternalStaffPage><DesignPrototype /></InternalStaffPage>
