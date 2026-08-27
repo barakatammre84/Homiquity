@@ -22,7 +22,8 @@
 # It NEVER overwrites a value you already have in .env — it only fills in what
 # is missing, and says which keys it added.
 set -uo pipefail
-cd "$(git rev-parse --show-toplevel)" || exit 1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$(git -C "$SCRIPT_DIR/.." rev-parse --show-toplevel)" || exit 1
 
 PORT="${PORT:-5001}"
 CMD="${1:-up}"
@@ -157,7 +158,7 @@ if ! pnpm -s db:migrate >/tmp/dev-up-migrate.log 2>&1; then
 fi
 
 # ------------------------------------------------------------- 5. serve ----
-echo "starting the dev server on port $PORT…"
+echo "starting the dev server on port ${PORT}…"
 # `set -m` puts this background job in its own process group (pgid == pid), which
 # is what lets `down` kill the wrapper AND the server it spawns. Without it the
 # child outlives the kill and keeps the port. Works on bash 3.2 (macOS) too.
