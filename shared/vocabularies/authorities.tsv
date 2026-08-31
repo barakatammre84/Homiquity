@@ -1,0 +1,53 @@
+# VOCABULARY AUTHORITIES — hand-maintained. The ONLY hand-entered half of the registry.
+#
+# shared/vocabularies/REGISTRY.tsv is GENERATED from the codebase and joined against this
+# file. Everything derivable — name, file, declaration form, value count, value hash, derived
+# type, consumer count — is derived. This file answers the one question no scan can:
+#
+#     WHO says these are the legal values?
+#
+# WHY IT IS SEPARATE. If provenance lived in the generated file, regenerating would destroy it.
+# Same split as knowledge-base/routines/SEATS.tsv and the tables generated from it.
+#
+# authority values:
+#   ULAD          checked automatically against docs/fannie-mae/schemas/ulad-enumerations.tsv
+#   selling-guide cite a section id that resolves in selling-guide/section-index.tsv
+#   reg-z         cite a section + line in docs/reg-z/12-cfr-1026-regulation-z.xml
+#   uldd-spec     a ULDD Phase 5 data point with no row in the ULAD mapping sheet
+#   internal      a product decision — legitimate, and the default. No citation required.
+#
+# A vocabulary absent from this file is treated as `internal`. Adding a row is how a set stops
+# being "someone's decision" and starts being checkable.
+#
+# vocabularyName	authority	citation	note
+
+# ---------------------------------------------------------------------------------------------
+# ULAD / MISMO v3.4 — the enumeration authority is the ULAD mapping workbook, extracted to
+# docs/fannie-mae/schemas/ulad-enumerations.tsv. guard:vocab compares these value sets against
+# it directly. CLAUDE.md: "Never invent MISMO field names, enumerations, XML container paths,
+# edit codes, or Special Feature Codes."
+#
+# ⛔ TEN OF THESE CURRENTLY DIVERGE and are baselined, not fixed. Changing a delivered
+# enumeration changes what ships in a MISMO file to Fannie Mae; that is a compliance decision,
+# not a cleanup, and it is deliberately out of scope here.
+AssetType	ULAD	AssetType	code carries 8 values ULAD does not, and lacks 5 it does — incl. GiftOfEquity vs ULAD GiftOfPropertyEquity, CashValueOfLifeInsurance vs LifeInsurance, and no way to say Grant
+CitizenshipResidencyType	ULAD	CitizenshipResidencyType	code adds NonResidentAlien + Unknown; ULAD has exactly USCitizen / PermanentResidentAlien / NonPermanentResidentAlien
+LiabilityType	ULAD	LiabilityType	code says LeasePayments, ULAD says LeasePayment (singular); code cannot express Open30DayChargeAccount
+LienPriorityType	ULAD	LienPriorityType	code adds Other
+LoanIdentifierType	ULAD	LoanIdentifierType	code says UniversalLoanIdentifier, ULAD says UniversalLoan — and ULI is a required delivery field
+LoanPurposeType	ULAD	LoanPurposeType	code adds MortgageModification
+MaritalStatusType	ULAD	MaritalStatusType	ULAD permits Other; the code cannot represent a borrower who is neither married nor unmarried
+MortgageType	ULAD	MortgageType	code says USDA, ULAD says USDARuralDevelopment — shipped at DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/MortgageType, required: true
+PartyRoleType	ULAD	PartyRoleType	code adds 7 roles outside the URLA subset (Appraiser, Servicer, …) which may be legitimate MISMO; it also lacks 4 ULAD roles
+PropertyUsageType	ULAD	PropertyUsageType	ULAD permits Other
+PriorPropertyTitleType	ULAD	PriorPropertyTitleType	matches the authority exactly
+PriorPropertyUsageType	ULAD	PriorPropertyUsageType	matches the authority exactly
+RefinanceCashOutDeterminationType	ULAD	RefinanceCashOutDeterminationType	matches the authority exactly
+
+# ---------------------------------------------------------------------------------------------
+# ULDD Phase 5 — data points with no row in the ULAD mapping sheet. The mapping workbook covers
+# the URLA→MISMO subset only, so absence there is not evidence of invention. These need the
+# Phase 5 spec PDF to verify and are recorded as unchecked rather than asserted correct.
+BorrowerClassificationType	uldd-spec		⛔ UNVERIFIED — no ULAD row; needs docs/fannie-mae/ULDD Phase 5 Implementation Considerations.pdf
+LoanAmortizationType	uldd-spec		⛔ UNVERIFIED — no ULAD row; the ARM/fixed distinction behind F-053 lives here
+YesNoUnknownType	uldd-spec		⛔ UNVERIFIED — no ULAD row; a MISMO primitive

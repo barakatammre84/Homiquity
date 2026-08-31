@@ -28,6 +28,14 @@ function extractorSource(edition = EDITION) {
     "PDF_BYTES = 1234",
     `PDF_GIT_BLOB = "${"b".repeat(40)}"`,
     'PYMUPDF_PINNED = "1.28.2"',
+    // The markdown-rendering pin. This fixture must carry EVERY constant in the
+    // corpus guard's CONSTANT_ANCHORS, because parseExtractorConstants throws on a
+    // miss by design — "a guard that cannot find its constants must fail, not
+    // silently pass". Adding an anchor there without adding it here turns all nine
+    // tests in this file into that throw, which reports as a conformance failure
+    // and hides whatever they were actually asserting.
+    'PYMUPDF4LLM_PINNED = "1.28.2"',
+    'MD_STREAM_NAME = "selling-guide.md"',
     "",
   ].join("\n");
 }
