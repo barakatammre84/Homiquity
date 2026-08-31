@@ -330,6 +330,21 @@ const body =
   `#   pr-head  the tip is a refs/pull/N/head. GitHub keeps those permanently, merged or closed.\n` +
   `#   orphan   was held by the branch name alone. Now also a parent of ${ARCHIVE_REF}.\n` +
   `#\n` +
+  `# 🚨 A BUCKET ANSWERS "ARE THE COMMITS RECOVERABLE", NOT "IS ANYONE USING THIS BRANCH".\n` +
+  `# Nothing here can see that. On 2026-08-31 a peer session found five branches that are the\n` +
+  `# outcome branch of a live Claude session — feat/landing-coach-first is named by 39 of them,\n` +
+  `# and it sits in \`pr-head\` (PR #595, merged), the safest bucket there is. Deleting it loses\n` +
+  `# no commit and still pulls the branch out from under every one of those sessions.\n` +
+  `# Before ANY deletion pass, re-check live sessions — the set changes by the hour:\n` +
+  `#   list_sessions -> session_context.outcomes[].git_repository.git_info.branches\n` +
+  `# (NOT external_metadata.current_branches, which holds the repo name, not a branch.)\n` +
+  `#\n` +
+  `# Counting note, for anyone reconciling this against another survey: 48 backup/2026-08-20/*\n` +
+  `# branches are \`pr-head\` here while a PR-state survey calls them "no PR ever". Both are right.\n` +
+  `# A backup copy never had its OWN pull request, but it shares a tip sha with the branch that\n` +
+  `# did, so its commits sit in that pull ref. 74 orphan + 48 such copies reconciles this file's\n` +
+  `# 74 against a peer session's 125.\n` +
+  `#\n` +
   `# A pr-head row records NO sha: its locator is the PR number, which is permanent, while the\n` +
   `# branch tip moves on every push. Freezing the tip there would drift this file forever — the\n` +
   `# sha is kept only where it IS the locator (orphan) or has stopped moving (in-main).\n` +
