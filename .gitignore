@@ -45,6 +45,17 @@ mismo-*.xml
 # plus our own analysis in knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md.
 docs/fannie-mae/selling-guide/*.pdf
 docs/fannie-mae/selling-guide/selling-guide-text.txt
+# The markdown rendering of the same pages, produced by the same script.
+# Named explicitly, never as *.md — README.md and INDEX.md in that directory
+# are the TRACKED fact layer and must keep being committed.
+#
+# Without this line the generated file is untracked-but-not-ignored, so a
+# `git add -A` on any branch sweeps 60,432 lines of the copyrighted Guide into
+# this PUBLIC repo. That is not hypothetical: it happened on 2026-08-31 and had
+# to be undone. The rule the other entries here encode is that a generated
+# rendering IS the copyrighted work in another format; this one was simply
+# missing.
+docs/fannie-mae/selling-guide/selling-guide.md
 docs/fannie-mae/selling-guide/highlights.json
 docs/fannie-mae/selling-guide/extracted/
 # Content fetched from the Guide’s own links by the steward/watch — third-party
