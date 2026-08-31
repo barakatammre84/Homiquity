@@ -301,8 +301,19 @@ describe("the watcher going silent is itself detected", () => {
   it("only warns on an acknowledged gap — a permanently-red gate is one people learn to skip", () => {
     // Fannie, Freddie and FHA are bot-walled or JS-rendered; only a subscription
     // fixes them. Failing forever would bury the case that IS actionable.
+    //
+    // `lastRun` IS RELATIVE TO NOW, AND MUST STAY THAT WAY. It was pinned to an
+    // absolute 2026-08-20T12:00:00Z, which made this the only assertion in the file
+    // that could rot: it demands ZERO FAILs, and the unrelated watcher-silence check
+    // (WATCH_SILENT_AFTER_DAYS = 10) starts adding one the moment that timestamp is
+    // eleven days old. It duly passed for ten days and then turned `main` red on
+    // 2026-08-31 with no commit behind it — a frozen trunk failing its own gate,
+    // blocking every open PR, and looking exactly like a defect in whichever
+    // innocent PR ran next. The subject here is the acknowledged-gap RATCHET; the
+    // watcher's freshness is incidental scaffolding, so it is expressed as
+    // "recent" rather than as a date that is only recent for a while.
     const { out } = runFreshness({
-      lastRun: "2026-08-20T12:00:00.000Z",
+      lastRun: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
       acknowledgedBlocked: {
         "fha-mortgagee-letters": { since: "2026-08-20", reason: "HTTP 403 bot wall", procurement: "FHA INFO emails" },
       },
