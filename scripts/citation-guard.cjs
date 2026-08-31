@@ -95,6 +95,11 @@ const NOT_TRACKED_BY_DESIGN = [
   // citation of extracted/ or linked/ artifacts is correct the way dist/ is:
   // it names something `python3 scripts/extract-selling-guide.py` materializes.
   /^(?:docs\/fannie-mae\/selling-guide\/)?(?:extracted|linked)\//,
+  // …and its two whole-book streams, for the same reason. Named EXACTLY, never as a
+  // glob over that directory: README.md and INDEX.md live there too and are tracked,
+  // so a wildcard would stop catching real dead links in the corpus's own front door.
+  // (selling-guide-text.txt escapes this list only because PATHISH does not know .txt.)
+  /^(?:docs\/fannie-mae\/selling-guide\/)?selling-guide\.md$/,
 ];
 
 /** Backticked tokens that look like a repo path: a known code/doc extension. */

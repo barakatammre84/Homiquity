@@ -51,6 +51,8 @@ const CONSTANT_ANCHORS = {
   PDF_BYTES: /^PDF_BYTES = (\d+)$/m,
   PDF_GIT_BLOB: /^PDF_GIT_BLOB = "([0-9a-f]{40})"$/m,
   PYMUPDF_PINNED: /^PYMUPDF_PINNED = "([^"]+)"$/m,
+  PYMUPDF4LLM_PINNED: /^PYMUPDF4LLM_PINNED = "([^"]+)"$/m,
+  MD_STREAM_NAME: /^MD_STREAM_NAME = "([^"]+)"$/m,
 };
 
 /** Pinned corpus identity, parsed out of the extractor source. Throws on a miss. */
@@ -171,16 +173,52 @@ function runChecks(paths = defaultPaths()) {
   }
 
   // --- INDEX.md -----------------------------------------------------------------
+  // Both renderings are checked: the index links every section TWICE (md + txt), and a
+  // count that drifts on either side means the index was written by something other than
+  // the extractor — the same tripwire as links.json's sorted keys.
   const indexMdPath = path.join(paths.dir, "INDEX.md");
   if (fs.existsSync(indexMdPath)) {
     const md = fs.readFileSync(indexMdPath, "utf8");
     const linkCount = (md.match(/\]\(extracted\/sections\//g) || []).length;
     if (tocSectionIds.size && linkCount !== tocSectionIds.size)
       errors.push(`INDEX.md links ${linkCount} section files, toc.json has ${tocSectionIds.size} sections`);
+    const mdLinkCount = (md.match(/\]\(extracted\/markdown\//g) || []).length;
+    if (tocSectionIds.size && mdLinkCount !== tocSectionIds.size)
+      errors.push(
+        `INDEX.md links ${mdLinkCount} markdown section files, toc.json has ${tocSectionIds.size} sections`,
+      );
     if (!md.includes(constants.EDITION))
       errors.push(`INDEX.md does not name edition ${constants.EDITION}`);
   } else {
     errors.push("INDEX.md missing");
+  }
+
+  // --- manifest renderings ------------------------------------------------------
+  // The manifest advertises which renderings exist and what each needs. Those pins are
+  // DERIVED from the extractor here, never restated, so a version bump that forgets the
+  // manifest reds instead of shipping a lie about what produced the corpus.
+  if (manifest) {
+    const r = manifest.renderings || {};
+    if (!r.text || !r.markdown) {
+      errors.push("manifest.renderings must describe both the text and markdown renderings");
+    } else {
+      if (r.text.requires !== `pymupdf==${constants.PYMUPDF_PINNED}`)
+        errors.push(
+          `manifest renderings.text.requires ${r.text.requires} != pymupdf==${constants.PYMUPDF_PINNED}`,
+        );
+      if (r.markdown.requires !== `pymupdf4llm==${constants.PYMUPDF4LLM_PINNED}`)
+        errors.push(
+          `manifest renderings.markdown.requires ${r.markdown.requires} != ` +
+            `pymupdf4llm==${constants.PYMUPDF4LLM_PINNED}`,
+        );
+      if (r.markdown.stream !== constants.MD_STREAM_NAME)
+        errors.push(
+          `manifest renderings.markdown.stream ${r.markdown.stream} != extractor ` +
+            `MD_STREAM_NAME ${constants.MD_STREAM_NAME}`,
+        );
+      if (r.markdown.optional !== true)
+        errors.push("manifest renderings.markdown.optional must be true — --check and CI run without it");
+    }
   }
 
   // --- links.json ---------------------------------------------------------------
