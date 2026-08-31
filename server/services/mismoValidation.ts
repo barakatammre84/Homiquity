@@ -186,7 +186,13 @@ function scoreEmployment(employment: EmploymentHistory[]): URLASectionScore {
   const priorEmployment = employment.find(e => e.employmentType === "previous" || e.employmentType === "prior");
 
   // If the borrower has under two years at the current job, prior employer
-  // becomes required (Fannie/Freddie 2-year history rule).
+  // becomes required. This is the URLA/Form 1003 two-year employment-history
+  // CAPTURE convention — a completeness rule for the form, not an eligibility
+  // test. Do not read it as a Guide minimum: B3-3.2-02 says a two-year history
+  // "is recommended", and income received for as little as 12 months may be
+  // acceptable where positive factors reasonably offset the shorter history.
+  // ("Freddie" dropped from this comment on 2026-08-23: no Freddie source is
+  // captured in-repo, so nothing here could verify a claim about their rules.)
   const yearsAtCurrent = yearsSince(currentEmployment?.startDate);
   const needsPriorEmployer = yearsAtCurrent !== null && yearsAtCurrent < 2;
 

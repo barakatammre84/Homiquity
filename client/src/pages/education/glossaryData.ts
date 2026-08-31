@@ -328,7 +328,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   {
     term: "Jumbo loan",
     definition:
-      "A jumbo loan (also known as a non-conforming loan) is a home loan that exceeds the maximum Federal Housing Administration (FHA) limit. Jumbo loans are not guaranteed by Fannie Mae or Freddie Mac, which means that the lender has no protection in the event that the borrower defaults. The maximum limit depends on the location of the home and what the conforming loan limit is for that area. Typically, more expensive areas of the country have higher conforming loan limits.",
+      "A jumbo loan (also known as a non-conforming loan) is a home loan that exceeds the conforming loan limit set each year by the Federal Housing Finance Agency (FHFA). Jumbo loans are not bought by Fannie Mae or Freddie Mac, so the lender either keeps the loan or sells it elsewhere. The limit depends on the location of the home and the number of units, and more expensive areas of the country have higher limits.",
     related: ["conforming-loan", "nonconforming-loan"],
   },
   {
@@ -410,7 +410,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   {
     term: "Nonconforming loan",
     definition:
-      "Nonconforming loans do not meet the mortgage guidelines set by Fannie Mae and Freddie Mac. As such, they're considered higher risk and tend to have higher interest rates than conforming loans. The most popular type of nonconforming loan is the jumbo loan, which is for a property that is more expensive than the mortgage limits set by Fannie Mae and Freddie Mac. Jumbo loans usually come with fairly stringent credit score, down payment, and debt-to-income ratio (DTI) requirements. Other types of nonconforming loans include government-backed loans, such as FHA loans, USDA loans, and VA loans. These kinds of mortgages are designed to provide affordable housing options for those who may not qualify for a conforming loan.",
+      "Nonconforming loans do not meet the mortgage guidelines set by Fannie Mae and Freddie Mac. As such, they're considered higher risk and tend to have higher interest rates than conforming loans. The most popular type of nonconforming loan is the jumbo loan, which is for a loan amount above the conforming loan limit set by the Federal Housing Finance Agency (FHFA). Jumbo loans usually come with fairly stringent credit score, down payment, and debt-to-income ratio (DTI) requirements. Other types of nonconforming loans include government-backed loans, such as FHA loans, USDA loans, and VA loans. These kinds of mortgages are designed to provide affordable housing options for those who may not qualify for a conforming loan.",
     related: ["conforming-loan", "jumbo-loan", "federal-housing-administration-loans", "va-loans"],
   },
   {
@@ -497,7 +497,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     term: "Private mortgage insurance (PMI)",
     tooltip: { key: "pmi", label: "PMI", short: "Private Mortgage Insurance — an added monthly cost when your down payment is under 20%. It protects the lender, not you, and can usually be removed later." },
     definition:
-      "Private mortgage insurance (PMI) is insurance required by lenders when a borrower puts less than 20% down on a conventional loan. It's meant to protect the lender in the event that the borrower defaults. PMI can be cancelled once the borrower has at least 20% equity in the property. The PMI amount is determined by many different factors, similar to your interest rate—including FICO score, loan-to-value ratio, debt-to-income ratio, property type, and occupancy.",
+      "Private mortgage insurance (PMI) is insurance required by lenders when a borrower puts less than 20% down on a conventional loan. It's meant to protect the lender in the event that the borrower defaults. PMI can usually be removed later: federal law—the Homeowners Protection Act—and your loan terms set the exact conditions, and they turn on your original loan amount and payment history rather than simply on what the home is worth today, so ask your lender what applies to your loan. The PMI amount is determined by many different factors, similar to your interest rate—including FICO score, loan-to-value ratio, debt-to-income ratio, property type, and occupancy.",
     related: ["conventional-mortgage", "loan-to-value-ltv", "mortgage-insurance-premium-mip"],
   },
   {

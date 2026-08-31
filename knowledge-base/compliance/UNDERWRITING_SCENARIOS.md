@@ -68,7 +68,7 @@ from application data, credit tradelines, bank transactions, or public records.
 
 ### S-01: Hybrid W-2 / Self-Employed Creator (income seasoning)
 - Status: Implemented 2026-07-03 (commit 1e189b2)
-- Guideline: Fannie Mae Selling Guide B3-3.2 (24-month seasoning; 12–24 conditional)
+- Guideline: Fannie Mae Selling Guide B3-3.5-01, "Length of Self-Employment" (two-year history; under two years only where the most recent returns reflect a full 12 months from the current business **and** prior income at the same or greater level in the same field is separately documented)
 - Engine: `assessIncomeSeasoning` + `incomeDiscrepancyPct` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `INCOME_SEASONING` (blocking <12mo, warning 12–24mo)
 - Signal source: intake `incomeSources[].yearsInRole`; discrepancy delta armed for verified income when Truv/Argyle lands
 - Tests: `tests/underwritingNuance.test.ts` (14-month conditional case matches the source doc)
