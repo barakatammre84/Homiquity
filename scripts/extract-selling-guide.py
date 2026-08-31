@@ -69,6 +69,7 @@ from bisect import bisect_right
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "docs", "fannie-mae", "selling-guide")
 EXTRACTED = os.path.join(DIR, "extracted")
+MD_SECTIONS = os.path.join(EXTRACTED, "markdown")
 
 EDITION = "08-05-2026"
 PDF_NAME = f"Selling-Guide_{EDITION}.pdf"
@@ -88,7 +89,17 @@ PDF_GIT_COMMIT = "978ec3839a69d15058c819d17cf19697cd7cd2dd"
 # version, so a local mismatch is a warning, not an error.
 PYMUPDF_PINNED = "1.28.2"
 
+# The markdown layer (below) is produced by pymupdf4llm, a separate package that
+# wraps the same pymupdf. It is OPTIONAL: absent, the text layer is unaffected and
+# the tracked fact layer is bit-identical, which is why --check and the CI
+# extraction proof need only pymupdf. Pinned for the same reason as above — markdown
+# rendering (table detection, heading levels) differs across versions.
+PYMUPDF4LLM_PINNED = "1.28.2"
+
 RUNNING_HEADER = "Published August 5, 2026"
+
+# The markdown layer's file names, kept next to the text layer's.
+MD_STREAM_NAME = "selling-guide.md"
 
 # Section IDs: A1-1-01, A2-3.1-01, B3-6-05, E-3-26, … A TOC entry whose title starts
 # with one of these is a leaf section regardless of its TOC level (Part E's leaves sit
@@ -246,10 +257,18 @@ def norm_title(title):
     return re.sub(r"\s+", " ", title).strip()
 
 
-def anchor_nodes(nodes, stream, norm, norm_back, page_offsets, npages):
-    """Give every TOC node a character offset. Preference order: the full heading
-    found near its TOC page; a section ID at line start; the top of its TOC page.
-    Anchors are monotonic, so segments tile the document exactly."""
+def compute_anchors(nodes, stream, norm, norm_back, page_offsets, npages,
+                    title_norm=None, id_prefix=""):
+    """Give every TOC node a character offset in `stream`. Preference order: the full
+    heading found near its TOC page; a section ID at line start; the top of its TOC
+    page. Anchors are monotonic, so segments tile the document exactly.
+
+    Pure: returns a list of (anchor, method, end, page_start, page_end) parallel to
+    `nodes` and mutates nothing. The text layer assigns the result onto the nodes
+    (anchor_nodes, below); the markdown layer runs the SAME machinery over a second,
+    differently-rendered stream and keeps its answer separate — one TOC, two
+    renderings, no cross-contamination of the tracked fact layer.
+    """
     orig2norm_keys = norm_back  # sorted original offsets of surviving chars
 
     def to_norm(orig):
@@ -261,7 +280,9 @@ def anchor_nodes(nodes, stream, norm, norm_back, page_offsets, npages):
     def page_end(pno):
         return page_offsets[pno] if pno < len(page_offsets) else len(stream)
 
+    title_norm = title_norm or norm_title
     prev = 0
+    anchors, methods = [], []
     for n in nodes:
         lo = max(prev, page_start(n.page))
         hi = page_end(min(n.page + 2, npages))
@@ -270,24 +291,35 @@ def anchor_nodes(nodes, stream, norm, norm_back, page_offsets, npages):
         method, pos = "page-fallback", None
         m = None
         nlo, nhi = to_norm(lo), to_norm(hi)
-        idx = norm.find(norm_title(n.title), nlo, nhi)
+        idx = norm.find(title_norm(n.title), nlo, nhi)
         if idx >= 0:
             pos, method = norm_back[idx], "heading"
         elif n.kind == "section":
-            m = re.compile(rf"(?m)^{re.escape(n.sec_id)}, ").search(stream, lo, hi)
+            # id_prefix lets the markdown stream match a heading the renderer wrapped
+            # in "#### " or "**" — without it every such section falls through to the
+            # page fallback, and a monotonic fallback squeezes its neighbour to nothing.
+            m = re.compile(rf"(?m)^{id_prefix}{re.escape(n.sec_id)}, ").search(stream, lo, hi)
             if m:
                 pos, method = m.start(), "id-line"
         if pos is None:
             pos = max(prev, page_start(n.page))
-        n.anchor, n.anchor_method = max(pos, prev), method
-        prev = n.anchor
+        anchors.append(max(pos, prev))
+        methods.append(method)
+        prev = anchors[-1]
+
+    out = []
     for i, n in enumerate(nodes):
-        n.end = nodes[i + 1].anchor if i + 1 < len(nodes) else len(stream)
-        n.page_start = n.page
-        last = max(n.anchor, n.end - 1)
-        n.page_end = bisect_right(page_offsets, last)  # 1-based page containing last char
-        if n.page_end < n.page_start:  # empty segment
-            n.page_end = n.page_start
+        end = anchors[i + 1] if i + 1 < len(nodes) else len(stream)
+        last = max(anchors[i], end - 1)
+        page_end = bisect_right(page_offsets, last)  # 1-based page containing last char
+        out.append((anchors[i], methods[i], end, n.page, max(page_end, n.page)))
+    return out
+
+
+def anchor_nodes(nodes, stream, norm, norm_back, page_offsets, npages):
+    """compute_anchors, assigned onto the nodes — the text layer's view."""
+    for n, a in zip(nodes, compute_anchors(nodes, stream, norm, norm_back, page_offsets, npages)):
+        n.anchor, n.anchor_method, n.end, n.page_start, n.page_end = a
 
 
 # ------------------------------------------------------------------------ file writers
@@ -360,6 +392,355 @@ def write_page_stream(raw_pages, nodes, path):
             current = label_at.get(pno, current)
             fh.write(f"\n[[PAGE {pno} | {current}]]\n")
             fh.write(text)
+
+
+# --------------------------------------------------------------------- markdown layer
+#
+# WHY A SECOND RENDERING. The text layer above is faithful to the reading order of the
+# page and is what `grep` wants, but it FLATTENS TABLES: B2-2-03's financed-property
+# limits arrive as three unlabelled column runs, and no reader can say which maximum
+# belongs to which occupancy. The Guide states a large share of its actual thresholds
+# in tables, so that is not a cosmetic loss — it is the one place the corpus could not
+# answer the question it exists to answer, and the README has carried it as a standing
+# 🚨 since the corpus landed.
+#
+# pymupdf4llm renders the same pages as markdown and reconstructs those tables as
+# markdown tables, cell by cell, including borderless ones. Same PDF, same TOC, same
+# anchoring machinery — a second VIEW of the identical bytes, never a second source.
+# Where the two disagree the PDF page settles it, exactly as before.
+#
+# It stays OPTIONAL on purpose: the tracked fact layer must remain derivable from
+# pymupdf alone so `--check` and the CI extraction proof keep their small, pinned
+# dependency. Absent pymupdf4llm, everything above is unchanged and this layer simply
+# does not build.
+
+# pymupdf expands these itself (TEXT_PRESERVE_LIGATURES off); pymupdf4llm does not, so
+# the markdown layer would otherwise spell "identify" with a glyph grep cannot match —
+# the exact defect the text layer fixed in its first generation.
+LIGATURES = {
+    "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi",
+    "ﬄ": "ffl", "ﬅ": "ft", "ﬆ": "st",
+}
+
+# Highlight annotations mark this edition's revisions; the newer pymupdf4llm renders
+# them as <mark>…</mark> INSIDE the prose, which splits words from grep's point of view
+# ("<mark>B3-6-05, Monthly Debt" no longer matches the title). The revision signal is
+# already a tracked fact (revised-sections.tsv, and each section file's header), so the
+# tags are dropped here rather than duplicated in a form that damages the text.
+MD_MARK_RE = re.compile(r"</?mark>")
+
+# The running header/footer, as markdown emphasis. Unlike the text layer's, it can land
+# anywhere in the chunk: pymupdf4llm emits it in layout order, not page order.
+MD_HEADER_RE = re.compile(
+    rf"^\*\*{re.escape(RUNNING_HEADER)}\*\*\n(?:\s*\n)*(?:\*\*[0-9IVXLC]{{1,5}}\*\*\n)?",
+    re.MULTILINE,
+)
+
+
+def expand_ligatures(text):
+    for glyph, plain in LIGATURES.items():
+        text = text.replace(glyph, plain)
+    return text
+
+
+# A page whose markdown carries less than this share of the text layer's letters and
+# digits has lost prose, not formatting, and gets the rescue pass below. Measured, not
+# guessed: on the 08-05-2026 edition the median page scores 0.992 and the distribution
+# is bimodal — 94 pages at zero and a thin tail at 0.55-0.89, with nothing in between
+# that a 0.90 line splits wrongly.
+MD_COMPLETENESS_FLOOR = 0.90
+
+TABLE_ROW_RE = re.compile(r"(?m)^\|.*\|\s*$")
+
+MD_RESCUED_TABLES = "[[TABLES FROM THE GRAPHICS PASS — the text above is complete; " \
+                    "these are the same page's tables, which that pass flattens]]"
+
+
+def alnum_len(text):
+    return len(re.sub(r"[^0-9A-Za-z]", "", text))
+
+
+def _clean_chunk(c):
+    md = expand_ligatures(MD_MARK_RE.sub("", c.get("text", "")))
+    return MD_HEADER_RE.sub("", md)
+
+
+def markdown_pages(pdf_path, text_pages):
+    """Per-page markdown for the whole book, plus per-page table counts.
+
+    Returns (pages, table_counts, rescued, version). Raises ImportError when
+    pymupdf4llm is not installed — the caller decides whether that is fatal.
+
+    TWO PASSES, because neither alone is complete on this PDF:
+
+    * The default pass reconstructs tables from the page's ruled graphics — the whole
+      reason this layer exists — but on 94 of 1,185 pages of the 08-05-2026 edition it
+      returns the EMPTY STRING, and on a handful more it returns a fraction of the
+      prose. Those pages are graphics-heavy; the renderer discards the page with them.
+      Shipping that silently would put ~8% of the Guide's pages into "the document
+      everyone reads" as blanks, which is worse than having no markdown at all.
+    * The rescue pass (`ignore_graphics=True`) recovers every one of those pages —
+      byte-for-byte the same letters the text layer has — but sees no tables at all.
+
+    So: render every page the first way, measure it against the text layer, and for any
+    page that came up short render it the second way and keep the fuller text, with the
+    first pass's tables appended under a labelled marker. Nothing is dropped, and where
+    the two disagree the page says so instead of quietly picking one.
+    """
+    import pymupdf4llm
+
+    version = getattr(pymupdf4llm, "__version__", "unknown")
+    chunks = pymupdf4llm.to_markdown(pdf_path, page_chunks=True, show_progress=False)
+    pages, tables = [], []
+    for c in chunks:
+        pages.append(_clean_chunk(c))
+        tables.append(len(c.get("tables") or []))
+
+    short = [
+        i for i, md in enumerate(pages)
+        if i < len(text_pages)
+        and alnum_len(text_pages[i])
+        and alnum_len(md) < MD_COMPLETENESS_FLOOR * alnum_len(text_pages[i])
+    ]
+    rescued = []
+    if short:
+        redone = pymupdf4llm.to_markdown(
+            pdf_path, pages=short, page_chunks=True, show_progress=False,
+            ignore_graphics=True,
+        )
+        for i, c in zip(short, redone):
+            md = _clean_chunk(c)
+            if alnum_len(md) <= alnum_len(pages[i]):
+                continue  # the graphics pass was already the fuller one
+            table_rows = TABLE_ROW_RE.findall(pages[i])
+            if table_rows:
+                md = md.rstrip() + "\n\n" + MD_RESCUED_TABLES + "\n\n" + "\n".join(table_rows) + "\n"
+            pages[i] = md
+            rescued.append(i + 1)
+    return pages, tables, rescued, version
+
+
+# Markdown decoration a heading may be wrapped in. Stripped for ANCHORING only — the
+# stored text keeps every character, because the emphasis is how a table cell says
+# "this row is the header".
+MD_DECORATION_RE = re.compile(r"[*_`#\[\]]")
+
+
+def norm_md_title(title):
+    return re.sub(r"\s+", " ", MD_DECORATION_RE.sub("", title)).strip()
+
+
+def build_md_norm(stream):
+    """build_norm's counterpart for markdown: collapse whitespace AND drop emphasis,
+    keeping a map back to original offsets so an anchor lands on real text."""
+    chars, back, prev_space = [], [], True
+    for i, ch in enumerate(stream):
+        if MD_DECORATION_RE.match(ch):
+            continue
+        if ch.isspace():
+            if not prev_space:
+                chars.append(" ")
+                back.append(i)
+            prev_space = True
+        else:
+            chars.append(ch)
+            back.append(i)
+            prev_space = False
+    return "".join(chars), back
+
+
+def md_page_marker_body(stream, page_offsets, start, end):
+    """page_marker_body for markdown: the same [[PAGE n]] markers, but on their own
+    fenced-off line so they never fuse with a table row or a heading."""
+    out = []
+    pno = bisect_right(page_offsets, start)
+    out.append(f"\n[[PAGE {pno}]]\n\n")
+    pos = start
+    while pos < end:
+        nxt = page_offsets[pno] if pno < len(page_offsets) else end
+        out.append(stream[pos:min(nxt, end)])
+        pos = min(nxt, end)
+        if pos < end:
+            pno += 1
+            out.append(f"\n\n[[PAGE {pno}]]\n\n")
+    return "".join(out)
+
+
+def md_relfile(n):
+    sub = "markdown" if n.kind == "section" else "markdown-groups"
+    return f"extracted/{sub}/{n.slug()}.md"
+
+
+def write_markdown_files(nodes, md_stream, md_page_offsets, md_anchors, table_counts,
+                         revised_pages):
+    """One markdown file per TOC node, with a provenance header that says what this
+    rendering is good for and what still has to be checked against the PDF."""
+    written = 0
+    for n, (anchor, _method, end, page_start, page_end) in zip(nodes, md_anchors):
+        crumb = " > ".join(n.breadcrumb) if n.breadcrumb else "(top level)"
+        pages = f"{page_start}" if page_start == page_end else f"{page_start}-{page_end}"
+        ntables = sum(table_counts[p - 1] for p in range(page_start, page_end + 1)
+                      if 0 < p <= len(table_counts))
+        if n.kind == "section":
+            revised = "yes" if any(page_start <= p <= page_end
+                                   for p in revised_pages.get(n.sec_id, [])) else "no"
+            revised_line = f"- **Revised in this edition:** {revised}\n"
+        else:
+            revised_line = ""
+        header = (
+            f"# {n.title}\n\n"
+            f"> Fannie Mae **Selling Guide**, edition {EDITION} — PDF page(s) {pages}.\n"
+            f"> {NEVER_COMMIT}\n\n"
+            f"- **Where this sits:** {crumb}\n"
+            f"{revised_line}"
+            f"- **Tables rendered on these pages:** {ntables} "
+            f"(a count of what the renderer *found* — it is not a certification that "
+            f"there are no others; see README)\n"
+            f"- **Cite as:** `{n.sec_id or n.title.split(',')[0]}, p. {page_start}`\n\n"
+            f"---\n"
+        )
+        body = md_page_marker_body(md_stream, md_page_offsets, anchor, end) \
+            if end > anchor else "\n_(no text under this node — its sections are separate files)_\n"
+        with open(os.path.join(DIR, md_relfile(n)), "w") as fh:
+            fh.write(header + body + "\n")
+        written += 1
+    return written
+
+
+def write_markdown_stream(md_pages, nodes, path):
+    """The whole book as one markdown file, page-marked and section-labelled — the
+    markdown counterpart of selling-guide-text.txt, and the file to grep when you do
+    not yet know which section governs."""
+    label_at = {}
+    for n in nodes:
+        if n.kind == "section":
+            label_at.setdefault(n.page, n.title)
+    current = "(front matter)"
+    with open(path, "w") as fh:
+        fh.write(
+            f"# Fannie Mae Selling Guide — edition {EDITION}\n\n"
+            f"> {NEVER_COMMIT}\n>\n"
+            f"> Whole-book markdown rendering. Every page below is prefixed\n"
+            f"> `[[PAGE n | <section>]]`, so a plain `grep -n` names the governing\n"
+            f"> section and the PDF page to cite. Tables are rendered as markdown\n"
+            f"> tables — this is the layer to read a threshold matrix from.\n\n"
+        )
+        for i, text in enumerate(md_pages):
+            pno = i + 1
+            current = label_at.get(pno, current)
+            fh.write(f"\n\n[[PAGE {pno} | {current}]]\n\n")
+            fh.write(text)
+
+
+def verify_markdown(nodes, md_stream, md_anchors, md_page_offsets, report):
+    """The markdown layer's own proof, mirroring verify(): every section file present
+    and non-empty, segments tile the stream, anchors land where the TOC says."""
+    problems = []
+    sections = [(n, a) for n, a in zip(nodes, md_anchors) if n.kind == "section"]
+
+    for n, (anchor, method, end, _ps, _pe) in sections:
+        path = os.path.join(DIR, md_relfile(n))
+        if not os.path.exists(path):
+            problems.append(f"markdown: missing file {md_relfile(n)}")
+            continue
+        body = open(path).read().split("\n---\n", 1)[-1]
+        if len(body.strip()) < 40:
+            problems.append(f"markdown: near-empty section body {n.sec_id}")
+        if method == "page-fallback":
+            report["markdown_unanchored_sections"].append(n.sec_id)
+
+    covered = md_anchors[0][0] if md_anchors else len(md_stream)
+    for n, (anchor, _m, end, _ps, _pe) in zip(nodes, md_anchors):
+        if anchor != covered:
+            problems.append(f"markdown: coverage gap before {n.title!r}")
+            break
+        covered = end
+    else:
+        if covered != len(md_stream):
+            problems.append("markdown: coverage gap at end of document")
+
+    off_page = []
+    for n, (anchor, _m, _e, _ps, _pe) in sections:
+        apage = bisect_right(md_page_offsets, anchor)
+        if not (n.page <= apage <= n.page + 2):
+            off_page.append(f"{n.sec_id}@{apage}(toc {n.page})")
+    # Recorded, not fatal: markdown reorders a page's blocks by layout, so a heading
+    # that the text layer finds on its TOC page can legitimately drift a page here.
+    # The tracked fact layer's page numbers come from the text layer and are unmoved.
+    report["markdown_off_page_anchors"] = off_page
+
+    return problems
+
+
+def build_markdown_layer(pdf_path, nodes, npages, revised_pages, text_pages, report):
+    """Materialize the markdown layer. Returns a one-line summary, or None when
+    pymupdf4llm is not installed (an honest skip, never a silent one)."""
+    try:
+        md_pages, table_counts, rescued, version = markdown_pages(pdf_path, text_pages)
+    except ImportError:
+        return None
+
+    if version != PYMUPDF4LLM_PINNED:
+        print(
+            f"warning: pymupdf4llm {version} != pinned {PYMUPDF4LLM_PINNED} — table "
+            "detection and heading levels differ across versions",
+            file=sys.stderr,
+        )
+
+    md_stream, md_page_offsets = build_stream(md_pages)
+    md_norm, md_back = build_md_norm(md_stream)
+    md_anchors = compute_anchors(nodes, md_stream, md_norm, md_back, md_page_offsets,
+                                 npages, title_norm=norm_md_title, id_prefix=r"[#*_ ]*")
+
+    os.makedirs(MD_SECTIONS, exist_ok=True)
+    os.makedirs(os.path.join(EXTRACTED, "markdown-groups"), exist_ok=True)
+    written = write_markdown_files(nodes, md_stream, md_page_offsets, md_anchors,
+                                   table_counts, revised_pages)
+    write_markdown_stream(md_pages, nodes, os.path.join(DIR, MD_STREAM_NAME))
+
+    first = md_anchors[0][0] if md_anchors else len(md_stream)
+    with open(os.path.join(EXTRACTED, "markdown-groups", "front-matter.md"), "w") as fh:
+        fh.write(f"# Selling Guide cover pages (before the first TOC entry)\n\n> {NEVER_COMMIT}\n\n---\n")
+        fh.write(md_page_marker_body(md_stream, md_page_offsets, 0, first) + "\n")
+
+    problems = verify_markdown(nodes, md_stream, md_anchors, md_page_offsets, report)
+    # Completeness, page by page, against the text layer — the only rendering proven to
+    # lose nothing. This is the check that would have caught the 94 blank pages, so it
+    # runs on every extraction and its residue is a PROBLEM, not a note.
+    thin = []
+    for i, md in enumerate(md_pages):
+        want = alnum_len(text_pages[i]) if i < len(text_pages) else 0
+        if want and alnum_len(md) < MD_COMPLETENESS_FLOOR * want:
+            thin.append(f"p{i + 1}({alnum_len(md)}/{want})")
+    if thin:
+        problems.append(
+            f"markdown: {len(thin)} page(s) below {MD_COMPLETENESS_FLOOR:.0%} of the text "
+            f"layer after the rescue pass: {', '.join(thin[:12])}"
+            + (" …" if len(thin) > 12 else "")
+        )
+
+    report["pymupdf4llm"] = version
+    report["markdown_tables_rendered"] = sum(table_counts)
+    report["markdown_pages_with_tables"] = sum(1 for t in table_counts if t)
+    report["markdown_rescued_pages"] = rescued
+    report["markdown_completeness_floor"] = MD_COMPLETENESS_FLOOR
+    report["markdown_thin_pages"] = thin
+    report["markdown_problems"] = problems
+
+    nsec = sum(1 for n in nodes if n.kind == "section")
+    completeness = (f"every page ≥{MD_COMPLETENESS_FLOOR:.0%} of the text layer"
+                    if not thin else f"{len(thin)} STILL THIN")
+    summary = (
+        f"markdown: pymupdf4llm={version} {MD_STREAM_NAME} + {written} node files "
+        f"({nsec} sections) — {sum(table_counts)} tables rendered on "
+        f"{sum(1 for t in table_counts if t)} pages; "
+        f"{len(rescued)} page(s) rescued by the graphics pass; {completeness}"
+    )
+    if report["markdown_off_page_anchors"]:
+        summary += f"\n    off-page anchors (layout reorder, not fatal): {len(report['markdown_off_page_anchors'])}"
+    if problems:
+        summary += "\n    " + "\n    ".join(f"✗ {p}" for p in problems)
+    return summary
 
 
 # ----------------------------------------------------------------------- link corpus
@@ -583,9 +964,21 @@ def render_manifest(nodes, npages, toc_len, annotations, link_stats):
         "links": link_stats,
         "tracked": ["README.md", "INDEX.md", "section-index.tsv", "revised-sections.tsv",
                     "toc.json", "links.json", "manifest.json"],
-        "generated_gitignored": [PDF_NAME, "selling-guide-text.txt", "extracted/"],
+        "generated_gitignored": [PDF_NAME, "selling-guide-text.txt", MD_STREAM_NAME,
+                                 "extracted/"],
+        "renderings": {
+            "_": ("Two renderings of the same PDF pages, never two sources. text is "
+                  "faithful to reading order and is what grep wants; markdown "
+                  "reconstructs the Guide's TABLES, which the text layer flattens. "
+                  "The tracked fact layer is derived from the text layer alone, so it "
+                  "is identical on a machine without pymupdf4llm."),
+            "text": {"stream": "selling-guide-text.txt", "sections": "extracted/sections/",
+                     "requires": f"pymupdf=={PYMUPDF_PINNED}"},
+            "markdown": {"stream": MD_STREAM_NAME, "sections": "extracted/markdown/",
+                         "requires": f"pymupdf4llm=={PYMUPDF4LLM_PINNED}", "optional": True},
+        },
         "regenerate": "python3 scripts/extract-selling-guide.py",
-        "format_version": 3,
+        "format_version": 4,
     }
     return json.dumps(payload, indent=1, ensure_ascii=False) + "\n"
 
@@ -594,16 +987,23 @@ def render_index_md(nodes, npages):
     out = [
         "# Fannie Mae Selling Guide — section index\n\n",
         f"Edition **{EDITION}** · {npages} PDF pages. This index is tracked (titles and\n",
-        "page numbers are facts); the linked text files are **generated locally** by\n",
+        "page numbers are facts); the linked files are **generated locally** by\n",
         "`python3 scripts/extract-selling-guide.py` and are gitignored — run it once and\n",
         "every link below resolves. See [README.md](README.md) for why.\n\n",
+        "Each section links twice: **`md`** is the markdown rendering — read this one, it\n",
+        "keeps the Guide's tables intact — and **`txt`** is the plain-text rendering, which\n",
+        "flattens them. The markdown layer needs `pip3 install pymupdf4llm`; without it the\n",
+        "`md` links do not resolve and the `txt` links still do.\n\n",
     ]
     for n in nodes:
         indent = "  " * (n.level - 1)
         pages = f"p. {n.page_start}" if n.page_start == n.page_end else f"pp. {n.page_start}–{n.page_end}"
         if n.kind == "section":
             date = f" ({n.effective})" if n.effective else ""
-            out.append(f"{indent}- [`{n.sec_id}`]({n.relfile()}) {n.name}{date} — {pages}\n")
+            out.append(
+                f"{indent}- `{n.sec_id}` {n.name}{date} — {pages} "
+                f"· [md]({md_relfile(n)}) · [txt]({n.relfile()})\n"
+            )
         else:
             out.append(f"{indent}- **{n.title}** — {pages}\n")
     return "".join(out)
@@ -668,15 +1068,33 @@ def main():
     ap.add_argument("--section", metavar="ID", help="print one section (extracting first if needed)")
     ap.add_argument("--check", action="store_true",
                     help="verify the tracked fact layer matches the PDF; exit 1 on drift")
+    ap.add_argument("--markdown", action="store_true",
+                    help="require the markdown layer — the table-preserving rendering; exits "
+                         "nonzero if pymupdf4llm is missing instead of skipping it. Also "
+                         "selects the markdown file for --section. (By default the layer is "
+                         "built when pymupdf4llm is importable and skipped with a note if not.)")
+    ap.add_argument("--no-markdown", action="store_true",
+                    help="skip the markdown layer (keeps the run at the text layer's ~3s — this is "
+                         "what the SessionStart hook uses)")
     args = ap.parse_args()
 
+    if args.markdown and args.no_markdown:
+        sys.exit("--markdown and --no-markdown are contradictory")
+
     if args.section and not args.check:
-        # fast path: already extracted -> print with no PDF and no re-run
-        fast = os.path.join(EXTRACTED, "sections", args.section.strip() + ".txt")
+        # fast path: already extracted -> print with no PDF and no re-run. --markdown
+        # asks for the table-preserving rendering; without it, the text layer, which
+        # is always present once the corpus is materialized.
+        want = args.section.strip()
+        fast = (os.path.join(MD_SECTIONS, want + ".md") if args.markdown
+                else os.path.join(EXTRACTED, "sections", want + ".txt"))
         if os.path.exists(fast):
             with open(fast) as fh:
                 sys.stdout.write(fh.read())
             return
+        if args.markdown and os.path.exists(os.path.join(EXTRACTED, "sections", want + ".txt")):
+            print(f"markdown layer not built yet — run: python3 {os.path.relpath(__file__, ROOT)} --markdown",
+                  file=sys.stderr)
 
     pdf_path = acquire_pdf()
     digest = sha256_file(pdf_path)
@@ -757,6 +1175,10 @@ def main():
         "running_headers_stripped": header_hits,
         "anchor_methods": {},
         "unanchored_sections": [],
+        "pymupdf4llm": None,
+        "markdown_unanchored_sections": [],
+        "markdown_off_page_anchors": [],
+        "markdown_problems": [],
     }
     for n in nodes:
         report["anchor_methods"][n.anchor_method] = report["anchor_methods"].get(n.anchor_method, 0) + 1
@@ -780,6 +1202,25 @@ def main():
             fh.write(text)
 
     problems = verify(nodes, stream, page_offsets, doc, report)
+
+    # The markdown layer runs LAST and never touches anything above it: the tracked
+    # fact layer is already on disk and already derived from pymupdf alone, so a
+    # machine without pymupdf4llm produces byte-identical tracked files. That is what
+    # keeps --check and the CI extraction proof on one small pinned dependency.
+    md_summary = None
+    if not args.no_markdown:
+        md_summary = build_markdown_layer(pdf_path, nodes, npages, revised_pages,
+                                          stripped, report)
+        if md_summary is None:
+            note = (f"markdown layer skipped — pymupdf4llm not installed "
+                    f"(pip3 install pymupdf4llm=={PYMUPDF4LLM_PINNED}). The text layer above is "
+                    f"complete; markdown is the rendering that keeps TABLES intact.")
+            if args.markdown:
+                sys.exit(note.replace("skipped", "requested but unavailable"))
+            print(note, file=sys.stderr)
+        else:
+            problems.extend(report["markdown_problems"])
+
     with open(os.path.join(EXTRACTED, "extraction-report.json"), "w") as fh:
         json.dump(report, fh, indent=1)
         fh.write("\n")
@@ -797,6 +1238,7 @@ def main():
         f"{link_stats['malformed_urls']} malformed) {link_stats['xref_edges']} xref edges\n"
         f"  tracked:    section-index.tsv revised-sections.tsv toc.json links.json manifest.json INDEX.md\n"
         f"  gitignored: selling-guide-text.txt extracted/ ({len(sections)} section files) — never commit"
+        + (f"\n  {md_summary}" if md_summary else "")
     )
     if problems:
         print("\nVERIFICATION PROBLEMS:")
@@ -809,7 +1251,8 @@ def main():
         match = next((n for n in sections if n.sec_id == want), None)
         if not match:
             sys.exit(f"no section {want!r} in the {EDITION} TOC — check INDEX.md")
-        with open(os.path.join(DIR, match.relfile())) as fh:
+        rel = md_relfile(match) if (args.markdown and md_summary) else match.relfile()
+        with open(os.path.join(DIR, rel)) as fh:
             print("\n" + fh.read())
 
 

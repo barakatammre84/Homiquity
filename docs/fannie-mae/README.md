@@ -47,14 +47,19 @@ an honest gap, never a licence to answer from memory.
 **Gitignored** (the copyrighted work itself — regenerate, never commit):
 
 - `Selling-Guide_08-05-2026.pdf` — the full Guide, 1,185 pages.
+- **`selling-guide.md` and `extracted/markdown/<ID>.md` — the rendering to READ.** Same
+  pages, same page markers, same section spans, but the Guide's **tables survive as
+  tables** (840 of them across 701 pages). `python3 scripts/extract-selling-guide.py
+  --section B3-6-05 --markdown` prints one section. Needs `pip3 install pymupdf4llm`.
 - `selling-guide-text.txt` — full text, every page prefixed `[[PAGE n | <section>]]` so a
   plain `grep -n` names the governing section. No tooling needed to read it once generated.
   ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an anchor and reports
   zero matches on text that is verbatim present. Lines wrap mid-sentence; grep a fragment.
-- `extracted/sections/<ID>.txt` — one file per section (423), heading-anchored, with pages,
-  breadcrumb and revised-flag in the header; `python3 scripts/extract-selling-guide.py
-  --section B3-6-05` prints one. 🚨 Tables flatten in text extraction — verify any
-  threshold, matrix cell or limit against the PDF page (details in the front door README).
+- `extracted/sections/<ID>.txt` — the plain-text file per section (423), heading-anchored,
+  with pages, breadcrumb and revised-flag in the header. 🚨 **Tables flatten here** — that
+  is what the markdown rendering above is for. Either way, a threshold, matrix cell or
+  limit that decides money or eligibility is verified against the PDF page (details in the
+  front door README).
 
 Our findings from scrubbing the code against it — including which rules were checked and
 found **conforming** — live in
