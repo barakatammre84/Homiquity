@@ -215,6 +215,24 @@ export default function Landing() {
             </p>
 
             <div className="mx-auto mt-10 max-w-3xl text-left">
+              {/* A personality line for the mechanism directly below it, not a
+                  second headline. The H1 above stays outcome-first ("see what
+                  you have the power to do") per Landing.test.tsx and the note
+                  at the top of this file — a mechanism-first hero ("ask Homi
+                  anything…") was tried before and deliberately reverted. This
+                  caption sits where the mechanism itself already lives
+                  (CoachPromptBar's own placeholder is "Ask Homi anything…"),
+                  so it reinforces rather than duplicates the H1's promise. Kept
+                  to soft, unquantified puffery — no scope claim beyond what
+                  Homi's system prompt (server/services/coachingPrompt.ts)
+                  actually covers: intake, documents, and next steps, not
+                  property search or closing execution. */}
+              <p
+                className="mb-3 text-sm font-semibold text-foreground"
+                data-testid="text-hero-coach-intro"
+              >
+                Buying a home is simpler with a Homi in your corner.
+              </p>
               <CoachPromptBar />
             </div>
 
