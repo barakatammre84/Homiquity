@@ -140,7 +140,7 @@ export interface PreUwInput {
   incomeSources?: IncomeSourceEntry[] | null;
   /** Verified liability ledger from the latest soft pull (B3-6-05 math). */
   tradelines?: Tradeline[] | null;
-  /** Depository transactions from the latest VOA (B3-4.3-04 sourcing). */
+  /** Depository transactions from the latest VOA (B3-4.2-02 large-deposit sourcing). */
   transactions?: DepositoryTransaction[] | null;
   /** Subject property details from URLA (B3-3.8-01 multi-unit rental income). */
   subjectProperty?: {
@@ -275,8 +275,10 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
-  // --- Income seasoning (Fannie B3-3.2): supplementary income needs 24 months
-  // of history; 12–24 months only with compensating factors. -----------------
+  // --- Income seasoning (Fannie B3-3.5-01, "Length of Self-Employment"): a
+  // two-year history is generally required; under two years only where the
+  // returns show a full 12 months in the current business AND prior income at
+  // the same-or-greater level in the same field is documented. ---------------
   const seasoning = assessIncomeSeasoning(input.incomeSources);
   if (seasoning.unseasonedSources.length > 0 || seasoning.conditionalSources.length > 0) {
     const worst = [...seasoning.unseasonedSources, ...seasoning.conditionalSources].sort(
@@ -288,13 +290,17 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
       severity: blocking ? "blocking" : "warning",
       reason: blocking
         ? `Your ${worst.type.replace(/_/g, " ")} income has ${worst.months} months of history — standard guidelines require ${SEASONING_FULL_MONTHS} months before it can count toward qualifying. We can still qualify you on your other income.`
-        : `Your ${worst.type.replace(/_/g, " ")} income has ${worst.months} months of history — between 12 and ${SEASONING_FULL_MONTHS} months it can count only with strong compensating factors, which your tax returns document.`,
+        : `Your ${worst.type.replace(/_/g, " ")} income has ${worst.months} months of history — under ${SEASONING_FULL_MONTHS} months it can count only if your most recent returns reflect a full 12 months from the current business and the file also documents earlier income at the same or greater level in the same field. We will confirm both before counting it.`,
       requiredDocs: [
         {
           documentType: "tax_return",
           description: "Last two years of federal tax returns (1040s) covering the supplementary income",
         },
-        { documentType: "business_license", description: "Business license or contract evidencing the income's continuity" },
+        {
+          documentType: "business_license",
+          description:
+            "Business license or contract evidencing the income's continuity — and, for income under 24 months, documentation of prior income at the same or greater level in the same field (B3-3.5-01 makes that a separate loan-file item, not something the current business's returns can show)",
+        },
       ],
       metrics: {
         shortestSeasoningMonths: worst.months,
@@ -362,8 +368,9 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
-  // --- Large-deposit sourcing (Fannie B3-4.3-04): single deposits over 50% of
-  // monthly qualifying income must be documented. ----------------------------
+  // --- Large-deposit sourcing (Fannie B3-4.2-02, "Evaluating Large Deposits"):
+  // a single deposit exceeding 50% of total monthly qualifying income. B3-4.3-04
+  // governs only the gift RESOLUTION path, not the sourcing rule itself. -------
   if (!isNaN(income) && income > 0) {
     const deposits = detectSignificantDeposits(input.transactions, income / 12);
     if (deposits.length > 0) {

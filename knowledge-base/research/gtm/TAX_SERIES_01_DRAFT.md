@@ -62,6 +62,6 @@ This article is educational information, not tax advice or financial advice. Tal
 - [ ] No Reg Z trigger terms, no rate/payment figures — verified
 - [ ] No approval/pre-approval language (charter Lane 2) — verify final copy
 - [ ] Underwriting add-back list sanity-checked against Fannie Mae SEI guidance
-      (docs/fannie-mae/ + Selling Guide B3-3.2) — do not publish from memory
+      (docs/fannie-mae/ + Selling Guide B3-3.5-01 and B3-3.6-03) — do not publish from memory
 - [ ] "Not tax advice" disclaimer present — verified
 - [ ] No §7216 exposure: article solicits no tax-preparer data sharing — verified
