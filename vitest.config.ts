@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
@@ -13,10 +13,23 @@ export default defineConfig({
     // work therefore crossed a 15s ceiling at random — tests/statusVocabulary.test.ts and
     // tests/intakeNeverDenies.test.ts both did, neither for a reason in the code.
     //
-    // That matters more than a slow suite. `main` no longer requires a CI status check
-    // (Actions billing failed; development is local-only), so .githooks/pre-push is the
-    // only gate there is. A gate that fails at random teaches --no-verify, and that habit
-    // disables it permanently — the exact failure the hook's own header warns about.
+    // That matters more than a slow suite, because a gate that fails at random teaches
+    // --no-verify, and that habit disables it permanently — the exact failure the
+    // pre-push hook's own header warns about.
+    //
+    // CORRECTED 2026-08-24. This paragraph used to read: "`main` no longer requires a
+    // CI status check (Actions billing failed; development is local-only), so
+    // .githooks/pre-push is the only gate there is." That was true for the 2026-08-19..22
+    // outage and false afterwards — .githooks/pre-push:70 already said "CI is back" while
+    // this file still said it was dead. Two load-bearing config files stating opposite
+    // facts about whether anything checks the code is worse than either being wrong
+    // alone: a session reads whichever it opens first and calibrates on it.
+    //
+    // What is true now: CI runs on every PR, the `gate` job is the required status check
+    // on `main`, and since 2026-08-24 it no longer exempts drafts. The pre-push hook is
+    // an early warning, not the gate. If CI ever goes dark again, fix THIS comment in the
+    // same commit that changes the posture — a stale reassurance is the failure mode this
+    // repo keeps paying for.
     //
     // Deliberately 45s and not 300s: a genuinely hung test must still be caught. If a test
     // needs more than this, the test is the problem — profile it, do not raise this again.
@@ -27,319 +40,60 @@ export default defineConfig({
     // Unit / logic tests. Pure in-process logic — no running HTTP server and no
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
-    include: [
-      "tests/inertButtons.test.ts",
-      "tests/amortization.test.ts",
-      // The reduced-motion accessibility floor — a presence ratchet against
-      // someone deleting it while refactoring index.css.
-      "tests/reducedMotion.test.ts",
-      // The radius scale — a presence ratchet. An undeclared rung silently
-      // inherits Tailwind's default instead of erroring; that is how xl and lg
-      // rendered identically for the life of the project.
-      "tests/radiusScale.test.ts",
-      // The advertising gate on "we shop your file" — a compliance rail, so it
-      // runs in the gate rather than living as an untested constant.
-      "tests/lenderPanel.test.ts",
-      // One name for the assistant in user-visible copy. It drifted to four
-      // across a single visitor journey with the suite fully green.
-      "tests/assistantNaming.test.ts",
-      "tests/livenessProbe.test.ts",
-      "tests/cronSchedules.test.ts",
-      // The CI trigger surface. A `branches:` filter under pull_request means a
-      // stacked PR gets zero check-runs while still reporting mergeStateStatus CLEAN.
-      "tests/ciTriggers.test.ts",
-      "tests/accessControl.test.ts",
-      "tests/commitmentLetterProvenance.test.ts",
-      "tests/uploadsUnavailableCopy.test.ts",
-      "tests/liveCreditPullImport.test.ts",
-      "tests/creditVendorInterlock.test.ts",
-      "tests/clientIp.test.ts",
-      "tests/securityHeaders.test.ts",
-      "tests/cspViolationReport.test.ts",
-      "tests/canonicalHost.test.ts",
-      "tests/zodSchemaSemantics.test.ts",
-      "tests/routeGates.test.ts",
-      "tests/queryErrorHandling.test.ts",
-      "tests/activeApplicationListParity.test.ts",
-      "tests/apiRequestConvergence.test.ts",
-      "tests/queryKeyConvergence.test.ts",
-      "tests/clientSchemaImports.test.ts",
-      "tests/borrowerTaskView.test.ts",
-      "tests/borrowerDocumentView.test.ts",
-      "tests/borrowerActivityView.test.ts",
-      "tests/rateProductHeadings.test.ts",
-      "tests/migrationLedgerGuard.test.ts",
-      "tests/securityReviewGuard.test.ts",
-      // TEAM_PRACTICES §10 — the Selling Guide authority gate.
-      "tests/sellingGuideAuthorityGuard.test.ts",
-      // The corpus coherence guard (pnpm guard:corpus). Pins the constant-parse
-      // against the real extractor so a renamed constant reds the suite instead
-      // of leaving the guard silently checking nothing, plus every failing
-      // direction (sha drift, count mismatch, unknown xref id, hand-edit
-      // tripwire, stale coverage edition) and the INERT-when-absent rule.
-      "tests/sellingGuideCorpusGuard.test.ts",
-      // F-0818-11 — the DU casefile DTI must include the proposed housing payment.
-      "tests/ausCasefileDti.test.ts",
-      "tests/userPhones.test.ts",
-      "tests/dependabotReactGrouping.test.ts",
-      "tests/loCommsLint.test.ts",
-      "tests/borrowerConditionView.test.ts",
-      "tests/loanProducts.test.ts",
-      "tests/loCompensation.test.ts",
-      "tests/compensationElectionQmGate.test.ts",
-      "tests/platformFeeSchedule.test.ts",
-      "tests/feeTolerance.test.ts",
-      "tests/rateLockConfirmation.test.ts",
-      "tests/leDisclosureBaseline.test.ts",
-      "tests/counterpartyAndCompensation.test.ts",
-      "tests/lenderApprovalControl.test.ts",
-      "tests/compensationClawback.test.ts",
-      "tests/revenueRecognition.test.ts",
-      "tests/costEntryDisclosureImpact.test.ts",
-      "tests/commissionPayout.test.ts",
-      "tests/feeProvenanceAndCosts.test.ts",
-      "tests/leDisclosedFeeProvenance.test.ts",
-      "tests/nPlusOneBatching.test.ts",
-      "tests/complaintEscalation.test.ts",
-      "tests/cycleTimeReport.test.ts",
-      "tests/ruleEngine.test.ts",
-      // The Research state of the guideline loop. It went silent for 47 days
-      // with every gate green — a monitor that stops running emits nothing to
-      // be wrong about, and two of its four sources report false-clean.
-      "tests/regulatoryWatch.test.ts",
-      // The Selling Guide edition & link watcher, on injected fetch. Its
-      // load-bearing rule is denied-is-not-rot: the first seed run took the
-      // agent proxy's 403s for link rot and emitted 293 false signals. Also
-      // pins the host short-circuit, the sha-based new-edition signal (founder
-      // runbook, never auto-cutover), and the offline freshness ratchet.
-      "tests/sellingGuideWatch.test.ts",
-      "tests/decisionEngineGaps.test.ts",
-      // WF1-002: the engine's compensation-independent pricing projection.
-      "tests/paymentProjection.test.ts",
-      // ARC-3: the borrower-facing what-if, on the SAME derivation as the LE.
-      "tests/borrowerWhatIf.test.ts",
-      // WF2-F4: the URLA section-4a loanDetails write path.
-      "tests/urlaLoanDetailsSave.test.ts",
-      // The three wire states of an intake field (absent / present / null =
-      // clear), and the proof the AI coach can never reach the clear.
-      "tests/intakeClearSemantics.test.ts",
-      "tests/funnelDraftRoundTrip.test.ts",
-      "tests/pipelineEngineStageTransitions.test.ts",
-      "tests/activeBuyerPromotion.test.ts",
-      "tests/docRequestDraft.test.ts",
-      "tests/funnelDraftPersistence.test.ts",
-      "tests/adminPredicate.test.ts",
-      "tests/extensionFeeAndRegZBasis.test.ts",
-      "tests/contingentLiabilities.test.ts",
-      "tests/businessChannel.test.ts",
-      "tests/scenarioSimulator.test.ts",
-      "tests/cockpitScoping.test.ts",
-      "tests/signalEngine.test.ts",
-      "tests/acceleratorProgress.test.ts",
-      "tests/adversarialPersonas.test.ts",
-      "tests/adverseActionNotice.test.ts",
-      "tests/adverseActionDelivery.test.ts",
-      "tests/adverseActionPdf.test.ts",
-      "tests/adverseActionFcraChokepoint.test.ts",
-      "tests/adverseActionPregenerateHardening.test.ts",
-      "tests/apr.test.ts",
-      "tests/aprValidation.test.ts",
-      "tests/structureTranslation.test.ts",
-      "tests/encryptionRotation.test.ts",
-      "tests/fairLendingAnalysis.test.ts",
-      "tests/trid.test.ts",
-      "tests/documentNotesTrustBoundary.test.ts",
-      "tests/creditConsentScope.test.ts",
-      "tests/creditSimulationGuards.test.ts",
-      "tests/kycClearanceWorkflow.test.ts",
-      "tests/onboardingProfileAttestation.test.ts",
-      // Revised-LE deadline math (Reg Z §1026.19(e)(4)(i)) — sibling of trid.test.ts.
-      // Was in NEITHER config since it landed, so its 10 assertions had never run
-      // (same class as F-013's maintenanceMode.test.ts). Pure unit test: no HTTP, no DB.
-      "tests/changeOfCircumstance.test.ts",
-      "tests/lookupResolver.test.ts",
-      "tests/mismoValidation.test.ts",
-      "tests/preApprovalMachine.test.ts",
-      "tests/letterIntegrity.test.ts",
-      "tests/preUnderwriting.test.ts",
-      "tests/lifecycleEngine.test.ts",
-      "tests/homeownerHubWrites.test.ts",
-      "tests/underwritingNuance.test.ts",
-      // Pins the DTI debt-summation rules to Selling Guide B3-6-05 / B3-6-07.
-      // Every rule here previously sat on a branch the liability vocabulary
-      // could not reach, so it never ran and the suite stayed green.
-      "tests/sellingGuideMonthlyDebt.test.ts",
-      "tests/liabilityExclusions.test.ts",
-      // B3-6-03 PITIA composition: association dues were absent from the
-      // decision path, and a null on a condo must gap rather than read as zero.
-      "tests/sellingGuideHousingExpense.test.ts",
-      // B2-1.3: the funnel collects a cash-out purpose the engine never read,
-      // so refi files were measured against purchase LTV ceilings.
-      "tests/sellingGuideLoanPurpose.test.ts",
-      // B3-5.3-07: the declarations table reached document generation and MISMO
-      // scoring and never the decision path — a declared foreclosure was invisible.
-      "tests/sellingGuideDerogatoryEvents.test.ts",
-      "tests/incomeOrchestrator.test.ts",
-      "tests/incomeTypes.test.ts",
-      "tests/incomeCutoverParity.test.ts",
-      "tests/nonQmProgramGate.test.ts",
-      "tests/halalLaneGate.test.ts",
-      "tests/accuracyLoop.test.ts",
-      "tests/underwritingEdgeCases.test.ts",
-      "tests/selfEmploymentIncome.test.ts",
-      "tests/complianceInvariants.test.ts",
-      "tests/scenarioCatalog.test.ts",
-      "tests/statusVocabulary.test.ts",
-      "tests/borrowerJourney.test.ts",
-      "tests/routeGateDrift.test.ts",
-      "tests/intakeSchema.test.ts",
-      "tests/illinoisDpaSeed.test.ts",
-      "tests/stageRequirements.test.ts",
-      "tests/fileHealth.test.ts",
-      "tests/borrowerStateMachine.test.ts",
-      "tests/ssnVault.test.ts",
-      "tests/loginLockout.test.ts",
-      // The policy is pure; the defect was that it never reached the DB.
-      // This one asserts on the columns the storage layer actually writes.
-      "tests/loginLockoutPersistence.test.ts",
-      "tests/socialAuthProviders.test.ts",
-      "tests/marketDataParsers.test.ts",
-      "tests/valueEstimate.test.ts",
-      "tests/propertyEligibility.test.ts",
-      "tests/errorMessage.test.ts",
-      "tests/mismoMersMin.test.ts",
-      "tests/mismoExport.test.ts",
-      "tests/quietHours.test.ts",
-      "tests/mcpAudit.test.ts",
-      "tests/mcpAgentIdentity.test.ts",
-      // F-042: the soft-pull tool's FCRA gate runs BEFORE the cached-pull
-      // read, and the consent's type must cover the pull.
-      "tests/mcpSoftPullGate.test.ts",
-      "tests/smsCompliance.test.ts",
-      // X-Twilio-Signature verification on the inbound SMS webhook — pins the
-      // algorithm against Twilio's published test vector and the route's
-      // fail-closed posture.
-      "tests/twilioWebhookSignature.test.ts",
-      // Outbound delivery receipts: that ONLY error 21610 converges the opt-out
-      // ledger, and that the status callback authenticates against its OWN URL.
-      "tests/twilioMessageStatus.test.ts",
-      "tests/errorMonitoring.test.ts",
-      "tests/auditReanchor.test.ts",
-      "tests/auditChainTruncation.test.ts",
-      "tests/qmThresholds.test.ts",
-      "tests/specialFeatureCodes.test.ts",
-      "tests/loanDeliveryEdits.test.ts",
-      "tests/brokerSubmissionReadiness.test.ts",
-      "tests/incomeAnalysisPackage.test.ts",
-      "tests/borrowerIncomeView.test.ts",
-      "tests/lenderSubmission.test.ts",
-      "tests/pipelineEngineDocumentRequirements.test.ts",
-      "tests/leadNotifications.test.ts",
-      "tests/uploadsPresignedOnly.test.ts",
-      "tests/rateLimitRelaxed.test.ts",
-      "tests/betaGate.test.ts",
-      "tests/prelaunchGate.test.ts",
-      "tests/prelaunchPublicSurface.test.ts",
-      "tests/taxInsight.test.ts",
-      "tests/extractionService.test.ts",
-      "tests/taxDocumentIntelligence.test.ts",
-      "tests/taxReconciliation.test.ts",
-      "tests/situationClassifier.test.ts",
-      "tests/readinessReconciliation.test.ts",
-      "tests/documentFacts.test.ts",
-      "tests/readinessSelfAttestation.test.ts",
-      "tests/extractionReadinessWiring.test.ts",
-      "tests/extractionPersistence.test.ts",
-      "tests/documentConfidence.test.ts",
-      "tests/documentReview.test.ts",
-      "tests/cpaPartners.test.ts",
-      "tests/partnerProfiles.test.ts",
-      "tests/mismoXsdValidation.test.ts",
-      "tests/approvalStrength.test.ts",
-      "tests/buyingPowerEstimate.test.ts",
-      "tests/loanScenarioMatrix.test.ts",
-      "tests/pricingAdapterMI.test.ts",
-      "tests/loanEstimateMI.test.ts",
-      "tests/documentTypeAliases.test.ts",
-      "tests/localObjectStorage.test.ts",
-      "tests/postAuthRoute.test.ts",
-      "tests/borrowerOfferView.test.ts",
-      "tests/queryParams.test.ts",
-      "tests/spaCatchAll.test.ts",
-      "tests/seoPrerender.test.ts",
-      "tests/coachProfileSync.test.ts",
-      "tests/coachTools.test.ts",
-      "tests/coachLintFilter.test.ts",
-      "tests/coachSse.test.ts",
-      "tests/autopilotFollowUps.test.ts",
-      "tests/autopilotAusFollowUps.test.ts",
-      "tests/autopilotDecisionRelay.test.ts",
-      "tests/autopilotConsole.test.ts",
-      "tests/autopilotStatus.test.ts",
-      "tests/riskBrief.test.ts",
-      "tests/sensitiveInputGuard.test.ts",
-      "tests/licensedStates.test.ts",
-      "tests/documentStatus.test.ts",
-      "tests/documentReviewNotifications.test.ts",
-      "tests/documentConditionRevert.test.ts",
-      "tests/documentTaskOwnerRole.test.ts",
-      "tests/taskCancellation.test.ts",
-      "tests/taskEngineSlaSeed.test.ts",
-      "tests/uploadValidation.test.ts",
-      "tests/documentChecklist.test.ts",
-      "tests/documentUploadTerminalGuard.test.ts",
-      "tests/complianceScore.test.ts",
-      // Appended at the END, not at the top anchor. #440 and #443 both went
-      // stale without merging because every concurrent PR inserted its entry
-      // just after "tests/accessControl.test.ts", so each one conflicted with
-      // whichever sibling merged first. The list is an explicit allowlist by
-      // design — an unlisted test file is silently never run — so the fix is
-      // to stop contending for one line, not to replace it with a glob.
-      "tests/emailProviderObservability.test.ts",
-      // The zod ↔ @hookform/resolvers pairing. A mismatch there turns every
-      // failed validation into an unhandled rejection instead of a form error,
-      // which deadens submit/continue buttons app-wide with no visible symptom.
-      // Pure unit test: no HTTP, no DB.
-      "tests/formResolverContract.test.ts",
-      // Rent reporting, Phase 0. metro2Gate is the self-releasing citation gate on the
-      // fixed-width compiler (sibling of nonQmProgramGate); rentFurnishing pins the
-      // provenance gate, the queue state machine, and that billing stays off.
-      "tests/metro2Gate.test.ts",
-      "tests/rentFurnishing.test.ts",
-      "tests/creditMonitoring.test.ts",
-      "tests/rentReportingSurface.test.ts",
-      // Lease capture: the encryption round-trip, the view's refusal to leak ciphertext,
-      // UTC date semantics, and the validation boundary.
-      "tests/leaseCapture.test.ts",
-      // The rent surfaces' inbound paths — both routes shipped as orphans (2026-08-17
-      // audit); deleting a nav link is silent, so the links are pinned.
-      "tests/rentNavigation.test.ts",
-      "tests/urlaRowContent.test.ts",
-      "tests/urlaCoApplicantRemoval.test.ts",
-      // CTO_ROADMAP §3.2 — the compliance dashboard's per-application MISMO
-      // validation, now batched. Pins that the batched loader and the
-      // single-application one produce IDENTICAL verdicts.
-      "tests/mismoValidationBatch.test.ts",
-      "tests/fcraConsentGateBehavior.test.ts",
-      "tests/intakeNeverDenies.test.ts",
-      "tests/vaResidualEngineParity.test.ts",
-      "tests/inviteValidateAudit.test.ts",
-      "tests/mutationErrorHandling.test.ts",
-      "tests/homiFileTruth.test.ts",
-      "tests/homiReadinessDerivation.test.ts",
-      "tests/assistantIdentity.test.ts",
-      // The INTAKE_PAUSED kill switch. Landed in 5d2af554 and was in NEITHER
-      // config from that day to 2026-08-22 — the ops control that stops all new
-      // business had 5 assertions that had never once run. Found by
-      // scripts/test-collection-guard.cjs, whose orphan floor is now zero and
-      // keeps it that way. Pure unit test: no HTTP, no DB.
-      "tests/maintenanceMode.test.ts",
-      // The collected-count floor itself. `pnpm test` ran 111 of 118 client files
-      // and exited 0, three times under load — so the gate must now prove it ran
-      // everything on disk. This pins the guard's own logic against the real
-      // shortfall, and independently re-asserts the zero-orphan floor so it
-      // survives someone unwiring the guard from `pnpm test`.
-      "tests/testCollectionGuard.test.ts",
+    //
+    // THIS WAS AN ALLOWLIST OF ~230 HAND-TYPED PATHS UNTIL 2026-08-24.
+    //
+    // It was the most-churned file in the repository — 222 commits, more than
+    // package.json (92) and more than any source file. 172 of its last 195
+    // commits added nothing but test-path lines. Its globbed sibling,
+    // vitest.client.config.ts, has 3 commits in its whole life doing the same
+    // job for 125 files.
+    //
+    // The list carried no information: 248 test files in tests/ minus the 18
+    // integration files is exactly 230, the number that was typed out here. A
+    // glob computes it, and cannot be wrong.
+    //
+    // It also cost merges. The header that used to sit at the bottom of the list
+    // said it plainly: "#440 and #443 both went stale without merging because
+    // every concurrent PR inserted its entry just after
+    // tests/accessControl.test.ts, so each one conflicted with whichever sibling
+    // merged first." Two PRs died on one line of a file this glob replaces. With
+    // ~50 PRs a week the contention was continuous, and the advice that followed
+    // — append at the END, not the top — treated the symptom.
+    //
+    // WHAT STILL PROTECTS THIS. An allowlist did have one virtue: it failed
+    // closed on a typo'd path. A glob cannot, so the floor moved into
+    // scripts/test-collection-guard.cjs, which enumerates from disk with
+    // readdirSync and fails when a lane collects fewer files than exist. That
+    // guard is mechanism-agnostic — it caught `pnpm test` running 111 of 118
+    // files and exiting 0 — and it now also fails when a file is claimed by two
+    // lanes, which is the one new way a glob can be wrong.
+    include: ["tests/**/*.test.{ts,tsx}"],
+    // The integration lane's files, which need a live HTTP server and a seeded
+    // database. The glob above matches them; this drops them. They are listed
+    // ONE more time, in vitest.integration.config.ts, and the two lists cannot
+    // drift: test-collection-guard.cjs fails if a file lands in both lanes, and
+    // its orphan floor fails if a file lands in neither.
+    exclude: [
+      ...configDefaults.exclude,
+      "tests/api.test.ts",
+      "tests/authRecovery.test.ts",
+      "tests/leads.test.ts",
+      "tests/lookupMatrixCoverageGap.test.ts",
+      "tests/lookupMatrixLifecycle.test.ts",
+      "tests/loCommandCenter.test.ts",
+      "tests/intakeHandoff.test.ts",
+      "tests/intakeActionItems.test.ts",
+      "tests/rateLocks.test.ts",
+      "tests/lenderConditions.test.ts",
+      "tests/cocRoutes.test.ts",
+      "tests/mismoExportAccess.test.ts",
+      "tests/roleSeparation.test.ts",
+      "tests/pricingUnderwriting.test.ts",
+      "tests/taxInsightRoutes.test.ts",
+      "tests/cpaPartnerRoutes.test.ts",
+      "tests/partnerRoutes.test.ts",
+      "tests/partnerConsent.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

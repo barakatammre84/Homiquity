@@ -162,12 +162,79 @@ describe("expectedFor", () => {
 
     const { files, missingLiterals } = expectedFor(
       ["client/src/**/*.test.{ts,tsx}", "tests/real.test.ts", "tests/deleted.test.ts"],
+      [],
       root,
     );
     expect(files).toEqual(["client/src/components/A.test.tsx", "tests/real.test.ts"]);
     // A listed file that is not on disk is coverage the config CLAIMS but does
     // not have — reported, never quietly dropped from the expectation.
     expect(missingLiterals).toEqual(["tests/deleted.test.ts"]);
+  });
+
+  // The node lane's include became `tests/**/*.test.{ts,tsx}` on 2026-08-24,
+  // which also matches the 18 integration files it must not run. Reading
+  // `include` without `exclude` would compute an expected set 18 files too large
+  // and fail every run — loudly, for a reason that is not the code.
+  it("subtracts exclude, by literal and by glob", () => {
+    const root = mkdtempSync(join(tmpdir(), "hq-expected-ex-"));
+    mkdirSync(join(root, "tests", "sub"), { recursive: true });
+    writeFileSync(join(root, "tests", "unit.test.ts"), "");
+    writeFileSync(join(root, "tests", "integration.test.ts"), "");
+    writeFileSync(join(root, "tests", "sub", "nested.test.ts"), "");
+
+    const literal = expectedFor(
+      ["tests/**/*.test.{ts,tsx}"],
+      ["tests/integration.test.ts"],
+      root,
+    );
+    expect(literal.files).toEqual(["tests/sub/nested.test.ts", "tests/unit.test.ts"]);
+
+    const glob = expectedFor(["tests/**/*.test.{ts,tsx}"], ["tests/sub/*.test.ts"], root);
+    expect(glob.files).toEqual(["tests/integration.test.ts", "tests/unit.test.ts"]);
+
+    // An exclude naming a file that is not on disk is inert, not an error — it
+    // claims no coverage. Only a stale INCLUDE is a lie worth failing on.
+    const inert = expectedFor(["tests/**/*.test.{ts,tsx}"], ["tests/gone.test.ts"], root);
+    expect(inert.files).toHaveLength(3);
+    expect(inert.missingLiterals).toEqual([]);
+  });
+
+  // An exclude the mini-glob cannot translate must throw rather than silently
+  // matching nothing, which would inflate the expected set — the same reasoning
+  // that already guards `include`.
+  it("throws on an unsupported exclude construct instead of dropping nothing", () => {
+    // Third arg omitted: expectedFor defaults to the repo root, whose tests/
+    // directory exists, so the include expands and the throw comes from the
+    // exclude — which is what this asserts.
+    expect(() => expectedFor(["tests/**/*.test.ts"], ["tests/@(a|b).test.ts"])).toThrow(
+      /unsupported glob construct/,
+    );
+  });
+});
+
+// -----------------------------------------------------------------------------
+// A file in TWO lanes is the one new way a glob can be wrong: `tests/**` matches
+// the integration files, so vitest.config.ts excludes them by name. Forget that
+// exclude and the file runs in the node lane too, with no HTTP server, failing
+// for a reason that is not the code. This asserts the real configs are disjoint,
+// so neither list can drift from the other.
+// -----------------------------------------------------------------------------
+describe("the lanes are disjoint", () => {
+  it("no test file is claimed by more than one lane", async () => {
+    const configs = [...LANES.map((l: { config: string }) => l.config), ...COVERAGE_ONLY];
+    const claims = new Map<string, string[]>();
+
+    for (const config of configs) {
+      const { include, exclude } = await loadInclude(config);
+      for (const f of expectedFor(include, exclude).files) {
+        claims.set(f, [...(claims.get(f) ?? []), config]);
+      }
+    }
+
+    const doubles = [...claims.entries()]
+      .filter(([, cfgs]) => cfgs.length > 1)
+      .map(([f, cfgs]) => `${f} (${cfgs.join(" + ")})`);
+    expect(doubles).toEqual([]);
   });
 });
 
@@ -185,8 +252,10 @@ describe("every test file on disk belongs to a lane", () => {
     const stale: string[] = [];
 
     for (const config of configs) {
-      const include = await loadInclude(config);
-      const { files, missingLiterals } = expectedFor(include);
+      const { include, exclude } = await loadInclude(config);
+      // Exclude counts toward coverage too: a file the node lane globs in and
+      // then drops is covered only if another lane includes it.
+      const { files, missingLiterals } = expectedFor(include, exclude);
       for (const f of files) covered.add(f);
       for (const m of missingLiterals) stale.push(`${config}: ${m}`);
     }

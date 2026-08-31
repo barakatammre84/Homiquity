@@ -116,19 +116,35 @@ jobs:
     # Recovery if it does deadlock: re-point the rule with the PATCH above, or turn
     # enforce_admins off temporarily (Settings → Branches). Both need repo admin.
     name: gate (typecheck · tests · schema guard)
-    # COST (KTLO-2), on top of #620. Two classes of run that could never have
-    # changed a verdict:
+    # DRAFTS ARE GATED. The exemption that used to sit in the `if:` below —
+    # `github.event.pull_request.draft == false` — was removed on 2026-08-24.
+    # The reason is written down because the same trap looks attractive every
+    # time CI minutes get counted.
     #
-    #   not a draft    — a draft cannot merge, so gating every push to one buys
-    #                    nothing a later run does not also buy. `ready_for_review`
-    #                    is already in `types`, so the first thing that happens
-    #                    when a draft becomes mergeable is a full gate.
-    #                    Honest sizing: ZERO of the 60 PRs opened 2026-08-18..20
-    #                    were drafts, so this saves nothing TODAY. It is here
-    #                    because this repo's own orphan-branch practice is to park
-    #                    a branch behind a draft PR rather than leave it bare —
-    #                    the moment that is followed at any volume, drafts become
-    #                    a standing invisible cost.
+    # It was added on an honest measurement, quoted verbatim from the comment it
+    # replaces: "ZERO of the 60 PRs opened 2026-08-18..20 were drafts, so this
+    # saves nothing TODAY." True when written. It stopped being true the moment
+    # agent sessions began opening every PR as a draft by default: on 2026-08-24,
+    # 14 of 23 open PRs were unchecked drafts, and 12 of the last 30 CI runs
+    # concluded `skipped` — every one of them on a claude/* branch, among them a
+    # P0 credential-leak fix. The exemption had quietly become the majority path.
+    #
+    # The merge gate was never the exposure: a draft cannot merge, and
+    # `ready_for_review` is in `types`, so a full gate still ran before merge.
+    # What the exemption removed was FEEDBACK DURING AUTHORING. A session pushes,
+    # opens its draft, reads a clean check list, and ends its turn believing the
+    # work is verified — no typecheck, no tests, none of the guards ever ran. It
+    # is never told it was wrong, so it cannot correct, and the next session
+    # reads that branch as precedent. That is this repo's signature defect —
+    # scripts/test-collection-guard.cjs names it, "the operation does not happen
+    # and nothing says so" — sitting on the gate itself.
+    #
+    # A draft is a work-in-progress signal, not a request to skip verification.
+    # If CI minutes need cutting again, cut them where a verdict is not at stake:
+    # the `concurrency` block below is the model. tests/ciTriggers.test.ts pins
+    # this, so restoring the exemption reds the suite.
+    #
+    # ONE class of run still skips, and it is genuinely verdict-free:
     #
     #   body actually  — `edited` is in `types` because guard:security reads the
     #   changed          PR BODY from the event payload, so a security review
@@ -141,7 +157,6 @@ jobs:
     #                    base.
     if: >-
       github.event_name == 'pull_request'
-      && github.event.pull_request.draft == false
       && !(github.event.action == 'edited'
            && !github.event.changes.body
            && !github.event.changes.base)
@@ -339,6 +354,42 @@ jobs:
         # (Job `name:` above deliberately unchanged — verbatim required-check string;
         # see the rename warning.)
         run: pnpm guard:kb
+      - name: Routine seat roster
+        # CHARTER.md §3/§3a and TEAM.md's seating chart are GENERATED from
+        # knowledge-base/routines/SEATS.tsv. This fails when they disagree with it, when an
+        # active seat's definition file is missing, when a living doc names a scheduled task
+        # the roster does not know, or when a paused/unregistered seat carries no reason and
+        # no reviewBy.
+        #
+        # WHY IT EXISTS. On 2026-08-24 §3 presented sixteen live seats; the scheduler held
+        # six. Ten definitions sat on disk unregistered — Evening Triage among them, the seat
+        # that reads every other seat's report — and TEAM.md marked three of the ten "yes,
+        # registered". §11 has always said a definition without a registration is a fossil;
+        # nothing enforced it, which is §0 recurring inside the file that records it.
+        #
+        # --no-freshness: the roster also carries a `Registry read` date, because no CI job
+        # can read either scheduler and the roster is therefore a snapshot. That half is
+        # calendar-driven and stays OUT of the required check for the same reason the
+        # doc-freshness guard does (see doc-freshness.yml) — it would go red on a date, for a
+        # reason no PR caused. `pnpm checkup` and seat-roster.yml run the full check.
+        run: pnpm guard:seats --no-freshness
+      - name: Gating reality (a required field nothing collects)
+        if: steps.scope.outputs.code == 'true'
+        # A completeness scorer marks a field `required`; nothing under client/src ever
+        # collects it. Every real file then fails the gate forever while every SEEDED file
+        # sails through — so the suite is green and the gate is impassable.
+        #
+        # WHY IT EXISTS. #491 (42813a0d0e2e): "section 5 required a citizenship column
+        # nothing writes, blocking every application". Its own commentary names the
+        # mechanism: "It went unnoticed because server/scripts/seedDemoFile.ts sets the
+        # field, so demo files passed the gate that no genuine file could." Scored against
+        # the 45 real shipped defects of 2026-07-03..08-23, this check is worth 2/45 — more
+        # than any intervention proposed at the time, none of which scored above zero.
+        #
+        # The baseline is a NAMED SET, not a count, unlike its sibling ratchets: fix one
+        # unsatisfiable field and introduce another and a count stays level and reports
+        # success. Swapping one instance of the defect for another IS the defect.
+        run: pnpm guard:gating
       - name: Doc staleness ratchet
         # Dead vocabulary in LIVING docs vs scripts/doc-staleness-baseline.json
         # (ratchet: counts may only go down). Metrics: kb/ paths, npm-as-instruction,

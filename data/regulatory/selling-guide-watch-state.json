@@ -157,2098 +157,2098 @@
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "http://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "http://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "http://portal.hud.gov/hudportal/HUD?src=/topics/limited_denials_of_participation": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "http://singlefamily.fanniemae.com/media/document/pdf/form-1073-hybrid": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "http://www.fanniemae.com/portal/index.html": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "http://www.ibts.org/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "http://www.fhfa.gov/SupervisionRegulation/LegalDocuments/Pages/SuspendedCounterpartyProgram.aspx": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://ami-lookup-tool.fanniemae.com/amilookuptool/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://askpoli.fanniemae.com/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://capitalmarkets.fanniemae.com//mortgage-backed-securities/mbs-prospectuses": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://capitalmarkets.fanniemae.com/mortgage-backed-securities": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://capitalmarkets.fanniemae.com/mortgage-backed-securities/mbs-trust-agreements": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://capitalmarkets.fanniemae.com/resources/file/mbs/pdf/pool-prefix-glossary.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://entp.hud.gov/idapp/html/condlook.cfm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://fanniemae.mbs-securities.com/fannie": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://fm.fanniemae.com/lsdu/index.html": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://fims.my.salesforce-sites.com/MortgageFraudReport/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://groundedsolutions.org/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://mla.dmdc.osd.mil/mla/#/home": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://selling-guide.fanniemae.com/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://selling-guide.fanniemae.com/external-resource/request-verification-employment-form-1005": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://pe.usps.com/text/pub28/welcome.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://sam.gov/content/exclusions": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://singlefamily.fanniemae.com": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/applications-technology": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/cash-remittance-system": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/condo-project-manager": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/desktop-underwriter-validation-service/du-validation-service-verification-report-vendors": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/fannie-mae-connect": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/income-calculator": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/loan-delivery": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/loan-quality-connect": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/pricing-execution-whole-loan": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/servicing-transfer-approval": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/technology-manager": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/technology-requirements": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/applications-technology/uniform-collateral-data-portal": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/become-fannie-mae-seller-or-servicer": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/credit-information-providers": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/delivering/uniform-mortgage-data-program/uniform-appraisal-dataset": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/delivering/uniform-mortgage-data-program/uniform-closing-dataset": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/delivering/uniform-mortgage-data-program/uniform-loan-delivery-dataset": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/fannie-mae-legal-documents": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/fannie-mae-selling-and-servicing-policy-archives": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/form-1002-mortgage-bankers-financial-reporting-form": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/form-582": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/form-582-lender-record-information": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/form/condo-project-manager-email-supp": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/job-aid/loan-delivery/topic/credit_scores.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/job-aid/loan-delivery/topic/loan_modifications.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/job-aid/loan-delivery/topic/welcomenew.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/job-aid/loan-quality-connect/topic/uploading_multiple_documents.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/job-aid/new-desktop-underwriter/topic/welcomenew.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/learning-center/applications/desktop-underwriter-desktop-originator-learning-center": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/4876/display": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/6501/display": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/doc/form-181": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/doc/form-3161": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/docx/form-2001": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/docx/form-3179": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/docx/legal-documents/form-3044-1": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2010-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2018-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2018-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2018-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2019-09-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-05-selling-guide-updates%20": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2020-07-selling-guide-updates%20": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-09-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-10-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2021-11-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-04-selling": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-09-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2022-10-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-09-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-10-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2023-11-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2024-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-09-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2025-10-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-01-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-02-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-03-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-04-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-05-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-06-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/announcement-sel-2026-07-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/appeal-and-independent-dispute-resolution-processes": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/appendix-phase-3-update": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/appraiser-independence-requirements-air": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/approved-mortgage-insurance-forms": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/approved-mortgage-insurers-and-related-identifiers": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/co-op-share-loan-documentation-requirements": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/community-seconds-checklist": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/du-potential-red-flag-messages-matrix": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/eligibility-matrix-current": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/emortgage-technical-requirements": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/emortgage-technology-solution-provider-list": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/fannie-mae-active-document-custodians": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/fannie-mae-selling-guide-supplement-uniform-appraisal-dataset-uad-36-policy": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1000a": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1001": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1003-5": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1004": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1004-desktop": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1004-hybrid": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1004c": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1004d": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1005": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1007": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1008": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1025": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1025?_ga=2.4718768.2024190095.1679000602-1805303271.1676060664": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1026": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1029": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1030": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1032": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1051": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1054": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1071": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1073": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1073-hybrid": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1073a": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1074": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1076": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1078": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1079": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1081": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1084": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1088": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1091": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1103": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1109": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1200": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1202": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-1204": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-20": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-2009": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-2009e": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-2014": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-2017": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-2090": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-2100": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-360": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-482": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-520": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-638": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/form-858": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/how-find-and-add-document-custodian": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/idr-retainer-agreement": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3140": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3150": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3158": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3170": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3185": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3441": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3730": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3731": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3732": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3733": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3739": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3749": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/legal-documents/form-3890": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/llpa-matrix-pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/market-condition-adjustment": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/pers-overview": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/property-data-collection-user-guide": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/property-data-collector-independence-requirement": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/requirements-document-custodians": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/special-feature-codes": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/standard-arm-plan-matrix": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/uad-specification-appendix-d-field-specific-standardization-requirements": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/pdf/uldd-implementation-guide": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/form-1035": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/form-1037": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/form-1038": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/form-1038a": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/income-eligibility-census-tract-lookup-spreadsheet": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/shared-equity-program-certified-list": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/xlsx/uniform-property-dataset": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/media/document/zip/security-instruments-all": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/mortgage-fraud-prevention": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/news-events/announcement-sel-2021-08-selling-guide-updates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/originating-underwriting/loan-limits": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/originating-underwriting/mortgage-products": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/originating-underwriting/mortgage-products/homeownership-education": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/originating-underwriting/mortgage-products/manufactured-housing-product-matrix": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/pricing-execution": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/pricing-execution/fannie-majors": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/property-data-api-resources?check_logged_in=1": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/property-data-resources": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/servicing": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/servicing/sellerservicer-initiated-post-purchase-adjustments": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://singlefamily.fanniemae.com/technology-integration/technology-integration-resources": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://studentaid.ed.gov/sa/types/loans/interest-rates": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/about-us/contact-us": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://www.fanniemae.com/about-us/trademarks": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://www.fanniemae.com/about-us/what-we-do/duty-serve/affordable-housing-preservation/shared-equity-certification": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://www.fanniemae.com/content/announcement/sel1802.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1804.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1806.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1901.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1902.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1903.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1904.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1905.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1906.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1907.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1908.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel1909.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/announcement/sel2001.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/eligibility_information/arm-matrix.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/eligibility_information/document-custodians-requirements.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/eligibility_information/eligibility-matrix.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/fact_sheet/appraiser-independence-requirements.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide/titling-requirements-for-manufactured-homes.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/1003irev.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/1004c.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/1004d.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/1005.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/1006.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/1074.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/2014.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/629.xls": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/guide_form/form-582-lender-record-information": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/job-aid/loan-delivery/topic/welcomenew.htm": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/job_aid/post-purchase-adjustments.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/pricing/llpa-matrix.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/content/tool/manufactured-homes-advantage-sticker.pdf": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/fmethics": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/media/document/pdf/consolidatedtechnologyguidepdf-0": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/media/document/pdf/information-security-and-business-resiliency-supplement": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/singlefamily/condo-project-manager": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/singlefamily/loan-limits": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/singlefamily/mortgage-products-education-counseling": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/singlefamily/technology-solutions": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/suppliers/existing-suppliers": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.fanniemae.com/tech-guide": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "host-blocked",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": null
     },
     "https://www.irs.gov": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://www.mersinc.org/index": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     },
     "https://www.fema.gov/": {
       "lastSuccess": null,
       "consecutiveFailures": 0,
       "status": "denied",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "httpStatus": 403
     }
   },
   "sources": {
     "sg-pdf-download": {
       "status": "unreachable",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "lastSuccess": null,
-      "consecutiveFailures": 1,
+      "consecutiveFailures": 2,
       "lastError": "HTTP 403"
     },
     "sg-html-landing": {
       "status": "unreachable",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "lastSuccess": null,
-      "consecutiveFailures": 1,
+      "consecutiveFailures": 2,
       "lastError": "HTTP 403"
     },
     "sg-html-part-b": {
       "status": "unreachable",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "lastSuccess": null,
-      "consecutiveFailures": 1,
+      "consecutiveFailures": 2,
       "lastError": "HTTP 403"
     },
     "sg-announcements": {
       "status": "unreachable",
-      "lastAttempt": "2026-08-23T16:26:52.533Z",
+      "lastAttempt": "2026-08-24T11:01:00.318Z",
       "lastSuccess": null,
-      "consecutiveFailures": 1,
+      "consecutiveFailures": 2,
       "lastError": "HTTP 403"
     }
   },
-  "lastRun": "2026-08-23T16:26:52.533Z",
+  "lastRun": "2026-08-24T11:01:00.318Z",
   "lastRunEnvironment": "claude-code-remote"
 }
