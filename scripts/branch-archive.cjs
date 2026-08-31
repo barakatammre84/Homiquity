@@ -370,7 +370,14 @@ const body =
   `branch\tsha\ttipDate\tbucket\tpr\tarchiveRef\tsubject\n` +
   rows
     .map((r) =>
-      [r.branch, r.sha, r.tipDate, r.bucket, r.prs.join(" ") || "-", r.tag || "-", r.subject].join("\t"),
+      // The `working` row freezes nothing. Its tip moves with every push — including
+      // the push that publishes this very file — so recording a sha there would make
+      // the manifest drift on its own commit, forever, and read as stale for a reason
+      // that is not drift. A live branch's tip is `git rev-parse` away; it is not a
+      // fact this census exists to preserve.
+      r.bucket === "working"
+        ? [r.branch, "-", "-", r.bucket, r.prs.join(" ") || "-", "-", "(live branch — tip moves with every push, deliberately not frozen)"].join("\t")
+        : [r.branch, r.sha, r.tipDate, r.bucket, r.prs.join(" ") || "-", r.tag || "-", r.subject].join("\t"),
     )
     .join("\n") +
   "\n";

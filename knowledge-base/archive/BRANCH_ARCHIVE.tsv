@@ -147,7 +147,7 @@ claude/agitated-chatterjee-af3449	014ff411442bd68b2954de9c9c037ca71432704b	2026-
 claude/design-cleanup-visual-tccg20	20ce7c57ef021a4087c28e0d3285050a7cf49b9b	2026-08-18	pr-head	681	-	design(calm-emerald): retire the royal-blue chrome — quiet light chrome, one emerald accent
 claude/exciting-booth-9b50cc	d8316ec1ec99f0da6c7e794750960f53303defc4	2026-08-20	in-main	-	-	docs(routine): deliverable QA sweep 2026-08-20 — domain 10 + the analytics loop (#639)
 claude/executive-dev-priorities-onpceu	3c16ea74dac2e9cc97df65131e186c2ffc976975	2026-08-24	pr-head	715	-	Merge remote-tracking branch 'origin/main' into claude/executive-dev-priorities-onpceu
-claude/file-router-organization-ol4k7i	e9d3759c021e100b59567a3c0b1e596e10eab6ed	2026-08-31	working	-	-	chore(archive): record where every branch's commits survive, before deleting any
+claude/file-router-organization-ol4k7i	-	-	working	-	-	(live branch — tip moves with every push, deliberately not frozen)
 claude/frontend-standardization-2	f6f492f23badfa21949abfbe60e67134efd55268	2026-08-12	pr-head	497 634	-	docs(routine): refresh the wiring-audit report head to current state
 claude/homi-homebuying-ai-5ddafy	17a43de38fdb39e61ed3843698d1dc192b9cd79a	2026-08-31	pr-head	714	-	Merge remote-tracking branch 'origin/main' into claude/homi-homebuying-ai-5ddafy
 claude/homiquity-doc-accuracy-88pyv3	7ccf66d80c6b4437a93776742a3ad09ad0678d25	2026-08-24	pr-head	713	-	docs(routine): record the DA-0823-28 ticket number (#720)
