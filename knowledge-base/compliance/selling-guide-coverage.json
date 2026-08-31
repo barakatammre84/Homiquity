@@ -1,7 +1,7 @@
 {
   "_comment": "Status data for the Selling Guide coverage map. The 423 section rows are NOT stored here — they are derived from docs/fannie-mae/selling-guide/section-index.tsv by scripts/selling-guide-coverage.cjs, which FAILS if any id below is not in that index. Anything absent from this file is `unreviewed`, which is the honest default and the whole point of the map.",
   "edition": "08-05-2026",
-  "updated": "2026-08-21",
+  "updated": "2026-08-23",
   "statuses": {
     "implemented": "A rule in the Guide is enforced by code on the decision path, named in `evidence`.",
     "partial": "Computed or partially encoded, but not binding on the decision, or missing a documented leg.",
@@ -53,9 +53,9 @@
       "verified": "2026-08-21"
     },
     "B2-1.2-01": {
-      "status": "implemented",
-      "evidence": "server/underwritingEngine.ts:381 resolves the CONVENTIONAL_MAX_LTV matrix on the decision path.",
-      "verified": "2026-08-21"
+      "status": "partial",
+      "evidence": "server/underwritingEngine.ts resolves the CONVENTIONAL_MAX_LTV matrix on the decision path — but this section states no maximum LTV to conform TO. Its two tables define how the ratio is CALCULATED (purchase: original loan amount over the lower of sales price or appraised value; refinance: over the current appraised value; plus co-op and financed-MI variants) and it then says 'Refer to the Eligibility Matrix for maximum allowable LTV ratios'. VERIFIED ON PDF sheets 179-181 by extracting the tables, because the flattened text makes them look like they might carry ceilings. We do not hold the Eligibility Matrix (gap G-14), so our ceilings are platform-conservative, not agency-verified. Downgraded from implemented on 2026-08-23; the calculation half conforms, the maximums half is unverifiable in-repo. See correction C-13.",
+      "verified": "2026-08-23"
     },
     "B2-2-03": {
       "status": "absent",
@@ -84,8 +84,8 @@
     },
     "B3-4.2-02": {
       "status": "partial",
-      "evidence": "server/services/underwritingNuance.ts:371 detectSignificantDeposits, called from preUnderwriting.ts:326 inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. Two comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Re-cited 2026-08-21. The id resolved, so no machine could catch it — this is the F-063 class, found only by reading.",
-      "verified": "2026-08-21"
+      "evidence": "server/services/underwritingNuance.ts detectSignificantDeposits, called from preUnderwriting.ts inside derivePreUnderwritingFlags. Same reachability caveat as B3-4.1-01: advisory-only, not read by either engine. SIX comments cited B3-4.3-04 (Personal Gifts) for large-deposit SOURCING; the governing section is this one, and gifts are only one way a deposit resolves. Two were re-cited on 2026-08-22 (routes/aus.ts, ausSubmission.ts:52) and the remaining four on 2026-08-23 (preUnderwriting.ts x2, ausSubmission.ts:110, autopilot/followUps.ts) — the 2026-08-21 note said 'two comments' and read as a closed cluster while four were still wrong. The id resolved, so no machine could catch it: this is the F-063 class, found only by reading. Partial, not implemented: the asset-reduction consequence and the qualifying-income denominator are gap G-23; the unmodelled conditions that make us over-ask are G-24.",
+      "verified": "2026-08-23"
     },
     "B3-5.1-01": {
       "status": "implemented",
@@ -114,8 +114,8 @@
     },
     "B4-2.1-01": {
       "status": "absent",
-      "evidence": "No condo/PUD project review of any kind — `project review` returns 0 hits. Only a condo LLPA adjustment in server/pricing.ts and one risk-flag string. REVISED IN THIS EDITION.",
-      "verified": "2026-08-21"
+      "evidence": "General Information on Project Standards, revised 08-05-2026. No project-standards code exists anywhere: grep for project review, PERS (word-bounded), single-entity and master-policy terms all return 0 across server/ shared/ client/src. The funnel collects property_type=condo and nothing downstream branches on it for eligibility, so a fully qualified borrower is never declined for the building. Re-verified 2026-08-23 as part of dispositioning gap G-6 (the sections revised in this edition).",
+      "verified": "2026-08-23"
     },
     "B7-1-02": {
       "status": "implemented",
@@ -124,8 +124,8 @@
     },
     "B7-3-02": {
       "status": "absent",
-      "evidence": "Property and flood insurance requirements. Flood appears only as Special Feature Codes 170/175/180; no flood-zone determination, no coverage-adequacy math. REVISED IN THIS EDITION.",
-      "verified": "2026-08-21"
+      "evidence": "Property insurance requirements for one- to four-unit properties, revised 08-05-2026. Still absent: no insurance-adequacy check, no coverage-amount test, no evidence-of-insurance document type. Each individual peril deductible must not exceed 5% of the coverage amount (PDF sheet 875). Re-verified 2026-08-23 while dispositioning gap G-6.",
+      "verified": "2026-08-23"
     },
     "D1-1-01": {
       "status": "partial",
@@ -144,8 +144,8 @@
     },
     "B3-4.3-04": {
       "status": "partial",
-      "evidence": "Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts:114, correctly).",
-      "verified": "2026-08-21"
+      "evidence": "Personal Gifts — donor eligibility, minimum borrower contribution and documentation are not implemented; the section is referenced only as the resolution path for a sourced large deposit (server/services/scenarioCatalog.ts F-DEPOSIT regulations list, correctly). Named by section rather than by line: the line moved from :114 to :116 on 2026-08-23 and the pointer went stale in one edit.",
+      "verified": "2026-08-23"
     },
     "B3-3.8-01": {
       "status": "implemented",
@@ -153,9 +153,9 @@
       "verified": "2026-08-21"
     },
     "B3-3.5-01": {
-      "status": "implemented",
-      "evidence": "Length of Self-Employment. server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Seasoning assessed in underwritingNuance.ts assessIncomeSeasoning.",
-      "verified": "2026-08-21"
+      "status": "partial",
+      "evidence": "Verification of Income is implemented: server/services/selfEmploymentIncome.ts via server/services/income/paths/selfEmployment.ts, on the decision path through the income orchestrator. Length of Self-Employment is only partly encoded — underwritingNuance.ts assessIncomeSeasoning tiers on self-reported yearsInRole, while the section's gate is what the most recent returns REFLECT (a full 12 months from the current business); the separate prior-income documentation and the 25%-ownership definition are neither captured nor asked for (gap G-25), and the rule is applied to three income families this section does not govern (gap G-22). Downgraded from implemented on 2026-08-23 after reading the section: the income math was implemented, the seasoning test was not.",
+      "verified": "2026-08-23"
     },
     "B3-3.7-01": {
       "status": "implemented",
@@ -191,6 +191,96 @@
       "status": "partial",
       "evidence": "Application package documentation. The delivered MISMO package carries ONE borrower — buildPartyNode (server/mismo.ts:1300) and buildBorrowerNode (:755) are each called once and the DTO has no co-borrower concept, so a co-borrower is dropped entirely and their employment is attributed to the primary. Registered as FINDINGS F-080 (P1) and CTO_ROADMAP 2.5; structural, not a literal swap. Verified open 2026-08-21.",
       "verified": "2026-08-21"
+    },
+    "B2-3-03": {
+      "status": "absent",
+      "evidence": "Leasehold Estates, revised 08-05-2026 (co-op ground-lease renewal, UAD 3.6 Policy Supplement). No leasehold concept exists: grep -rIn -i 'leasehold' over server/ shared/ client/src returns 0. Ground rent is also one of the four PITIA components B3-6-03 requires and we do not capture (gap G-10), so a leasehold file would be qualified on an incomplete housing expense. Nothing to conflict with today because no code branches on estate type.",
+      "verified": "2026-08-23"
+    },
+    "B4-2.1-02": {
+      "status": "absent",
+      "evidence": "Waiver of Project Review. No project-review concept exists (grep 'project review'/'projectReview' -> 0), so neither the waiver nor the review it waives is modelled. Referenced indirectly by B7-4-02's fidelity waiver, which we also do not implement.",
+      "verified": "2026-08-23"
+    },
+    "B4-2.1-03": {
+      "status": "absent",
+      "evidence": "Ineligible Projects, revised 08-05-2026. Single-entity ownership caps VERIFIED ON PDF sheets 656 and 663 (table flattens in extracted text): more than 2 units for projects of 5-10 units in a master association, more than 2 units for 11-20 units, more than 20% for 21 or more; co-op equivalent 20% of stock/shares. Units under any rental or lease arrangement, including lease-purchase and rent-to-own, count toward it. No project eligibility code exists at all; condo files are decisioned with no project test.",
+      "verified": "2026-08-23"
+    },
+    "B4-2.2-01": {
+      "status": "absent",
+      "evidence": "Full Review Process. No review-tier concept (Limited vs Full vs PERS) exists anywhere in the tree.",
+      "verified": "2026-08-23"
+    },
+    "B4-2.2-02": {
+      "status": "absent",
+      "evidence": "Full Review: additional requirements for new and newly converted condo projects. Not modelled; the funnel's condo answer reaches no project logic.",
+      "verified": "2026-08-23"
+    },
+    "B4-2.2-04": {
+      "status": "absent",
+      "evidence": "Project Eligibility Review Service (PERS). grep -E '\\bPERS\\b' over server/ shared/ client/src -> 0 (an unbounded grep matches 'person' and is the wrong evidence). Not modelled.",
+      "verified": "2026-08-23"
+    },
+    "B4-2.3-01": {
+      "status": "absent",
+      "evidence": "Eligibility Requirements for Units in PUD Projects. Not modelled; property_type carries PUD but nothing branches on it for eligibility.",
+      "verified": "2026-08-23"
+    },
+    "B5-3.2-05": {
+      "status": "absent",
+      "evidence": "HomeStyle Renovation completion certification. We do not originate HomeStyle. Note the asymmetry: shared/fannieMae/specialFeatureCodes.ts carries SFC 215/279 (Renovation with/without recourse) and 375/773 (Energy), so the DELIVERY codes exist while the eligibility rules behind them do not. All are autoDerived:false, so nothing can assert one on its own.",
+      "verified": "2026-08-23"
+    },
+    "B5-3.2-06": {
+      "status": "absent",
+      "evidence": "HomeStyle Renovation contract, loan agreement and lien waiver. Dated 12/11/2024, so it predates this edition; it appears in revised-sections.tsv because the release's highlight annotations mark the page, not because the section text changed. Not modelled, same as B5-3.2-05.",
+      "verified": "2026-08-23"
+    },
+    "B5-3.3-01": {
+      "status": "absent",
+      "evidence": "HomeStyle Refresh. Not modelled; SFC 892 (HomeStyle Refresh) exists in the delivery catalog, autoDerived:false, with no eligibility rule behind it.",
+      "verified": "2026-08-23"
+    },
+    "B5-5.2-02": {
+      "status": "absent",
+      "evidence": "Loans with Resale Restrictions. Not modelled. SFC 630/631 (restrictions terminate/survive at foreclosure) exist in the delivery catalog with no rule behind them, both autoDerived:false. Relevant to the DPA lane: the Illinois programs we surface are subordinate liens (gap G-21), and resale-restricted affordable programs are the neighbouring class.",
+      "verified": "2026-08-23"
+    },
+    "B7-3-03": {
+      "status": "absent",
+      "evidence": "Master property insurance for project developments, revised 08-05-2026. Maximum deductible VERIFIED ON PDF sheets 879-880: 5% of the master coverage amount per occurrence, and $50,000 per unit where the policy carries a per-unit deductible (a deductible buy-back policy may be used to meet it). Boiler/machinery coverage required where there is central heating or cooling. No insurance-adequacy code exists; grep 'master policy|master insurance' -> 0.",
+      "verified": "2026-08-23"
+    },
+    "B7-3-04": {
+      "status": "absent",
+      "evidence": "Property insurance for individual units in a project development (walls-in / HO-6). Not modelled. The only walls-in reference in the tree is a borrower-education glossary definition, which states no requirement.",
+      "verified": "2026-08-23"
+    },
+    "B7-3-05": {
+      "status": "absent",
+      "evidence": "Additional insurance requirements. Dated 12/14/2022 — predates this edition, present in revised-sections.tsv via the release's highlight annotations rather than a text change. Not modelled.",
+      "verified": "2026-08-23"
+    },
+    "B7-3-07": {
+      "status": "absent",
+      "evidence": "Evidence of property insurance. Not modelled: no insurance document type, no evidence check, and the document checklist has no insurance binder requirement.",
+      "verified": "2026-08-23"
+    },
+    "B7-4-01": {
+      "status": "absent",
+      "evidence": "General liability insurance for project developments. grep -i 'liability insurance' over server/ shared/ client/src -> 0. Not modelled.",
+      "verified": "2026-08-23"
+    },
+    "B7-4-02": {
+      "status": "absent",
+      "evidence": "Fidelity/crime insurance for project developments, revised 08-05-2026. Required for all condo and co-op projects except those qualifying for a waiver of project review (B4-2.1-02), projects of 20 units or less, or projects needing $5,000 or less of coverage — VERIFIED against PDF sheet 901. Not modelled; the only 'fidelity' string in the tree is unrelated prose in a funnel component.",
+      "verified": "2026-08-23"
+    },
+    "E-2-04": {
+      "status": "absent",
+      "evidence": "Signature requirements for mortgages to inter vivos revocable trusts. Not modelled: no trust borrower type, no trustee signature handling. SFC 168 (Inter Vivos Revocable Trust) exists in the delivery catalog, autoDerived:false, with no origination rule behind it. Note E- has no not_applicable prefix: these are seller/servicer AND originator-facing signature mechanics, so 'absent' is the honest status rather than n/a.",
+      "verified": "2026-08-23"
     }
   }
 }

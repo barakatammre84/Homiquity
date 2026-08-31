@@ -300,7 +300,7 @@ is [compliance/UNDERWRITING_SCENARIOS.md](../compliance/UNDERWRITING_SCENARIOS.m
 
 | ID | Models | Guideline |
 |---|---|---|
-| S-01 | Hybrid W-2/SE income seasoning (<12 mo unusable; 12–24 mo needs compensating factors) | B3-3.2 |
+| S-01 | Hybrid W-2/SE income seasoning (<12 mo unusable; 12–24 mo needs a full year on the current business's returns **and** separately documented prior income at the same level in the same field) | B3-3.5-01 |
 | S-02 | Relocating veteran — VA residual income | Pamphlet 26-7 |
 | S-03 | "Sleeper debt trap" — undisclosed liabilities; deferred student loan at 1% of balance | B3-6-05 |
 | S-04 | "Mattress money" — large-deposit sourcing (single deposit > 50% of monthly income) | B3-4.2-02 / B3-4.3-04 |

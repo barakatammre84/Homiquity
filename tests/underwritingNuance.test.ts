@@ -14,7 +14,7 @@ import {
   type Tradeline,
 } from "../server/services/underwritingNuance";
 
-describe("assessIncomeSeasoning (Fannie B3-3.2)", () => {
+describe("assessIncomeSeasoning (Fannie B3-3.5-01)", () => {
   it("treats W-2 income as seasoned regardless of tenure", () => {
     const result = assessIncomeSeasoning([{ type: "w2", annualAmount: "80,000", yearsInRole: "0.5" } as never]);
     expect(result.seasonedSources).toContain("w2");
@@ -189,7 +189,7 @@ describe("computeVaResidualIncome (VA Pamphlet 26-7 Ch. 4)", () => {
   });
 });
 
-describe("detectSignificantDeposits (Fannie B3-4.3-04)", () => {
+describe("detectSignificantDeposits (Fannie B3-4.2-02)", () => {
   it("reproduces the doc's Scenario 4: $12k deposit vs $6k monthly income", () => {
     const deposits = detectSignificantDeposits(
       [

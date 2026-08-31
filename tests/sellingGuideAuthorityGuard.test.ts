@@ -12,6 +12,7 @@ const {
   parseChangedLines,
   ATTESTATION,
   CITATION_FIXTURE_FILES,
+  findChapterCitations,
 } = require("../scripts/selling-guide-authority-guard.cjs");
 
 // -----------------------------------------------------------------------------
@@ -162,11 +163,21 @@ describe("section index loading", () => {
 });
 
 describe("the fixture exemption", () => {
-  it("covers this file, and only this file", () => {
-    // This test names invalid ids on purpose. Without the exemption the guard fails its own
-    // PR — which it did, on the first run. The exemption is one named file: widening it to
-    // `tests/**` would let a genuinely stale citation hide in any test in the repo.
-    expect([...CITATION_FIXTURE_FILES]).toEqual(["tests/sellingGuideAuthorityGuard.test.ts"]);
+  it("covers exactly the three files that name invalid ids on purpose", () => {
+    // These files name invalid ids deliberately. Without the exemption the guard fails its
+    // own PR — which it did, on the first run, and again in 2026-08-23 when the conformance
+    // guard landed carrying a nonexistent section number as a fixture and a feature-review
+    // finding id whose shape collides with a Guide section id.
+    //
+    // The list stays NAMED FILES. Widening it to `tests/**` or `scripts/*guard*` would let a
+    // genuinely stale citation hide anywhere in those trees, which is the whole thing this
+    // guard exists to prevent — so this assertion is a ratchet: adding a file here is a
+    // deliberate act that turns this test red until someone writes the reason down.
+    expect([...CITATION_FIXTURE_FILES]).toEqual([
+      "tests/sellingGuideAuthorityGuard.test.ts",
+      "scripts/selling-guide-conformance-guard.cjs",
+      "tests/sellingGuideConformanceGuard.test.ts",
+    ]);
   });
 
   it("still flags an unresolvable id in a file that is not exempt", () => {
@@ -210,5 +221,76 @@ describe("historical markers across wrapped comments", () => {
     ].join("\n");
     const { unknown } = resolveIds(findCitations(parseChangedLines(diff)), INDEX);
     expect(unknown).toHaveLength(1);
+  });
+});
+
+describe("chapter-form citations", () => {
+  // The blind spot that let the 2026-03-04 renumbering survive. SG_ID requires a
+  // leaf `-NN`, so `B3-3.2` is never looked up and resolves against nothing —
+  // six sites cited that chapter for a rule at B3-3.5-01, through every gate,
+  // for months. A chapter cannot be verified: you cannot open a container of
+  // sections and check whether it says what the code claims.
+  const chapters = (file: string, ...lines: string[]) =>
+    findChapterCitations(parseChangedLines(diffOf(file, ...lines))).map(
+      (c: { id: string }) => c.id,
+    );
+
+  it("fails an added chapter-level cite in server code", () => {
+    expect(chapters("server/services/preUnderwriting.ts", '// Income seasoning (Fannie B3-3.2)')).toEqual([
+      "B3-3.2",
+    ]);
+  });
+
+  it("fails the exact shape the real defect had, in a citation field", () => {
+    expect(chapters("server/services/autopilot/followUps.ts", '  citation: "Fannie Mae B3-3.2",')).toEqual([
+      "B3-3.2",
+    ]);
+  });
+
+  it("passes a leaf citation — the whole point is to push you to one", () => {
+    expect(chapters("server/services/preUnderwriting.ts", '// Income seasoning (Fannie B3-3.5-01)')).toEqual([]);
+  });
+
+  it("passes when the line says it means a chapter", () => {
+    expect(
+      chapters("shared/incomeTypes.ts", '// Fannie Selling Guide chapter B3-3 covers income assessment'),
+    ).toEqual([]);
+  });
+
+  it("passes a deliberately historical mention", () => {
+    expect(
+      chapters("server/x.ts", '// formerly Fannie B3-3.2, renumbered 2026-03-04 to B3-3.5-01'),
+    ).toEqual([]);
+  });
+
+  it("passes a historical marker on a wrapped comment line just above", () => {
+    const diff = [
+      "+++ b/server/x.ts",
+      "+// The Selling Guide renumbered this; it was formerly",
+      "+// Fannie B3-3.2 before the move.",
+    ].join("\n");
+    expect(findChapterCitations(parseChangedLines(diff))).toEqual([]);
+  });
+
+  it("ignores lines with no Guide context — a bare token is not a citation", () => {
+    expect(chapters("server/visa.ts", 'const status = "E-2";')).toEqual([]);
+    expect(chapters("server/x.ts", 'const released = "2026-08-23";')).toEqual([]);
+  });
+
+  it("ignores docs, which legitimately narrate the renumbering", () => {
+    expect(chapters("knowledge-base/governance/TEAM_PRACTICES.md", "self-employment moved off Fannie B3-3.2")).toEqual(
+      [],
+    );
+  });
+
+  it("does not fire on an unchanged line", () => {
+    const diff = ["+++ b/server/x.ts", "-// Fannie B3-3.2", " // context"].join("\n");
+    expect(findChapterCitations(parseChangedLines(diff))).toEqual([]);
+  });
+
+  it("exempts this guard's own fixture file", () => {
+    for (const f of CITATION_FIXTURE_FILES) {
+      expect(chapters(f as string, '// Fannie B3-3.2')).toEqual([]);
+    }
   });
 });

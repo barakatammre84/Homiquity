@@ -130,12 +130,42 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
     expect(jobCondition("gate")).toMatch(/github\.event_name == 'pull_request'/);
   });
 
-  // Cost control (KTLO-2), continuing #620. These two remove whole classes of
-  // run that could never have changed a verdict.
-  it("gate skips draft PRs — a draft cannot merge, so gating each push buys nothing", () => {
-    expect(jobCondition("gate")).toMatch(/github\.event\.pull_request\.draft == false/);
+  // THE DRAFT EXEMPTION IS NOT COMING BACK.
+  //
+  // From cc06c69 (2026-08-22, #656) to 2026-08-24 the gate carried
+  // `github.event.pull_request.draft == false`, and this test asserted the
+  // OPPOSITE of what it asserts now — it pinned the exemption in place. Two
+  // days was long enough to leave 14 unverified PRs behind.
+  //
+  // The exemption was added on an honest cost measurement ("ZERO of the 60 PRs
+  // opened 2026-08-18..20 were drafts"), and it was correct that a draft cannot
+  // merge. What it missed: agent sessions open every PR as a draft by default,
+  // so the exemption inverted into the majority path. On 2026-08-24, 14 of 23
+  // open PRs were unchecked drafts and 12 of the last 30 CI runs concluded
+  // `skipped`, every one on a claude/* branch — including a P0 credential-leak
+  // fix.
+  //
+  // The exposure was never merging (ready_for_review still gated that). It was
+  // that an authoring session got NO feedback: it pushed, opened its draft, read
+  // a clean check list, and finished believing the work was verified. Nothing had
+  // run. A session that is never told it was wrong cannot correct, and the next
+  // session reads that branch as precedent.
+  //
+  // So this test is a ratchet, not a preference. If a future cost pass wants
+  // these minutes back, it must take them somewhere that does not cost a verdict
+  // — `concurrency.cancel-in-progress` below is the model.
+  it("gate does NOT exempt draft PRs — a draft is work-in-progress, not unverified", () => {
+    expect(
+      jobCondition("gate"),
+      "the draft exemption is back. A draft PR would then run zero checks for its " +
+        "whole authoring life, which is how agent-authored work went unverified " +
+        "(14 of 23 open PRs on 2026-08-24). Cut CI minutes somewhere else — see " +
+        "this test's comment and the gate's own header in ci.yml.",
+    ).not.toMatch(/pull_request\.draft/);
   });
 
+  // Cost control (KTLO-2), continuing #620. This removes the one remaining class
+  // of run that could never have changed a verdict.
   it("gate skips a TITLE-only edit, but never a body edit or a base retarget", () => {
     const cond = jobCondition("gate");
     expect(cond).toMatch(/github\.event\.action == 'edited'/);
@@ -302,6 +332,7 @@ describe("the Selling Guide corpus steps outrun the scope classifier", () => {
   const CORPUS_STEPS = [
     "Selling Guide corpus coherence",
     "Selling Guide coverage map current",
+    "Selling Guide conformance register",
     "Selling Guide extraction proof (recover → extract → verify)",
   ];
 

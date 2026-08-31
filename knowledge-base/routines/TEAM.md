@@ -66,23 +66,70 @@ Three different causes, none of them sloppiness:
 Re-read `list_scheduled_tasks` when you edit this table — the scheduler is the authority, this file
 is the map, and a map nobody re-measures is how five seats came to look staffed.
 
-| Seat | Hiring-plan role | Routine | Cadence | Writes code? | Registered? (read 2026-08-20) |
-|---|---|---|---|---|---|
-| **Domain** | Mortgage SME (§2.1) | Domain Oracle | daily 08:20 | no | ⛔ **no** — defined, never registered |
-| **Integrations** | Mortgage-systems eng. (§2.2) | Integration Readiness | daily 10:40 | no | ⛔ **no** — defined, never registered |
-| **Build — product** | Senior full-stack (§2.3) | Primary Engineer | daily 07:21 | yes | ✅ yes |
-| **Build — backend** | Senior full-stack (§2.3) | Backend Data Engineer | daily 11:00 UTC | yes | ⛔ **no** — CCR fleet, trigger `enabled: false` |
-| **Build — capture path** | Senior full-stack (§2.3) | Capture Path Engineer | daily 09:20 | yes | ✅ yes |
-| **Build — qualification layer** | Senior full-stack (§2.3) | ~~Complex File Engine~~ → **Feature Completion Engine** rotation | daily 12:34 | yes | ✅ yes — as a rotation segment, not its own seat |
-| **QA — find** | QA engineer (§2.4) | Deliverable QA Sweep | daily 15:05 | no | ✅ yes |
-| **QA — prove** | QA engineer (§2.4) | QA Mutation Verifier | daily 16:20 | throwaway only | ⛔ **no** — defined, never registered |
+<!-- BEGIN GENERATED seats:team — do not hand-edit; run `pnpm guard:seats --write-table` -->
 
-**Supporting seats, unchanged:** Launch Gate (07:48) holds the `RELEASABLE` verdict · Lender
-Delivery Gate (12:31) judges the package · Compliance Watch (Tue 13:21) holds the licensing ladder
-and is the counsel seat · Vendor & Procurement (Mon 09:37) holds commercial state · Refactor Radar
-(Sun 20:00) · Evening Triage (21:10) consolidates the day. · **Move-Up Lane (Wed 14:10)** owns the
-above-conforming borrower — the one door with no explainer, the conforming boundary, and the
-honesty of what we tell a borrower above the limit.
+| Seat | Routine (`taskId`) | Cadence | Writes code? | Registered? (generated from `SEATS.tsv`) |
+|---|---|---|---|---|
+| **Selling Guide Steward** | `selling-guide-steward` | daily | yes — Guide fact layer + its watch state only | ⚠️ registered and enabled — **NOT DISPATCHING** |
+| **Primary Engineer** | `primary-engineer` | daily | yes — company-wide lane | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Trunk Health** | `launch-gate` | daily | no — tickets only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Feature Completion Engine (CCR)** | `trig_016AQwLhqYbcp6zvmeeoAyvp` | daily | yes — one domain per run | ✅ **enabled** |
+| **Capture Path Engineer** | `act-as-a-senior-frontend-architect-i-need-you-to-audit-the-wiring-and-structural-integrity-of-mortgage-streamhomiquity` | daily | yes — capture path | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Workflow Completion Engine** | `workflow-completion-engine` | daily | yes — one seam per run | ⏸️ registered, **paused** |
+| **Frontend Wiring Audit** | `trig_01Gd2iz3fPNE6mTsAKCmwpbg` | daily | no — report only | ⏸️ registered, **paused** |
+| **Backend Data Engineer** | `backend-data-engineer` | daily | yes — `server/**`, `shared/**` + same-PR migration | ⏸️ registered, **paused** |
+| **Client Journey Walk (CCR)** | `trig_01PwYAKv4vt26HXbXEWR9xSU` | daily | no — trace + tickets | ✅ **enabled** |
+| **Better.com Competitive Review** | `trig_01ACv4XPGfSbStob1WDj2dN6` | daily | no — report only | ⏸️ registered, **paused** |
+| **Launch Readiness Audit** | `trig_01Le5WEHJhs9BzCb7MptcNqM` | daily | no — audit only | ✅ **enabled** |
+| **Feature Completion Engine** | `feature-completion-engine` | daily | yes — one domain per run | ✅ **enabled** |
+| **Staff Journey Walk** | `staff-journey-walk` | daily | no — trace + tickets | ⏸️ registered, **paused** |
+| **Page-by-page Deep Inspection** | `trig_01JFfCyXrdyEp1uB1koQa5eM` | daily | no — findings only | ⏸️ registered, **paused** |
+| **Deliverable QA Sweep** | `deliverable-qa-sweep` | daily | no — findings only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Client Journey Walk** | `client-journey-walk-v2` | daily — recommended, never registered | no — trace + tickets | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Deliverable QA Sweep (CCR)** | `trig_01TexCEgSS6EkAdZbbY9Cked` | daily | no — findings only | ⏸️ registered, **paused** |
+| **UI Conformance Sweep (CCR)** | `trig_01RmszhjvBozARMGF99ECCii` | daily | yes — `client/src/**` visual only | ⏸️ registered, **paused** |
+| **Handoff Corpus Steward** | `client-journey-walk` | daily | no — `knowledge-base/handoff/**` docs only | ✅ **enabled** |
+| **Doc Accuracy** | `doc-accuracy-daily` | daily | docs only — living `.md` (§6) | ✅ **enabled** |
+| **Evening Triage** | `evening-triage` | daily | docs only | ✅ **enabled** |
+| **Doc Accuracy (CCR)** | `trig_01HNfBQUXKmkLb9kmCfQEBG2` | daily | docs only — living `.md` (§6) | ⏸️ registered, **paused** |
+| **Refactor Radar** | `refactor-radar-weekly` | weekly | yes — `client/src` only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **PR Sync / Decide-or-Close Loop** | `trig_017XYBR3LZVZLSN6wPtEBHQ2` | 13x daily | no — triage only | ⏸️ registered, **paused** |
+| **Monday Better.com Deep-Dive** | `trig_018Mt5nrWa1teHP7hh57EbH9` | weekly | no — reminder only | ⏸️ registered, **paused** |
+| **Weekly Doc Hygiene Sweep** | `trig_011uNfD7y5GgBhjzm1RXgkVr` | weekly | no | — retired |
+| **Lender Package Gate** | `lender-delivery-gate` | weekly | small/safe only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Compliance Watch** | `compliance-watch` | weekly | no — ladder + drafts | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Weekly UX Audit vs Better** | `trig_01VmRsDLsh96cSApXc3JHMa2` | weekly | no — report only | ⏸️ registered, **paused** |
+| **Rent Reporting Watch** | `rent-reporting-watch` | weekly | no — report only | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Founder Directive Review** | `trig_01LQd1iP6JuPnnKyR2g52VXk` | weekly | no — review only | ✅ **enabled** |
+| **UI Conformance Sweep** | `ui-conformance-sweep` | weekly | yes — `client/src/**` visual only | ✅ **enabled** |
+| **Vendor & Platform Risk (CCR)** | `trig_01L4SzhGVpzC4wUN9QtYC57Z` | monthly | no | ✅ **enabled** |
+| **Vendor & Platform Risk** | `vendor-procurement` | monthly | no | ⛔ **NO** — definition on disk, not in the scheduler (§11) |
+| **Financial Architecture Audit** | `trig_01Drx251fEL1USvnuEYHab7X` | monthly | no — report only | ⏸️ registered, **paused** |
+| **Complex File Engine** | `complex-file-engine` | — | — | — retired |
+| **Move-Up Lane** | `move-up-lane` | — | — | — retired |
+| **Sprint Blitz** | `sprint-blitz` | — | — | — retired |
+
+<!-- END GENERATED -->
+
+**The `Registered?` column is generated from [`SEATS.tsv`](SEATS.tsv)** — it can no longer disagree
+with the roster. It used to: on 2026-08-24 this chart marked Primary Engineer, the Capture Path
+Engineer and the Deliverable QA Sweep **"✅ yes"** when none of the three was registered, which is
+the failure the rule above describes, in the table that states it. The hiring-plan role mapping
+(§2.1–§2.4 of [HIRING_PLAN.md](../governance/HIRING_PLAN.md)) is prose and stays below.
+
+**Supporting seats — what each is *for*.** Cadence and registration are in the generated table
+above and in [`SEATS.tsv`](SEATS.tsv); this paragraph is about purpose only, so it cannot drift into
+a second clock. **Trunk Health** answers whether the lanes can build today · the **Lender Package
+Gate** judges the package · **Compliance Watch** holds the licensing ladder and is the counsel seat ·
+**Vendor & Platform Risk** holds commercial state and watches the platform floor · **Refactor Radar**
+takes at most one `client/src` PR a week · **Evening Triage** consolidates the day.
+
+*Corrected 2026-08-24.* This paragraph previously read "Supporting seats, **unchanged**" and named
+three things that had changed: the Launch Gate holding a `RELEASABLE` verdict (retired with the seat
+when it became Trunk Health, 2026-08-19), the Lender Delivery Gate at 12:31 (moved to Mon 18:31 the
+same day), and the **Move-Up Lane** (retired into the Feature Completion Engine's rotation, also
+2026-08-19). Vendor & Procurement had likewise become Vendor & Platform Risk. The word "unchanged"
+was doing the damage: it invited readers past the one thing worth re-checking.
 
 **Review seats reachable by name:** the client `journey-walker-*` agents walk one client journey each
 in a real browser (`knowledge-base/feature-review/JOURNEYS.md`), fronted by **`/journey-walk`**; the

@@ -15,7 +15,7 @@ function flag(partial: Partial<PreUwFlag> & Pick<PreUwFlag, "code">): PreUwFlag 
 }
 
 describe("planFollowUpForFlag", () => {
-  it("materializes LARGE_DEPOSIT_SOURCING as an assets condition with the B3-4.3-04 citation", () => {
+  it("materializes LARGE_DEPOSIT_SOURCING as an assets condition citing B3-4.2-02, not the gift section", () => {
     const plan = planFollowUpForFlag(
       flag({
         code: "LARGE_DEPOSIT_SOURCING",
@@ -32,7 +32,10 @@ describe("planFollowUpForFlag", () => {
     expect(plan!.sourceRule).toBe("AUTOPILOT_LARGE_DEPOSIT_SOURCING");
     // The borrower-facing reason AND the guideline citation are both present.
     expect(plan!.description).toContain("We noticed a deposit of $15,000.");
-    expect(plan!.description).toContain("Fannie Mae B3-4.3-04");
+    // The sourcing rule is B3-4.2-02 ("Evaluating Large Deposits"); B3-4.3-04
+    // carries only the gift letter that can resolve one, so it stays named too.
+    expect(plan!.description).toContain("Fannie Mae B3-4.2-02");
+    expect(plan!.description).toContain("B3-4.3-04");
     // Required docs are de-duplicated from the flag.
     expect(plan!.requiredDocumentTypes).toEqual(["gift_letter", "other"]);
   });
@@ -41,7 +44,7 @@ describe("planFollowUpForFlag", () => {
     const plan = planFollowUpForFlag(flag({ code: "INCOME_SEASONING", severity: "blocking" }));
     expect(plan).not.toBeNull();
     expect(plan!.priority).toBe("prior_to_approval");
-    expect(plan!.description).toContain("Fannie Mae B3-3.2");
+    expect(plan!.description).toContain("Fannie Mae B3-3.5-01");
   });
 
   it("cites B3-6-05 for VERIFIED_DEBT_DTI and B3-3.8-01 for rental offsets", () => {

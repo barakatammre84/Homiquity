@@ -113,9 +113,19 @@ In the clean worktree (no gitignored content exists there; worktrees share the o
 database, so blob recovery works):
 
 1. `python3 scripts/extract-selling-guide.py` — recovery + extraction + always-on
-   verification.
-2. Run it **again**; hash the whole `extracted/` tree across both runs and require
-   byte-identical output. `git diff` must be empty (tracked layer regenerates exactly).
+   verification, in **both renderings**. This is the one place the markdown layer gets
+   proven: CI's extraction proof deliberately installs only pymupdf (the tracked fact
+   layer is derived from the text layer alone), so nothing per-PR builds markdown. Read
+   the run's `markdown:` line — it must report every section file written, and **`every
+   page ≥90% of the text layer`**. `… STILL THIN` there is a FAIL under R9, not a note:
+   the markdown renderer drops graphics-heavy pages outright, and a blank page in the
+   rendering everyone reads is the defect that check exists to catch. If `pymupdf4llm` is
+   not installed in the worktree, install the pinned version (`PYMUPDF4LLM_PINNED` in the
+   extractor — derive it, never restate it) and say so in the report; a skipped markdown
+   layer is a reportable gap, not a silent pass.
+2. Run it **again**; hash the whole `extracted/` tree *and* `selling-guide.md` across both
+   runs and require byte-identical output. `git diff` must be empty (tracked layer
+   regenerates exactly).
 3. `python3 scripts/extract-selling-guide.py --check` — green.
 4. `node scripts/selling-guide-corpus-guard.cjs` and
    `node scripts/selling-guide-coverage.cjs --check` — green.

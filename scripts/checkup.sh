@@ -66,9 +66,14 @@ check "doc staleness ratchet"         node scripts/doc-staleness-guard.cjs
 check "citations resolve"             node scripts/citation-guard.cjs
 check "selling-guide corpus coherent" node scripts/selling-guide-corpus-guard.cjs
 check "selling-guide coverage map"    node scripts/selling-guide-coverage.cjs --check
+check "selling-guide conformance"     node scripts/selling-guide-conformance-guard.cjs
 check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs
 check "selling-guide watch live"      node scripts/selling-guide-freshness.cjs
 check "living docs fresh"             node scripts/doc-freshness-guard.cjs
+# Full check here, freshness included: this is the daily umbrella, and the registry-read
+# date going stale is the one failure mode CI structurally cannot see.
+check "routine seat roster"           node scripts/seat-roster-guard.cjs
+check "gating reality"                 node scripts/gating-reality-guard.cjs
 check "production health ($PROD_URL)" prod_healthy
 
 if [ "$FAILED" -eq 0 ]; then

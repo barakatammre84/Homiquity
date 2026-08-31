@@ -91,7 +91,18 @@ const HISTORICAL_MARKER = /formerly|renumber|superseded|historical|was\s+[A-E]\d
  * Found by running this guard against its own PR. It failed, correctly by its own rule and
  * wrongly in substance, which is the calibration an unexercised guard never gets.
  */
-const CITATION_FIXTURE_FILES = new Set(["tests/sellingGuideAuthorityGuard.test.ts"]);
+const CITATION_FIXTURE_FILES = new Set([
+  "tests/sellingGuideAuthorityGuard.test.ts",
+  // The conformance guard and its test carry ids that are unresolvable ON PURPOSE:
+  // a nonexistent section number used as a fixture to prove the failing direction,
+  // and a feature-review finding id whose SHAPE collides with a Guide section id —
+  // precisely the false positive that guard is written to avoid. Both files were
+  // added to this set by running this guard against its own PR, the same way the
+  // entry above was found. (Stated without quoting either id, because writing one
+  // here would trip this very check in the one file that cannot exempt itself.)
+  "scripts/selling-guide-conformance-guard.cjs",
+  "tests/sellingGuideConformanceGuard.test.ts",
+]);
 
 /**
  * Paths whose logic traces to the Guide. Mirrored in TEAM_PRACTICES §10 — the register
@@ -223,6 +234,54 @@ function findCitations(changedLines) {
   return out;
 }
 
+/**
+ * A CHAPTER-level Guide reference — `B3-3.2`, `B3-6` — with no leaf `-NN` suffix.
+ *
+ * SG_ID above deliberately requires the leaf suffix, which means a chapter-form cite is
+ * INVISIBLE to the unknown-id check: `B3-3.2` resolves against nothing because it is never
+ * looked up. That is not hypothetical. It is how the 2026-03-04 renumbering survived — six
+ * sites citing chapter B3-3.2 for a self-employment rule that lives at B3-3.5-01, through
+ * every gate, until someone read the section in 2026-08-23. A chapter cannot be verified:
+ * you cannot open "B3-3.2" and check whether it says what the code claims, because it is a
+ * container of sections that say different things.
+ *
+ * Scoped tightly on purpose, because an over-firing guard on an always-run gate trains
+ * route-arounds:
+ *   - added lines only, in server/ shared/ client/src (not docs, which legitimately narrate);
+ *   - only where the line also names Fannie or the Selling Guide, which is the shape every
+ *     real instance had — a bare `E-2` in unrelated code is not a citation;
+ *   - escaped by the historical marker (same 2-line lookback as above), or by the word
+ *     "chapter", because an honest chapter reference names itself as one.
+ */
+const SG_CHAPTER = /(?<![A-Za-z0-9.\-])([A-E]\d{0,2}-\d+(?:\.\d+)?)(?!-\d{2})(?![\d.\-])/g;
+const GUIDE_CONTEXT = /fannie|selling[\s-]*guide/i;
+const CHAPTER_SELF_DECLARED = /chapter/i;
+const CHAPTER_SCOPED_PATHS = ["server/", "shared/", "client/src/"];
+
+/** Chapter-level Guide cites on ADDED lines in code — unverifiable by construction. */
+function findChapterCitations(changedLines) {
+  const out = [];
+  for (let i = 0; i < changedLines.length; i++) {
+    const entry = changedLines[i];
+    if (!entry.added) continue;
+    if (CITATION_FIXTURE_FILES.has(entry.file)) continue;
+    if (!CHAPTER_SCOPED_PATHS.some((p) => entry.file.startsWith(p))) continue;
+    if (!GUIDE_CONTEXT.test(entry.line)) continue;
+    if (CHAPTER_SELF_DECLARED.test(entry.line)) continue;
+    let marked = HISTORICAL_MARKER.test(entry.line);
+    for (let b = 1; !marked && b <= MARKER_LOOKBACK_LINES; b++) {
+      const prev = changedLines[i - b];
+      if (!prev || prev.file !== entry.file) break;
+      if (HISTORICAL_MARKER.test(prev.line) || CHAPTER_SELF_DECLARED.test(prev.line)) marked = true;
+    }
+    if (marked) continue;
+    for (const m of entry.line.matchAll(SG_CHAPTER)) {
+      out.push({ id: m[1], file: entry.file, line: entry.line.trim() });
+    }
+  }
+  return out;
+}
+
 function resolveIds(citations, index) {
   const known = [];
   const unknown = [];
@@ -344,6 +403,29 @@ function main() {
     process.exit(1);
   }
 
+  const chapters = findChapterCitations(changedLines);
+  if (chapters.length) {
+    console.error(
+      "selling-guide-authority-guard: FAIL — an added line cites a Selling Guide CHAPTER rather\n" +
+        "than the section that states the rule:\n",
+    );
+    for (const c of chapters.slice(0, 12)) {
+      console.error(`  • ${c.file}: ${c.id}`);
+      console.error(`      ${c.line.slice(0, 120)}`);
+    }
+    console.error(
+      "\nA chapter cannot be verified. You can open a section and check whether it says what the\n" +
+        "code claims; you cannot do that with a container of sections that say different things —\n" +
+        "and because a chapter id carries no leaf suffix, the unknown-id check above never looks\n" +
+        "it up, so it resolves against nothing forever. Six sites cited chapter B3-3.2 for a rule\n" +
+        "that lives at B3-3.5-01 and passed every gate for months.\n" +
+        "  Cite the leaf section (e.g. B3-3.5-01), re-derived from section-index.tsv.\n" +
+        "  Genuinely referring to a whole chapter? Say so on the line — use the word `chapter`.\n" +
+        "  Naming a historical id on purpose? `formerly` (or renumbered/superseded/historical).",
+    );
+    process.exit(1);
+  }
+
   const triggered = detectTriggers(files);
   if (!triggered.length) {
     console.log(
@@ -396,6 +478,9 @@ function main() {
 module.exports = {
   detectTriggers,
   findCitations,
+  findChapterCitations,
+  SG_CHAPTER,
+  HISTORICAL_MARKER,
   resolveIds,
   hasAuthorityEvidence,
   loadSectionIndex,

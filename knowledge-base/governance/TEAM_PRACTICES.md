@@ -421,10 +421,20 @@ were found after the Railway cutover created them.
 
 ## 10. Selling Guide authority triggers (binding)
 
-The Fannie Mae *Selling Guide* (edition 08-05-2026, committed at
-`docs/fannie-mae/selling-guide/`) is the policy authority for eligibility, underwriting,
-income, credit, property and delivery. It controls over every job aid in `docs/fannie-mae/`,
-and over anything in this repo.
+The Fannie Mae *Selling Guide* (edition 08-05-2026, materialized at
+`docs/fannie-mae/selling-guide/` by one command — the copyrighted text is gitignored because
+this repo is public) is the policy authority for eligibility, underwriting, income, credit,
+property and delivery. It controls over every job aid in `docs/fannie-mae/`, and over anything
+in this repo.
+
+**And over decisions taken before any of this applies.** This section binds PRs; the founder's
+direction of 2026-08-24 is that the Guide is the core document *every seat* refers to when
+making a decision, the CEO's included — a product promise or a pricing move settled in
+conversation reaches a PR already committed, where a guard can only argue with it. That rule,
+written for a reader who will never run one, is
+[compliance/SELLING_GUIDE_DECISION_RULE.md](../compliance/SELLING_GUIDE_DECISION_RULE.md); it
+also says which of the two renderings to read (markdown — the text one flattens the Guide's
+tables, where most thresholds live).
 
 **Why this is a gate and not a preference.** Homiquity is a broker — in the Guide's own
 vocabulary a **third-party originator** (A3-3-01). A wholesale lender selling our files to

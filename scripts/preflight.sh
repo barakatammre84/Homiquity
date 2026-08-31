@@ -87,6 +87,7 @@ step "design tokens"                  node scripts/design-token-guard.cjs
 step "UI standard ratchet"            node scripts/ui-standard-guard.cjs
 step "knowledge-base index"           node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"          node scripts/doc-staleness-guard.cjs
+step "routine seat roster"            node scripts/seat-roster-guard.cjs --no-freshness
 # tsc covers the app; nothing covered scripts/*.cjs. #594 shipped a syntax error
 # in browser-probe.cjs to main green, and every probe run crashed while a sweep
 # grepping its output reported the pages clean. A parse is not a test — but it is
@@ -98,6 +99,7 @@ step "query-key transport"            node scripts/query-key-transport-guard.cjs
 step "citation ratchet"               node scripts/citation-guard.cjs
 step "selling-guide corpus"           node scripts/selling-guide-corpus-guard.cjs
 step "selling-guide coverage"         node scripts/selling-guide-coverage.cjs --check
+step "selling-guide conformance"      node scripts/selling-guide-conformance-guard.cjs
 
 # The full extraction proof needs pymupdf; CI always runs it (pinned, in a venv).
 # Locally it runs only where pymupdf is importable — and SAYS so when skipped,

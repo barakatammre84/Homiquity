@@ -381,7 +381,10 @@ export async function analyzeIntake(applicationId: string): Promise<IntakeAnalys
   if (isApproved && monthlyIncome > 0) {
     const rawCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_DTI_CAP").catch(() => 43);
     // Sanity floor: a corrupt/zero matrix scalar must not silently drive the
-    // affordability math to zero. Fall back to the 43% ATR/QM cap if wild.
+    // affordability math to zero. Fall back to the platform's own conservative
+    // baseline if wild — 43 is OUR overlay (ledger: platform-conv-dti-cap-43),
+    // stricter than B3-6-02's 50% DU maximum. It is not an ATR/QM cap: the
+    // 43% general-QM DTI limit was replaced by the price-based threshold.
     const dtiCapPct = Number.isFinite(rawCap) && rawCap >= 30 && rawCap <= 60 ? rawCap : 43;
     if (dtiCapPct !== rawCap) {
       console.warn(`[loanAnalysis] CONVENTIONAL_DTI_CAP out of range (${rawCap}); using ${dtiCapPct}`);
