@@ -141,9 +141,14 @@ async function api(method, url) {
   }
   console.log(`branch-cleanup: ${heads.length} branches · ${pullShas.size} pull refs · ${openHeads.size} open-PR heads · ${protectedSet.size} protected`);
 
+  // Resolve wherever it lives: a local branch on the machine that made it, a
+  // remote-tracking ref in a fresh checkout. Looking in only one place resolved on
+  // a laptop and reported "does not exist" on a runner.
   let archiveSha = null;
-  try { archiveSha = git("rev-parse", "--verify", `${REMOTE}/${ARCHIVE_REF}^{commit}`).trim(); }
-  catch { die(`${ARCHIVE_REF} not found on ${REMOTE}. It holds the only reachable copy of the orphan commits.`); }
+  for (const cand of [`refs/heads/${ARCHIVE_REF}`, `refs/remotes/${REMOTE}/${ARCHIVE_REF}`, `${REMOTE}/${ARCHIVE_REF}`, ARCHIVE_REF]) {
+    try { archiveSha = git("rev-parse", "--verify", `${cand}^{commit}`).trim(); break; } catch {}
+  }
+  if (!archiveSha) die(`${ARCHIVE_REF} not found. It holds the only reachable copy of the orphan commits.`);
 
   const isAncestor = (a, b) => {
     try { execFileSync("git", ["merge-base", "--is-ancestor", a, b], { cwd: ROOT }); return true; }
