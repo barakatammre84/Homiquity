@@ -1,5 +1,0 @@
-date,area,files,lines,prod_deps,dev_deps
-2026-07-04,client/src,183,58478,74,20
-2026-07-04,server,123,51303,74,20
-2026-07-04,shared,22,10035,74,20
-2026-07-04,tests,47,9044,74,20
