@@ -153,14 +153,6 @@ const clean = (s) => (s || "").replace(/[\t\r\n]+/g, " ").trim();
 
 // Bounded ancestor walk. 200 is far past any branch here (the deepest is 68
 // commits) and keeps this linear rather than resolving 731 pull refs per branch.
-const HEAD_BRANCH = (() => {
-  try {
-    return git("rev-parse", "--abbrev-ref", "HEAD").trim();
-  } catch {
-    return "";
-  }
-})();
-
 const MAIN = `${REMOTE}/main`;
 const rows = [];
 const missing = [];
@@ -183,22 +175,13 @@ for (const { branch, sha } of heads) {
   // pull ref anchors what is reachable FROM it, so the sound test is "tip is an
   // ancestor of a pull ref", which would mean fetching all 731. Not worth it:
   // erring toward `orphan` over-archives, which is the safe direction.
-  //
-  // `working` is the one exception, and it is not a softening. The branch this
-  // census is committed ON advances by that very commit, so it can never appear
-  // in an archive built beforehand — the file could not be generated in a state
-  // that survives its own commit. It needs no archive: it is pushed, it has an
-  // open PR, and it is the branch someone is actively holding. It claims no
-  // archiveRef, so no row asserts anything untrue.
   const bucket = isArchiveRef(branch)
     ? "archive"
     : isAncestor(sha, MAIN)
       ? "in-main"
       : prs.length
         ? "pr-head"
-        : branch === HEAD_BRANCH
-          ? "working"
-          : "orphan";
+        : "orphan";
   const tipDate = clean(git("log", "-1", "--format=%cs", sha));
   const subject = clean(git("log", "-1", "--format=%s", sha)).slice(0, 160);
 
@@ -340,16 +323,16 @@ const body =
   `#\n` +
   `# Generated against ${MAIN} = ${git("rev-parse", "--short", MAIN).trim()}\n` +
   `# ${expected} branches (excluding main) · ${counts["in-main"] || 0} in-main · ` +
-  `${counts["pr-head"] || 0} pr-head · ${counts.orphan || 0} orphan · ` +
-  `${counts.working || 0} working · ${counts.archive || 0} archive\n` +
+  `${counts["pr-head"] || 0} pr-head · ${counts.orphan || 0} orphan · ${counts.archive || 0} archive\n` +
   `#\n` +
   `# WHAT EACH BUCKET GUARANTEES\n` +
   `#   in-main  the tip is an ancestor of main. Deleting the branch removes a name, not a commit.\n` +
   `#   pr-head  the tip is a refs/pull/N/head. GitHub keeps those permanently, merged or closed.\n` +
   `#   orphan   was held by the branch name alone. Now also a parent of ${ARCHIVE_REF}.\n` +
-  `#   working  the branch this census was generated on. Advances by the commit that records\n` +
-  `#            this file, so no prior archive can hold its tip. Pushed and PR-tracked; claims\n` +
-  `#            no archiveRef.\n` +
+  `#\n` +
+  `# A pr-head row records NO sha: its locator is the PR number, which is permanent, while the\n` +
+  `# branch tip moves on every push. Freezing the tip there would drift this file forever — the\n` +
+  `# sha is kept only where it IS the locator (orphan) or has stopped moving (in-main).\n` +
   `#   archive  the safety net itself. Never delete a branch in this bucket.\n` +
   `#\n` +
   `# TO RECOVER ANY ROW — both paths executed and verified on 2026-08-31 before this was committed:\n` +
@@ -370,13 +353,18 @@ const body =
   `branch\tsha\ttipDate\tbucket\tpr\tarchiveRef\tsubject\n` +
   rows
     .map((r) =>
-      // The `working` row freezes nothing. Its tip moves with every push — including
-      // the push that publishes this very file — so recording a sha there would make
-      // the manifest drift on its own commit, forever, and read as stale for a reason
-      // that is not drift. A live branch's tip is `git rev-parse` away; it is not a
-      // fact this census exists to preserve.
-      r.bucket === "working"
-        ? [r.branch, "-", "-", r.bucket, r.prs.join(" ") || "-", "-", "(live branch — tip moves with every push, deliberately not frozen)"].join("\t")
+      // A `pr-head` row freezes no sha, and this is the whole reason the file is
+      // stable. Its locator is the PR NUMBER — `git fetch origin refs/pull/N/head`
+      // — which GitHub holds permanently and which does not change when the branch
+      // moves. Recording the tip instead would make every push to any open PR drift
+      // this file, including the push that publishes the file itself, so it could
+      // never be generated in a state that survives its own commit.
+      //
+      // The sha stays exactly where it IS the locator: `orphan` rows, where nothing
+      // but that sha finds the work, and `in-main`, where the branch is finished and
+      // its tip no longer moves.
+      r.bucket === "pr-head"
+        ? [r.branch, "-", "-", r.bucket, r.prs.join(" ") || "-", "-", `(open or closed PR — fetch refs/pull/${r.prs[0]}/head)`].join("\t")
         : [r.branch, r.sha, r.tipDate, r.bucket, r.prs.join(" ") || "-", r.tag || "-", r.subject].join("\t"),
     )
     .join("\n") +
