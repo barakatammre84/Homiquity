@@ -102,8 +102,8 @@ transcribe into `loan_conditions` (category `lender_condition`, `sourceRule lend
 ride every conditions surface. Two honest observations: the machine **trusts the operator**
 (`conditions_cleared` succeeded with a transcribed condition still outstanding — the lender's
 own machine is authoritative in reality), and it is **uncoupled from the loan pipeline**
-(walk: the submission reached `funded` while the application sat at `pre_approved`; parked
-finding PF-2 records the divergence risk).
+(walk: the submission reached `funded` while the application sat at `pre_approved`; finding
+PF-2, registered 2026-08-31 as **F-099**, records the divergence risk).
 
 ### 2.6 Clear-to-close and funding — the pipeline
 
@@ -189,9 +189,9 @@ panel (the Guide's "first report viewed by … a loan officer," B3-2-01 p.290).
 data-staleness/tolerance handling after an AUS run (SG-G-2); a document-age check at
 submission (SG-G-1); Form 1103 and a signed-1003 artifact in the package (B1-1-01); the
 co-borrower in the MISMO package (F-080, P1, already registered); reconciliation between the
-submission machine and the pipeline (PF-2); the closer desk itself (roadmap; §2.7); an
+submission machine and the pipeline (F-099); the closer desk itself (roadmap; §2.7); an
 `out_of_scope` representation (B3-2-08); XSD conformance of the live package
-(QUALIFICATION_DETAIL, PF-3, under the F-025/L6 posture).
+(QUALIFICATION_DETAIL, F-097, under the F-025/L6 posture).
 
 **What mismatches the Guide.** Nothing found that *loosens* a borrower protection. The two
 substantive mismatches — the unenforced condition gate (fixed this session) and the
@@ -218,7 +218,7 @@ Ineligible/Refer was checked against B3-2-06/-07 and stands as written.
 1. **Couple the two status machines** (submission `funded` ⇏ pipeline `funded`). Proposal:
    a divergence *flag* (staff signal when one machine is ≥ clear_to_close and the other is
    > 1 stage behind), not an auto-advance — auto-advance would move a credit decision without
-   its chokepoints. PF-2.
+   its chokepoints. F-099.
 2. **Build the closer desk** (§2.7 carries the Guide-grounded requirements).
 3. **Extend `SIGNAL_ACTIVE_STATUSES`** into the closing track — the exclusion is a documented
    design decision; reversing it belongs with the closer-desk build.
@@ -274,10 +274,18 @@ now honest — per the #710 audit the register row lags the code). Parked findin
 adversarially verified this session: PF-0 (the condition gate, CONFIRMED P1, fixed
 in-session), PF-1 (DU findings surface, CONFIRMED P2, fixed in-session), PF-2 (uncoupled
 machines, CONFIRMED P2), PF-3 (XSD fixture blindness on QUALIFICATION_DETAIL, CONFIRMED
-P2, reproduced mechanically), PF-4 (STAFF_JOURNEYS wrong-at-birth claim + cite drift,
+and raised to **P1** by the compliance-auditor, reproduced mechanically), PF-4 (STAFF_JOURNEYS wrong-at-birth claim + cite drift,
 CONFIRMED P3, corrected in this PR — one leg refuted), and PF-5 which came back
 DUPLICATE-of F-0818-10/F-015 (fold, don't mint). Full text and verdicts in the
 [walk record](../feature-review/journey-walks/2026-08-23-lo-submission-review.md).
+
+> **Folded into the register 2026-08-31.** At the founder's direction the three findings that were
+> still parked entered `../feature-review/FINDINGS.md` as **F-097** (PF-3, XSD `QUALIFICATION_DETAIL`,
+> P1), **F-098** (PF-6, the MERS container sibling, P2) and **F-099** (PF-2, the uncoupled status
+> machines, P2) — while #698/#710 were both still open, so the claim lock the park protocol waits on
+> had *not* cleared. Each was re-verified against `main` @ `993db44` before it was written. F-098
+> carries a standing caveat in its own row: it has never passed `finding-verifier`.
+
 
 ---
 

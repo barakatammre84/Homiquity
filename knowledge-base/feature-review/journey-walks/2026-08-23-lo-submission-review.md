@@ -77,6 +77,25 @@ graduation on funding.
 
 ## Parked register rows (FINDINGS.md claim-locked by open PRs #698/#710 — fold in and delete this section when the register frees)
 
+> ### ⬛ FOLDED 2026-08-31 — rows minted, section kept
+>
+> **PF-3 → `F-097`** (P1) · **PF-6 → `F-098`** (P2) · **PF-2 → `F-099`** (P2), now live in
+> [`../FINDINGS.md`](../FINDINGS.md). PF-0, PF-1 and PF-4 were fixed or corrected in the PR that
+> produced this record; PF-5 came back DUPLICATE and was never minted.
+>
+> **Two deviations from this section's own instruction, recorded rather than glossed:**
+>
+> 1. **The claim lock had not cleared.** #698 and #710 were both still open on 2026-08-31. The fold
+>    happened at the founder's explicit direction, not because the precondition was met.
+> 2. **The section is not deleted.** The header says to delete it; TEAM_PRACTICES §2 says a dated
+>    record is immutable and corrections go in a banner. The immutability rule wins — and the
+>    verdict text below is the evidence the register rows cite, so deleting it would strand them.
+>
+> Every row was re-verified against `main` @ `993db44` before it was written to the register; the
+> line numbers below are the walk-time ones and have since shifted (see each `F-` row for current
+> cites). **`F-098` has still never passed `finding-verifier`** — its row carries that caveat.
+
+
 > Each row passed the adversarial verifier this session; verdicts recorded below.
 
 | Park id | Proposed row | Severity/type/compliance | Verifier verdict |
