@@ -20,6 +20,11 @@ import { computeSelfEmploymentPath } from "./services/income/paths/selfEmploymen
 import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
 import { liabilityKind, type LiabilityKind } from "@shared/liabilityTypes";
 import { assessPaidByOtherParty } from "@shared/liabilityExclusions";
+import {
+  DEFERRED_STUDENT_LOAN_FACTOR,
+  REVOLVING_MINIMUM_PAYMENT_FLOOR,
+  REVOLVING_PAYMENT_FACTOR,
+} from "./services/underwritingNuance";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -287,20 +292,22 @@ export async function verifyAssets(
 // ============================================================================
 
 /**
- * Fannie Mae Selling Guide B3-6-05, Monthly Debt Obligations (08/05/2026) —
- * Revolving Charge/Lines of Credit. Where the credit report shows no required
+ * Fannie Mae Selling Guide B3-6-05, Monthly Debt Obligations (08/05/2026).
+ *
+ * Revolving Charge/Lines of Credit: where the credit report shows no required
  * minimum payment and nothing documents a lower one, the qualifying payment is
  * 5% of the outstanding balance; for DU casefiles it is the greater of $10 or
  * 5%. We apply the DU form because every conventional file here is routed to DU.
+ * Student Loans: deferred loans or loans in forbearance qualify at 1% of balance.
+ *
+ * These three were DECLARED here as well as in underwritingNuance.ts — one
+ * regulated rule with two sources, which is the drift the VA-residual duplication
+ * already cost this repo once. They now come from that module and are re-exported
+ * so the public surface is unchanged. underwritingNuance.ts is the definition side
+ * because tests/complianceInvariants.test.ts reads ITS source for the 1% literal
+ * and the regulatory ledger's codeRef names it.
  */
-export const REVOLVING_PAYMENT_FACTOR = 0.05;
-export const REVOLVING_MINIMUM_PAYMENT_FLOOR = 10;
-
-/**
- * B3-6-05 — Student Loans. Deferred loans or loans in forbearance may be
- * qualified at 1% of the outstanding balance.
- */
-export const DEFERRED_STUDENT_LOAN_FACTOR = 0.01;
+export { DEFERRED_STUDENT_LOAN_FACTOR, REVOLVING_MINIMUM_PAYMENT_FLOOR, REVOLVING_PAYMENT_FACTOR };
 
 /**
  * `urla_liabilities.liability_type` is a free varchar written from the URLA

@@ -48,13 +48,18 @@ The chain, end to end:
    `c984148c…` in merged history. `scripts/extract-selling-guide.py` recovers it
    (`$SELLING_GUIDE_PDF` → local file → `git cat-file`), verifies its SHA-256 against the
    pinned constant, and **stops honestly** when no path yields a PDF.
-2. **Extraction.** One run writes the page-marked stream (`selling-guide-text.txt`,
-   `[[PAGE n | <section>]]` on every page), one heading-anchored file per section under
-   `extracted/sections/<ID>.txt` (ligatures expanded so grep works; anchors tile the book so
-   every character lands in exactly one file), and regenerates the **tracked fact layer**:
+2. **Extraction, in two renderings of the same pages.** One run writes the page-marked
+   text stream (`selling-guide-text.txt`, `[[PAGE n | <section>]]` on every page) plus one
+   heading-anchored file per section under `extracted/sections/<ID>.txt` (ligatures
+   expanded so grep works; anchors tile the book so every character lands in exactly one
+   file), and — when `pymupdf4llm` is installed — the same book again as **markdown**
+   (`selling-guide.md`, `extracted/markdown/<ID>.md`). Read the markdown one: the text
+   rendering **flattens tables**, and the Guide states most of its real thresholds in
+   tables. Both renderings use the same TOC and the same anchoring code, so a section id
+   means the same span in both. The run also regenerates the **tracked fact layer**:
    `section-index.tsv`, `revised-sections.tsv`, `toc.json`, `links.json`, `manifest.json`,
-   `INDEX.md`. Deterministic — a second run is byte-identical, so `git diff` is the drift
-   check.
+   `INDEX.md` — derived from the text layer alone, so it is byte-identical on a machine
+   with no `pymupdf4llm`. Deterministic, so `git diff` is the drift check.
 3. **The link corpus.** The Guide cites the outside world, and `links.json` pins all of it:
    every external URL with an honest class (`ok`/`mailto`/`malformed`), the section→section
    cross-reference graph, and each section's canonical URL on the HTML edition.
@@ -107,11 +112,17 @@ Run these from a checkout; each proves a different link in the chain.
 ```bash
 # 1. The corpus builds from nothing — delete the generated layer and watch it come back
 rm -rf docs/fannie-mae/selling-guide/extracted docs/fannie-mae/selling-guide/*.pdf \
-       docs/fannie-mae/selling-guide/selling-guide-text.txt
-python3 scripts/extract-selling-guide.py        # recovers the PDF from git history, ~3s
+       docs/fannie-mae/selling-guide/selling-guide-text.txt \
+       docs/fannie-mae/selling-guide/selling-guide.md
+python3 scripts/extract-selling-guide.py --no-markdown   # PDF from git history, ~3s
+python3 scripts/extract-selling-guide.py --markdown      # the readable layer, ~2 min
 
 # 2. Read one section the way a session should
-python3 scripts/extract-selling-guide.py --section B3-6-05   # Monthly Debt Obligations
+python3 scripts/extract-selling-guide.py --section B3-6-05 --markdown
+
+# 2b. See why the markdown rendering exists: a table the text layer destroys
+grep -A5 "Maximum Number of" docs/fannie-mae/selling-guide/extracted/markdown/B2-2-03.md
+grep -A9 "Maximum Number of" docs/fannie-mae/selling-guide/extracted/sections/B2-2-03.txt
 
 # 3. Who cites B3-6-05? The book's own citation graph answers
 python3 -c "import json; x=json.load(open('docs/fannie-mae/selling-guide/links.json'))['internal_xrefs']; print(sorted(k for k,v in x.items() if 'B3-6-05' in v))"
@@ -180,8 +191,9 @@ Answers with receipts in [TEACHBACK_KEY.md](TEACHBACK_KEY.md) — try first.
    still run, when the scope step classifies `docs/` as inert — and what pins that?
 4. The watch sees HTTP 403 on a Guide-referenced URL. What does it record, what does it
    NOT emit, and why is that rule correct even against the real origin?
-5. You read a DTI threshold out of `extracted/sections/B3-6-05.txt` that sits inside a
-   table. What must happen before code may rely on it?
+5. You read a DTI threshold out of `extracted/markdown/B3-6-05.md` that sits inside a
+   table the markdown rendering laid out cleanly. What must still happen before code may
+   rely on it — and why does a well-rendered table not change that answer?
 6. The steward's sweep signals a PDF-sha mismatch at the official endpoint. Name the next
    three things that happen — and the thing that must NOT happen.
 7. Where do the five criteria live that gate the assumption-replacement end state, and who

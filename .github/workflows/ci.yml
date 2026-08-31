@@ -543,6 +543,17 @@ jobs:
         # silently drift from its status file. INERT-safe by design; not
         # scope-gated for the same reason as the step above.
         run: pnpm guard:coverage
+      - name: Selling Guide conformance register
+        # SELLING_GUIDE_CONFORMANCE.md records what our code agrees and disagrees
+        # with in the Guide, and six decision-path comments cite its gap ids as
+        # stable keys — while nothing read it. On 2026-08-22 two sessions each
+        # added a pair of findings and each numbered them C-9/C-10: four findings,
+        # two ids, gate green throughout. This checks the register's SHAPE only —
+        # unique ids, section ids that resolve in the committed edition, the
+        # edition stamp, and that code-cited ids exist. It proves nothing about
+        # whether an entry's CLAIM is true; that is the scrub loop's job. INERT
+        # until the corpus lands; not scope-gated, same reason as the steps above.
+        run: pnpm guard:conformance
       - name: Restore pip cache (extraction proof)
         uses: actions/cache@v4
         with:

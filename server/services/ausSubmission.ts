@@ -107,7 +107,7 @@ export async function parsePlaidAssetReport(assetReportToken: string): Promise<P
     },
     transactionTrend: trends[Math.floor(seeded(s + "trend") * trends.length)],
     // ~35% of simulated profiles carry one large unsourced deposit within the
-    // last 30 days (the "mattress money" nuance — B3-4.3-04 sourcing rule).
+    // last 30 days (the "mattress money" nuance — B3-4.2-02 sourcing rule).
     transactions:
       seeded(s + "bigdep") < 0.35
         ? [
