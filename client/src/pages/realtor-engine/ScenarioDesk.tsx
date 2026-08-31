@@ -134,8 +134,13 @@ function calculateScenario(input: ScenarioInput): ScenarioResult | null {
       programNotes.push("PMI required when LTV exceeds 80%");
       programNotes.push("PMI can be removed once LTV reaches 78%");
     }
-    if (downPaymentPercent < 3) {
-      programNotes.push("Conventional loans typically require minimum 3% down payment");
+    if (downPaymentPercent < 5) {
+      // 5%, not the industry-generic 3%: this platform's own conventional ceiling
+      // is 95 LTV (CONVENTIONAL_LTV_CAP / CONVENTIONAL_MAX_LTV, seedLendingGrids.ts;
+      // ledger platform-conv-ltv-cap-95 records that 95.01-97% programs are
+      // deliberately not offered). Quoting 3% told the user to aim at a down
+      // payment no product here can accept.
+      programNotes.push("Conventional loans here require a minimum 5% down payment (95% LTV cap)");
     }
     if (creditScore < 620) {
       programNotes.push("Most conventional loans require minimum 620 credit score");
