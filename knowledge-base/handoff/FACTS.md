@@ -1,7 +1,7 @@
 # FACTS — every count the corpus uses, derived by command
 
 > **Freshness:** last verified 2026-08-22 · review every 14 days
-> **Verified against** `origin/main` @ **49720133** (full `497201334c4f399c6d3d5378c022197e6d774034`).
+> **Verified against** `origin/main` @ **92e21366** (full `92e213660b09074fb30f1bc5e89d777f891ebc5e`).
 
 The chapters cite rows here by id (`F-07`). Every value below was produced by running the
 command in the same row, in a clean worktree of the stamped commit, with the output pasted —
@@ -43,7 +43,7 @@ and returns nothing — a false "the file changed").
 
 <!-- BEGIN GENERATED — do not hand-edit; re-derive with the recipe below and paste -->
 
-| id | fact | command (run from the worktree root) | value @ 49720133 |
+| id | fact | command (run from the worktree root) | value @ 92e21366 |
 |---|---|---|---|
 | F-01 | Drizzle tables | `grep -c "pgTable(" shared/schema/*.ts \| awk -F: '{s+=$2} END{print s}'` | 188 |
 | F-02 | schema files | `ls shared/schema/*.ts \| wc -l` | 34 |
@@ -57,15 +57,15 @@ and returns nothing — a false "the file changed").
 | F-10 | role-group declarations (line numbers: STAFF, CLIENT, PARTNER, ALL, INTERNAL_STAFF) | `grep -nE "^export const (STAFF_ROLES\|CLIENT_ROLES\|PARTNER_ROLES\|INTERNAL_STAFF_ROLES\|ALL_ROLES)" shared/roles.ts \| cut -d: -f1` | 14 26 36 42 80 (8 + 2 + 2 = 12 roles; 6 internal) |
 | F-11 | `inArray(` call sites | `grep -rn "inArray(" server --include='*.ts' \| wc -l` | 56 |
 | F-12 | `.transaction(` call sites | `grep -rn "\.transaction(" server --include='*.ts' \| wc -l` | 6 |
-| F-13 | test files on disk · integration files the node lane excludes | `git ls-files 'tests/*.test.ts' \| wc -l ; grep -cE '^\s*"tests/' vitest.config.ts` | 249 · 18 |
+| F-13 | test files on disk · integration files the node lane excludes | `git ls-files 'tests/*.test.ts' \| wc -l ; grep -cE '^\s*"tests/' vitest.config.ts` | 251 · 18 |
 | F-14 | integration-lane includes | `grep -cE '^\s*"tests/' vitest.integration.config.ts` | 18 |
 | F-15 | client test files (glob lane) | `git ls-files 'client/src/**/*.test.ts' 'client/src/**/*.test.tsx' \| wc -l` | 125 |
 | F-16 | guards in the CI gate | `grep -oE "pnpm guard:[a-z]+" .github/workflows/ci.yml \| sort -u` | authority bundle channel citations corpus coverage gating kb migrations querykeys schema seats security staleness tokens ui (16; `guard:docs` deliberately absent). Five joined since `fd4a22c5`: `authority` `corpus` `coverage` (the Selling Guide gate, #708) · `seats` (the routine-roster check, #722) · `gating` (#726, a required field nothing collects) |
-| F-17 | pre-push steps · preflight steps · checkup checks | `grep -c '^step ' .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh` | 15 · 25 · 23 (was 10 — `e49aab6d`/#660 made the unit lanes opt-in behind `PREPUSH_TESTS=1`; +the Selling Guide corpus/coverage/watch lines, 2026-08-23) |
+| F-17 | pre-push steps · preflight steps · checkup checks | `grep -c '^step ' .githooks/pre-push ; grep -c 'step "' scripts/preflight.sh ; grep -c '^check "' scripts/checkup.sh` | 15 · 26 · 26 (was 10 — `e49aab6d`/#660 made the unit lanes opt-in behind `PREPUSH_TESTS=1`; +the Selling Guide corpus/coverage/watch lines, 2026-08-23) |
 | F-18 | skills · of which anti-autoload | `ls -d .claude/skills/*/ \| wc -l ; grep -l 'NEVER auto-load' .claude/skills/*/SKILL.md \| wc -l` | 27 · 21 |
 | F-19 | agents · of which owners | `ls .claude/agents/*.md \| wc -l ; ls .claude/agents/hq-*-owner.md \| wc -l` | 59 · 41 |
 | F-20 | app-guide chapters | `ls knowledge-base/handbook/app-guide/*.md \| wc -l` | 12 |
-| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 238 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
+| F-21 | knowledge-base markdown files (committed) | `git ls-tree -r --name-only HEAD -- knowledge-base \| grep -c '\.md$'` | 240 — the one self-referential row: it counts this corpus too, so it rises by the size of `handoff/` the moment that merges |
 | F-22 | client routes · lazy routes | `grep -c "<Route" client/src/App.tsx ; grep -c "lazy(" client/src/App.tsx` | 121 · 113 |
 | F-23 | coach model calls per turn · coach tools | `grep -n "MAX_MODEL_CALLS_PER_TURN\s*=" server/services/coachingClient.ts ; grep -c 'name: "' server/services/coachTools.ts` | 4 · 8 |
 | F-24 | server files mentioning Anthropic · SDK import lines | `grep -rln "anthropic" server --include='*.ts' \| wc -l ; grep -rn "@anthropic-ai/sdk" server --include='*.ts' \| wc -l` | 7 · 5 (none in `DECISION_PATH_MODULES`) |
@@ -75,12 +75,12 @@ and returns nothing — a false "the file changed").
 | F-28 | encrypted-at-rest column sites | `grep -rn "_encrypted" shared/schema/*.ts \| wc -l` | 8 (+ `credit_pulls.encryptedRawResponse`, named differently) |
 | F-29 | production cron sweeps | `grep -c "cron:" .github/workflows/cron-jobs.yml` | 7 |
 | F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 82,355 · shared 23,355 · client/src 107,848 · tests 48,899 |
-| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,170 — `HEAD`, so run it on `main`; on a branch it counts the branch |
+| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,183 — `HEAD`, so run it on `main`; on a branch it counts the branch |
 | F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
-| F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 67 |
+| F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 68 |
 | F-35 | query-key factories | `grep -cE '^export const [a-zA-Z]+Keys' client/src/lib/queryClient.ts` | 17 |
-| F-36 | guard scripts · baseline files | `ls scripts/*-guard.cjs \| wc -l ; ls scripts/*baseline*.json \| wc -l` | 19 · 8 |
+| F-36 | guard scripts · baseline files | `ls scripts/*-guard.cjs \| wc -l ; ls scripts/*baseline*.json \| wc -l` | 20 · 9 |
 | F-37 | foreign keys to `loan_applications` · to `users` | `grep -rn "references(() => loanApplications.id)" shared/schema/*.ts \| wc -l ; grep -rn "references(() => users.id)" shared/schema/*.ts \| wc -l` | 91 · 130 |
 | F-38 | `app.use(` mounts · server `.ts` files | `grep -c "app.use(" server/app.ts ; find server -name '*.ts' \| wc -l` | 39 · 291 |
 | F-39 | test files in neither vitest lane (symmetric difference: the node lane's exclude list vs the integration lane's include list) | `{ grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts \| tr -d '"' \| sort -u; grep -ohE '"tests/[^"]+\.test\.ts"' vitest.integration.config.ts \| tr -d '"' \| sort -u; } \| sort \| uniq -u \| wc -l` | 0 |
@@ -91,7 +91,7 @@ and returns nothing — a false "the file changed").
 | F-44 | `main` protected · ruleset rules | `gh api repos/barakatammre84/Homiquity/branches/main --jq .protected ; gh api repos/barakatammre84/Homiquity/rules/branches/main --jq 'length'` | true · 0 — classic branch protection, not a ruleset (measured 2026-08-23; a repo setting, not a property of the commit). ⚠️ **The contexts list is unreadable from a session:** `…/branches/main/protection` answers `403 "Resource not accessible by integration"` to a non-admin token, which is how this row was wrong in both directions (asserted enforcement through the 08-19 removal, then asserted `0` into the day it was re-armed). Enforcement is proved by BEHAVIOUR: merging #708/#647 returned `405 Required status check "gate (typecheck · tests · schema guard)" is expected`, and #647 merged only once brought current with `main`, so `strict` is on too. |
 | F-45 | Selling Guide leaf sections · TOC entries | `cut -f3 docs/fannie-mae/selling-guide/section-index.tsv \| grep -Ec '^[A-E][0-9]?(-[0-9]+(\.[0-9]+)?)*-[0-9]{2}, ' ; tail -n +2 docs/fannie-mae/selling-guide/section-index.tsv \| wc -l` | 423 · 554 |
 | F-46 | Guide link inventory: unique URLs · probeable ok · xref edges | `python3 -c "import json;s=json.load(open('docs/fannie-mae/selling-guide/links.json'))['summary'];print(s['unique_urls'],s['ok_urls'],s['xref_edges'])"` | 319 · 295 · 989 |
-| F-47 | Selling Guide gate steps in ci.yml (authority guard + corpus coherence + coverage map + extraction proof — all always-run) | `grep -cE '^      - name: Selling Guide' .github/workflows/ci.yml` | 4 |
+| F-47 | Selling Guide gate steps in ci.yml (authority guard + corpus coherence + coverage map + conformance register + extraction proof — all always-run) | `grep -cE '^      - name: Selling Guide' .github/workflows/ci.yml` | 5 |
 | F-48 | acknowledged blocked sources+hosts in the Guide watch state (the procurement ratchet) | `python3 -c "import json;print(len(json.load(open('data/regulatory/selling-guide-watch-state.json'))['acknowledgedBlocked']))"` | 25 |
 
 <!-- END GENERATED -->

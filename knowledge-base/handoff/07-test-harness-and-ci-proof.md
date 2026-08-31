@@ -30,7 +30,7 @@ bare pair survives as `pnpm test:raw`, `:20`). The **node** lane's `include` was
 allowlist of ~230 entries in `vitest.config.ts` **until 2026-08-24**, when `387a3518`/#725 deleted
 it for `include: ["tests/**/*.test.{ts,tsx}"]` (`vitest.config.ts:71`) plus an 18-entry `exclude`
 that drops the integration files (`:77-95`). Read the reason, not just the diff: the list *carried
-no information* — 249 files in `tests/` minus the 18 integration files is exactly the number that
+no information* — 251 files in `tests/` minus the 18 integration files is exactly the number that
 was typed out — and it cost merges, because every concurrent PR inserted its entry at the same
 place (`:44-62`). What replaced its one virtue, failing closed on a typo'd path, is the collection
 guard: the orphan floor fails when a test file matches no lane, and a second check fails when one
@@ -115,7 +115,7 @@ flowchart TD
   `resolveMatrixValue` throws rather than guesses, `RATE_LIMIT_RELAXED` for the auth limiter only.
   The runbook sentence is LEDGER HO-0823-05.
 - **Counts that must agree — and now a guard makes them.** `git ls-files 'tests/*.test.ts' | wc -l`
-  → `249`; the node lane takes all of them and excludes 18, which is exactly the integration lane's
+  → `251`; the node lane takes all of them and excludes 18, which is exactly the integration lane's
   list, so the two `"tests/…"` blocks must be **identical**:
   `{ grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts | tr -d '"' | sort -u; grep -ohE '"tests/[^"]+\.test\.ts"' vitest.integration.config.ts | tr -d '"' | sort -u; } | sort | uniq -u | wc -l`
   → `0` (FACTS F-39; a file on one side only is either an orphan or double-claimed, and both are
