@@ -1,0 +1,72 @@
+# Deletes branches whose commits are provably recoverable — the executable form of
+# TEAM_PRACTICES.md §4, "Merged = deleted, same day".
+#
+# WHY A WORKFLOW. An agent session cannot delete a ref: measured 2026-08-31, both
+# `git push origin --delete <b>` and `git push origin :refs/heads/<b>` fail through the
+# session proxy (as does any refs/tags/* push) while branch create and update succeed
+# against the same remote in the same minute. A runner with `contents: write` has the
+# permission. The rule was written down for months and executed by nothing, and origin
+# reached 200 branches; two previous cleanups answered by COPYING branches into backup/
+# namespaces, so 106 of those 200 were backups. Cleanup that cannot delete makes it worse.
+#
+# MANUAL ONLY, AND DRY BY DEFAULT. There is deliberately no schedule. The script's one
+# hand-maintained input — which branches a live session is standing on — cannot be derived
+# by a runner and goes stale in hours, so an unattended 3am run would either refuse or, if
+# the freshness check were ever loosened, delete a branch out from under a running session.
+# A human refreshes that list and dispatches this. Add a schedule only when a runner can
+# read the session API, which today it cannot.
+name: Branch cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually delete. Leave false to print the plan and delete nothing.'
+        type: boolean
+        default: false
+
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+
+permissions:
+  contents: write        # deleting refs
+  pull-requests: read    # open-PR heads, read live so a live PR's branch is never deleted
+
+jobs:
+  cleanup:
+    name: branch cleanup (dry-run unless apply=true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # ancestry is the whole test; a shallow clone answers it wrong
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The archive branch holds the only reachable copy of the orphan commits, and the
+      # script refuses to run without it. Fetch it explicitly — checkout does not.
+      - name: Fetch the archive ref
+        run: |
+          git fetch origin '+refs/heads/archive/*:refs/remotes/origin/archive/*'
+          git fetch origin 'refs/pull/*/head' --quiet || true
+
+      # The manifest must describe the tree being deleted from. If it is stale, the buckets
+      # it records are not the buckets that exist, and nothing should be deleted on them.
+      - name: Manifest current
+        run: node scripts/branch-archive.cjs --check
+
+      - name: Plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/branch-cleanup.cjs
+
+      - name: Apply
+        if: inputs.apply
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/branch-cleanup.cjs --apply

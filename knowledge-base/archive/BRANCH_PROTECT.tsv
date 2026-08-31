@@ -1,0 +1,41 @@
+# BRANCH PROTECT LIST — hand-maintained. The ONLY hand-entered input to branch deletion.
+#
+# scripts/branch-cleanup.cjs derives everything else from git and the GitHub API: what is in
+# main, what a pull ref holds, what the archive branch covers, what heads an open PR. This file
+# answers the one question no machine in CI can:
+#
+#     IS SOMEONE STANDING ON THIS BRANCH RIGHT NOW?
+#
+# WHY IT CANNOT BE DERIVED. A GitHub Actions runner cannot read the Claude session API. A branch
+# can be `in-main` — the safest bucket there is, its commits inside main AND inside a permanent
+# pull ref — and still be the outcome branch of a running session. Deleting it loses no commit
+# and still breaks that session's push. `feat/landing-coach-first` is exactly that: PR #595
+# merged, and 39 sessions name it.
+#
+# HOW TO REFRESH, and it MUST be refreshed before any deletion run — the set changes by the hour:
+#   list_sessions -> session_context.outcomes[].git_repository.git_info.branches
+#   NOT external_metadata.current_branches, which holds the REPO NAME. 46 sessions report
+#   "barakatammre84/Homiquity" there and 14 report an empty string; reading the wrong field
+#   returns a plausible list of nothing.
+#
+# Sessions whose status is ARCHIVED are deliberately NOT listed — an archived session is not
+# coming back to push. Five such branches were seen and left deletable.
+#
+# Read 2026-08-31T22:20Z, 60 sessions, 20 branches referenced, 15 non-archived.
+#
+# branch	sessions	status	note
+feat/landing-coach-first	39	IDLE,REQUIRES_ACTION	PR #595 merged, bucket in-main — the case that proves a safe bucket is not an idle branch
+claude/file-router-organization-ol4k7i	1	RUNNING	this session
+claude/loan-officer-selling-guide-sqhr3k	1	IDLE	PR #716, green, awaiting merge — the peer that sent the live-session finding
+claude/selling-guide-extraction-rh2kvf	1	IDLE	PR #738, updated 2026-08-31
+claude/homi-homebuying-ai-5ddafy	1	IDLE	PR #714
+claude/mortgage-broker-launch-features-nbc74b	1	IDLE	PR #710 (closed 2026-08-31) — session still holds the branch
+claude/executive-dev-priorities-onpceu	1	IDLE	PR #715 (closed 2026-08-31) — session still holds the branch
+claude/homiquity-doc-accuracy-88pyv3	1	IDLE	PR #713 (closed 2026-08-31) — session still holds the branch
+claude/homiquity-doc-accuracy-iv8ijz	1	IDLE	no PR; live session
+claude/selling-guide-conflicts-7ls3ct	1	IDLE	no PR; live session
+claude/selling-guide-core-doc-0vf48f	1	IDLE	no PR; live session
+claude/current-model-identification-y18ulc	1	IDLE	no PR; live session
+claude/status-47z3sc	1	IDLE	no PR; live session
+docs/handoff-refresh-0823	1	IDLE	no PR; live session
+fix/extraction-persistence-test-race	1	IDLE	no PR; live session
