@@ -93,7 +93,18 @@ graduation on funding.
 >
 > Every row was re-verified against `main` @ `993db44` before it was written to the register; the
 > line numbers below are the walk-time ones and have since shifted (see each `F-` row for current
-> cites). **`F-098` has still never passed `finding-verifier`** — its row carries that caveat.
+> cites).
+>
+> **UPDATE, later the same day — `F-098` has now passed `finding-verifier`:**
+> **CONFIRMED-WITH-CORRECTIONS**, P2 and `defect` upheld, all six refutation surfaces failed, and the
+> deviation noted above is closed. The verifier found PF-6 as filed **understated** the defect and
+> **prescribed a remediation that does not work**: there are **four** offenders in those seven lines,
+> not two (`MERSOrganizationIdentifier` is a `LEGAL_ENTITY_DETAIL` child, and the status **value**
+> `"Registered"` is outside the `Active|Inactive|Other` enumeration — a fabricated *data value*, not
+> just a container name), and renaming to `MERS_MINIdentifier` still fails because
+> `MERS_REGISTRATION`'s content model carries no MIN element at all. The corrected row in
+> [`../FINDINGS.md`](../FINDINGS.md) is authoritative. One point **in this record's favour**: PF-6's
+> `mismo.ts:902-911` was right and the register's first restamp to `:902-912` was wrong — now fixed.
 
 
 > Each row passed the adversarial verifier this session; verdicts recorded below.

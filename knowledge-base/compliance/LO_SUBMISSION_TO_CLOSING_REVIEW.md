@@ -284,7 +284,10 @@ DUPLICATE-of F-0818-10/F-015 (fold, don't mint). Full text and verdicts in the
 > P1), **F-098** (PF-6, the MERS container sibling, P2) and **F-099** (PF-2, the uncoupled status
 > machines, P2) — while #698/#710 were both still open, so the claim lock the park protocol waits on
 > had *not* cleared. Each was re-verified against `main` @ `993db44` before it was written. F-098
-> carries a standing caveat in its own row: it has never passed `finding-verifier`.
+> passed `finding-verifier` later the same day — **CONFIRMED-WITH-CORRECTIONS**, P2 and `defect`
+> upheld — which closed the one deviation this fold carried. The verdict also corrected the row:
+> four offenders rather than two, and the originally-proposed remediation would not have produced a
+> valid document. See the F-098 row for the current text.
 
 
 ---
