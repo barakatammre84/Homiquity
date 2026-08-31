@@ -46,17 +46,19 @@ jobs:
         with:
           node-version: 24
 
-      # The archive branch holds the only reachable copy of the orphan commits, and the
-      # script refuses to run without it. Fetch it explicitly — checkout does not.
+      # The archive branch holds the only reachable copy of the orphan commits and the
+      # script refuses to run without it. Fetch into refs/heads/* so a bare name resolves:
+      # the first version fetched into refs/remotes/origin/* and `git rev-parse archive/...`
+      # then found nothing, because that form looks for a LOCAL branch. It resolved on the
+      # laptop that had one and failed here — a check that passes only where it was written.
       - name: Fetch the archive ref
-        run: |
-          git fetch origin '+refs/heads/archive/*:refs/remotes/origin/archive/*'
-          git fetch origin 'refs/pull/*/head' --quiet || true
+        run: git fetch origin '+refs/heads/archive/*:refs/heads/archive/*'
 
-      # The manifest must describe the tree being deleted from. If it is stale, the buckets
-      # it records are not the buckets that exist, and nothing should be deleted on them.
-      - name: Manifest current
-        run: node scripts/branch-archive.cjs --check
+      # NOTE: BRANCH_ARCHIVE.tsv is deliberately NOT gated on here. branch-cleanup.cjs reads
+      # none of it — every bucket is recomputed live from git and the API, which is the only
+      # sound way to delete against a tree that moves. Gating on a byte-exact manifest would
+      # block this job after any merge that changes the branch set, i.e. after every merge,
+      # for a staleness that has no bearing on what is safe to delete.
 
       - name: Plan
         env:

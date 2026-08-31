@@ -21,7 +21,7 @@
 # Sessions whose status is ARCHIVED are deliberately NOT listed — an archived session is not
 # coming back to push. Five such branches were seen and left deletable.
 #
-# Read 2026-08-31T22:20Z, 60 sessions, 20 branches referenced, 15 non-archived.
+# Read 2026-08-31T22:41Z, 60 sessions, 20 branches referenced, 15 non-archived.
 #
 # branch	sessions	status	note
 feat/landing-coach-first	39	IDLE,REQUIRES_ACTION	PR #595 merged, bucket in-main — the case that proves a safe bucket is not an idle branch

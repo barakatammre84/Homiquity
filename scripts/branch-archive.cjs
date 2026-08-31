@@ -261,14 +261,28 @@ const orphans = rows.filter((r) => r.bucket === "orphan");
 // is over-archived, never under-archived — but the ROW would still be asserting
 // something untrue, and that is not a thing to leave in a file whose only job
 // is to be believed.
+
+// Resolve the archive ref wherever it lives. `git rev-parse <name>` finds a LOCAL
+// branch, which exists on the machine that created it and in no fresh checkout —
+// so this resolved on a laptop and returned "does not exist" on a runner, which
+// is exactly the failure mode that makes a check look like a verdict.
+function resolveArchive(ref) {
+  for (const cand of [`refs/heads/${ref}`, `refs/remotes/origin/${ref}`, ref]) {
+    try {
+      return execFileSync("git", ["rev-parse", "--verify", "--quiet", `${cand}^{commit}`], {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {}
+  }
+  return null;
+}
+
 function archiveCovers() {
   const uncovered = [];
-  let ref;
-  try {
-    ref = git("rev-parse", "--verify", `${ARCHIVE_REF}^{commit}`).trim();
-  } catch {
-    return { exists: false, uncovered };
-  }
+  const ref = resolveArchive(ARCHIVE_REF);
+  if (!ref) return { exists: false, uncovered };
   for (const r of orphans) if (!isAncestor(r.sha, ref)) uncovered.push(r);
   return { exists: true, uncovered };
 }
