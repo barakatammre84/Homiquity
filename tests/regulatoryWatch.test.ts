@@ -31,7 +31,7 @@ const NOW = Date.parse("2026-08-20T12:00:00Z");
 const LEDGER = [
   { id: "va-residual", citation: "VA Pamphlet 26-7, Chapter 4", codeRef: "server/services/underwritingNuance.ts", host: "benefits.va.gov" },
   { id: "regz-anti-steering", citation: "12 CFR 1026.36(e) (anti-steering)", codeRef: "server/services/antiSteeringOptions.ts", host: "consumerfinance.gov" },
-  { id: "fnma-seasoning", citation: "Fannie Mae Selling Guide B3-3.2", codeRef: "server/services/underwritingNuance.ts", host: "selling-guide.fanniemae.com" },
+  { id: "fnma-seasoning", citation: "Fannie Mae Selling Guide B3-3.5-01", codeRef: "server/services/underwritingNuance.ts", host: "selling-guide.fanniemae.com" },
 ];
 
 const VA_SOURCE = {
@@ -274,9 +274,26 @@ describe("the watcher going silent is itself detected", () => {
   };
   const watcherWarns = (out: string) => out.split("\n").filter((l) => l.startsWith("WARN  regulatory-watch"));
 
+  /**
+   * A lastRun N days before NOW.
+   *
+   * These fixtures used to hard-code absolute dates, and two of them meant
+   * "recently" — `2026-08-20`, written while that was four days old. The guard
+   * fails above WATCH_SILENT_AFTER_DAYS (10), so on 2026-08-31 the fixture
+   * silently became eleven days stale, the script emitted an extra
+   * `FAIL … last ran 11d ago` nobody asked for, and the strict
+   * `toHaveLength(0)` below went red. `main` was green on 2026-08-24 and red on
+   * 2026-08-31 with no commit in between — a date-shaped time bomb that takes
+   * the whole gate, and every open PR with it, on a day nobody is expecting.
+   *
+   * An absolute date can only express "recently" for as long as it stays
+   * recent. Say it relatively and the fixture means the same thing forever.
+   */
+  const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+
   it("fails when the watcher has not run inside the limit", () => {
     const { out } = runFreshness({
-      lastRun: "2026-07-04T07:12:30.608Z",
+      lastRun: daysAgo(47), // the real 2026-07-04 outage: silent 47 days
       sources: {},
       pageHashes: {},
       federalRegisterSeen: [],
@@ -286,7 +303,7 @@ describe("the watcher going silent is itself detected", () => {
 
   it("fails on a NEW blocked source — a coverage regression must be impossible to sit on", () => {
     const { out } = runFreshness({
-      lastRun: "2026-08-20T12:00:00.000Z",
+      lastRun: daysAgo(1), // fresh: this case is about the SOURCE, not staleness
       sources: {
         "va-circulars": { status: "unreachable", lastSuccess: null, consecutiveFailures: 9, lastError: "HTTP 403" },
       },
@@ -302,7 +319,7 @@ describe("the watcher going silent is itself detected", () => {
     // Fannie, Freddie and FHA are bot-walled or JS-rendered; only a subscription
     // fixes them. Failing forever would bury the case that IS actionable.
     const { out } = runFreshness({
-      lastRun: "2026-08-20T12:00:00.000Z",
+      lastRun: daysAgo(1), // fresh: this case is about the SOURCE, not staleness
       acknowledgedBlocked: {
         "fha-mortgagee-letters": { since: "2026-08-20", reason: "HTTP 403 bot wall", procurement: "FHA INFO emails" },
       },

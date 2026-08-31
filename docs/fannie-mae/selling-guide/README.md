@@ -6,13 +6,28 @@ income, credit, property and delivery logic all traces to it, `pnpm guard:author
 makes PRs cite it, and the coverage map works it down section by section. This directory
 is where the Guide physically lives for every developer and Claude session.
 
+**It is also the core document for decisions taken above the code** — product, pricing,
+marketing, founder calls. The one-page rule for that, written for a reader who will never
+run a test suite, is
+[knowledge-base/compliance/SELLING_GUIDE_DECISION_RULE.md](../../../knowledge-base/compliance/SELLING_GUIDE_DECISION_RULE.md).
+
+**Read the markdown rendering.** The corpus carries two renderings of the same PDF pages:
+markdown, which reconstructs the Guide's **tables**, and plain text, which flattens them.
+The Guide states most of its real thresholds and eligibility grids in tables, so markdown
+is the default and text is the fallback. Both are below.
+
 ## One command, no setup
 
 ```bash
-python3 scripts/extract-selling-guide.py        # needs: pip3 install pymupdf
+python3 scripts/extract-selling-guide.py        # needs: pip3 install pymupdf pymupdf4llm
 ```
 
-That regenerates the full corpus locally in ~3 seconds. It finds the PDF via
+That regenerates the full corpus locally: the text layer and the tracked fact layer in ~3
+seconds, plus the markdown layer in ~2 minutes more. `--no-markdown` stops after the fast
+part (what the SessionStart hook uses); `--markdown` insists on the slow part and fails
+loudly rather than skipping if `pymupdf4llm` is absent. **`pymupdf4llm` is optional on
+purpose:** without it everything else is unchanged and byte-identical, which is what keeps
+`--check` and the CI extraction proof on one small pinned dependency. It finds the PDF via
 `$SELLING_GUIDE_PDF`, then the gitignored copy here, then — **in any fresh clone, with no
 network** — recovers it from this repository's own git history (the PDF was committed
 2026-08-20 while the repo was private; the blob remains in the merged history and is
@@ -38,12 +53,14 @@ works before anyone runs the script):
 
 | Artifact | Use it for |
 |---|---|
-| `Selling-Guide_08-05-2026.pdf` | The authority of last resort — anything tables (see below), anything where extraction fidelity is in doubt. |
-| `selling-guide-text.txt` | Whole-book grep. Every page is prefixed `[[PAGE n \| <section>]]`, so a plain `grep -n` names the governing section and page. |
-| `extracted/sections/<ID>.txt` | One file per section (423) — `extracted/sections/B3-6-05.txt` is the whole of B3-6-05 with a provenance header (pages, breadcrumb, revised-this-edition flag) and inline `[[PAGE n]]` markers for citation. |
-| `extracted/groups/…` | Part/Subpart/Chapter banner and intro text, so no page of the book is unaccounted for. |
+| **`extracted/markdown/<ID>.md`** | **Start here.** One markdown file per section (423), with a provenance header (pages, breadcrumb, revised-this-edition flag, table count, a ready-made `Cite as:` line) and inline `[[PAGE n]]` markers. **Tables survive as tables.** |
+| **`selling-guide.md`** | **Whole-book markdown grep.** Every page prefixed `[[PAGE n \| <section>]]`, so a plain `grep -n` names the governing section and the page to cite. |
+| `Selling-Guide_08-05-2026.pdf` | The authority of last resort — any threshold or matrix cell that decides money or eligibility, and anything where rendering fidelity is in doubt. |
+| `selling-guide-text.txt` | The plain-text whole-book stream, same page markers. Faithful to reading order; **flattens tables**. |
+| `extracted/sections/<ID>.txt` | The plain-text file per section (423) — the `md` file's counterpart. |
+| `extracted/markdown-groups/…`, `extracted/groups/…` | Part/Subpart/Chapter banner and intro text in each rendering, so no page of the book is unaccounted for. |
 | `extracted/front-matter.txt` | Cover pages. |
-| `extracted/extraction-report.json` | Anchor methods and verification results for the run. |
+| `extracted/extraction-report.json` | Anchor methods, verification results, and the markdown layer's completeness audit for the run. |
 
 ## Finding things
 
@@ -51,15 +68,19 @@ works before anyone runs the script):
 # which section governs this? (tracked — works with zero setup)
 grep -n "Monthly Debt" docs/fannie-mae/selling-guide/section-index.tsv
 
-# read one section
-python3 scripts/extract-selling-guide.py --section B3-6-05
-# …or directly: docs/fannie-mae/selling-guide/extracted/sections/B3-6-05.txt
+# read one section, tables intact
+python3 scripts/extract-selling-guide.py --section B3-6-05 --markdown
+# …or directly: docs/fannie-mae/selling-guide/extracted/markdown/B3-6-05.md
+# drop --markdown for the plain-text rendering (extracted/sections/B3-6-05.txt)
 
 # search the whole book
-grep -n "boarder income" docs/fannie-mae/selling-guide/selling-guide-text.txt
+grep -n "boarder income" docs/fannie-mae/selling-guide/selling-guide.md
 
 # or search section files to get hits grouped by section
-grep -rln "boarder income" docs/fannie-mae/selling-guide/extracted/sections/
+grep -rln "boarder income" docs/fannie-mae/selling-guide/extracted/markdown/
+
+# read a threshold matrix — the reason the markdown layer exists
+grep -A6 "Maximum Number of" docs/fannie-mae/selling-guide/extracted/markdown/B2-2-03.md
 ```
 
 ⚠️ Use `grep -F` for phrases containing `$` — BSD grep reads it as an anchor and reports
@@ -68,7 +89,8 @@ zero matches on text that is verbatim present. Lines wrap mid-sentence; grep a f
 **Citing:** section id + PDF page, e.g. *B3-6-05, p. 523*. Ids must resolve in
 `section-index.tsv` — `pnpm guard:authority` enforces that on changed lines, because the
 Guide renumbers between editions and a stale id does not 404. Cite tracked artifacts (or
-the conformance ledger), never `selling-guide-text.txt` paths, in anything CI reads.
+the conformance ledger), never `selling-guide-text.txt` or `selling-guide.md` paths, in
+anything CI reads.
 
 ## The Guide's own links
 
@@ -104,29 +126,81 @@ Verified against this edition (see `extracted/extraction-report.json` after a ru
   line start; the one remainder is the Table of Contents banner. Anchors tile the book —
   every character of the text layer lands in exactly one file.
 - **The running header** ("Published August 5, 2026" + printed page number) is stripped
-  from section files so paragraphs read unbroken; the page-marked stream keeps pages
-  verbatim.
+  from section files so paragraphs read unbroken; the page-marked text stream keeps pages
+  verbatim. The markdown layer strips it from its stream and its section files alike —
+  there it can sit anywhere in the page, because markdown is emitted in layout order
+  rather than page order.
+- **The markdown layer segments by the tracked TOC, not by the converter's own headings.**
+  Those are unreliable: the converter promotes some section titles to markdown headings
+  and not others, and emits an empty `####` where it drops one. Segmenting on them would
+  have cut the book in the wrong places. Both renderings therefore run the *same*
+  anchoring code over the *same* TOC, so a section id means the same span in both — and
+  the extraction report records the outcome: all 554 nodes anchor by heading or
+  section-id line, none by page fallback, in either rendering.
+- **`<mark>` highlight spans are dropped** from the markdown. The renderer wraps this
+  edition's revisions in them, which splits words from grep's point of view. The revision
+  signal is already a tracked fact (`revised-sections.tsv`, and each section file's
+  header), so it is not worth damaging the text to restate it.
 
-🚨 **Not fixed, by design: tables.** Text extraction flattens them — ruled tables
-survive readably, borderless ones do not (B2-2-03's financed-property limits table is
-the known case). Table detection was probed and rejected: it cannot see borderless
-tables — certifying "no table here" falsely — and roughly two-thirds of pages contain
-ruled ones, so a flag adds noise, not signal. The rail stays: **a threshold, matrix
-cell, or limit read out of extracted text is unverified until confirmed against the PDF
-page** — and the PDF is now always one command away.
+### Tables — the gap that closed, and what is left of it
+
+This README carried a standing 🚨 for months: text extraction **flattens tables**, so
+B2-2-03's financed-property limits arrived as three unlabelled runs of words and no reader
+could say which maximum belonged to which occupancy. Flagging tables was probed and
+rejected then — a detector that cannot see borderless tables certifies "no table here"
+falsely, and two-thirds of pages carry ruled ones, so the flag was noise.
+
+**The markdown layer answers it properly**, because it does not flag tables, it *renders*
+them. That same B2-2-03 page now reads:
+
+| Subject Property Occupancy | Transaction | Maximum Number of Financed Properties |
+|---|---|---|
+| Principal residence | Transactions other than HomeReady loans | No limit |
+| Principal residence | HomeReady loans | DU and manually underwritten - 2 |
+| Second home or Investment property | All | DU - 10 |
+
+840 tables across 701 pages of this edition, the borderless ones included.
+
+**What is left of the gap, honestly.** The markdown renderer reconstructs tables from each
+page's ruled graphics — and on **94 of 1,185 pages** of this edition it discards the page
+*with* those graphics and returns the empty string, plus **4 more** where it returns only a
+fraction of the prose. Shipping that silently would have put 8% of the Guide into "the
+document everyone reads" as blank pages. So the extractor renders every page twice where it
+has to:
+
+1. the default pass, which sees tables;
+2. an `ignore_graphics` rescue pass for any page carrying less than **90%** of the text
+   layer's letters and digits, which sees all the prose and no tables.
+
+The fuller text wins — 98 pages of this edition — and where the rescue pass wins on a page
+that had tables, those tables are appended below it under a `[[TABLES FROM THE GRAPHICS
+PASS …]]` marker. Nothing is dropped, and the page says which pass produced it. Every run
+re-measures this against the text layer and **fails** if any page is still short — that
+check is what would have caught the 94 blanks, so it is a verification problem, not a note.
+Today it reports `every page ≥90% of the text layer`, and the whole corpus (both renderings)
+is byte-identical across two consecutive runs.
+
+🚨 **The rail is unchanged: a threshold, matrix cell, or limit that decides money or
+eligibility is unverified until confirmed against the PDF page.** Markdown makes the table
+readable; it does not make it authoritative. The PDF is one command away.
 
 ## Verification and drift
 
 Every run verifies: PDF SHA-256 matches the pinned edition, every section file exists,
 is non-empty and starts at its own heading, segments cover the whole book with no gaps,
-and every anchor lands within two pages of where the TOC says. Problems fail the run.
+and every anchor lands within two pages of where the TOC says. When the markdown layer
+builds, it re-proves all of that on its own stream **and** checks every page against the
+text layer's character count. Problems fail the run.
 
 ```bash
 python3 scripts/extract-selling-guide.py --check   # tracked fact layer current? exit 1 on drift
 ```
 
 Output is deterministic for a given PDF + pymupdf version (no timestamps), so `git diff`
-after a run is itself the drift check for the tracked layer.
+after a run is itself the drift check for the tracked layer. `--check` needs **only**
+pymupdf: the tracked fact layer is derived from the text layer alone, so a machine without
+pymupdf4llm regenerates it byte-identically, and the CI extraction proof keeps its one
+small pinned dependency.
 
 ## When the next edition lands
 
@@ -135,13 +209,18 @@ after a run is itself the drift check for the tracked layer.
    mismatch), and clear/refresh the git-recovery constants deliberately.
 2. Re-run; commit the changed fact layer. `git diff section-index.tsv` — sections whose
    parenthesised date changed, plus the new `revised-sections.tsv`, scope the re-scrub.
+   Re-read the run's markdown line: the rescued-page count and the completeness check are
+   edition-specific, and a new edition can move both.
 3. Re-scrub conformance: [SELLING_GUIDE_CONFORMANCE.md](../../../knowledge-base/compliance/SELLING_GUIDE_CONFORMANCE.md)
    and the coverage map (`pnpm coverage:sg`) key off section ids that may have renumbered.
 
 ## Why the text is not committed
 
 This repository is **public**. The Guide is Fannie Mae's copyrighted work, and a complete
-text extraction is the same content in another format, not a lesser form of it —
-committing either would be redistribution (that is also why `extracted/` is gitignored
-wholesale). The fact layer above is titles, numbers and structure. Relaxing this split is
+extraction is the same content in another format, not a lesser form of it — **and a
+markdown rendering is no more publishable than a text one**; if anything it is closer to
+the original, because it keeps the tables. Committing either would be redistribution (that
+is also why `extracted/` is gitignored wholesale, and why the ignore list names
+`selling-guide.md` explicitly instead of `*.md`, which would have swallowed this file and
+`INDEX.md`). The fact layer above is titles, numbers and structure. Relaxing this split is
 a founder decision, not an agent's.
