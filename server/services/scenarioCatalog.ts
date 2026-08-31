@@ -45,11 +45,13 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
       "incomeSources[].yearsInRole < 24 months for self-employment/rental/investment income",
       "self-reported vs verified income delta > 5% (armed for verified income feeds)",
     ],
-    regulations: ["Fannie Mae Selling Guide B3-3.2"],
+    regulations: ["Fannie Mae Selling Guide B3-3.5-01"],
     riskImpact:
-      "Unseasoned supplementary income overstates qualifying income; <12 months is not usable, 12-24 months requires compensating factors.",
+      "Unseasoned supplementary income overstates qualifying income; <12 months is not usable, and 12-24 months counts only where the most recent returns reflect a full 12 months from the current business AND the file separately documents prior income at the same or greater level in the same field. (B3-3.5-01 states documentary conditions, not 'compensating factors' — that is B3-3.2-02's test for employment-related income.)",
     workflow: {
-      loanOfficerActions: ["Review seasoning months per source; confirm compensating factors for 12-24 month income"],
+      loanOfficerActions: [
+        "Review seasoning months per source; for 12-24 month income confirm BOTH B3-3.5-01 conditions — a full 12 months on the most recent returns and separately documented prior income at the same or greater level in the same field",
+      ],
       borrowerActions: ["Upload last two years of federal tax returns (1040s)", "Upload business license or contracts evidencing continuity"],
       automationEngineActions: ["Raise INCOME_SEASONING flag (blocking <12mo, warning 12-24mo)", "Send document-request outreach naming the exact months and documents"],
     },
@@ -218,11 +220,15 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     flagCode: "COMPLEX_INCOME_CHECK",
     status: "implemented",
     triggers: ["employmentType = self_employed"],
-    regulations: ["Fannie Mae Selling Guide B3-3.2 (documentation requirements)"],
-    riskImpact: "Business income requires 2-year tax documentation before approval-grade decisions.",
+    regulations: ["Fannie Mae Selling Guide B3-3.5-01 (documentation requirements)"],
+    riskImpact:
+      "Business income generally needs two years of federal tax returns before approval-grade decisions — or IRS-issued transcripts for the same two years (B3-3.1-02). B3-3.5-01 states this as the general path, not an absolute: one year may suffice where the business has existed five years and the borrower has held 25%+ ownership for five consecutive years, and business returns may be waived on the two-year path under that section's stated conditions.",
     workflow: {
       loanOfficerActions: ["Hold clear-to-close until tax-return conditions clear"],
-      borrowerActions: ["Upload 2 years of 1040s and a YTD P&L"],
+      borrowerActions: [
+        "Upload 2 years of 1040s (or IRS transcripts for the same years, per B3-3.1-02)",
+        "Upload a YTD profit-and-loss statement where the lender requires one — B3-3.7-04 makes it discretionary and not required for most businesses, arising where the application is dated more than 120 days after the business's tax year end",
+      ],
       automationEngineActions: [
         "Force the complex-income block into the intake route",
         "Generate 2-year tax-return conditions that gate clear-to-close",

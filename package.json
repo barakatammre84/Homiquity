@@ -48,6 +48,7 @@
     "coverage:sg": "node scripts/selling-guide-coverage.cjs",
     "guard:coverage": "node scripts/selling-guide-coverage.cjs --check",
     "guard:corpus": "node scripts/selling-guide-corpus-guard.cjs",
+    "guard:conformance": "node scripts/selling-guide-conformance-guard.cjs",
     "guard:kb": "node scripts/kb-index-guard.cjs",
     "guard:seats": "node scripts/seat-roster-guard.cjs",
     "guard:gating": "node scripts/gating-reality-guard.cjs",
