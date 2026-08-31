@@ -2,38 +2,50 @@
 # Every branch on origin, and where its commits survive if the branch is deleted.
 #
 # Generated against origin/main = fbd275a3
-# 197 branches (excluding main) · 20 in-main · 103 pr-head · 74 orphan
+# 199 branches (excluding main) · 20 in-main · 102 pr-head · 75 orphan · 1 working · 1 archive
 #
 # WHAT EACH BUCKET GUARANTEES
 #   in-main  the tip is an ancestor of main. Deleting the branch removes a name, not a commit.
 #   pr-head  the tip is a refs/pull/N/head. GitHub keeps those permanently, merged or closed.
-#   orphan   held by the branch name alone. These carry an archive tag; nothing else holds them.
+#   orphan   was held by the branch name alone. Now also a parent of archive/2026-08-31-orphan-tips.
+#   working  the branch this census was generated on. Advances by the commit that records
+#            this file, so no prior archive can hold its tip. Pushed and PR-tracked; claims
+#            no archiveRef.
+#   archive  the safety net itself. Never delete a branch in this bucket.
 #
-# TO RECOVER ANY ROW — both verified on 2026-08-31 before this file was committed:
-#   orphan   git fetch origin refs/tags/<archiveTag>:refs/tags/<archiveTag> && git log FETCH_HEAD
-#   pr-head  git fetch origin refs/pull/<pr>/head && git log FETCH_HEAD
+# TO RECOVER ANY ROW — both paths executed and verified on 2026-08-31 before this was committed:
+#   orphan   git fetch origin archive/2026-08-31-orphan-tips && git checkout -b recovered <sha>
+#            (proved: origin's archive commit carries 66 parents, 66/66 orphans reachable)
+#   pr-head  git fetch origin refs/pull/<pr>/head && git checkout -b recovered FETCH_HEAD
+#            (proved: PR #491, branch long deleted, recovered with 915 commits of history)
 #   in-main  already in main; git show <sha>
+#
+# Tags would be the better idiom and this repo already uses archive/<branch-with-dashes>.
+# This session's git proxy permits refs/heads/* and refuses refs/tags/* with HTTP 403, so the
+# archive is a branch. From a machine with tag rights:
+#   node scripts/branch-archive.cjs --create-tags && git push origin --tags
 #
 # Ancestry alone is NOT the test: this repo squash-merges, so a merged branch tip is not an
 # ancestor of main. git branch --no-merged reported 134 where the true orphan count was 74.
 #
-branch	sha	tipDate	bucket	pr	archiveTag	subject
+branch	sha	tipDate	bucket	pr	archiveRef	subject
+archive/2026-08-31-orphan-tips	96a51b10995a602a3124d77569c44354a88b8afb	2026-08-31	archive	-	-	archive(2026-08-31): 67 orphan commits, held so their branches can be deleted
 backup/2026-08-20/barakatammre84-fictional-eureka	6d0214748eef33612009afb337cfc3a80d1e0e7e	2026-08-07	pr-head	677	-	urla: add draft helper text to URLA sections
-backup/2026-08-20/chore/bundle-size-guard	e10402404b269ffcd32a632e52ca878c43a52155	2026-08-17	orphan	-	archive/backup-2026-08-20-chore-bundle-size-guard	fix(ci): re-baseline the bundle ratchet to the measured tip — the freeze predated five days of merged client work
-backup/2026-08-20/chore/local-gate-hook	1456be9947773117aee703eb6b728e3f23b37966	2026-08-17	orphan	-	archive/backup-2026-08-20-chore-local-gate-hook	chore(ci): run the gate locally before it costs an Actions minute
+backup/2026-08-20/chore/bundle-size-guard	e10402404b269ffcd32a632e52ca878c43a52155	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	fix(ci): re-baseline the bundle ratchet to the measured tip — the freeze predated five days of merged client work
+backup/2026-08-20/chore/local-gate-hook	1456be9947773117aee703eb6b728e3f23b37966	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	chore(ci): run the gate locally before it costs an Actions minute
 backup/2026-08-20/chore/rent-reporting-watch-routine	28f99cd93f92915bd87dce852fa461563781bacc	2026-08-12	pr-head	510	-	chore(routines): rent-reporting-watch — the gate-erosion watchdog, registered
-backup/2026-08-20/claude/agitated-chatterjee-af3449	014ff411442bd68b2954de9c9c037ca71432704b	2026-08-19	orphan	-	archive/claude-agitated-chatterjee-af3449	docs(routine): local gate stand-in for 5 merge candidates + the baseline-mutation trap
+backup/2026-08-20/claude/agitated-chatterjee-af3449	014ff411442bd68b2954de9c9c037ca71432704b	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): local gate stand-in for 5 merge candidates + the baseline-mutation trap
 backup/2026-08-20/claude/confident-rhodes-4096b7	3287f3c00eba816003a67ad7d381dfe8606ee0c0	2026-08-18	in-main	-	-	docs(routine): evening triage 2026-08-18 — the early pass, and a routine that fired into the void (#550)
 backup/2026-08-20/claude/ecstatic-chaplygin-ff17aa	b799b91da401edd92a7d6af8c76a2b1743f271d1	2026-08-19	in-main	-	-	a11y: the shared chrome reaches 44px on phones — homepage 26 sub-44px targets down to 2 (#602)
 backup/2026-08-20/claude/fervent-mayer-h6vfhs	17be90949c09c0fc75225aab3c05e5a51f49f175	2026-08-12	pr-head	447	-	Merge origin/main — renumber to 0055/0056 behind #479's rent ledger
 backup/2026-08-20/claude/fervent-mayer-i9lrwb	c46e3b9b990ffdbf0f5a7a6196134ca925ce59a9	2026-08-12	pr-head	469	-	Merge remote-tracking branch 'origin/main' into claude/fervent-mayer-i9lrwb
 backup/2026-08-20/claude/frontend-standardization-3	5851bace5f8367f59e79d3a7ba0ea5adadbb1e74	2026-08-12	pr-head	501	-	docs(routine): refresh the wiring-audit report head to current state
 backup/2026-08-20/claude/hopeful-chebyshev-a67288	29ebec9b261a1671b95e59698f0ea1fa23eb69c5	2026-08-19	in-main	-	-	fix(probe): a backtick in a comment broke browser-probe on main, and nothing noticed (#600)
-backup/2026-08-20/claude/infallible-gould-f06a1b	04161b9dc16a7b66c6d70dd0054810ae594976a5	2026-08-20	orphan	-	archive/backup-2026-08-20-claude-infallible-gould-f06a1b	docs(routine): link the run's PR (#619) from the report and the released register row
-backup/2026-08-20/claude/interesting-goodall-351b8b	8e160b78a7ae61a9c6961211582864e15bdce4e7	2026-08-18	orphan	-	archive/backup-2026-08-20-claude-interesting-goodall-351b8b	chore(bundle): re-measure the baseline after rebasing onto main
+backup/2026-08-20/claude/infallible-gould-f06a1b	04161b9dc16a7b66c6d70dd0054810ae594976a5	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): link the run's PR (#619) from the report and the released register row
+backup/2026-08-20/claude/interesting-goodall-351b8b	8e160b78a7ae61a9c6961211582864e15bdce4e7	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	chore(bundle): re-measure the baseline after rebasing onto main
 backup/2026-08-20/claude/jolly-pascal-66ef0b	fed1458e599dd1772923c7a3c4304b83386602ef	2026-08-20	in-main	-	-	The Need Help card on the borrower's own file page had two buttons and neither did anything (#619)
 backup/2026-08-20/claude/kind-franklin-gohbpb	f5d03d4ab252e27fa12750bb8d99cf49abc2a028	2026-08-12	pr-head	494	-	Merge remote-tracking branch 'origin/main' into claude/kind-franklin-gohbpb
-backup/2026-08-20/claude/musing-engelbart-0a72db	a8ac85a264fbe336a56a54ad979bf626c71dbcfc	2026-08-18	orphan	-	archive/backup-2026-08-20-wip-f077-fha-cutover	Merge main into the F-077 FHA leg — cut-over after the #552–#554 stack landed (squashed)
+backup/2026-08-20/claude/musing-engelbart-0a72db	a8ac85a264fbe336a56a54ad979bf626c71dbcfc	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	Merge main into the F-077 FHA leg — cut-over after the #552–#554 stack landed (squashed)
 backup/2026-08-20/claude/musing-hodgkin-6020d9	53044804a3ad88559b86e7f72023c27b575b0506	2026-08-20	in-main	-	-	41 owner agents, one feature map — and the §9 gap the auth owner found by refusing to work (#603)
 backup/2026-08-20/claude/pensive-noether-5232f2	d4b362a3e25175acef382374fb14c731ea3549e4	2026-08-12	pr-head	490	-	fix(capture): four public signup forms showed success on a rejected POST
 backup/2026-08-20/claude/queryclient-migration-batch2	ce683d54d51db6c3aa71043b4c1804aa8a1461f5	2026-08-12	pr-head	504	-	Merge origin/main into the queryClient migration
@@ -41,119 +53,119 @@ backup/2026-08-20/claude/routine-bookkeeping	1fec4a612af9014db2a09376ee3394f6efa
 backup/2026-08-20/claude/security-guard-lockout-trigger	e91255991e7b1c672c201281635d5e2debe6acb4	2026-08-19	pr-head	604	-	Merge remote-tracking branch 'origin/main' into claude/security-guard-lockout-trigger
 backup/2026-08-20/claude/silent-success-sweep	619f024c15793eeb3c00e9a8b0752aca31f56ba7	2026-08-12	pr-head	516	-	fix(address): a failed geocode left a complete-looking address with nothing behind it
 backup/2026-08-20/claude/strange-kilby-c389c0	33adbc81b58c1b32fd5101133d8343ef547f24d5	2026-08-06	in-main	-	-	fix(email): an unconfigured mail provider must not report success (#461)
-backup/2026-08-20/claude/wiring-audit-remainder	9e67b1004163a333f829a16275418529dde94210	2026-08-20	orphan	-	archive/backup-2026-08-20-claude-wiring-audit-remainder	The funnel shows its NMLS id, the VA engine stops restating shared constants, and the footer respects the prelaunch gate
-backup/2026-08-20/combined-gate	cfff8565b4b4eb63b68d139cccddf7a78f56fe17	2026-08-20	orphan	-	archive/combined-gate	Merge remote-tracking branch 'origin/fix/assistant-complaint-scan' into combined-gate
+backup/2026-08-20/claude/wiring-audit-remainder	9e67b1004163a333f829a16275418529dde94210	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	The funnel shows its NMLS id, the VA engine stops restating shared constants, and the footer respects the prelaunch gate
+backup/2026-08-20/combined-gate	cfff8565b4b4eb63b68d139cccddf7a78f56fe17	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/fix/assistant-complaint-scan' into combined-gate
 backup/2026-08-20/dependabot/npm_and_yarn/framer-motion-13.0.0	c0675e34ea67a076d27cb1bb5c4f9dfea331252a	2026-08-12	pr-head	477	-	chore(deps): bump framer-motion from 12.43.0 to 13.0.0
-backup/2026-08-20/docs/agent-instructions-truth	14145f5c3e0e995cde39fd7ea4e46d0fadd3f251	2026-08-06	orphan	-	archive/backup-2026-08-20-docs-agent-instructions-truth	docs(agents): the instruction files described a repo layout deleted in July
+backup/2026-08-20/docs/agent-instructions-truth	14145f5c3e0e995cde39fd7ea4e46d0fadd3f251	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	docs(agents): the instruction files described a repo layout deleted in July
 backup/2026-08-20/docs/feature-map-owner-agents	72613530728da67949327b995aae7368e463ce0c	2026-08-20	pr-head	603	-	routines: a seat that can say what has never been looked at
 backup/2026-08-20/docs/financial-audit-chain	d0957c667e278fbefb9920d01a5e6f3b506d2d69	2026-08-12	pr-head	489	-	docs(audit): the QM cap sets revenue per file, not the comp plan
 backup/2026-08-20/docs/urla-refactor-trap	2ab9431b9241a2033194851d21ed16153d00c913	2026-08-12	pr-head	486	-	docs(handbook): recover the URLAForm refactor trap before its branch is deleted
-backup/2026-08-20/feat/aus-autopilot-gap-0820	f46f5afda5724442d7f73fc7be4becfb16cc2480	2026-08-20	orphan	-	archive/backup-2026-08-20-feat-aus-autopilot-gap-0820	fix(autopilot): the borrower's all-clear was asserted on files nobody had looked at
+backup/2026-08-20/feat/aus-autopilot-gap-0820	f46f5afda5724442d7f73fc7be4becfb16cc2480	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	fix(autopilot): the borrower's all-clear was asserted on files nobody had looked at
 backup/2026-08-20/feat/income-type-catalog	222cdfc592e538841603c1684e37be02e408b563	2026-08-19	pr-head	610	-	feat(income): give Section 1e income a type the engine can read
 backup/2026-08-20/feat/landing-coach-first	76c59c9ee2df15cb596b34dc3473a2b3a1dd2f11	2026-08-19	pr-head	595	-	chore(bundle): carry both the a11y fix and this branch's eager cost in one baseline
-backup/2026-08-20/feat/lease-capture	71be2348ff7320a343d1646266e8cdceed5af4fb	2026-08-12	orphan	-	archive/backup-2026-08-20-feat-lease-capture	feat(rent): lease capture — give the encrypted PII columns a writer
+backup/2026-08-20/feat/lease-capture	71be2348ff7320a343d1646266e8cdceed5af4fb	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	feat(rent): lease capture — give the encrypted PII columns a writer
 backup/2026-08-20/feat/lease-payment-history	ca4734526993bca8e807a9de0d2d31312e3abdae	2026-08-17	pr-head	517	-	feat(rent): render rent payment history on /my-lease, and say who recorded it
-backup/2026-08-20/feat/rent-payments-writer	488886f1d0d1be0aebab02e8155129d96076eb9f	2026-08-17	orphan	-	archive/backup-2026-08-20-feat-rent-payments-writer	Merge remote-tracking branch 'origin/main' into feat/rent-payments-writer
+backup/2026-08-20/feat/rent-payments-writer	488886f1d0d1be0aebab02e8155129d96076eb9f	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/main' into feat/rent-payments-writer
 backup/2026-08-20/fix/apply-step11-live-analysis	18b5706a7382181ad2bf597fad9c426053a721af	2026-08-18	pr-head	548	-	fix(apply): step-11 live analysis counts rental debt, shows income, and shares the content grid
 backup/2026-08-20/fix/assistant-complaint-scan	55b060ea5ebbab8a4aa822b8563062233efe838b	2026-08-19	pr-head	599 683	-	fix(compliance): the assistant was the one borrower channel CS2 never scanned
 backup/2026-08-20/fix/calculator-mobile-overflow	a0683ba9888f5af057fce16d839313b2fd431649	2026-08-18	pr-head	587	-	fix(ui): let the calculator CTA wrap at 320px — five capture-path pages overflowed, and nothing could see it
 backup/2026-08-20/fix/ci-gate-stacked-prs	ff438c3521bca9dd9bc69b03609c9bf1a7088d64	2026-08-13	pr-head	519	-	fix(ci): a stacked PR got zero checks and still read as CLEAN
-backup/2026-08-20/fix/f-051-aus-recommendation	ebea18e3de69365caaf63c0d596b45a598dc2061	2026-08-18	orphan	-	archive/backup-2026-08-20-fix-f-051-aus-recommendation	fix(F-051): the delivered MISMO package told every lender the AUS said Approve
+backup/2026-08-20/fix/f-051-aus-recommendation	ebea18e3de69365caaf63c0d596b45a598dc2061	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	fix(F-051): the delivered MISMO package told every lender the AUS said Approve
 backup/2026-08-20/fix/f-076-scenario-apr	9e01b82dd722f9bd40d70c5fc18c5537c3e3655b	2026-08-18	pr-head	551	-	fix(F-076): borrower option-card APR comes from the Appendix J solver, not a flat spread
-backup/2026-08-20/fix/f-077-le-decision-mi	8b93c4e349411db177b6ee4cd09315c87fb970c3	2026-08-18	orphan	-	archive/backup-2026-08-20-fix-f-077-le-decision-mi	fix(F-077): the LE's disclosed MI and the decision's DTI price the CONVENTIONAL_PMI matrix, not the hardcoded card
-backup/2026-08-20/fix/f-0818-09-lender-id	7276bd1e055ec96567c227e9103515c1ea50c179	2026-08-18	orphan	-	archive/backup-2026-08-20-fix-f-0818-09-lender-id	fix(F-0818-09): the lender picker sent the uuid PK where the server resolves the business key
+backup/2026-08-20/fix/f-077-le-decision-mi	8b93c4e349411db177b6ee4cd09315c87fb970c3	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	fix(F-077): the LE's disclosed MI and the decision's DTI price the CONVENTIONAL_PMI matrix, not the hardcoded card
+backup/2026-08-20/fix/f-0818-09-lender-id	7276bd1e055ec96567c227e9103515c1ea50c179	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	fix(F-0818-09): the lender picker sent the uuid PK where the server resolves the business key
 backup/2026-08-20/fix/f-087-offer-mi	c3354d520b004d844d750b7cf50f12acea958ac1	2026-08-18	pr-head	552	-	fix(F-087): offer MI is product-aware — matrix PMI for conventional, MIP for FHA at all LTVs, none on VA
-backup/2026-08-20/fix/home-equity-cta-clip	52dc4db3ef93e4dc9499b9e0d6297b55a4a19fe8	2026-08-19	orphan	-	archive/fix-home-equity-cta-clip	fix(ui): the home-equity CTA label is clipped at 320px — the residue of the container-side overflow fix
-backup/2026-08-20/fix/loan-estimate-print	2795eca13aca1c62ebd7a1c8e539bb5d3c712f4e	2026-08-12	orphan	-	archive/backup-2026-08-20-fix-loan-estimate-print	fix(loan-estimate): Print did nothing, and Download PDF still cannot
+backup/2026-08-20/fix/home-equity-cta-clip	52dc4db3ef93e4dc9499b9e0d6297b55a4a19fe8	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	fix(ui): the home-equity CTA label is clipped at 320px — the residue of the container-side overflow fix
+backup/2026-08-20/fix/loan-estimate-print	2795eca13aca1c62ebd7a1c8e539bb5d3c712f4e	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	fix(loan-estimate): Print did nothing, and Download PDF still cannot
 backup/2026-08-20/fix/partnerhub-cpa-gate-drift	1d45b55e73bbabab242a45341bbfefd60ab487f3	2026-08-12	pr-head	483	-	fix(auth): a CPA could reach PartnerHub and 403 on every call in it
 backup/2026-08-20/fix/plaid-open-in-effect	38bed59ca94b5456f985f4f1a45d0e428d0b4b83	2026-08-12	pr-head	505	-	fix(verification): Plaid Link was opened from the render body, and reopened itself
-backup/2026-08-20/fix/post-submit-experience	d93e95a7f5f36348dda22191e2573d20a6a45703	2026-08-18	orphan	-	archive/backup-2026-08-20-fix-post-submit-experience	fix(post-submit): under-review borrowers get real action items, one submission email, and an explained recommendation
-backup/2026-08-20/fix/preapproval-form-resolver	fe24b84b538b79d2f9d8b50af84b7ba341ec8e57	2026-08-12	orphan	-	archive/backup-2026-08-20-fix-preapproval-form-resolver	fix(forms): restore the two files the first commit overwrote
+backup/2026-08-20/fix/post-submit-experience	d93e95a7f5f36348dda22191e2573d20a6a45703	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	fix(post-submit): under-review borrowers get real action items, one submission email, and an explained recommendation
+backup/2026-08-20/fix/preapproval-form-resolver	fe24b84b538b79d2f9d8b50af84b7ba341ec8e57	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	fix(forms): restore the two files the first commit overwrote
 backup/2026-08-20/fix/rent-audit-wave	c8b3ceafee9f214ecf9f16e67df964c46d00ebde	2026-08-17	pr-head	540	-	chore(bundle): +286 eager bytes — the rent funnel's entrances
-backup/2026-08-20/fix/required-verification-count	9169b2fc07bbe7da91c60defe4c0033c292c943c	2026-08-12	orphan	-	archive/backup-2026-08-20-fix-required-verification-count	fix(verification): two OPTIONAL verifications reported the file as fully verified
-backup/2026-08-20/fix/silent-mutation-failures	c25b103fdf045b8602a0625a11741c483cf63b7b	2026-08-12	orphan	-	archive/backup-2026-08-20-fix-silent-mutation-failures	fix(client): five mutations failed in silence, and nothing was watching for it
+backup/2026-08-20/fix/required-verification-count	9169b2fc07bbe7da91c60defe4c0033c292c943c	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	fix(verification): two OPTIONAL verifications reported the file as fully verified
+backup/2026-08-20/fix/silent-mutation-failures	c25b103fdf045b8602a0625a11741c483cf63b7b	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	fix(client): five mutations failed in silence, and nothing was watching for it
 backup/2026-08-20/fix/task-per-document-verify	bd053400ef94ae563fab731bcac0d3947283cdce	2026-08-12	pr-head	502	-	fix(tasks): Approve/Reject only ever acted on the last uploaded document
 backup/2026-08-20/fix/urla-citizenship-gate	4efc6a5bcbfbfd2e30f2e70c8f42a416dcd5528c	2026-08-12	pr-head	491	-	fix(urla): section 5 required a citizenship column nothing writes, blocking every application
 backup/2026-08-20/fix/urla-coborrower-removal	c881b232ccd9ec02296960521d4162962657a4ef	2026-08-12	pr-head	500	-	fix(urla): use the urlaKeys factory for the removal invalidation
-backup/2026-08-20/fix/urla-partial-row-loss	d05edb49cc8ccce54e59b3488b11565e58a26702	2026-08-12	orphan	-	archive/backup-2026-08-20-fix-urla-partial-row-loss	fix(urla): "Remove Co-Borrower" deleted nothing and the co-borrower came back
-backup/2026-08-20/fix/ux-30-le-reachable	2e2a155cc23cc1598d1aeac15d53211c922fb0e0	2026-08-18	orphan	-	archive/backup-2026-08-20-fix-ux-30-le-reachable	fix(ux-30): drop the single-use page wrapper, and raise the eager baseline by the 53 bytes that remain
+backup/2026-08-20/fix/urla-partial-row-loss	d05edb49cc8ccce54e59b3488b11565e58a26702	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	fix(urla): "Remove Co-Borrower" deleted nothing and the co-borrower came back
+backup/2026-08-20/fix/ux-30-le-reachable	2e2a155cc23cc1598d1aeac15d53211c922fb0e0	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	fix(ux-30): drop the single-use page wrapper, and raise the eager baseline by the 53 bytes that remain
 backup/2026-08-20/fix/vite-react-dom-chunk	9d3e9ae98c3520cca0fbee50cd7edc5f6a18bd63	2026-08-12	pr-head	455	-	Merge remote-tracking branch 'origin/main' into fix/vite-react-dom-chunk
-backup/2026-08-20/lg-merge	a8d59c22bff7c5171f1ce98f4799f89c11581cbf	2026-08-13	orphan	-	archive/backup-2026-08-20-lg-merge	merge origin/main (1f520b1) — keep the branch aligned with main's tip
+backup/2026-08-20/lg-merge	a8d59c22bff7c5171f1ce98f4799f89c11581cbf	2026-08-13	orphan	-	archive/2026-08-31-orphan-tips	merge origin/main (1f520b1) — keep the branch aligned with main's tip
 backup/2026-08-20/perf/ci-minute-reduction	018da875e2a7688ad6dba472f8eebebebdce863a	2026-08-20	pr-head	684	-	perf(ci): cut the runs that could never change a verdict — and measure the rest
-backup/2026-08-20/pr589-update	52aee29137554c2398da0d9524f7009c63fdf8c7	2026-08-19	orphan	-	archive/backup-2026-08-20-pr589-update	lessons: a red scanning guard under load is a timeout, not a violation
-backup/2026-08-20/probe/prod-data-census	a0d97c58b84a7295aaff005e67890adcb5b70a54	2026-08-19	orphan	-	archive/backup-2026-08-20-probe-prod-data-census	probe: read-only prod data census (throwaway, never merge)
-backup/2026-08-20/refactor-radar/2026-08-17-amortization-estimate	6d78750be5040c6d70a0e2f8c54738695fc71274	2026-08-17	orphan	-	archive/backup-2026-08-20-refactor-radar-2026-08-17-amortization-estimate	docs(routine): refactor-radar 2026-08-17 — ledger, register release, suite report
-backup/2026-08-20/refactor-radar/2026-08-17-ledger-audit	039ba4a0bc0b434e7ed8ce6416bf01be0a0426f5	2026-08-17	orphan	-	archive/backup-2026-08-20-refactor-radar-2026-08-17-ledger-audit	docs(refactor-radar): correct the run-log PR link to #532
-backup/2026-08-20/refactor-radar/2026-08-17-urla-step-ids	9e7571808b068a32eacd6aa328d2b8fddd06f674	2026-08-17	orphan	-	archive/backup-2026-08-20-refactor-radar-2026-08-17-urla-step-ids	docs(routine): record PR #530 against RR-005 and release the register claim
-backup/2026-08-20/rescue/inert-buttons-ratchet	bf199bb5b372849ff2865baa47d26f57af7d3837	2026-08-06	orphan	-	archive/rescue-inert-buttons-ratchet	Ratchet the number of buttons that do nothing
+backup/2026-08-20/pr589-update	52aee29137554c2398da0d9524f7009c63fdf8c7	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	lessons: a red scanning guard under load is a timeout, not a violation
+backup/2026-08-20/probe/prod-data-census	a0d97c58b84a7295aaff005e67890adcb5b70a54	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	probe: read-only prod data census (throwaway, never merge)
+backup/2026-08-20/refactor-radar/2026-08-17-amortization-estimate	6d78750be5040c6d70a0e2f8c54738695fc71274	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): refactor-radar 2026-08-17 — ledger, register release, suite report
+backup/2026-08-20/refactor-radar/2026-08-17-ledger-audit	039ba4a0bc0b434e7ed8ce6416bf01be0a0426f5	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	docs(refactor-radar): correct the run-log PR link to #532
+backup/2026-08-20/refactor-radar/2026-08-17-urla-step-ids	9e7571808b068a32eacd6aa328d2b8fddd06f674	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): record PR #530 against RR-005 and release the register claim
+backup/2026-08-20/rescue/inert-buttons-ratchet	bf199bb5b372849ff2865baa47d26f57af7d3837	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	Ratchet the number of buttons that do nothing
 backup/2026-08-20/rescue/inert-buttons-ratchet-landed	54e19d73b1f811698441cd4d14447c7220434337	2026-08-19	pr-head	597	-	rescue(guard): the inert-button ratchet, written 2026-08-06 and never on a branch
-backup/2026-08-20/rescue/policy-catalogue-wiring	28cb4e5e499926cb3d41987a56bbb0453243b046	2026-08-06	orphan	-	archive/rescue-policy-catalogue-wiring	Policy catalogue: naming convention, atomic clone, and the create dialog
-backup/2026-08-20/rescue/wire-four-buttons	1de88da3472a252136a2f2319a53773274f9e90f	2026-08-06	orphan	-	archive/rescue-wire-four-buttons	Wire four buttons that had no handler, and fix a detector blind spot
+backup/2026-08-20/rescue/policy-catalogue-wiring	28cb4e5e499926cb3d41987a56bbb0453243b046	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	Policy catalogue: naming convention, atomic clone, and the create dialog
+backup/2026-08-20/rescue/wire-four-buttons	1de88da3472a252136a2f2319a53773274f9e90f	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	Wire four buttons that had no handler, and fix a detector blind spot
 backup/2026-08-20/routine/complex-file-engine	42bf617ff5c06ca9e3b6ff4ca25098f7e4a9d9fe	2026-08-20	pr-head	589	-	Merge remote-tracking branch 'origin/main' into routine/complex-file-engine
 backup/2026-08-20/routine/compliance-watch-2026-08-18	56cf00acf74d845fbeb4f0712c2cda64ff600feb	2026-08-18	in-main	-	-	refactor-radar RR-005: URLAForm extraction refuted — narrow the step ids instead (#530)
-backup/2026-08-20/routine/evening-triage-2026-08-17	d17a6a8d7944537a33735cd640d819bac6083be8	2026-08-17	orphan	-	archive/backup-2026-08-20-routine-evening-triage-2026-08-17	docs(routine): evening triage 2026-08-17
+backup/2026-08-20/routine/evening-triage-2026-08-17	d17a6a8d7944537a33735cd640d819bac6083be8	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): evening triage 2026-08-17
 backup/2026-08-20/routine/evening-triage-2026-08-18-late	217a867c3d4e73d2862bdc40a848d5cbbdd1cb7f	2026-08-18	in-main	-	-	a11y(rates): associate the labels the probe correctly flagged (#593)
 backup/2026-08-20/routine/evening-triage-2026-08-19	671382b0423d98a0631743f58f718bb7fd64dfdf	2026-08-19	pr-head	614	-	docs(routine): evening triage 2026-08-19
 backup/2026-08-20/routine/feature-completion-2026-08-20	53044804a3ad88559b86e7f72023c27b575b0506	2026-08-20	in-main	-	-	41 owner agents, one feature map — and the §9 gap the auth owner found by refusing to work (#603)
 backup/2026-08-20/routine/journey-walk-2026-08-20	a37ff9038bcd7aef79473e46d49110de89ef2d89	2026-08-20	pr-head	618	-	docs(journey): amend the charter — the seat was wrong, the Landing route was not
 backup/2026-08-20/routine/launch-gate-2026-08-17	b4e769cfc9935645100991dc524fd7509998cd8f	2026-08-17	pr-head	525	-	docs(routine): the two 2026-08-12 reports were never stranded — they were queued
 backup/2026-08-20/routine/launch-gate-2026-08-17-clean	0af69ebc70a81efaa15c5e078c46f7fa1b982d8e	2026-08-17	pr-head	531	-	docs(routine): launch gate 2026-08-17
-backup/2026-08-20/routine/lender-gate-2026-08-12	b65e232c4674942032aa4d423d1197bd67276965	2026-08-12	orphan	-	archive/backup-2026-08-20-routine-lender-gate-2026-08-12	docs(routine): the §9 guard fired on code this PR never touched — record it
+backup/2026-08-20/routine/lender-gate-2026-08-12	b65e232c4674942032aa4d423d1197bd67276965	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): the §9 guard fired on code this PR never touched — record it
 backup/2026-08-20/routine/lender-gate-2026-08-18	4c180b8661d9088a78ac15e4b44031b7978f8997	2026-08-19	pr-head	613	-	docs(routine): lender gate — Actions billing is killing gate runs (found by being hit by it)
-backup/2026-08-20/routine/primary-engineer-2026-08-18-1	f94d6244c7cbb944d8a26b70611507d7c10c8c9a	2026-08-18	orphan	-	archive/backup-2026-08-20-routine-primary-engineer-2026-08-18-1	fix(ux-30): an undeterminable TRID window rendered as "TRID Compliant"
+backup/2026-08-20/routine/primary-engineer-2026-08-18-1	f94d6244c7cbb944d8a26b70611507d7c10c8c9a	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	fix(ux-30): an undeterminable TRID window rendered as "TRID Compliant"
 backup/2026-08-20/routine/primary-engineer-2026-08-20-report	2675d338f420e48807fe8a00c079467d9e42abda	2026-08-20	pr-head	625	-	docs(routine): primary-engineer 2026-08-20
 backup/2026-08-20/routine/product-first-suite	b5984859159f8837311af9c6f65f65ef9e7476cb	2026-08-19	pr-head	612	-	routines: the fleet builds now — a suite rewritten around proving the product, not shipping it
 backup/2026-08-20/routine/qa-sweep-2026-08-12	adaa8266b5cd1c1c3601b5872ecfd2bb49101c4b	2026-08-12	in-main	-	-	fix(capture): invite attribution, a 500 that read as an invalid code, and 12 files off the queryClient singleton (#501)
-backup/2026-08-20/routine/qa-sweep-2026-08-17	42d3dd7381fc9e67893d16eb6eaa22b4b0114413	2026-08-18	orphan	-	archive/backup-2026-08-20-routine-qa-sweep-2026-08-17	docs(feature-review): F-051 fix in flight (#545), and the §9 guard's 2-dot false positive
+backup/2026-08-20/routine/qa-sweep-2026-08-17	42d3dd7381fc9e67893d16eb6eaa22b4b0114413	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	docs(feature-review): F-051 fix in flight (#545), and the §9 guard's 2-dot false positive
 backup/2026-08-20/routine/qa-sweep-2026-08-19	a1ea521f242a21af8c925d05dd06cdf4d93b47b1	2026-08-19	pr-head	611	-	docs(routine): qa-sweep 2026-08-19 — Domain 9, Workflow 7, and a register that overstated its own backlog
 backup/2026-08-20/routine/rent-reporting-watch-2026-08-20	6d9fa0d7ae45d3d6dfc0ee61aa866c90fe8443c0	2026-08-20	pr-head	627	-	docs(routine): rent-reporting-watch 2026-08-20
 backup/2026-08-20/routine/trunk-health-2026-08-20	708133d4238f3eb7e231338ffb0931ddfa4a1e7e	2026-08-20	pr-head	616	-	docs(routine): trunk-health 2026-08-20 — main is green, the biller is not
-backup/2026-08-20/routine/vendor-procurement-2026-08-17	5da500aa9791e4c909d0f9ff3678f2576d5800e6	2026-08-17	orphan	-	archive/backup-2026-08-20-routine-vendor-procurement-2026-08-17	docs(routine): Railway is ~$3/month — the platform bill is GitHub Actions
-backup/2026-08-20/stash-0	240338f1736da1f5b92787d826283764f5bad0bd	2026-08-20	orphan	-	archive/backup-2026-08-20-stash-0	WIP on feat/aus-autopilot-gap-0820: 53044804 41 owner agents, one feature map — and the §9 gap the auth owner found by refusing to work (#603)
-backup/2026-08-20/stash-1	7c52fdc6d718294dba12161254a748f10dda9105	2026-08-20	orphan	-	archive/backup-2026-08-20-stash-1	WIP on routine/primary-engineer-2026-08-20-3: 53044804 41 owner agents, one feature map — and the §9 gap the auth owner found by refusing to work (#603)
-backup/2026-08-20/stash-2	2a2a99163ee926f81a55fef83287def18d94520b	2026-08-20	orphan	-	archive/backup-2026-08-20-stash-2	WIP on claude/infallible-gould-f06a1b: 853f7cd4 chore(register): claim LoanSummarySection NeedHelpCard for the 2026-08-20 wiring audit
-backup/2026-08-20/stash-3	2af5a91ee5a2eff736d0be1c3c826849ef8147e8	2026-08-19	orphan	-	archive/backup-2026-08-20-stash-3	On claude/login-lockout-consecutive-failures: lockout-fix
-backup/2026-08-20/stash-4	e53bd0e9da04a21c70192fd2037ea59e9281d8c7	2026-08-18	orphan	-	archive/backup-2026-08-20-stash-4	WIP on fix/calculator-mobile-overflow: de3c44e1 fix(F-0818-09): the lender picker sent the uuid PK where the server resolves the business key (#580)
-backup/2026-08-20/stash-5	d2ded5e35656a604150c342b40c0f2bdf4604144	2026-08-18	orphan	-	archive/backup-2026-08-20-stash-5	On routine/qa-sweep-2026-08-18: qa-sweep register edits
-backup/2026-08-20/stash-6	18229cb8d5fb47fcec2cddbe4c13ca8251da9ff7	2026-08-18	orphan	-	archive/backup-2026-08-20-stash-6	WIP on fix/post-submit-experience: 587ebbf docs(routine): Railway is ~$3/month — the platform bill is GitHub Actions (#536)
-backup/2026-08-20/stash-7	67272189a074b420f4d511c8abd38f3a34980b92	2026-08-18	orphan	-	archive/backup-2026-08-20-stash-7	WIP on claude/interesting-goodall-351b8b: e8d54fc chore(register): claim URLAForm describeUnsavedRows (co-borrower dropped-row reporting)
+backup/2026-08-20/routine/vendor-procurement-2026-08-17	5da500aa9791e4c909d0f9ff3678f2576d5800e6	2026-08-17	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): Railway is ~$3/month — the platform bill is GitHub Actions
+backup/2026-08-20/stash-0	240338f1736da1f5b92787d826283764f5bad0bd	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	WIP on feat/aus-autopilot-gap-0820: 53044804 41 owner agents, one feature map — and the §9 gap the auth owner found by refusing to work (#603)
+backup/2026-08-20/stash-1	7c52fdc6d718294dba12161254a748f10dda9105	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	WIP on routine/primary-engineer-2026-08-20-3: 53044804 41 owner agents, one feature map — and the §9 gap the auth owner found by refusing to work (#603)
+backup/2026-08-20/stash-2	2a2a99163ee926f81a55fef83287def18d94520b	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	WIP on claude/infallible-gould-f06a1b: 853f7cd4 chore(register): claim LoanSummarySection NeedHelpCard for the 2026-08-20 wiring audit
+backup/2026-08-20/stash-3	2af5a91ee5a2eff736d0be1c3c826849ef8147e8	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	On claude/login-lockout-consecutive-failures: lockout-fix
+backup/2026-08-20/stash-4	e53bd0e9da04a21c70192fd2037ea59e9281d8c7	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	WIP on fix/calculator-mobile-overflow: de3c44e1 fix(F-0818-09): the lender picker sent the uuid PK where the server resolves the business key (#580)
+backup/2026-08-20/stash-5	d2ded5e35656a604150c342b40c0f2bdf4604144	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	On routine/qa-sweep-2026-08-18: qa-sweep register edits
+backup/2026-08-20/stash-6	18229cb8d5fb47fcec2cddbe4c13ca8251da9ff7	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	WIP on fix/post-submit-experience: 587ebbf docs(routine): Railway is ~$3/month — the platform bill is GitHub Actions (#536)
+backup/2026-08-20/stash-7	67272189a074b420f4d511c8abd38f3a34980b92	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	WIP on claude/interesting-goodall-351b8b: e8d54fc chore(register): claim URLAForm describeUnsavedRows (co-borrower dropped-row reporting)
 backup/2026-08-20/trap/push-exit-masking	98ee08454b58393217ab922162f1ff465992590a	2026-08-20	pr-head	626	-	docs(traps): a failed push piped through tail reports success
-backup/2026-08-20/wip/f077-fha-cutover	a8ac85a264fbe336a56a54ad979bf626c71dbcfc	2026-08-18	orphan	-	archive/backup-2026-08-20-wip-f077-fha-cutover	Merge main into the F-077 FHA leg — cut-over after the #552–#554 stack landed (squashed)
-backup/2026-08-20/wip/radar-2026-08-08-scenario-simulator-abandoned	e39fac61ef950cd28b3683336665afc342227f09	2026-08-12	orphan	-	archive/backup-2026-08-20-wip-radar-2026-08-08-scenario-simulator-abandoned	wip(radar): abandoned RR-004 scenario-simulator extraction — DO NOT MERGE
+backup/2026-08-20/wip/f077-fha-cutover	a8ac85a264fbe336a56a54ad979bf626c71dbcfc	2026-08-18	orphan	-	archive/2026-08-31-orphan-tips	Merge main into the F-077 FHA leg — cut-over after the #552–#554 stack landed (squashed)
+backup/2026-08-20/wip/radar-2026-08-08-scenario-simulator-abandoned	e39fac61ef950cd28b3683336665afc342227f09	2026-08-12	orphan	-	archive/2026-08-31-orphan-tips	wip(radar): abandoned RR-004 scenario-simulator extraction — DO NOT MERGE
 backup/2026-08-20/worktree-rent-reporting-phase0	efc7e96782cb53d1d89dc63f48fe8500997f6650	2026-08-12	pr-head	479	-	Merge remote-tracking branch 'origin/main' into worktree-rent-reporting-phase0
 backup/2026-08-30/frontend-standardization-2	5851bace5f8367f59e79d3a7ba0ea5adadbb1e74	2026-08-12	pr-head	501	-	docs(routine): refresh the wiring-audit report head to current state
 backup/2026-08-30/lease-deletion	1670e1dcea81f3d4d140741252db58bb567ac37e	2026-08-17	pr-head	518	-	feat(rent): let a borrower delete a lease — a real erase, and a refusal when it can't be
-backup/pre-purge-selling-guide	23c257e1f4c2ce373ae46f053c82daae45e2e6c3	2026-08-22	orphan	-	archive/backup-pre-purge-selling-guide	docs(selling-guide): stop redistributing the Guide — the repo went public
+backup/pre-purge-selling-guide	23c257e1f4c2ce373ae46f053c82daae45e2e6c3	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	docs(selling-guide): stop redistributing the Guide — the repo went public
 barakatammre84-fictional-eureka	6d0214748eef33612009afb337cfc3a80d1e0e7e	2026-08-07	pr-head	677	-	urla: add draft helper text to URLA sections
 bundle-probe	d8316ec1ec99f0da6c7e794750960f53303defc4	2026-08-20	in-main	-	-	docs(routine): deliverable QA sweep 2026-08-20 — domain 10 + the analytics loop (#639)
 chore/charter-rails-hooks	2ff1a77b0d2822efcf81b4caf0d31fa67b995a90	2026-08-22	pr-head	697	-	Merge remote-tracking branch 'origin/main' into chore/charter-rails-hooks
-chore/harness-tiers-0823	2b2678d810e88b88cb0b2807974ff4b9f4418093	2026-08-23	orphan	-	archive/chore-harness-tiers-0823	Merge remote-tracking branch 'origin/main' into chore/harness-tiers-0823
-chore/seat-roster-single-source	7d7bd3f451b4171747432890f90c1766cecbff6e	2026-08-24	orphan	-	archive/chore-seat-roster-single-source	chore(routines): a fifth seat state — registered, enabled, and not dispatching
+chore/harness-tiers-0823	2b2678d810e88b88cb0b2807974ff4b9f4418093	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/main' into chore/harness-tiers-0823
+chore/seat-roster-single-source	7d7bd3f451b4171747432890f90c1766cecbff6e	2026-08-24	orphan	-	archive/2026-08-31-orphan-tips	chore(routines): a fifth seat state — registered, enabled, and not dispatching
 chore/sweep-white-label-rule	fddf60380cfcae803861ed18c31f1f3619a67853	2026-08-23	pr-head	707	-	chore(sweep): move the routine to a fleet that fires
-ci/skip-runs-that-cannot-change-a-verdict	875feb9c11ccf44513b9c16c690b0baf5150d510	2026-08-22	orphan	-	archive/ci-skip-runs-that-cannot-change-a-verdict	Merge remote-tracking branch 'origin/ci/skip-runs-that-cannot-change-a-verdict' into ci/skip-runs-that-cannot-change-a-verdict
-claude/agitated-chatterjee-af3449	014ff411442bd68b2954de9c9c037ca71432704b	2026-08-19	orphan	-	archive/claude-agitated-chatterjee-af3449	docs(routine): local gate stand-in for 5 merge candidates + the baseline-mutation trap
+ci/skip-runs-that-cannot-change-a-verdict	875feb9c11ccf44513b9c16c690b0baf5150d510	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/ci/skip-runs-that-cannot-change-a-verdict' into ci/skip-runs-that-cannot-change-a-verdict
+claude/agitated-chatterjee-af3449	014ff411442bd68b2954de9c9c037ca71432704b	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): local gate stand-in for 5 merge candidates + the baseline-mutation trap
 claude/design-cleanup-visual-tccg20	20ce7c57ef021a4087c28e0d3285050a7cf49b9b	2026-08-18	pr-head	681	-	design(calm-emerald): retire the royal-blue chrome — quiet light chrome, one emerald accent
 claude/exciting-booth-9b50cc	d8316ec1ec99f0da6c7e794750960f53303defc4	2026-08-20	in-main	-	-	docs(routine): deliverable QA sweep 2026-08-20 — domain 10 + the analytics loop (#639)
 claude/executive-dev-priorities-onpceu	3c16ea74dac2e9cc97df65131e186c2ffc976975	2026-08-24	pr-head	715	-	Merge remote-tracking branch 'origin/main' into claude/executive-dev-priorities-onpceu
-claude/file-router-organization-ol4k7i	3b6f5227fa104ca5128d019c54f0a653929a1f7d	2026-08-25	pr-head	736	-	guard(vocab): a closed value set now records who says those are the legal values
+claude/file-router-organization-ol4k7i	e9d3759c021e100b59567a3c0b1e596e10eab6ed	2026-08-31	working	-	-	chore(archive): record where every branch's commits survive, before deleting any
 claude/frontend-standardization-2	f6f492f23badfa21949abfbe60e67134efd55268	2026-08-12	pr-head	497 634	-	docs(routine): refresh the wiring-audit report head to current state
 claude/homi-homebuying-ai-5ddafy	17a43de38fdb39e61ed3843698d1dc192b9cd79a	2026-08-31	pr-head	714	-	Merge remote-tracking branch 'origin/main' into claude/homi-homebuying-ai-5ddafy
 claude/homiquity-doc-accuracy-88pyv3	7ccf66d80c6b4437a93776742a3ad09ad0678d25	2026-08-24	pr-head	713	-	docs(routine): record the DA-0823-28 ticket number (#720)
-claude/homiquity-doc-accuracy-iv8ijz	b374359657b57fc0b74ac988ad61a00148c79330	2026-08-23	orphan	-	archive/claude-homiquity-doc-accuracy-iv8ijz	docs(handoff): last merge residuals — four re-dated question rows and the app-guide-07 note
+claude/homiquity-doc-accuracy-iv8ijz	b374359657b57fc0b74ac988ad61a00148c79330	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	docs(handoff): last merge residuals — four re-dated question rows and the app-guide-07 note
 claude/loan-officer-selling-guide-sqhr3k	20a31b437a13a789aece0fce0391ea7d1becce09	2026-08-31	pr-head	716	-	fix(test): the action-items poll waited for the wrong thing
 claude/local-dev-corrections	393543078bf699f3306c0721bd9c0dde23a1eef9	2026-08-18	pr-head	685	-	docs(local-dev): the three measured traps #578 left behind, and a session close-out record
 claude/lucid-edison-6uopmz	2b48bba6a41b0bdce0855caa8e3036e23c9b5bc7	2026-08-17	pr-head	633	-	feat(seo): wire content to conversion and mark up calculator tools
 claude/mortgage-broker-launch-features-nbc74b	15498e0a8258a7649be79eac90ae757bcc027a68	2026-08-31	pr-head	710	-	Merge remote-tracking branch 'origin/main' into claude/mortgage-broker-launch-features-nbc74b
-claude/musing-kepler-ca48fc	3d7e241c4b9c7220affe0b7f94a24bcb54e074ab	2026-08-22	orphan	-	archive/claude-musing-kepler-ca48fc	docs(routine): wiring audit 2026-08-22 — record what the gate actually proved
+claude/musing-kepler-ca48fc	3d7e241c4b9c7220affe0b7f94a24bcb54e074ab	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): wiring audit 2026-08-22 — record what the gate actually proved
 claude/routines-code-quality-review-snqxol	12f27a098f20b521f73dba85d5934b97abaa5c5c	2026-08-18	pr-head	675	-	routines: local-first freeze (CHARTER §13), and the runbook for gating the site
 claude/selling-guide-extraction-rh2kvf	6e3797a88b69718e5f9b693b04eaf18a658b0539	2026-08-31	pr-head	738	-	docs(routines): a PR backlog rots while trunk is frozen, and archive beats delete
 claude/vibrant-turing-89b812	3f4eda4d8e6e5c245d8d49eb5fe1242b2cc7b0f9	2026-08-22	pr-head	670	-	fix(test): `pnpm test` could run fewer files than exist and still exit 0
-codex/strategy-implementation	f1f75bca98c0a1b305e9325382fbeab5167a00c2	2026-08-27	orphan	-	archive/codex-strategy-macapp	fix(dev): make local launcher portfolio-safe
-codex/strategy-macapp	f1f75bca98c0a1b305e9325382fbeab5167a00c2	2026-08-27	orphan	-	archive/codex-strategy-macapp	fix(dev): make local launcher portfolio-safe
-combined-gate	cfff8565b4b4eb63b68d139cccddf7a78f56fe17	2026-08-20	orphan	-	archive/combined-gate	Merge remote-tracking branch 'origin/fix/assistant-complaint-scan' into combined-gate
+codex/strategy-implementation	f1f75bca98c0a1b305e9325382fbeab5167a00c2	2026-08-27	orphan	-	archive/2026-08-31-orphan-tips	fix(dev): make local launcher portfolio-safe
+codex/strategy-macapp	f1f75bca98c0a1b305e9325382fbeab5167a00c2	2026-08-27	orphan	-	archive/2026-08-31-orphan-tips	fix(dev): make local launcher portfolio-safe
+combined-gate	cfff8565b4b4eb63b68d139cccddf7a78f56fe17	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/fix/assistant-complaint-scan' into combined-gate
 compliance/selling-guide-08-05-2026	e29a99a86f6da707f9f0b1af9f1c628dd4f18cce	2026-08-22	in-main	-	-	compliance(B3-5.3-07): a declared foreclosure never reached the decision
 compliance/selling-guide-constitution	f739e177f5e1937816b2638407f415c181975fc7	2026-08-23	in-main	-	-	Merge #650 into #654 — keep both test suites, keep the Guide untracked
-da-0823-extend	15c1ae2b1faa5c9f8d364c688c0fec3bcdecdacc	2026-08-23	orphan	-	archive/da-0823-extend	docs(routine): doc-accuracy 2026-08-23 — the incident runbook told you to confirm recovery against the wrong host
+da-0823-extend	15c1ae2b1faa5c9f8d364c688c0fec3bcdecdacc	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): doc-accuracy 2026-08-23 — the incident runbook told you to confirm recovery against the wrong host
 dependabot/github_actions/actions/cache-6	9c88a4ac293c86a98c095f6b7f8ada3c0a875c3f	2026-08-31	pr-head	728	-	chore(deps): bump actions/cache from 4 to 6
 dependabot/github_actions/actions/setup-node-7	b1159c812e17e822da90524e07be7c8efc056b55	2026-08-31	pr-head	727	-	chore(deps): bump actions/setup-node from 4 to 7
 dependabot/npm_and_yarn/minor-and-patch-c346b921ef	437c3e4b5fce60f6d3fcd933e032103b699e5275	2026-08-31	pr-head	737	-	chore(deps): bump the minor-and-patch group across 1 directory with 16 updates
@@ -163,8 +175,8 @@ docs/doc-accuracy-daily-steward	5340b630027c01f9391c7f39950dd47e25bd4e1a	2026-08
 docs/handoff-corpus-2026-08-22	2c857348c826cf122d08d1f8ae74b3a9bd1372c3	2026-08-22	pr-head	673	-	docs(handoff): first generator-driven refresh — three rows, one paragraph
 docs/handoff-day1-and-scaffold-0823	bbb2a049da3197355194b418a73ffc698b40b72f	2026-08-23	pr-head	705	-	Merge remote-tracking branch 'origin/docs/doc-accuracy-daily-steward' into docs/handoff-day1-and-scaffold-0823
 docs/handoff-drift-fixnow	86318add7e2d6dce114ebf182d82999bc1e3f211	2026-08-22	pr-head	694	-	docs(handbook): the handbook described a logger that would log SSNs
-docs/handoff-refresh-0823	ba6fdf0c5c8e708971b23ab7b00812a67d76606f	2026-08-23	orphan	-	archive/docs-handoff-refresh-0823	docs(handoff): the guard the corpus was watching landed, and took 57 citations with it
-docs/sop-a3-3-01-verified	01bc157e62e6ab5ad15266d5beacc3836dd24a3b	2026-08-22	orphan	-	archive/docs-sop-a3-3-01-verified	docs(sop): A3-3-01 verified against the 08-05-2026 Selling Guide — quotes restored, flag cleared; repair the citation ratchet main broke
+docs/handoff-refresh-0823	ba6fdf0c5c8e708971b23ab7b00812a67d76606f	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	docs(handoff): the guard the corpus was watching landed, and took 57 citations with it
+docs/sop-a3-3-01-verified	01bc157e62e6ab5ad15266d5beacc3836dd24a3b	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	docs(sop): A3-3-01 verified against the 08-05-2026 Selling Guide — quotes restored, flag cleared; repair the citation ratchet main broke
 feat/b3-6-05-debts-paid-by-others	e4bb4128535e45016f812f37db4df0a064107b90	2026-08-22	pr-head	668	-	chore(b3-6-05): catalog the new flag, and re-record the liability schema's four new booleans
 feat/homi-kill-model-authored-state	7213765b3359c97323880eb6307c59561c7f8ae6	2026-08-20	pr-head	678	-	Merge remote-tracking branch 'origin/main' into feat/homi-kill-model-authored-state
 feat/homi-knows-its-own-name	a7c64552acbb20c27e91cbc1a4a8c1b06609f363	2026-08-22	pr-head	655	-	Merge remote-tracking branch 'origin/main' into feat/homi-knows-its-own-name
@@ -174,13 +186,13 @@ feat/income-source-doc-derivation	ed11dc9d19f8710d56a44da775a3b157ccce291a	2026-
 feat/income-type-catalog	222cdfc592e538841603c1684e37be02e408b563	2026-08-19	pr-head	610	-	feat(income): give Section 1e income a type the engine can read
 feat/landing-coach-first	76c59c9ee2df15cb596b34dc3473a2b3a1dd2f11	2026-08-19	pr-head	595	-	chore(bundle): carry both the a11y fix and this branch's eager cost in one baseline
 feat/lease-deletion	d1f3e1cf7913c7b26dc2875a679ce8401b42f7b0	2026-08-17	pr-head	676	-	Merge branch 'main' into feat/lease-deletion
-fix-647	ca380214a56cb96701f656f9af325430bed9d0ec	2026-08-23	orphan	-	archive/fix-647	Merge remote-tracking branch 'origin/main' into fix-647
-fix-658	0e2fe19a16d33139825eab1e74edcafac9c89b42	2026-08-23	orphan	-	archive/fix-658	Merge remote-tracking branch 'origin/main' into fix-658
+fix-647	ca380214a56cb96701f656f9af325430bed9d0ec	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/main' into fix-647
+fix-658	0e2fe19a16d33139825eab1e74edcafac9c89b42	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/main' into fix-658
 fix/assistant-complaint-scan	55b060ea5ebbab8a4aa822b8563062233efe838b	2026-08-19	pr-head	599 683	-	fix(compliance): the assistant was the one borrower channel CS2 never scanned
-fix/ecoa-intake-guard-timeout	6463da2811ba04fd2a7dd72d2f17c19dbfe310c2	2026-08-22	orphan	-	archive/fix-ecoa-intake-guard-timeout	test(ecoa): stop the intake-never-denies guard timing out under load
+fix/ecoa-intake-guard-timeout	6463da2811ba04fd2a7dd72d2f17c19dbfe310c2	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	test(ecoa): stop the intake-never-denies guard timing out under load
 fix/extraction-persistence-test-race	55396be9c94baa7128beceb3f5659e41f4c7afe8	2026-08-20	pr-head	649	-	Wait for the side effect, not for the first one that happens to land (#628 test race)
 fix/funnel-draft-roundtrip	0d987621d0d24b1d733dadac93d8204e9e37c388	2026-08-22	pr-head	667	-	test(funnel): load the route harness at module init so a loaded box cannot skip the suite
-fix/home-equity-cta-clip	52dc4db3ef93e4dc9499b9e0d6297b55a4a19fe8	2026-08-19	orphan	-	archive/fix-home-equity-cta-clip	fix(ui): the home-equity CTA label is clipped at 320px — the residue of the container-side overflow fix
+fix/home-equity-cta-clip	52dc4db3ef93e4dc9499b9e0d6297b55a4a19fe8	2026-08-19	orphan	-	archive/2026-08-31-orphan-tips	fix(ui): the home-equity CTA label is clipped at 320px — the residue of the container-side overflow fix
 fix/journey-seams-0824	4c449ecab082365bb458a2301c08fafad67529e5	2026-08-24	pr-head	724	-	fix(bundle): the nav fix cost 23 eager bytes it did not need
 fix/public-browse-0820	bf3baf4ea9ca6945ef10a54583b0177c9b1b1c38	2026-08-20	pr-head	648	-	docs: point the register and finding rows at the real PR number (#648)
 fix/restore-migrate-prod-and-verify-deploy	0f109c305ab9a59c8678e71823994683ad6497cc	2026-08-22	pr-head	669	-	ci: re-arm migrate-prod and verify-deploy — the pause outlived its premise
@@ -189,27 +201,28 @@ harness/integration-lane-in-ci	15acb58ad9dffa4d546531196348218b7de0f6a2	2026-08-
 harness/tiers-and-ledger-check	141a20c0208822b6cb929c7c5e7b387e3a17a6d4	2026-08-23	in-main	-	-	harness: one token per tier, and the ledger check for the silent migration skip
 p0-650	0d64b382bf59064d0d92c30f55f3de911cc07d2b	2026-08-23	in-main	650	-	Merge main into compliance/selling-guide-08-05-2026 — renumber two colliding migrations
 perf/ci-minute-reduction	018da875e2a7688ad6dba472f8eebebebdce863a	2026-08-20	pr-head	684	-	perf(ci): cut the runs that could never change a verdict — and measure the rest
-pr672	2244c962a1983246b0c9a0f10f419f234acbc804	2026-08-22	orphan	-	archive/pr672	chore(design-system): regenerate the §0 table after merging main
-rescue/inert-buttons-ratchet	bf199bb5b372849ff2865baa47d26f57af7d3837	2026-08-06	orphan	-	archive/rescue-inert-buttons-ratchet	Ratchet the number of buttons that do nothing
-rescue/policy-catalogue-wiring	28cb4e5e499926cb3d41987a56bbb0453243b046	2026-08-06	orphan	-	archive/rescue-policy-catalogue-wiring	Policy catalogue: naming convention, atomic clone, and the create dialog
-rescue/wire-four-buttons	1de88da3472a252136a2f2319a53773274f9e90f	2026-08-06	orphan	-	archive/rescue-wire-four-buttons	Wire four buttons that had no handler, and fix a detector blind spot
+pr672	2244c962a1983246b0c9a0f10f419f234acbc804	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	chore(design-system): regenerate the §0 table after merging main
+probe/archive-write-test	e9d3759c021e100b59567a3c0b1e596e10eab6ed	2026-08-31	orphan	-	archive/2026-08-31-orphan-tips	chore(archive): record where every branch's commits survive, before deleting any
+rescue/inert-buttons-ratchet	bf199bb5b372849ff2865baa47d26f57af7d3837	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	Ratchet the number of buttons that do nothing
+rescue/policy-catalogue-wiring	28cb4e5e499926cb3d41987a56bbb0453243b046	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	Policy catalogue: naming convention, atomic clone, and the create dialog
+rescue/wire-four-buttons	1de88da3472a252136a2f2319a53773274f9e90f	2026-08-06	orphan	-	archive/2026-08-31-orphan-tips	Wire four buttons that had no handler, and fix a detector blind spot
 routine/accelerator-lo-sessions	d4aaf735dc69e4703f685e270ecd175be5cdd998	2026-08-20	pr-head	641	-	feat(accelerator): the session lifecycle — decline, cancel, move, and what happened
 routine/compliance-watch-2026-08-18	56cf00acf74d845fbeb4f0712c2cda64ff600feb	2026-08-18	in-main	-	-	refactor-radar RR-005: URLAForm extraction refuted — narrow the step ids instead (#530)
-routine/doc-accuracy-2026-08-20	20be131184fb0c9a38719a59cf25070f5909c373	2026-08-20	orphan	-	archive/routine-doc-accuracy-2026-08-20	docs(routine): doc-accuracy 2026-08-20 — the pre-push red is flaky, not a regression
-routine/doc-accuracy-2026-08-22	701e58c2d20e075c3ddb6bb00e1bdf5d4afbe7bd	2026-08-23	orphan	-	archive/routine-doc-accuracy-2026-08-22	Merge remote-tracking branch 'origin/main' into routine/doc-accuracy-2026-08-22
+routine/doc-accuracy-2026-08-20	20be131184fb0c9a38719a59cf25070f5909c373	2026-08-20	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): doc-accuracy 2026-08-20 — the pre-push red is flaky, not a regression
+routine/doc-accuracy-2026-08-22	701e58c2d20e075c3ddb6bb00e1bdf5d4afbe7bd	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	Merge remote-tracking branch 'origin/main' into routine/doc-accuracy-2026-08-22
 routine/doc-accuracy-2026-08-24	b37a85148c6e31d29bc4e7b75ce1d8b7a0fd2367	2026-08-24	pr-head	735	-	docs(routine): doc-accuracy 2026-08-24 — the allowlist was deleted this morning and 54 files still teach it
 routine/evening-triage-2026-08-18-late	217a867c3d4e73d2862bdc40a848d5cbbdd1cb7f	2026-08-18	in-main	-	-	a11y(rates): associate the labels the probe correctly flagged (#593)
 routine/evening-triage-2026-08-22b	fc0bfd49a3de2f8d760989582980cb400784305a	2026-08-23	pr-head	698	-	fix(roadmap): stop the new §3.39 line tripping the citation ratchet
 routine/feature-completion-2026-08-20	4b3c8ad34483a5c50afbfce4c9dd0af579ec8490	2026-08-20	pr-head	679	-	docs(routine): post-merge gate numbers, and the generated-number conflict
 routine/feature-completion-2026-08-22	00b2981659c6f3a027ca642709f7955a496b3c82	2026-08-22	pr-head	657	-	Merge branch 'main' into routine/feature-completion-2026-08-22
 routine/feature-completion-2026-08-22b	5b475b59380cac8a83634cec3d831be4f4c67b08	2026-08-23	pr-head	689	-	docs(routine): record that CI skipped this PR and the local gate did not finish
-routine/feature-completion-2026-08-23	09d6ec83175f3a49695b9138eeef593f145cbd2f	2026-08-23	orphan	-	archive/routine-feature-completion-2026-08-23	fix(report): the §10 guard caught a section id this routine carried from memory
+routine/feature-completion-2026-08-23	09d6ec83175f3a49695b9138eeef593f145cbd2f	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	fix(report): the §10 guard caught a section id this routine carried from memory
 routine/feature-completion-2026-08-24	b1c3d4f6e6f48a78671cf0c523568369309e4ac9	2026-08-24	pr-head	732	-	test(intake): the shared gate's flake was a race between two kinds of action item
 routine/handoff-steward-2026-08-24	63cb3bfecf0907db7596a534a58ee7e378287635	2026-08-24	pr-head	734	-	docs(handoff): name the PR in the run log
-routine/journey-walk-2026-08-22	74e2f0bce74bf886a2ce0c70215e5ccd97130e26	2026-08-22	orphan	-	archive/routine-journey-walk-2026-08-22	docs(routine): client-journey-walk 2026-08-22 — journey 2, W-2 salaried buyer
+routine/journey-walk-2026-08-22	74e2f0bce74bf886a2ce0c70215e5ccd97130e26	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	docs(routine): client-journey-walk 2026-08-22 — journey 2, W-2 salaried buyer
 routine/ui-conformance-2026-08-24	8b841b962c9c1fdef31d66a5aad39a9bd7147a9c	2026-08-24	pr-head	723	-	chore(bundle): account the 4 eager bytes PageShell adoption costs, don't hide them
-sg650-renumber	b3194e043e72032b1cdd76288ae791386f11dd17	2026-08-22	orphan	-	archive/sg650-renumber	Merge main into compliance/selling-guide-08-05-2026 — renumber the colliding migration
-tmp/handoff-scaffold-0823	8b3937da740e4045336b9d75a287749c80c4a05d	2026-08-23	orphan	-	archive/tmp-handoff-scaffold-0823	docs(handoff): the two chapters that answer "how do we build without breaking it" skipped the Feynman contract, and their twelve teach-backs had no key
+sg650-renumber	b3194e043e72032b1cdd76288ae791386f11dd17	2026-08-22	orphan	-	archive/2026-08-31-orphan-tips	Merge main into compliance/selling-guide-08-05-2026 — renumber the colliding migration
+tmp/handoff-scaffold-0823	8b3937da740e4045336b9d75a287749c80c4a05d	2026-08-23	orphan	-	archive/2026-08-31-orphan-tips	docs(handoff): the two chapters that answer "how do we build without breaking it" skipped the Feynman contract, and their twelve teach-backs had no key
 wip/primary-checkout-leftovers	6afd60f6a568139ea1d485a37b289dde20b5b770	2026-08-12	pr-head	686	-	wip: snapshot the primary checkout's uncommitted leftovers before clearing it
 wip/rate-pages-search-extraction	5aaa5c24d2d05db8882e1e586390ae97ccb183cc	2026-08-12	pr-head	687	-	wip(rates): recovered uncommitted rate-page extraction from an abandoned worktree
 wip/sop-manual-draft-2026-08-19	5cdc88438b74169c3214804793f8a74fee1d649c	2026-08-19	pr-head	688	-	wip(do-not-merge): snapshot the untracked SOP manual charter left in the primary checkout

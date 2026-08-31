@@ -52,6 +52,7 @@
     "guard:seats": "node scripts/seat-roster-guard.cjs",
     "guard:gating": "node scripts/gating-reality-guard.cjs",
     "guard:vocab": "node scripts/extract-ulad-enumerations.cjs --check && node scripts/vocabulary-registry.cjs",
+    "guard:branches": "node scripts/branch-archive.cjs --check",
     "guard:staleness": "node scripts/doc-staleness-guard.cjs",
     "guard:citations": "node scripts/citation-guard.cjs",
     "guard:bundle": "node scripts/bundle-size-guard.cjs",

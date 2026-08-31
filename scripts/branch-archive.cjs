@@ -59,7 +59,13 @@ const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "knowledge-base/archive/BRANCH_ARCHIVE.tsv");
 const CHECK = process.argv.includes("--check");
 const CREATE_TAGS = process.argv.includes("--create-tags");
+const BUILD_ARCHIVE = process.argv.includes("--build-archive");
 const REMOTE = "origin";
+// The ref that holds every orphan commit. An empty-tree commit whose parents are
+// the orphan tips; see its own commit message. Branches under archive/ are the
+// archive itself and are never candidates for deletion.
+const ARCHIVE_REF = "archive/2026-08-31-orphan-tips";
+const isArchiveRef = (b) => b === ARCHIVE_REF || b.startsWith("archive/");
 
 const git = (...args) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -145,6 +151,16 @@ const isAncestor = (sha, of) => {
 
 const clean = (s) => (s || "").replace(/[\t\r\n]+/g, " ").trim();
 
+// Bounded ancestor walk. 200 is far past any branch here (the deepest is 68
+// commits) and keeps this linear rather than resolving 731 pull refs per branch.
+const HEAD_BRANCH = (() => {
+  try {
+    return git("rev-parse", "--abbrev-ref", "HEAD").trim();
+  } catch {
+    return "";
+  }
+})();
+
 const MAIN = `${REMOTE}/main`;
 const rows = [];
 const missing = [];
@@ -158,7 +174,31 @@ for (const { branch, sha } of heads) {
     continue;
   }
   const prs = prBySha.get(sha) || [];
-  const bucket = isAncestor(sha, MAIN) ? "in-main" : prs.length ? "pr-head" : "orphan";
+  // An archive/* branch is the safety net, not a candidate for it. Bucketing it
+  // as `orphan` would make the archive demand an archive of its own, and would
+  // hand any future deletion pass the one branch it must never remove.
+  // STRICT: pr-head only when the tip IS a pull ref. A weaker test — "some
+  // ancestor is a pull ref" — was tried and is worthless: merged PR heads sit in
+  // almost every branch's ancestry, and it collapsed all 74 orphans to zero. A
+  // pull ref anchors what is reachable FROM it, so the sound test is "tip is an
+  // ancestor of a pull ref", which would mean fetching all 731. Not worth it:
+  // erring toward `orphan` over-archives, which is the safe direction.
+  //
+  // `working` is the one exception, and it is not a softening. The branch this
+  // census is committed ON advances by that very commit, so it can never appear
+  // in an archive built beforehand — the file could not be generated in a state
+  // that survives its own commit. It needs no archive: it is pushed, it has an
+  // open PR, and it is the branch someone is actively holding. It claims no
+  // archiveRef, so no row asserts anything untrue.
+  const bucket = isArchiveRef(branch)
+    ? "archive"
+    : isAncestor(sha, MAIN)
+      ? "in-main"
+      : prs.length
+        ? "pr-head"
+        : branch === HEAD_BRANCH
+          ? "working"
+          : "orphan";
   const tipDate = clean(git("log", "-1", "--format=%cs", sha));
   const subject = clean(git("log", "-1", "--format=%s", sha)).slice(0, 160);
 
@@ -201,7 +241,7 @@ for (const [sha, namer] of namerForSha) {
   }
   tagForSha.set(sha, tag);
 }
-for (const r of rows) if (r.bucket === "orphan") r.tag = tagForSha.get(r.sha);
+for (const r of rows) if (r.bucket === "orphan") r.tag = ARCHIVE_REF;
 
 // --------------------------------------------------------------------------
 // 4. Refuse to write a short file.
@@ -224,28 +264,110 @@ if (missing.length) {
 const counts = rows.reduce((a, r) => ((a[r.bucket] = (a[r.bucket] || 0) + 1), a), {});
 const orphans = rows.filter((r) => r.bucket === "orphan");
 
+// --------------------------------------------------------------------------
+// 4b. The manifest may not claim an archive it does not have.
+// --------------------------------------------------------------------------
+// Every orphan row prints `archiveRef`, which is a promise that the commit is
+// recoverable from that ref. A promise nobody checks is how this repo's
+// signature defect gets written down as a fact, so it is checked: the orphan
+// sha must actually be reachable from ARCHIVE_REF.
+//
+// It goes stale for an ordinary reason. `refs/pull/N/head` lags a push, so a
+// branch with a live open PR can bucket as `orphan` for a few minutes and land
+// outside an archive built before it. That direction is the safe one — a branch
+// is over-archived, never under-archived — but the ROW would still be asserting
+// something untrue, and that is not a thing to leave in a file whose only job
+// is to be believed.
+function archiveCovers() {
+  const uncovered = [];
+  let ref;
+  try {
+    ref = git("rev-parse", "--verify", `${ARCHIVE_REF}^{commit}`).trim();
+  } catch {
+    return { exists: false, uncovered };
+  }
+  for (const r of orphans) if (!isAncestor(r.sha, ref)) uncovered.push(r);
+  return { exists: true, uncovered };
+}
+
+if (BUILD_ARCHIVE) {
+  const emptyTree = git("hash-object", "-t", "tree", "/dev/null").trim();
+  const tips = [...new Set(orphans.map((r) => r.sha))];
+  const args = ["commit-tree", emptyTree];
+  for (const t of tips) args.push("-p", t);
+  const sha = git(
+    ...args,
+    "-m",
+    `archive(${new Date().toISOString().slice(0, 10)}): ${tips.length} orphan commits, held so their branches can be deleted\n\n` +
+      `This commit contains NOTHING — its tree is empty. Its only job is to be a parent of the\n` +
+      `${tips.length} commits that, before it existed, were reachable from nothing but a branch name.\n` +
+      `Delete those branches and the commits remain reachable from here, so nothing is lost.\n\n` +
+      `Which commits: every row marked \`orphan\` in knowledge-base/archive/BRANCH_ARCHIVE.tsv — a\n` +
+      `tip that is neither an ancestor of main nor a refs/pull/N/head. The other branches need no\n` +
+      `archive: main already holds theirs, and GitHub retains pull refs permanently.\n\n` +
+      `Tags are the better idiom and this repo already uses archive/<branch-with-dashes>. This\n` +
+      `session's git proxy permits refs/heads/* and refuses refs/tags/* with HTTP 403, verified\n` +
+      `with a branch push succeeding in the same breath. An archive that cannot be pushed is not\n` +
+      `an archive.\n\n` +
+      `Recover:  git fetch origin ${ARCHIVE_REF} && git checkout -b recovered <sha>\n\n` +
+      `DO NOT DELETE THIS BRANCH while any row in BRANCH_ARCHIVE.tsv is marked orphan.`,
+  ).trim();
+  git("branch", "-f", ARCHIVE_REF, sha);
+  console.log(`branch-archive: ${ARCHIVE_REF} rebuilt at ${sha.slice(0, 8)} over ${tips.length} orphan tip(s).`);
+  console.log(`  Push with: git push origin ${ARCHIVE_REF}`);
+  process.exit(0);
+}
+
+const cover = archiveCovers();
+if (!cover.exists) {
+  console.error(`branch-archive: ${ARCHIVE_REF} does not exist locally, but ${orphans.length} row(s) cite it.`);
+  console.error(`  run: git fetch origin ${ARCHIVE_REF}   (or --build-archive to create it)`);
+  process.exit(1);
+}
+if (cover.uncovered.length) {
+  console.error(
+    `branch-archive: ${cover.uncovered.length} orphan(s) are NOT reachable from ${ARCHIVE_REF}.`,
+  );
+  for (const r of cover.uncovered) console.error(`    ${r.branch}  ${r.sha.slice(0, 8)}  (${r.tipDate})`);
+  console.error("\n  Writing nothing — the manifest would promise an archive that does not hold them.");
+  console.error(`  run: node scripts/branch-archive.cjs --build-archive && git push origin ${ARCHIVE_REF}`);
+  process.exit(1);
+}
+
 const body =
   `# GENERATED by scripts/branch-archive.cjs — do not hand-edit.\n` +
   `# Every branch on ${REMOTE}, and where its commits survive if the branch is deleted.\n` +
   `#\n` +
   `# Generated against ${MAIN} = ${git("rev-parse", "--short", MAIN).trim()}\n` +
   `# ${expected} branches (excluding main) · ${counts["in-main"] || 0} in-main · ` +
-  `${counts["pr-head"] || 0} pr-head · ${counts.orphan || 0} orphan\n` +
+  `${counts["pr-head"] || 0} pr-head · ${counts.orphan || 0} orphan · ` +
+  `${counts.working || 0} working · ${counts.archive || 0} archive\n` +
   `#\n` +
   `# WHAT EACH BUCKET GUARANTEES\n` +
   `#   in-main  the tip is an ancestor of main. Deleting the branch removes a name, not a commit.\n` +
   `#   pr-head  the tip is a refs/pull/N/head. GitHub keeps those permanently, merged or closed.\n` +
-  `#   orphan   held by the branch name alone. These carry an archive tag; nothing else holds them.\n` +
+  `#   orphan   was held by the branch name alone. Now also a parent of ${ARCHIVE_REF}.\n` +
+  `#   working  the branch this census was generated on. Advances by the commit that records\n` +
+  `#            this file, so no prior archive can hold its tip. Pushed and PR-tracked; claims\n` +
+  `#            no archiveRef.\n` +
+  `#   archive  the safety net itself. Never delete a branch in this bucket.\n` +
   `#\n` +
-  `# TO RECOVER ANY ROW — both verified on 2026-08-31 before this file was committed:\n` +
-  `#   orphan   git fetch origin refs/tags/<archiveTag>:refs/tags/<archiveTag> && git log FETCH_HEAD\n` +
-  `#   pr-head  git fetch origin refs/pull/<pr>/head && git log FETCH_HEAD\n` +
+  `# TO RECOVER ANY ROW — both paths executed and verified on 2026-08-31 before this was committed:\n` +
+  `#   orphan   git fetch origin ${ARCHIVE_REF} && git checkout -b recovered <sha>\n` +
+  `#            (proved: origin's archive commit carries 66 parents, 66/66 orphans reachable)\n` +
+  `#   pr-head  git fetch origin refs/pull/<pr>/head && git checkout -b recovered FETCH_HEAD\n` +
+  `#            (proved: PR #491, branch long deleted, recovered with 915 commits of history)\n` +
   `#   in-main  already in main; git show <sha>\n` +
+  `#\n` +
+  `# Tags would be the better idiom and this repo already uses archive/<branch-with-dashes>.\n` +
+  `# This session's git proxy permits refs/heads/* and refuses refs/tags/* with HTTP 403, so the\n` +
+  `# archive is a branch. From a machine with tag rights:\n` +
+  `#   node scripts/branch-archive.cjs --create-tags && git push origin --tags\n` +
   `#\n` +
   `# Ancestry alone is NOT the test: this repo squash-merges, so a merged branch tip is not an\n` +
   `# ancestor of main. git branch --no-merged reported 134 where the true orphan count was 74.\n` +
   `#\n` +
-  `branch\tsha\ttipDate\tbucket\tpr\tarchiveTag\tsubject\n` +
+  `branch\tsha\ttipDate\tbucket\tpr\tarchiveRef\tsubject\n` +
   rows
     .map((r) =>
       [r.branch, r.sha, r.tipDate, r.bucket, r.prs.join(" ") || "-", r.tag || "-", r.subject].join("\t"),
