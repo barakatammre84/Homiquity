@@ -261,14 +261,28 @@ const orphans = rows.filter((r) => r.bucket === "orphan");
 // is over-archived, never under-archived — but the ROW would still be asserting
 // something untrue, and that is not a thing to leave in a file whose only job
 // is to be believed.
+
+// Resolve the archive ref wherever it lives. `git rev-parse <name>` finds a LOCAL
+// branch, which exists on the machine that created it and in no fresh checkout —
+// so this resolved on a laptop and returned "does not exist" on a runner, which
+// is exactly the failure mode that makes a check look like a verdict.
+function resolveArchive(ref) {
+  for (const cand of [`refs/heads/${ref}`, `refs/remotes/origin/${ref}`, ref]) {
+    try {
+      return execFileSync("git", ["rev-parse", "--verify", "--quiet", `${cand}^{commit}`], {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {}
+  }
+  return null;
+}
+
 function archiveCovers() {
   const uncovered = [];
-  let ref;
-  try {
-    ref = git("rev-parse", "--verify", `${ARCHIVE_REF}^{commit}`).trim();
-  } catch {
-    return { exists: false, uncovered };
-  }
+  const ref = resolveArchive(ARCHIVE_REF);
+  if (!ref) return { exists: false, uncovered };
   for (const r of orphans) if (!isAncestor(r.sha, ref)) uncovered.push(r);
   return { exists: true, uncovered };
 }
@@ -385,9 +399,30 @@ const body =
     .join("\n") +
   "\n";
 
+// ---------------------------------------------------------------------------
+// The provenance line is recorded, never compared.
+// ---------------------------------------------------------------------------
+// `# Generated against origin/main = <sha>` tells a reader which tree this
+// census describes, which is worth having. It is also impossible to keep
+// current: the manifest is committed BY a merge to main, so the sha it records
+// can never be the sha of the commit that contains it. Comparing it made
+// guard:branches fail the instant it landed — red in every checkout, forever,
+// for a reason no one caused.
+//
+// A guard that is always red is worse than no guard. It does not report a
+// problem, it teaches people to ignore guards, and the next real finding is
+// read as more of the same. This repo has the same shape written down about
+// unenforced guards: they "read as coverage" while proving nothing.
+//
+// Nothing the check exists to catch is lost. A branch appearing, disappearing,
+// or changing bucket moves a row AND the count line, and both are still
+// compared byte for byte.
+const forCompare = (text) =>
+  text.replace(/^# Generated against origin\/main = .*$/m, "# Generated against origin/main = <not compared>");
+
 if (CHECK) {
   const current = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : "";
-  if (current !== body) {
+  if (forCompare(current) !== forCompare(body)) {
     console.error("branch-archive: the tracked manifest is STALE.");
     console.error(`  run: node scripts/branch-archive.cjs   (and commit ${path.relative(ROOT, OUT)})`);
     process.exit(1);

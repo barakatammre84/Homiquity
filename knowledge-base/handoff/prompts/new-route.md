@@ -10,7 +10,7 @@ TASK:   <one sentence: METHOD /api/<path>, who may call it (role or object-level
 WRITE:  server/routes/<domain>/<file>.ts           (existing group file; or a new file appended to that
                                                     group's index.ts — at the END of the list)
         server/storage/<domain>.ts                 (if a storage method is needed)
-        tests/<name>.test.ts + vitest.config.ts (END)        (pure logic)
+        tests/<name>.test.ts   (node lane globs — no config line)  (pure logic)
         tests/<name>.test.ts + vitest.integration.config.ts  (HTTP behaviour, incl. the 401/403 cases)
 NEVER:  server/routes.ts (unless the domain is new — then one appended registrar line, last before the 404);
         server/auth.ts; RESPONSE_BODY_LOG_ALLOWLIST in server/app.ts; hand-back files; package.json
