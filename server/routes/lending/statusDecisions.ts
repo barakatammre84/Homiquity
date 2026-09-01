@@ -5,7 +5,7 @@ import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { insertBorrowerDeclarationsSchema, loanApplicationIntakeUpdateSchema, STAFF_SETTABLE_STATUSES, CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, isProtectedCreditDecisionStatus, isApprovalOutcomeStatus, type User } from "@shared/schema";
-import { updatePipelineStage, PipelineTransitionError } from "../../pipelineEngine";
+import { updatePipelineStage, checkPipelineProgress, PipelineTransitionError } from "../../pipelineEngine";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { z } from "zod";
 import { logAudit } from "../../auditLog";
@@ -247,6 +247,38 @@ export function registerStatusDecisionRoutes(
             adverseActionId: aa.adverseActionId,
             trigger: "status_denied",
           });
+        }
+      }
+
+      // Selling Guide B3-2-05: an Approve/Eligible file is eligible for sale
+      // only "if all approval conditions have been met" (with B3-2-01's duty to
+      // comply with every findings-report condition, and D1-3-02's post-closing
+      // QC verifying exactly that at the wholesale lender). Moving into the
+      // closing track with conditions un-settled is a defect the lender kicks
+      // back — so the stage-exit condition check gates entry to these statuses.
+      // Current-stage semantics (same as advance-stage): approval/docs-priority
+      // conditions gate entry to clear_to_close, all conditions gate entry to
+      // closing, and the engine's closing branch stops funding on anything
+      // un-settled — which is where prior_to_funding bites, matching the
+      // priority's meaning (a funding condition may stay open at CTC). Exit
+      // dispositions (denied/withdrawn/suspended) are never gated. Admin
+      // force bypasses with an audit entry, mirroring the transition-table
+      // force below.
+      if (status === "clear_to_close" || status === "closing" || status === "funded") {
+        const progress = await checkPipelineProgress(id);
+        if (!progress.readyForNextStage) {
+          if (force === true && isAdmin(user)) {
+            logAudit(req, "pipeline.condition_gate_forced", "loan_application", id, {
+              toStatus: status,
+              blockers: progress.blockers,
+            });
+          } else {
+            return res.status(422).json({
+              error: `Cannot set status to '${status.replace(/_/g, " ")}': ${progress.blockers.join("; ")}. Clear, waive, or mark the conditions not applicable first.`,
+              code: "conditions_outstanding",
+              blockers: progress.blockers,
+            });
+          }
         }
       }
 
