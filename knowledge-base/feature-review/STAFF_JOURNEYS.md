@@ -34,7 +34,7 @@ Client journeys: `JOURNEYS.md`.
 | Seam | Fires in | Renders in | Desks |
 |---|---|---|---|
 | invite → desk | `server/routes/lending/applications.ts:240-256` (`assignLoanOfficer`; **non-fatal** — "a routing failure must not lose the application") | `server/routes/underwriting/staff.ts:15-27` queue · `client/src/components/dashboard/LoanTeamCard.tsx:49-51` | borrower → LO |
-| status → borrower | `server/routes/lending/statusDecisions.ts:127-255` (single writer) · `:276` (`type: "status_update"`) | `client/src/components/NotificationsPanel.tsx` · `/dashboard` | any desk → borrower |
+| status → borrower | `server/routes/lending/statusDecisions.ts:147-292` (single writer; the condition gate on the closing track landed 2026-08-23 at `:253-282`) · `:328` (`type: "status_update"`) | `client/src/components/NotificationsPanel.tsx` · `/dashboard` | any desk → borrower |
 | verify → doc state | `server/routes/documents.ts:431-464` (the only path to `verified`) | borrower `/documents`, `/tasks` — two axes, `shared/schema/underwritingTasks.ts:145-180` | processor → borrower |
 | denial → notice | `statusDecisions.ts` `ensureAdverseActionForDenial` | `client/src/pages/borrower/AdverseActionNotice.tsx` (ux-24: undiscoverable) | underwriter → borrower |
 | funded → homeowner | `server/pipelineEngine.ts:646-656` (`graduateClosedLoan`, **non-fatal**) | `/homeowner-dashboard` (`client/src/App.tsx:553`, no nav entry) | underwriter/admin → borrower |
@@ -56,7 +56,7 @@ better home can be chosen. A HANDOFF on those files names the provisional owner 
 "provisional"**; a hand-off with a doubtful addressee is recorded as such, never silently dropped.
 
 > **Seeded seats, and why they are right here when journey 1 retired its own.** Every staff role has
-> a `/test-login` seat (`server/auth.ts:352-364`) whose role is **rewritten on every login**
+> a `/test-login` seat (`server/auth.ts:357-369`) whose role is **rewritten on every login**
 > (`:380-382`). Journey 1 retired `renter@test.com` because its central surface keys on the
 > account's own rows, and accumulated applications changed what the persona saw. A staff desk's
 > central surfaces key on **the file under test, which the walker creates fresh every run** — the
@@ -71,10 +71,10 @@ already drift):
 
 | # | Journey | Walkability (seat · counterpart · unwalkable) | Last walked | Verdict |
 |---|---|---|---|---|
-| S1 | Loan officer — receives the file | `lo@test.com` · borrower (fresh, via invite) · admin for one code (optional) · **empty states unwalkable on the seat** | — | not yet run |
+| S1 | Loan officer — receives the file | `lo@test.com` · borrower (fresh, via invite) · admin for one code (optional) · **empty states unwalkable on the seat** | — (attempted 2026-08-23: **BLOCKED**, no browser tooling in session; HTTP-lane evidence in [journey-walks/2026-08-23-lo-submission-review.md](journey-walks/2026-08-23-lo-submission-review.md)) | not yet run |
 | S2 | Processor — the document crosses two vocabularies | `processor@test.com` · borrower (fresh) · admin for one team-add · **no product verb puts a file on this desk** | — | not yet run |
 | S3 | Underwriter — the decision, both directions | `underwriter@test.com` · borrower ×2 (one denied, one pre-approved) · admin for team-add | — | not yet run |
-| S4 | Closer — the desk with no verb | `closer@test.com` · underwriter/admin funds · borrower for graduation · **expected `DEAD-ENDED (by design)`** | — | not yet run |
+| S4 | Closer — the desk with no verb | `closer@test.com` · underwriter/admin funds · borrower for graduation · **expected `DEAD-ENDED (by design)`** | — (attempted 2026-08-23: **BLOCKED**, no browser tooling; the HTTP census in [journey-walks/2026-08-23-lo-submission-review.md](journey-walks/2026-08-23-lo-submission-review.md) confirms the expected dead-end at API level) | not yet run |
 | S5 | Broker — sees the stage, must not see the file | `broker@test.com` · borrower (fresh, via `/ref/:code`) · **no admin, ever** | — | not yet run |
 
 ---
@@ -85,7 +85,7 @@ already drift):
   client relationships"*. Home `/staff-dashboard` (`client/src/lib/roleRoutes.ts:19`); nav
   `staffNavigation` (`client/src/components/app-sidebar.tsx:135-162`) including *Invite Clients*
   gated `ROUTE_GATES.loTeam` (admin/lo/loa).
-- **Account**: `lo@test.com` via `/test-login` (`server/auth.ts:354`). Borrower: fresh `/signup`
+- **Account**: `lo@test.com` via `/test-login` (`server/auth.ts:359`). Borrower: fresh `/signup`
   as `jst+<MMDD>lo@test.local`, created **through the LO's own invite link**; a second,
   `jst+<MMDD>lo2@test.local`, for the pool leg via cold `/apply`. **Optional onboarding leg** (the
   only way to walk the LO empty states and the live role flip): as admin at `/admin/users` mint one
@@ -105,10 +105,10 @@ already drift):
   row is invisible to every non-admin** (`staff.ts:15-27`) until claimed.
 - **Handoff OUT**: the LO sets `doc_collection`/`processing` via
   `client/src/pages/staff/borrowerFile/StatusUpdateDialog.tsx` → `PATCH /api/loan-applications/:id/status`
-  (`statusDecisions.ts:127`). **What the product does not have**: a verb that assigns a processor.
+  (`statusDecisions.ts:147`). **What the product does not have**: a verb that assigns a processor.
   The Team tab mounts `DealTeamManagement` for every staff role (`BorrowerFile.tsx:610`) and the
   server answers 403 to all but admin (`server/routes/borrower/dealTeam.ts:45,209`). Assert who
-  learns of `processing`: the borrower (notification `status_update`, `statusDecisions.ts:276`) —
+  learns of `processing`: the borrower (notification `status_update`, `statusDecisions.ts:328`) —
   and no processor at all.
 - **Counterpart session(s)**: the borrower (verbs: sign up, apply via the link, read `/dashboard`
   and `/documents`, withdraw). Admin **only** on the optional leg (one verb: mint one code).
@@ -136,8 +136,11 @@ already drift):
      `/staff-dashboard` must **NOT** list it (not on the team); `IntakeInboxCard` **must**; claim;
      it now appears in both; ⇄ borrower: `LoanTeamCard` names you.
   9. **loa variant**: ⇄ `loa@test.com` → repeat 1–2 and 8 (claim is permitted for loa); open your
-     file's Conditions tab: offered (`borrowerFile/ConditionsTab.tsx:120` renders Clear/Waive/N-A
-     for all `isStaff`) vs permitted (`pipeline.ts:121` — `loa` absent) → `GATES:`.
+     file's Conditions tab and record the GATES census. *(Corrected 2026-08-23: the tab now renders
+     each verdict button only for roles in `CONDITION_VERDICT_ROLES` — `shared/statusVocabularies.ts`,
+     the same constant the route enforces — so `loa` and `lo` see NO verdict buttons; the walk
+     asserts offered == permitted rather than the old offered-vs-refused seam, which was lived as a
+     403 in [journey-walks/2026-08-23-lo-submission-review.md](journey-walks/2026-08-23-lo-submission-review.md).)*
   10. **Retire** (J11): ⇄ each borrower withdraws from the UI; ⇄ LO: queue back to `N`.
 - **Seams**:
   1. **invite id, seven hops**: `/invite-clients` (LO) → `/apply/:token` (anon) → localStorage
@@ -188,7 +191,7 @@ already drift):
 - **Persona**: `shared/roles.ts` `"processor"` — *"File bundling, pre-underwriting, condition
   management"*. Home `/staff-dashboard`, default tab `my-queue`
   (`client/src/pages/staff/staffDashboard/model.ts`). Nav `staffNavigation`.
-- **Account**: `processor@test.com` (`server/auth.ts:356`). Borrower: fresh `jst+<MMDD>pr@test.local`
+- **Account**: `processor@test.com` (`server/auth.ts:361`). Borrower: fresh `jst+<MMDD>pr@test.local`
   via cold `/apply`, who then uploads **at least two documents** at `/documents`. Admin for exactly
   one verb: add `processor@test.com` to the file's deal team (`dealTeam.ts:45`), recorded in
   `ADMIN-ACTIONS:`.
@@ -223,15 +226,20 @@ already drift):
 - **Borrower-side consequence**: verify → `/documents` state; reject → `/tasks` rejected badge
   (named surface); clear → ?; `underwriting` → status + bell.
 - **Promises**: *"File bundling, pre-underwriting, condition management"* — condition management
-  exists (settle only; **no staff UI creates a condition**, all writers are automation);
+  exists (settle **and create**: the submission dialog's Log-lender-conditions form —
+  `client/src/components/SubmissionReadinessDialog.tsx` → `POST …/lender-submissions/:sid/conditions`
+  — creates `loan_conditions` rows. *This line originally said "no staff UI creates a condition";
+  that was wrong at birth — the transcription UI landed 2026-08-20 in #625, two days before this
+  charter was written. Corrected 2026-08-23, PF-4.*);
   pre-underwriting is `server/services/preUnderwriting.ts`, a server cascade — name the surface
   the processor sees it on.
 - **Dead-end watch**: a rejected document — what is the borrower offered next; the processor after
   clearing the last condition — what is offered; `DOC-STATE DIFF` disagreements.
 - **Gate collisions**: Conditions tab buttons for `loa` (S1 step 9 covers it) — J10(a). Document
   verify gate excludes `closer` (`DOCUMENT_REVIEW_ROLES`) — correct gate. Intelligence tab — never.
-- **Forbidden**: J9. Seat-specific: never create a condition by any non-UI means (none exists —
-  that absence is a recorded fact, not a gap to fill).
+- **Forbidden**: J9. Seat-specific: never create a condition by any non-UI means — the ONE UI
+  writer is the submission dialog's lender-conditions form (see Promises above; the previous "none
+  exists" premise was wrong at birth, corrected 2026-08-23).
 - **Leave-as-found**: borrower withdraws; the team-add row remains (recorded).
 - **Crosses domains**: 3 (documents & extraction), 11, UX. **Owners**: `hq-documents-owner`
   (`DocumentReviewPanel`, `documents.ts`), `hq-task-engine-owner` (`Tasks.tsx`,
@@ -246,7 +254,7 @@ already drift):
   Home `/staff-dashboard`, default tab `conditions`. Exclusive surfaces `/task-operations`,
   `/policy-ops`, `/pricing-matrices` (`underwriterOps`); waive conditions; the whole
   `CREDIT_DECISION_ROLES` surface (`shared/loanApplicationStatus.ts:301` — admin, underwriter).
-- **Account**: `underwriter@test.com` (`server/auth.ts:357`). **Two** borrowers: `jst+<MMDD>uw`
+- **Account**: `underwriter@test.com` (`server/auth.ts:362`). **Two** borrowers: `jst+<MMDD>uw`
   (to be denied) and `jst+<MMDD>uw2` (to be pre-approved) — the control pass. Admin for one team-add
   per file.
 - **File under test**: both walked to `under_review` (the cascade's MANUAL_REVIEW route; **the
@@ -255,7 +263,7 @@ already drift):
   one-click `verify-financials` override (**F-0818-01**, P1, open: "requires no evidence
   whatsoever") — record that you used it, on `uw2` only.
 - **Handoff OUT**: `pre_approved` (approval outcome) or `denied` (terminal). Both protected statuses;
-  both go through the nine chokepoints in order (`statusDecisions.ts:127-255`): role → HMDA ≥2
+  both go through the ten chokepoints in order (`statusDecisions.ts:147-292`; the condition gate on clear_to_close/closing/funded was added 2026-08-23 — Selling Guide B3-2-05): role → HMDA ≥2
   reasons → `CREDIT_DECISION_ROLES` 403 → deal-team → `assertVerifiedForDecisioning` 422 →
   `assertStageRequirements` 422 → TRID hard stop 422 → `ensureAdverseActionForDenial` 422 →
   `updatePipelineStage`. **Which 422 fires first on an unverified file, and what text reaches the
@@ -311,7 +319,7 @@ already drift):
   document sign-off"*. Home `/staff-dashboard`; nav: **six generic links** (`app-sidebar.tsx`),
   none closing-specific; excluded from `marketData`, `FINANCIAL_VERIFICATION_ROLES`,
   `DOCUMENT_REVIEW_ROLES`, `loTeam`, `underwriterOps`, and AUS.
-- **Account**: `closer@test.com` (`server/auth.ts:358`). Borrower `jst+<MMDD>cl`. Counterparts:
+- **Account**: `closer@test.com` (`server/auth.ts:363`). Borrower `jst+<MMDD>cl`. Counterparts:
   **underwriter** (sets `clear_to_close`, then `funded`) and admin (team-add of the closer).
 - **File under test**: driven to `clear_to_close` by the underwriter counterpart before the closer
   session begins — the closer cannot get it there.
@@ -320,7 +328,7 @@ already drift):
 - **Handoff OUT**: **none possible from this desk.** `closing` is not protected and is settable;
   `funded` is a `PROTECTED_CREDIT_DECISION_STATUS` (`loanApplicationStatus.ts:294-299`) → the status
   dialog greys it *"(underwriter/admin only)"* (`StatusUpdateDialog.tsx:92`) and the server 403s
-  (`statusDecisions.ts:154-156`, whose comment at `:151-153` tells the role to *"use the
+  (`statusDecisions.ts:174-176`, whose comment at `:171-173` tells the role to *"use the
   underwriting advance-stage endpoint"*). That endpoint's `STAGE_TRANSITION_ROLES` permits
   `funded: ["admin","closer"]` (`pipeline.ts:43`) — and has **zero client callers** (N-002). The
   server points the closer at a door the UI never built.
@@ -331,8 +339,9 @@ already drift):
   what does the default tab show this role; `/borrower-file/:id` — exercise **every** control:
   status select (record what is greyed and the exact copy), `closing` (set it — permitted),
   conditions (clear permitted `pipeline.ts:195`), Documents tab verify (excluded — offered?), Team
-  tab (403 — offered?), `/lo-command-center` right rail *Run DU / LPA* (`ActionsRail.tsx:62`,
-  renders unconditionally → **F-0818-13**, cite), `/pricing-intelligence` (excluded — offered in
+  tab (403 — offered?), `/lo-command-center` right rail *Submit to lender* (`ActionsRail.tsx:62` mounts the
+  submission dialog; the *Run DU / LPA* verb lives INSIDE it and renders unconditionally →
+  **F-0818-13**, cite — label precision corrected 2026-08-23, the rail trigger was never the DU verb), `/pricing-intelligence` (excluded — offered in
   nav?) · ⇄ uw: `funded` · ⇄ borrower: nav before/after, `/dashboard`, is `/homeowner-dashboard`
   reachable without a URL (`App.tsx:553`, no nav entry; graduation is non-fatal
   `pipelineEngine.ts:646-656`) · retire (terminal).
@@ -379,7 +388,7 @@ already drift):
 - **Persona**: `shared/roles.ts` `"broker"` — *"Loan origination, lender relationships, deal
   management"*. Home `/broker-dashboard` (`roleRoutes.ts:16`); nav `partnerNavigation`
   (`app-sidebar.tsx:168-178`, shared with `lender`). Excluded from `internalStaff`, `loTeam`.
-- **Account**: `broker@test.com` (`server/auth.ts:359`). Borrower `jst+<MMDD>br` via the broker's
+- **Account**: `broker@test.com` (`server/auth.ts:364`). Borrower `jst+<MMDD>br` via the broker's
   **`/ref/<code>`** referral link (`pendingReferralCode`, `client/src/lib/pendingAttribution.ts`).
   **No admin session, ever** — the broker must never be on the deal team; that absence is the
   subject.

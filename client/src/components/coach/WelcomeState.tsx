@@ -101,9 +101,17 @@ export function WelcomeState({ onStart, insights }: { onStart: (msg: string) => 
             <h2 className="text-2xl font-bold text-foreground sm:text-3xl" data-testid="text-coach-welcome">
               Meet Homi
             </h2>
+            {/* Warm opener kept ahead of the existing, already-accurate claim
+                rather than replacing it — "organize everything for you" /
+                "cuts through the chaos" only holds for the intake-and-document
+                job Homi actually does (server/services/coachingPrompt.ts), not
+                property search or closing execution, so this stays general
+                rather than naming those. */}
             <p className="text-muted-foreground mt-3 leading-relaxed max-w-lg mx-auto">
-              Tell me about your situation and I'll organize everything for you — your answers are
-              saved to your pre-app profile as we talk, and you always see exactly what's captured.
+              Your AI guide for the parts of buying a home that feel like paperwork — here to
+              make it simpler and keep things moving. Tell me about your situation and I'll
+              organize everything for you: your answers are saved to your pre-app profile as we
+              talk, and you always see exactly what's captured.
             </p>
           </div>
         </div>

@@ -206,7 +206,6 @@ export default function BorrowerFile() {
     );
   }
 
-  const isStaff2 = isStaffRole(user?.role || "");
   // Mirrors the server's role gate on PATCH /:id/status (statusDecisions.ts):
   // final credit decisions are 403'd for everyone else, so grey them out here.
   const canSetCreditDecisions = CREDIT_DECISION_ROLES.includes(user?.role || "");
@@ -262,9 +261,14 @@ export default function BorrowerFile() {
               {exportingMismo ? "Exporting…" : "Export MISMO"}
             </Button>
           )}
-          <Button size="sm" className="touch-target" data-testid="button-generate-le">
-            <FileText className="mr-2 h-4 w-4" />
-            Generate LE
+          {/* The LE surface is /loan-estimate/:id (ROUTE_GATES.disclosure admits
+              staff). This button rendered with no handler from its first commit —
+              ux-0818-01, the worked example in tests/inertButtons.test.ts. */}
+          <Button asChild size="sm" className="touch-target" data-testid="button-generate-le">
+            <Link href={`/loan-estimate/${applicationId}`}>
+              <FileText className="mr-2 h-4 w-4" />
+              Loan Estimate
+            </Link>
           </Button>
         </div>
       </div>
@@ -566,7 +570,7 @@ export default function BorrowerFile() {
                   <ConditionsTab
                     applicationId={applicationId}
                     conditions={conditions}
-                    isStaff={isStaff2}
+                    userRole={user?.role}
                   />
                 </TabsContent>
 
