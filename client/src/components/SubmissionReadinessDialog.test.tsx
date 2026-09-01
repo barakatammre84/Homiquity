@@ -45,22 +45,69 @@ const readiness = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+// Shaped exactly as server/services/ausSubmission.ts persists it and
+// routes/aus.ts returns it on the application row: DU headline with the LPA
+// leg nested under `lpa`, D1C relief per layer with a withhold reason.
+const ausFindings = (over: Record<string, unknown> = {}) => ({
+  simulated: true,
+  casefileId: "sim-du-a34f919bf7",
+  duVersion: "12.1",
+  recommendation: "approve_eligible",
+  riskAssessment: { dti: 0.3366, ltv: 0.8, creditScore: 744 },
+  day1Certainty: {
+    assets: { relief: false, reason: "No validated assets report on the casefile" },
+    income: { relief: false, reason: "No validated income report on the casefile" },
+  },
+  messages: [
+    { code: "DU-0001", severity: "info", text: "Casefile underwritten with no adverse findings." },
+  ],
+  lpa: {
+    simulated: true,
+    assessmentId: "sim-lpa-a34f919bf7",
+    riskClass: "accept",
+    purchaseEligibility: "eligible",
+    messages: [],
+  },
+  ...over,
+});
+
+const applicationDetail = (over: Record<string, unknown> = {}) => ({
+  application: {
+    ausCasefileId: "sim-du-a34f919bf7",
+    ausRecommendation: "approve_eligible",
+    ausSubmittedAt: new Date("2026-08-23T18:21:00Z").toISOString(),
+    ausFindings: ausFindings(),
+    ...over,
+  },
+});
+
 function renderDialog({
   lenders = [lender()],
   submissions = [] as Record<string, unknown>[],
+  readinessOver = {} as Record<string, unknown>,
+  detail = applicationDetail() as Record<string, unknown> | undefined,
 } = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity, enabled: false } },
   });
-  client.setQueryData(loanApplicationKeys.submissionReadiness(APP_ID), readiness());
+  client.setQueryData(loanApplicationKeys.submissionReadiness(APP_ID), readiness(readinessOver));
   client.setQueryData(["/api/wholesale-lenders"], lenders);
   client.setQueryData(loanApplicationKeys.lenderSubmissions(APP_ID), submissions);
+  if (detail) client.setQueryData(loanApplicationKeys.detail(APP_ID), detail);
   return render(
     <QueryClientProvider client={client}>
       <SubmissionReadinessDialog applicationId={APP_ID} borrowerName="WFQA Six" />
     </QueryClientProvider>,
   );
 }
+
+const AUS_STAGE = {
+  key: "aus",
+  label: "Automated underwriting (DU + LPA)",
+  status: "ready",
+  blockers: [],
+  warnings: [],
+};
 
 const openDialog = async () => {
   const user = userEvent.setup();
@@ -129,5 +176,62 @@ describe("SubmissionReadinessDialog — the lender identifier contract (F-0818-0
     await user.click(screen.getByTestId("lender-select"));
     const option = await screen.findByTestId("lender-option-uwm");
     expect(option.textContent?.trim()).toBe("United Wholesale Mortgage");
+  });
+});
+
+// -----------------------------------------------------------------------------
+// The DU / LPA findings panel (Selling Guide B3-2-11; B3-2-01 p.290 calls the
+// Findings report "typically the first report viewed by an underwriter or a
+// loan officer"). Before 2026-08-23 the findings were persisted, returned to
+// this client on the application row — and rendered NOWHERE: the LO's only
+// view of a DU result was a transient toast. These tests pin the panel against
+// the exact persisted shape, including the simulated label (Reality Map rule:
+// sims are labeled) and the empty state.
+// -----------------------------------------------------------------------------
+describe("SubmissionReadinessDialog — DU / LPA findings panel (B3-2-11)", () => {
+  it("renders recommendation, simulated label, LPA leg, messages, and D1C reasons from the persisted shape", async () => {
+    renderDialog({ readinessOver: { stages: [AUS_STAGE] } });
+    const user = await openDialog();
+
+    await user.click(await screen.findByTestId("aus-findings-toggle"));
+
+    const panel = await screen.findByTestId("aus-findings-panel");
+    expect(screen.getByTestId("aus-findings-recommendation").textContent).toBe("Approve / Eligible");
+    expect(screen.getByTestId("aus-findings-simulated").textContent).toContain("Simulated");
+    expect(screen.getByTestId("aus-findings-lpa").textContent).toContain("accept");
+    expect(screen.getByTestId("aus-findings-lpa").textContent).toContain("eligible");
+    expect(screen.getByTestId("aus-findings-messages").textContent).toContain("DU-0001");
+    expect(screen.getByTestId("aus-findings-messages").textContent).toContain(
+      "Casefile underwritten with no adverse findings.",
+    );
+    expect(screen.getByTestId("aus-findings-d1c").textContent).toContain(
+      "No validated assets report on the casefile",
+    );
+    expect(panel.textContent).toContain("sim-du-a34f919bf7");
+    // Risk line renders as percentages, not raw ratios.
+    expect(screen.getByTestId("aus-findings-risk").textContent).toContain("DTI 33.7%");
+  });
+
+  it("labels a refer_with_caution recommendation with its Guide vocabulary", async () => {
+    renderDialog({
+      readinessOver: { stages: [AUS_STAGE] },
+      detail: applicationDetail({
+        ausRecommendation: "refer_with_caution",
+        ausFindings: ausFindings({ recommendation: "refer_with_caution" }),
+      }),
+    });
+    const user = await openDialog();
+    await user.click(await screen.findByTestId("aus-findings-toggle"));
+    expect(screen.getByTestId("aus-findings-recommendation").textContent).toBe("Refer with Caution");
+  });
+
+  it("shows no findings toggle before any AUS run (no casefile on the row)", async () => {
+    renderDialog({
+      readinessOver: { stages: [AUS_STAGE] },
+      detail: applicationDetail({ ausCasefileId: null, ausRecommendation: null, ausFindings: null }),
+    });
+    await openDialog();
+    expect(await screen.findByTestId("run-aus")).toBeTruthy();
+    expect(screen.queryByTestId("aus-findings-toggle")).toBeNull();
   });
 });

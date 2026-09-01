@@ -104,11 +104,29 @@ describe("under_review intake produces action items", () => {
     expect(settled.status, "profile chosen to land under_review").toBe("under_review");
 
     // (a) Action items exist and every link resolves to a registered route.
+    // Wait for a DOCUMENT item, not merely a non-empty list — the next line
+    // asserts document items exist, so that is what this must wait for.
+    //
+    // Waiting on `items.length > 0` made this test time-dependent and it failed
+    // intermittently in CI ("expected 0 to be greater than 0", runs 32760904513
+    // and 33431131762). The list is assembled consent-item-first
+    // (server/routes/lending/dashboard.ts:337-351), and the consent item is
+    // ALWAYS present: `requiredConsentTypes` there is
+    // ["credit_pull","disclosure","privacy_policy"], three types the product
+    // never writes (open finding J-0820-02), so `pendingConsentTypes` can never
+    // be empty. That item exists the instant the application does, satisfying
+    // `length > 0` on the first poll — while initializeLoanPipeline is still
+    // creating the document_request tasks and conditions the document items
+    // come from. The assertion then read a list that was merely early, not wrong.
+    //
+    // This STRENGTHENS the precondition; no assertion is weakened. If document
+    // items genuinely never arrive, pollUntil throws "Timed out waiting for …"
+    // after 15s, which names the real defect instead of an off-by-timing zero.
     const actionItems = await pollUntil(async () => {
       const { status, body } = await getJson(borrower, `/api/applications/${app.id}/action-items`);
       if (status !== 200) return null;
-      return body.items?.length > 0 ? body : null;
-    }, "action items for an under_review file");
+      return body.items?.some((i: any) => i.type === "document") ? body : null;
+    }, "document action items for an under_review file");
 
     const documentItems = actionItems.items.filter((i: any) => i.type === "document");
     expect(documentItems.length, "document upload items exist").toBeGreaterThan(0);
