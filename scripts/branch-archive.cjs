@@ -399,9 +399,30 @@ const body =
     .join("\n") +
   "\n";
 
+// ---------------------------------------------------------------------------
+// The provenance line is recorded, never compared.
+// ---------------------------------------------------------------------------
+// `# Generated against origin/main = <sha>` tells a reader which tree this
+// census describes, which is worth having. It is also impossible to keep
+// current: the manifest is committed BY a merge to main, so the sha it records
+// can never be the sha of the commit that contains it. Comparing it made
+// guard:branches fail the instant it landed — red in every checkout, forever,
+// for a reason no one caused.
+//
+// A guard that is always red is worse than no guard. It does not report a
+// problem, it teaches people to ignore guards, and the next real finding is
+// read as more of the same. This repo has the same shape written down about
+// unenforced guards: they "read as coverage" while proving nothing.
+//
+// Nothing the check exists to catch is lost. A branch appearing, disappearing,
+// or changing bucket moves a row AND the count line, and both are still
+// compared byte for byte.
+const forCompare = (text) =>
+  text.replace(/^# Generated against origin\/main = .*$/m, "# Generated against origin/main = <not compared>");
+
 if (CHECK) {
   const current = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : "";
-  if (current !== body) {
+  if (forCompare(current) !== forCompare(body)) {
     console.error("branch-archive: the tracked manifest is STALE.");
     console.error(`  run: node scripts/branch-archive.cjs   (and commit ${path.relative(ROOT, OUT)})`);
     process.exit(1);
