@@ -1,7 +1,7 @@
 # FACTS — every count the corpus uses, derived by command
 
 > **Freshness:** last verified 2026-08-22 · review every 14 days
-> **Verified against** `origin/main` @ **92e21366** (full `92e213660b09074fb30f1bc5e89d777f891ebc5e`).
+> **Verified against** `origin/main` @ **5e31e29c** (full `5e31e29cd184c433c186ee626a8be950caef6325`).
 
 The chapters cite rows here by id (`F-07`). Every value below was produced by running the
 command in the same row, in a clean worktree of the stamped commit, with the output pasted —
@@ -43,7 +43,7 @@ and returns nothing — a false "the file changed").
 
 <!-- BEGIN GENERATED — do not hand-edit; re-derive with the recipe below and paste -->
 
-| id | fact | command (run from the worktree root) | value @ 92e21366 |
+| id | fact | command (run from the worktree root) | value @ 5e31e29c |
 |---|---|---|---|
 | F-01 | Drizzle tables | `grep -c "pgTable(" shared/schema/*.ts \| awk -F: '{s+=$2} END{print s}'` | 188 |
 | F-02 | schema files | `ls shared/schema/*.ts \| wc -l` | 34 |
@@ -75,7 +75,7 @@ and returns nothing — a false "the file changed").
 | F-28 | encrypted-at-rest column sites | `grep -rn "_encrypted" shared/schema/*.ts \| wc -l` | 8 (+ `credit_pulls.encryptedRawResponse`, named differently) |
 | F-29 | production cron sweeps | `grep -c "cron:" .github/workflows/cron-jobs.yml` | 7 |
 | F-30 | lines of TypeScript per area | `for d in server shared client/src tests; do printf '%s=' $d; find $d -name '*.ts' -o -name '*.tsx' \| xargs wc -l \| tail -1 \| awk '{print $1}'; done` | server 82,355 · shared 23,355 · client/src 107,848 · tests 48,899 |
-| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,183 — `HEAD`, so run it on `main`; on a branch it counts the branch |
+| F-31 | commits on `main` | `git rev-list --count HEAD` | 1,179 — `HEAD`, so run it on `main`; on a branch it counts the branch |
 | F-32 | storage modules | `ls server/storage/*.ts \| wc -l` | 26 files: `UsersStorage` + 23 classes that each extend the previous (23 links) + `DatabaseStorage` + two helper modules (`batchGroup.ts`, `urlaBatch.ts`) |
 | F-33 | `logAudit(` call sites | `grep -rn "logAudit(" server --include='*.ts' \| wc -l` | 138 |
 | F-34 | source-text tests (read a file as text) | `grep -lE 'readFileSync\(' tests/*.test.ts \| wc -l` | 68 |
