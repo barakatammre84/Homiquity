@@ -21,6 +21,14 @@
  * Budget: coherent-and-present checkout ~milliseconds; absent content with pymupdf
  * installed ~3s; missing pymupdf, one bounded install attempt (60s cap), then extract;
  * anything else prints the directive and gets out of the session's way.
+ *
+ * WHY --no-markdown. The corpus has two renderings (README "What lives here"): the text
+ * layer, ~3s, and the markdown layer, ~2 more MINUTES, which is the one to READ because
+ * it keeps the Guide's tables intact. Building markdown here would put two minutes on the
+ * front of every fresh session, so the hook materializes the fast layer and NAMES the one
+ * command for the other. Readiness is still defined by the text layer alone: a session
+ * that can locate and quote policy is ready; markdown makes the tables legible, and its
+ * absence is a line of advice, never a directive.
  */
 
 const fs = require("fs");
@@ -66,8 +74,31 @@ function pythonHasPymupdf() {
 }
 
 function extract() {
-  return run("python3", [path.join(ROOT, "scripts", "extract-selling-guide.py")], 180000);
+  return run(
+    "python3",
+    [path.join(ROOT, "scripts", "extract-selling-guide.py"), "--no-markdown"],
+    180000,
+  );
 }
+
+/** Is the readable (markdown) rendering built too? Advisory only — see the header. */
+function markdownPresent() {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(DIR, "manifest.json"), "utf8"));
+    const want = manifest.structure && manifest.structure.leaf_sections;
+    const mdDir = path.join(DIR, "extracted", "markdown");
+    if (!want || !fs.existsSync(mdDir)) return false;
+    if (!fs.existsSync(path.join(DIR, "selling-guide.md"))) return false;
+    return fs.readdirSync(mdDir).filter((f) => f.endsWith(".md")).length === want;
+  } catch {
+    return false;
+  }
+}
+
+const MD_ADVICE =
+  "  Markdown rendering not built — the text layer flattens the Guide's TABLES, where " +
+  "most thresholds live.\n  Build it once (~2 min): pip3 install pymupdf4llm && " +
+  "python3 scripts/extract-selling-guide.py --markdown";
 
 function main() {
   let guard;
@@ -97,11 +128,15 @@ function main() {
   }
 
   if (contentPresent(guard)) {
+    const md = markdownPresent();
     console.log(
       `selling-guide corpus: ready — edition ${checks.facts.edition}, ` +
-        `${checks.facts.sections} sections extracted, fact layer coherent. ` +
-        `Guide-governed work starts at docs/fannie-mae/selling-guide/ (corpus-first).`,
+        `${checks.facts.sections} sections extracted${md ? " in both renderings" : " (text only)"}, ` +
+        `fact layer coherent. Guide-governed work starts at ` +
+        `docs/fannie-mae/selling-guide/ (corpus-first` +
+        (md ? "; read extracted/markdown/<ID>.md — tables intact).": ")."),
     );
+    if (!md) console.log(MD_ADVICE);
     return;
   }
 
@@ -141,6 +176,7 @@ function main() {
         `Fact layer coherent (edition ${checks.facts.edition}). Corpus-first: Guide-governed ` +
         `work starts at docs/fannie-mae/selling-guide/.`,
     );
+    if (!markdownPresent()) console.log(MD_ADVICE);
   } else {
     const err = ((r.stderr || r.stdout || "").trim().split("\n").pop() || "extractor failed").slice(0, 200);
     console.log(directive(`extraction failed: ${err}`));

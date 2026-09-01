@@ -14,7 +14,7 @@ needs more than one WRITE group, split it first.
 TASK:   <one sentence: the user-visible outcome, for which persona, behind which gate>
 LAYER:  shared | server | client            (one)
 WRITE:  <the files in that layer, listed>
-        <tests: tests/<name>.test.ts + vitest.config.ts (END)  or  client/src/<dir>/<Name>.test.tsx>
+        <tests: tests/<name>.test.ts (node lane globs — no config line)  or  client/src/<dir>/<Name>.test.tsx>
 NEVER:  any other layer; hand-back files; baselines; allowlists; package.json; docs/**
         (inherited exception, R5: the DESIGN_SYSTEM.md §0 table via `pnpm guard:ui --write-table` when a client file is added)
 PROOF:  1) a characterisation test of the neighbours, green BEFORE the change and green after

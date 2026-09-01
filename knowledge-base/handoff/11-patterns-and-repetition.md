@@ -79,14 +79,19 @@ and says so three times (`:7-10`, `:36-39`, `:65-66`).
 **What.** Anything that admits input enumerates what is allowed. **Why.** The response-body
 logger was a denylist and silently missed new PII routes — `/api/urla/*` responses carry SSNs
 (`server/app.ts:475-480`, "do not revert to one"). **Evidence.** `grep -rn "UPDATABLE_COLUMNS\|RESPONSE_BODY_LOG_ALLOWLIST\|STAFF_SETTABLE_STATUSES" server --include='*.ts' | wc -l`
-→ 9 references across three allow-lists; the node test lane is an explicit allowlist of 230 files
-(`grep -cE '^\s*"tests/' vitest.config.ts` → 228; the list is `vitest.config.ts:30-331`, FACTS F-13);
+→ 9 references across three allow-lists; the node test lane **was** the repo's largest such list —
+~230 hand-typed paths — until `387a3518`/#725 replaced it with a glob on 2026-08-24, leaving an
+18-entry `exclude` (`vitest.config.ts:71,77-95`, FACTS F-13). It is the one allow-list here that
+was *retired rather than widened*, and the reason is the pattern's own limit: the list carried no
+information a glob could not compute, so its only virtue — failing closed on a typo — was moved
+into a guard that enumerates from disk (`scripts/test-collection-guard.cjs`);
 `pickTableFields` (`server/routes/urlaValidation.ts:44`) whitelists URLA bodies to their table's
 columns before any write (`server/routes/borrower/urla.ts:452-453`). **Loop rule.** Never widen an
 allow-list without naming why in the PR body; a value that needs to pass belongs in the list, not
-in a bypass. **Exceptions.** The allowlist's own failure mode — a stranded entry — is the
-anti-pattern table's third row, and since the collection guard landed it fails the build
-(`scripts/test-collection-guard.cjs`).
+in a bypass — and read the retirement above as the counter-case: when the list is *derivable*, a
+computed set plus a floor beats a maintained list. **Exceptions.** The stranded-entry failure mode
+is the anti-pattern table's third row; since the collection guard landed it fails the build, and
+the glob removed the way to cause it by hand (`scripts/test-collection-guard.cjs:515-534`).
 
 ### A3. Policy as data, with a throwing resolver
 
@@ -182,9 +187,10 @@ sees only literal strings (`scripts/ui-standard-guard.cjs:27-29`) — every coun
 ### A11. Source-text tests for rule-shaped invariants
 
 **What.** When the invariant is "file X never imports Y" or "every denial route calls Z", the test
-reads the source as text. **Evidence.** `grep -lE 'readFileSync\(' tests/*.test.ts | wc -l` → 66 of
-246 (`ls tests/*.test.ts | wc -l` → 246; 27% @ d9e8f79d); `tests/complianceInvariants.test.ts:34-53`. **Loop
-rule.** A rule-shaped requirement gets a source-text test, appended to the allowlist at the end.
+reads the source as text. **Evidence.** `grep -lE 'readFileSync\(' tests/*.test.ts | wc -l` → 67 of
+249 (`ls tests/*.test.ts | wc -l` → 249; 27% @ 49720133); `tests/complianceInvariants.test.ts:34-53`. **Loop
+rule.** A rule-shaped requirement gets a source-text test; since 2026-08-24 the node lane globs, so
+it is collected the moment the file exists — there is no list to append to.
 **Exceptions.** Grep-only tests pass on wrong logic and break on renames (L2 F-014) — they are a
 floor, like the ratchets.
 
@@ -208,8 +214,10 @@ control.
 
 **Evidence.** All four `server/routes/*/index.ts` files carry the "ORIGINAL order" comment
 (`grep -l "ORIGINAL" server/routes/*/index.ts | wc -l` → 4); `server/routes/borrower/index.ts:43-45`
-("Appended, not inserted"); `vitest.config.ts:280-285` (append at the END — two PRs went stale
-contending for one line). **Loop rule.** New registrars and new allowlist entries go at the end.
+("Appended, not inserted"). The pattern's other instance is **gone**: `vitest.config.ts`'s
+"append at the END" rule (two PRs went stale contending for one line) died with the list itself on
+2026-08-24 — the epitaph is preserved at `vitest.config.ts:56-62`. **Loop rule.** New registrars go
+at the end; test files no longer need registering at all.
 
 ### A15. Sessions hold the claim; the database holds the truth
 
@@ -255,7 +263,7 @@ for the loop rails in chapter 12, and most already are.
 |---|---|---|
 | The silent success — an operation that does not happen while the UI says it did. | `_OWNER_RAILS.md:104-114`; `REGISTER.md`'s house PR titles ("a column read everywhere and written nowhere") | Prove the fix by reintroducing the bug; count collected files, not "passed". |
 | Green check ≠ deploy. | `TEAM_PRACTICES.md:172-179`; `CICD.md:221-226` | T5 is the `/api/health` commit, never a dashboard. |
-| An allowlist strands a test; `vitest run <file>` uses the wrong config. | `knowledge-base/routines/CHARTER.md:829-832`; `vitest.client.config.ts:44-47`; FACTS F-39 | R4's TEST-RAN assertion; the T1 collection floor (`scripts/test-collection-guard.cjs`). |
+| An allowlist strands a test (retired 2026-08-24 — the node lane globs; the residual way to strand one is the `exclude` list); `vitest run <file>` uses the wrong config. | `knowledge-base/routines/CHARTER.md:829-832`; `vitest.client.config.ts:44-47`; FACTS F-39 | R4's TEST-RAN assertion; the T1 collection floor (`scripts/test-collection-guard.cjs`). |
 | Worktree `node_modules` resolve upward; the primary checkout is a peer's branch. | `routines/reports/2026-08-20-primary-engineer.md:203-204`; `.claude/skills/refactor-radar/SKILL.md:28` | R0. |
 | `preview_start {name}` boots the primary checkout. | the journey-walk ledger | R0: `PORT=5002 pnpm dev` in the worktree, `lsof` to prove it. |
 | `git stash` is repo-wide across worktrees; `git reset --hard` throws away a peer's work. | the deny-list categories; `reports/2026-08-20-wiring-audit.md:203-209` | R9, R12. |
@@ -388,7 +396,7 @@ are broken.
 |---|---|---|
 | A3 — `tryResolveMatrixValue` is "for NON-DECISION display surfaces only" by docblock. A decision-path module that calls it compiles, passes every test, and turns a thrown miss into a silent `null` default — exactly the implicit policy Fair Lending forbids. | `server/services/lookupResolver.ts:219-225` | A source-text test over `DECISION_PATH_MODULES` (`tests/complianceInvariants.test.ts:34-43`) asserting the symbol never appears — chapter 12's ticket 9; LEDGER HO-0822-U8. Nothing today. |
 | A13 — the dated comment *is* the control's record. A refactor that moves or rewrites the block can delete the comment and keep the code, and nothing counts the loss. | `server/app.ts:475-480`; the 122 dated references above | A ratchet on the dated-reference count (the `scripts/citation-guard.cjs:21-51` idiom) would make a drop visible; review is the only defence today. |
-| A14 — "append at the end" is a comment and a story. A PR that inserts mid-list is correct code; it only fails the *second* PR, as a rebase conflict, and only if both land in the same window. | `vitest.config.ts:280-285`; `server/routes/borrower/index.ts:43-45` | The collection floor (`scripts/test-collection-guard.cjs`) catches an *omitted* entry, never a mid-list one; a guard diffing the include list against `origin/main` and failing when the new entry is not last does not exist. |
+| A14 — "append at the end" is a comment and a story. A PR that inserts mid-list is correct code; it only fails the *second* PR, as a rebase conflict, and only if both land in the same window. **Resolved for tests on 2026-08-24 by deleting the list** (#725: 222 commits of churn, two PRs dead on one line); still live for the route registrars. | `vitest.config.ts:56-62` (the epitaph); `server/routes/borrower/index.ts:43-45` | The collection floor (`scripts/test-collection-guard.cjs`) catches an *omitted* entry, never a mid-list one; no guard orders the registrar list. The general lesson: a convention that needs a comment to survive is better removed than documented. |
 | B10 — the attempt cap is self-reported. A routine writes `attempts /5` into its own report, and `_REPORT_FORMAT.md` records loop *iterations*, not verify rounds; no process outside the model counts. | `.claude/skills/refactor-radar/SKILL.md:54,255`; `prompts/_REPORT_FORMAT.md:26` | The ralph plugin's `--max-iterations` is the only external counter (chapter 12), and it counts iterations. A harness-side verify counter would need the tier commands wrapped, which is ticket 11 there. |
 | A6 — the allow-list of sanctioned status writers is a *test* (`ALLOWED`), so it is enforced — but the exception it admits, `finalizeIntake`, compensates for skipped side effects by hand, and nothing checks that the compensation matches what `updatePipelineStage` does. | `tests/statusVocabulary.test.ts:254-259`; `server/services/loanAnalysis.ts:436,455,588` | A test that runs both writers on the same fixture and diffs the side-effect rows. Chapter 04 names the gap; no test exists. |
 

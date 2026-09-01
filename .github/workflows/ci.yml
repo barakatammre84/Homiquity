@@ -390,6 +390,27 @@ jobs:
         # unsatisfiable field and introduce another and a count stays level and reports
         # success. Swapping one instance of the defect for another IS the defect.
         run: pnpm guard:gating
+      - name: Vocabulary registry (who says these are the legal values)
+        if: steps.scope.outputs.code == 'true'
+        # 184 closed value sets declare what a thing may hold. None recorded WHO SAYS SO,
+        # and that is the gap behind "the jumbo advisory used the 2024 limit" (#606),
+        # "every file was delivered as fixed-rate, including the ARMs" (F-053) and
+        # "emit valid ULDD LoanPurposeType enum" (F-019).
+        #
+        # shared/vocabularies/REGISTRY.tsv is GENERATED; only provenance is hand-entered,
+        # in authorities.tsv, kept separate so regenerating cannot destroy it. Four rules:
+        # a vocabulary with no consumer (LOAN_STAGES autocompleted from the barrel for
+        # weeks while five values short of the real list); two names for one value set;
+        # a ULAD-governed set that no longer matches docs/fannie-mae/schemas/
+        # ulad-enumerations.tsv; and a status column with no vocabulary.
+        #
+        # Ten ULAD divergences are BASELINED, not fixed — MortgageType ships "USDA" where
+        # ULAD says "USDARuralDevelopment". Changing a delivered enumeration changes what
+        # goes to Fannie Mae; that is a compliance decision, not a cleanup.
+        #
+        # Runs the extractor in --check mode first: a stale index would make every value
+        # look compliant, which is worse than no index at all.
+        run: pnpm guard:vocab
       - name: Doc staleness ratchet
         # Dead vocabulary in LIVING docs vs scripts/doc-staleness-baseline.json
         # (ratchet: counts may only go down). Metrics: kb/ paths, npm-as-instruction,
@@ -534,7 +555,7 @@ jobs:
         # until the corpus lands; not scope-gated, same reason as the steps above.
         run: pnpm guard:conformance
       - name: Restore pip cache (extraction proof)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           # Keyed on the extractor source, which carries PYMUPDF_PINNED — a pin

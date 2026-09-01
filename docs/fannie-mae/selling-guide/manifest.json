@@ -40,8 +40,23 @@
  "generated_gitignored": [
   "Selling-Guide_08-05-2026.pdf",
   "selling-guide-text.txt",
+  "selling-guide.md",
   "extracted/"
  ],
+ "renderings": {
+  "_": "Two renderings of the same PDF pages, never two sources. text is faithful to reading order and is what grep wants; markdown reconstructs the Guide's TABLES, which the text layer flattens. The tracked fact layer is derived from the text layer alone, so it is identical on a machine without pymupdf4llm.",
+  "text": {
+   "stream": "selling-guide-text.txt",
+   "sections": "extracted/sections/",
+   "requires": "pymupdf==1.28.2"
+  },
+  "markdown": {
+   "stream": "selling-guide.md",
+   "sections": "extracted/markdown/",
+   "requires": "pymupdf4llm==1.28.2",
+   "optional": true
+  }
+ },
  "regenerate": "python3 scripts/extract-selling-guide.py",
- "format_version": 3
+ "format_version": 4
 }
