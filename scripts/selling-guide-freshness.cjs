@@ -40,11 +40,27 @@ const SOURCE_BLOCKED_AFTER_DAYS = 14;
  * the seat and its skill were fine; only the scheduled path failed, silently.
  *
  * Two facts from that morning are why this check reads the REPORT and not an API:
- *   - `list_triggers` never populates `last_run` (empty for all 25 triggers, including
- *     ones that provably ran), so its absence is not evidence of anything.
+ *   - `list_triggers` returned `last_run: NONE` for all 25 triggers, including ones that
+ *     provably ran, so its absence was not evidence of anything.
  *   - A consumed cron slot is indistinguishable from a completed one from the outside.
  * The artifact is the only honest proof, which is CHARTER §7: a routine that cannot be
  * shown to have run is not a control.
+ *
+ * CORRECTED 2026-08-31 — and the correction makes the case for reading the artifact
+ * STRONGER, not weaker. The first bullet used to assert `last_run` is "never populated";
+ * that generalised one morning's snapshot into a permanent property of the API, and it is
+ * false. On 2026-08-30 the steward's `last_run` read
+ * `{status: ROUTINE_RUN_STATUS_SUCCEEDED, fired_at: 05:37:23Z, finished_at: 05:46:45Z,
+ * session_id: cse_015h9KG4dYWD1fQ5dq9FkLK5}` — the field populates, the scheduled path
+ * dispatched, and the session ran nine minutes for 38,695 output tokens.
+ *
+ * It landed nothing. No branch, no report, no PR — the third such run, and the first
+ * AFTER the SKILL.md rewrite (#719) that was supposed to be the cause. So the API's own
+ * word for a run that produced no artifact is **SUCCEEDED**. Do not read `last_run` as
+ * liveness: its absence proves nothing (2026-08-24) and its presence proves only that a
+ * container started and exited (2026-08-30). Neither direction is evidence. This check
+ * reads the report because the report is the only thing that cannot be true while the
+ * corpus goes unverified.
  *
  * ⚠️ BE HONEST ABOUT WHAT THIS MEASURES. It is offline (it reads the committed tree), so
  * it cannot see a draft PR — it sees a report only once that PR MERGES. So it measures
