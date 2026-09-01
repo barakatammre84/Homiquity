@@ -125,6 +125,30 @@ async function api(method, url) {
     .split("\n").filter(Boolean)
     .map((l) => { const [sha, ref] = l.split("\t"); return { sha, branch: ref.replace(/^refs\/heads\//, "") }; });
 
+  // A protect row naming a branch that does not exist protects nothing, while
+  // reading as protection. That is the config-key-matches-nothing shape this repo
+  // has shipped twice — d390dcacf3fe (a vite manualChunks key naming `react-dom`,
+  // which resolved nothing, leaving 57 kB in the wrong chunk) and 95770d4e56a7 (a
+  // CI `branches:` filter matching nothing, so a stacked PR got zero checks and
+  // read CLEAN). The defect audit scored that class highest of anything measured.
+  //
+  // The first version of BRANCH_PROTECT.tsv had 7 of 15 rows in this state, four
+  // naming branches never pushed at all, because it was written from list_sessions
+  // without checking against origin. Nothing was lost — over-protecting is harmless
+  // — but the file read as covering fifteen things while covering eight.
+  //
+  // Checked HERE, before the API call, for two reasons: it needs no API, and a run
+  // that dies on a missing token must not swallow the finding on its way out.
+  // Warned rather than failed — a row can go stale between a merge and the next run
+  // for entirely ordinary reasons.
+  const headNames = new Set(heads.map((h) => h.branch));
+  const phantom = [...protectedSet].filter((b) => !headNames.has(b));
+  if (phantom.length) {
+    console.warn(`\n  ⚠ ${phantom.length} protect-list row(s) name a branch that is not on ${REMOTE}:`);
+    for (const b of phantom) console.warn(`      ${b}`);
+    console.warn(`    They protect nothing. Refresh ${path.relative(ROOT, PROTECT_FILE)} — the header says how.\n`);
+  }
+
   const pullShas = new Set(
     git("ls-remote", REMOTE, "refs/pull/*/head").split("\n").filter(Boolean).map((l) => l.split("\t")[0]),
   );
@@ -140,6 +164,7 @@ async function api(method, url) {
     if (batch.length < 100) break;
   }
   console.log(`branch-cleanup: ${heads.length} branches · ${pullShas.size} pull refs · ${openHeads.size} open-PR heads · ${protectedSet.size} protected`);
+
 
   // Resolve wherever it lives: a local branch on the machine that made it, a
   // remote-tracking ref in a fresh checkout. Looking in only one place resolved on

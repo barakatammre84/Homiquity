@@ -7,35 +7,33 @@
 #     IS SOMEONE STANDING ON THIS BRANCH RIGHT NOW?
 #
 # WHY IT CANNOT BE DERIVED. A GitHub Actions runner cannot read the Claude session API. A branch
-# can be `in-main` — the safest bucket there is, its commits inside main AND inside a permanent
-# pull ref — and still be the outcome branch of a running session. Deleting it loses no commit
-# and still breaks that session's push. `feat/landing-coach-first` is exactly that: PR #595
-# merged, and 39 sessions name it.
+# can be `in-main` — the safest bucket there is — and still be the outcome branch of a running
+# session. feat/landing-coach-first is exactly that: PR #595 merged, and sessions still name it.
 #
-# HOW TO REFRESH, and it MUST be refreshed before any deletion run — the set changes by the hour:
+# HOW TO REFRESH, and it MUST be refreshed before any deletion run:
 #   list_sessions -> session_context.outcomes[].git_repository.git_info.branches
 #   NOT external_metadata.current_branches, which holds the REPO NAME. 46 sessions report
 #   "barakatammre84/Homiquity" there and 14 report an empty string; reading the wrong field
 #   returns a plausible list of nothing.
 #
-# Sessions whose status is ARCHIVED are deliberately NOT listed — an archived session is not
-# coming back to push. Five such branches were seen and left deletable.
+# TWO RULES THIS LIST NOW FOLLOWS, both learned by getting them wrong on 2026-08-31:
 #
-# Read 2026-08-31T22:41Z, 60 sessions, 20 branches referenced, 15 non-archived.
+#   1. ONLY BRANCHES THAT EXIST ON ORIGIN. The first version was written straight from
+#      list_sessions without checking, and 7 of its 15 rows named branches that were not on
+#      origin at all — four had NEVER been pushed. A row naming nothing protects nothing while
+#      reading as protection, which is the config-key-matches-nothing shape (d390dcacf3fe,
+#      95770d4e56a7). branch-cleanup.cjs now WARNS on such a row rather than ignoring it.
 #
-# branch	sessions	status	note
-feat/landing-coach-first	39	IDLE,REQUIRES_ACTION	PR #595 merged, bucket in-main — the case that proves a safe bucket is not an idle branch
-claude/file-router-organization-ol4k7i	1	RUNNING	this session
-claude/loan-officer-selling-guide-sqhr3k	1	IDLE	PR #716, green, awaiting merge — the peer that sent the live-session finding
-claude/selling-guide-extraction-rh2kvf	1	IDLE	PR #738, updated 2026-08-31
-claude/homi-homebuying-ai-5ddafy	1	IDLE	PR #714
-claude/mortgage-broker-launch-features-nbc74b	1	IDLE	PR #710 (closed 2026-08-31) — session still holds the branch
-claude/executive-dev-priorities-onpceu	1	IDLE	PR #715 (closed 2026-08-31) — session still holds the branch
-claude/homiquity-doc-accuracy-88pyv3	1	IDLE	PR #713 (closed 2026-08-31) — session still holds the branch
-claude/homiquity-doc-accuracy-iv8ijz	1	IDLE	no PR; live session
-claude/selling-guide-conflicts-7ls3ct	1	IDLE	no PR; live session
-claude/selling-guide-core-doc-0vf48f	1	IDLE	no PR; live session
-claude/current-model-identification-y18ulc	1	IDLE	no PR; live session
-claude/status-47z3sc	1	IDLE	no PR; live session
-docs/handoff-refresh-0823	1	IDLE	no PR; live session
-fix/extraction-persistence-test-race	1	IDLE	no PR; live session
+#   2. ONLY SESSIONS ACTIVE WITHIN 7 DAYS. An IDLE session is not a working one; it is a session
+#      that has not touched its branch since. Four branches idle 7-10 days were dropped on
+#      2026-09-01 and deleted — every one of them already reachable from
+#      archive/2026-08-31-orphan-tips or from main, so the work survives and only the name went.
+#
+# Sessions whose status is ARCHIVED are never listed: an archived session is not coming back.
+#
+# Read 2026-09-01T03:45Z · 60 sessions · idle age measured from the newest NON-archived session.
+#
+# branch	sessions	idleDays	note
+claude/mortgage-broker-launch-features-nbc74b	1	0	touched today; PR #710 closed but the session is live
+feat/landing-coach-first	14	6	PR #595 merged, bucket in-main — the case that proves a safe bucket is not an idle branch
+docs/handoff-refresh-0823	1	6	no PR; orphan, covered by the archive ref
