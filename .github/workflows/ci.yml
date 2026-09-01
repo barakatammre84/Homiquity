@@ -555,7 +555,7 @@ jobs:
         # until the corpus lands; not scope-gated, same reason as the steps above.
         run: pnpm guard:conformance
       - name: Restore pip cache (extraction proof)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           # Keyed on the extractor source, which carries PYMUPDF_PINNED — a pin

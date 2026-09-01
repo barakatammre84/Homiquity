@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import { type LoanCondition } from "@shared/schema";
+import { canSetConditionVerdict } from "@shared/statusVocabularies";
 
 /**
  * Conditions tab + its clear/waive/N-A action dialog (extracted from
@@ -28,12 +29,22 @@ import { type LoanCondition } from "@shared/schema";
 export function ConditionsTab({
   applicationId,
   conditions,
-  isStaff,
+  userRole,
 }: {
   applicationId: string;
   conditions: LoanCondition[];
-  isStaff: boolean;
+  /**
+   * The viewer's role — each verdict button renders only when the server's
+   * role policy (CONDITION_VERDICT_ROLES) permits it. The previous `isStaff`
+   * gate offered Clear/Waive/N-A to every staff role while the route 403'd
+   * an LO on all three and an LOA at the route gate itself (offered-and-
+   * refused; 2026-08-23 walk record, GATES).
+   */
+  userRole: string | undefined;
 }) {
+  const canClear = canSetConditionVerdict(userRole, "cleared");
+  const canWaive = canSetConditionVerdict(userRole, "waived");
+  const canMarkNa = canSetConditionVerdict(userRole, "not_applicable");
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [conditionAction, setConditionAction] = useState<{
@@ -117,33 +128,39 @@ export function ConditionsTab({
                             )}
                           </div>
                         </div>
-                        {isStaff && (
+                        {(canClear || canWaive || canMarkNa) && (
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              size="sm" className="touch-target"
-                              variant="default"
-                              onClick={() => setConditionAction({ condition: cond, action: "cleared", notes: "" })}
-                              data-testid={`button-clear-condition-${cond.id}`}
-                            >
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Clear
-                            </Button>
-                            <Button
-                              size="sm" className="touch-target"
-                              variant="outline"
-                              onClick={() => setConditionAction({ condition: cond, action: "waived", notes: "" })}
-                              data-testid={`button-waive-condition-${cond.id}`}
-                            >
-                              Waive
-                            </Button>
-                            <Button
-                              size="sm" className="touch-target"
-                              variant="ghost"
-                              onClick={() => setConditionAction({ condition: cond, action: "not_applicable", notes: "" })}
-                              data-testid={`button-na-condition-${cond.id}`}
-                            >
-                              N/A
-                            </Button>
+                            {canClear && (
+                              <Button
+                                size="sm" className="touch-target"
+                                variant="default"
+                                onClick={() => setConditionAction({ condition: cond, action: "cleared", notes: "" })}
+                                data-testid={`button-clear-condition-${cond.id}`}
+                              >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Clear
+                              </Button>
+                            )}
+                            {canWaive && (
+                              <Button
+                                size="sm" className="touch-target"
+                                variant="outline"
+                                onClick={() => setConditionAction({ condition: cond, action: "waived", notes: "" })}
+                                data-testid={`button-waive-condition-${cond.id}`}
+                              >
+                                Waive
+                              </Button>
+                            )}
+                            {canMarkNa && (
+                              <Button
+                                size="sm" className="touch-target"
+                                variant="ghost"
+                                onClick={() => setConditionAction({ condition: cond, action: "not_applicable", notes: "" })}
+                                data-testid={`button-na-condition-${cond.id}`}
+                              >
+                                N/A
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>

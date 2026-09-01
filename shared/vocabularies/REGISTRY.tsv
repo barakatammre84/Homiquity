@@ -160,7 +160,7 @@ SECTION_G_ESCROW_ITEM_TYPES	shared/fannieMae/ucdFeeEnumerations.ts	array	31	31d6
 SECTION_H_FEE_TYPES	shared/fannieMae/ucdFeeEnumerations.ts	array	59	800af2769222		0	internal	
 SELF_EMPLOYMENT_BUSINESS_STRUCTURES	shared/schema/lendingUrla.ts	array	5	a1c6c6548499	SelfEmploymentBusinessStructure	1	internal	
 SERVER_ONLY_DOCUMENT_COLUMNS	shared/borrowerDocumentView.ts	array	3	a1ea2f55c642		1	internal	
-SETTLED_CONDITION_STATUSES	shared/statusVocabularies.ts	array	3	f5155ebd109e		4	internal	
+SETTLED_CONDITION_STATUSES	shared/statusVocabularies.ts	array	3	f5155ebd109e		5	internal	
 SEVERITY_LEVELS	shared/schema/underwritingConditions.ts	array	3	1b29297528be	SeverityLevel	0	internal	
 SfcDeliveryType	shared/fannieMae/specialFeatureCodes.ts	union	2	d6e2f5022e55		0	internal	
 SfcExecution	shared/fannieMae/specialFeatureCodes.ts	union	3	f87e60e4d05b		0	internal	

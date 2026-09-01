@@ -50,6 +50,27 @@ export const SETTLED_CONDITION_STATUSES: readonly LoanConditionStatus[] = [
   "waived",
   "not_applicable",
 ];
+
+/**
+ * Which staff roles may set each condition verdict — the single source both
+ * sides read. The server route (server/routes/underwriting/pipeline.ts) had
+ * these as three inline literals while ConditionsTab rendered Clear/Waive/N-A
+ * for every staff role, so an LO was offered all three buttons and 403'd on
+ * each (2026-08-23 walk record, GATES). Hoisting the lists here lets the UI
+ * render only what the server permits without either side widening: the
+ * values are the route's literals verbatim.
+ */
+export const CONDITION_VERDICT_ROLES = {
+  cleared: ["admin", "underwriter", "processor", "closer"],
+  waived: ["admin", "underwriter"],
+  not_applicable: ["admin", "underwriter", "processor"],
+} as const satisfies Record<string, readonly string[]>;
+
+export type ConditionVerdict = keyof typeof CONDITION_VERDICT_ROLES;
+
+export function canSetConditionVerdict(role: string | undefined, verdict: ConditionVerdict): boolean {
+  return role != null && (CONDITION_VERDICT_ROLES[verdict] as readonly string[]).includes(role);
+}
 export const PRE_APPROVAL_LETTER_STATUS = [
   "draft",
   "issued",

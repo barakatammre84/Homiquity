@@ -222,7 +222,7 @@ import { LOAN_CONDITION_STATUSES, type LoanConditionStatus } from "../statusVoca
 // bundle. Re-exported so existing importers are unaffected.
 export type { LoanConditionStatus };
 export { LOAN_CONDITION_STATUSES };
-export { SETTLED_CONDITION_STATUSES } from "../statusVocabularies";
+export { SETTLED_CONDITION_STATUSES, CONDITION_VERDICT_ROLES, canSetConditionVerdict, type ConditionVerdict } from "../statusVocabularies";
 
 export const loanConditions = pgTable("loan_conditions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

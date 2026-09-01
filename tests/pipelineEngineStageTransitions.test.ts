@@ -47,6 +47,7 @@ vi.mock("../server/services/taskEventEmitter", () => ({
 import {
   updatePipelineStage,
   conditionsToRevertAfterRejection,
+  checkPipelineProgress,
   PipelineTransitionError,
 } from "../server/pipelineEngine";
 import { storage } from "../server/storage";
@@ -221,5 +222,83 @@ describe("conditionsToRevertAfterRejection (pure)", () => {
       rejectedDocumentType: "w2",
     });
     expect(ids).toEqual(["match"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkPipelineProgress — the stage-exit condition gate. Untested before the
+// 2026-08-23 review (zero tests mentioned the function while the status route
+// never called it — the funded-with-open-conditions repro in
+// knowledge-base/feature-review/journey-walks/2026-08-23-lo-submission-review.md).
+// Pins: the new `closing` branch (Selling Guide B3-2-05 — funding blocked on
+// any un-settled condition, prior_to_funding included), and the settled-filter
+// normalization (F-0820-63: a not_applicable condition must never block).
+// ---------------------------------------------------------------------------
+describe("checkPipelineProgress — stage-exit condition gating", () => {
+  function seedConditions(status: string, conditions: Array<Record<string, unknown>>) {
+    mockStorage.getLoanApplication.mockResolvedValue({ id: "app-1", status });
+    mockStorage.getLoanConditionsByApplication.mockResolvedValue(
+      conditions.map((c, i) => ({ id: `c-${i}`, category: "other", ...c })),
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("closing: an outstanding prior_to_funding condition blocks funding", async () => {
+    seedConditions("closing", [
+      { priority: "prior_to_funding", status: "outstanding" },
+    ]);
+    const progress = await checkPipelineProgress("app-1");
+    expect(progress.readyForNextStage).toBe(false);
+    expect(progress.blockers).toEqual([
+      "1 condition(s) must be settled before funding",
+    ]);
+  });
+
+  it("closing: every settled verdict (cleared, waived, not_applicable) clears the gate", async () => {
+    seedConditions("closing", [
+      { priority: "prior_to_funding", status: "cleared" },
+      { priority: "prior_to_docs", status: "waived" },
+      { priority: "prior_to_approval", status: "not_applicable" },
+    ]);
+    const progress = await checkPipelineProgress("app-1");
+    expect(progress.readyForNextStage).toBe(true);
+    expect(progress.blockers).toEqual([]);
+  });
+
+  it("underwriting: a prior_to_funding condition does NOT block (funding conditions may ride until closing)", async () => {
+    seedConditions("underwriting", [
+      { priority: "prior_to_funding", status: "outstanding" },
+    ]);
+    const progress = await checkPipelineProgress("app-1");
+    expect(progress.readyForNextStage).toBe(true);
+  });
+
+  it("underwriting: an outstanding prior_to_approval condition still blocks", async () => {
+    seedConditions("underwriting", [
+      { priority: "prior_to_approval", status: "outstanding" },
+    ]);
+    const progress = await checkPipelineProgress("app-1");
+    expect(progress.readyForNextStage).toBe(false);
+  });
+
+  it("pre_approved: a not_applicable prior_to_approval condition no longer false-blocks (F-0820-63)", async () => {
+    seedConditions("pre_approved", [
+      { priority: "prior_to_approval", status: "not_applicable" },
+    ]);
+    const progress = await checkPipelineProgress("app-1");
+    expect(progress.readyForNextStage).toBe(true);
+    expect(progress.blockers).toEqual([]);
+  });
+
+  it("clear_to_close: any un-settled condition blocks, whatever its priority", async () => {
+    seedConditions("clear_to_close", [
+      { priority: "prior_to_funding", status: "submitted" },
+    ]);
+    const progress = await checkPipelineProgress("app-1");
+    expect(progress.readyForNextStage).toBe(false);
+    expect(progress.blockers).toEqual(["1 conditions still outstanding"]);
   });
 });

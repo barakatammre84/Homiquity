@@ -159,8 +159,8 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0
       plaid:
-        specifier: ^45.0.0
-        version: 45.0.0
+        specifier: ^46.0.0
+        version: 46.0.0
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -2151,8 +2151,8 @@ packages:
     peerDependencies:
       postcss: ^8.1.0
 
-  axios@1.18.1:
-    resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
+  axios@1.20.0:
+    resolution: {integrity: sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==}
 
   base64-js@0.0.8:
     resolution: {integrity: sha512-3XSA2cR/h/73EzlXXdU6YNycmYI7+kicTxks4eJg2g39biHR84slg2+des+p7iHYhbRg/udIS4TD53WabcOUkw==}
@@ -3198,8 +3198,8 @@ packages:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
-  plaid@45.0.0:
-    resolution: {integrity: sha512-JuK7VKPEdH4muxic35ZyzjFA3Xc+DURkIE/O5A1QQGZfBzOgsQgYBovgGzd/+Z5Jl5dBTV43S9HQX3GSorymUw==}
+  plaid@46.0.0:
+    resolution: {integrity: sha512-MMLtie70amJjZdrislGohyG9hkm30X3tdPNUD/cC62kGXZsvOlc8N2hWeg2tJBG99iPRW6xxfL3HrJUkvVeHQg==}
     engines: {node: '>=10.0.0'}
 
   png-js@2.0.0:
@@ -5345,7 +5345,7 @@ snapshots:
       postcss: 8.5.26
       postcss-value-parser: 4.2.0
 
-  axios@1.18.1:
+  axios@1.20.0:
     dependencies:
       follow-redirects: 1.16.0
       form-data: 4.0.6
@@ -6337,9 +6337,9 @@ snapshots:
 
   pkce-challenge@5.0.1: {}
 
-  plaid@45.0.0:
+  plaid@46.0.0:
     dependencies:
-      axios: 1.18.1
+      axios: 1.20.0
     transitivePeerDependencies:
       - debug
       - supports-color
