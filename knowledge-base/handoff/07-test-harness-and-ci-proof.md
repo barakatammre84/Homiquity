@@ -16,7 +16,7 @@
 
 ## The mental model
 
-Four proof lanes — `tsc`, the node allowlist, the client glob, the integration lane — all four
+Four proof lanes — `tsc`, the node glob, the client glob, the integration lane — all four
 of which now run in CI (the fourth only since #704, and only when code changed); above them the
 browser probe is run by nothing and the deploy verifier can redden but never fail the workflow.
 The PR gate is the merge proof, `preflight` is the ship proof, and `complianceInvariants` reads
@@ -26,10 +26,17 @@ the source as text, so a failure there is an incident, not a flake.
 
 `pnpm test` is `scripts/test-collection-guard.cjs` (`package.json:15`): it runs two vitest configs
 back to back and then refuses to pass unless every test file on disk was actually collected (the
-bare pair survives as `pnpm test:raw`, `:20`). The **node** lane, whose `include` is a
-hand-maintained allowlist of 228 entries in `vitest.config.ts` — an unlisted test file is silently
-never run, which is why the guard's orphan floor now fails the build rather than trusting the list —
-and the **client** lane, whose `include` is a
+bare pair survives as `pnpm test:raw`, `:20`). The **node** lane's `include` was a hand-maintained
+allowlist of ~230 entries in `vitest.config.ts` **until 2026-08-24**, when `387a3518`/#725 deleted
+it for `include: ["tests/**/*.test.{ts,tsx}"]` (`vitest.config.ts:71`) plus an 18-entry `exclude`
+that drops the integration files (`:77-95`). Read the reason, not just the diff: the list *carried
+no information* — 251 files in `tests/` minus the 18 integration files is exactly the number that
+was typed out — and it cost merges, because every concurrent PR inserted its entry at the same
+place (`:44-62`). What replaced its one virtue, failing closed on a typo'd path, is the collection
+guard: the orphan floor fails when a test file matches no lane, and a second check fails when one
+is claimed by **two** lanes — the one new way a glob can be wrong
+(`scripts/test-collection-guard.cjs:419-437`). The lesson survived the mechanism: the floor is what
+makes either design safe, and it is mechanism-agnostic. And the **client** lane, whose `include` is a
 glob on purpose so a colocated `*.test.tsx` cannot be *forgotten* — but the glob does not make it
 safe: `CICD.md` used to say such a file "can never be silently stranded", and that is false. Vitest
 crawls via `tinyglobby` → `fdir`, which defaults `suppressErrors: true`, so a directory whose
@@ -82,12 +89,14 @@ flowchart TD
 
 ## The facts, with receipts
 
-- **The node lane.** `vitest.config.ts:30-331` `include: [ … ]` — `grep -cE '^\s*"tests/' vitest.config.ts`
-  → `228`; `:25-26` `testTimeout: 45000`, `hookTimeout: 60000` ("TIMEOUTS ARE A HANG DETECTOR HERE,
-  NOT A PERFORMANCE ASSERTION", `:8`; the suite runs 172 s idle and 305–419 s under load, `:11-12`);
-  `:333-337` a placeholder `DATABASE_URL` keeps it hermetic; `:280-282` new entries are appended at
-  the **END** ("#440 and #443 both went stale without merging because every concurrent PR inserted
-  its entry just after `tests/accessControl.test.ts`… an unlisted test file is silently never run").
+- **The node lane.** `vitest.config.ts:71` `include: ["tests/**/*.test.{ts,tsx}"]`, with the 18
+  integration files dropped by `exclude` (`:77-95`); `:38-39` `testTimeout: 45000`,
+  `hookTimeout: 60000` ("TIMEOUTS ARE A HANG DETECTOR HERE, NOT A PERFORMANCE ASSERTION", `:6`; the
+  suite runs 172 s idle and 305–419 s under load, `:9-10`); `:99-105` a placeholder `DATABASE_URL`
+  keeps it hermetic. The file was **the most-churned in the repository** — 222 commits, more than
+  `package.json` (92) and more than any source file, 172 of its last 195 adding nothing but a path
+  (`:44-51`); its globbed sibling has 3 commits in its whole life doing the same job (`:49-51`).
+  The old "append at the END" rule was treating a symptom and is gone with the list it protected.
 - **The client lane.** `vitest.client.config.ts:37` `include: ["client/src/**/*.test.{ts,tsx}"]`
   ("a GLOB on purpose", `:11-13`); `:18` `environment: "happy-dom"`; the `@assets` alias (`:47`)
   exists because without it a component test "reports '0 tests' rather than a failure" (`:44-46`).
@@ -106,12 +115,16 @@ flowchart TD
   `resolveMatrixValue` throws rather than guesses, `RATE_LIMIT_RELAXED` for the auth limiter only.
   The runbook sentence is LEDGER HO-0823-05.
 - **Counts that must agree — and now a guard makes them.** `git ls-files 'tests/*.test.ts' | wc -l`
-  → `246`; 228 + 18 = 246 configured; `comm -23 <(git ls-files 'tests/*.test.ts'|sort) <(grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts vitest.integration.config.ts|tr -d '"'|sort -u)`
-  → *empty*. Until `fd4a22c5` this identity was a thing you checked by hand and nobody did;
-  `scripts/test-collection-guard.cjs` now fails the build on any non-empty result. The config
-  records the precedent for why that matters:
-  `vitest.config.ts:145-146` — `changeOfCircumstance.test.ts` "Was in NEITHER config since it
-  landed, so its 10 assertions had never run (same class as F-013's maintenanceMode.test.ts)".
+  → `251`; the node lane takes all of them and excludes 18, which is exactly the integration lane's
+  list, so the two `"tests/…"` blocks must be **identical**:
+  `{ grep -ohE '"tests/[^"]+\.test\.ts"' vitest.config.ts | tr -d '"' | sort -u; grep -ohE '"tests/[^"]+\.test\.ts"' vitest.integration.config.ts | tr -d '"' | sort -u; } | sort | uniq -u | wc -l`
+  → `0` (FACTS F-39; a file on one side only is either an orphan or double-claimed, and both are
+  build failures). Until `fd4a22c5` this identity was a thing you checked by hand and nobody did;
+  `scripts/test-collection-guard.cjs` now fails on an orphan (`:515-534`) and on a double claim
+  (`:419-437`). Note that the glob change **broke the old form of this check**: the previous
+  command diffed the on-disk list against the paths *quoted in the configs*, and with the allowlist
+  gone it reported 231 files as stranded when the true answer is none — the corpus's own F-39 command
+  was rewritten on 2026-08-24 for exactly this reason.
 - **Source-text tests.** `grep -lE 'readFileSync\(' tests/*.test.ts | wc -l` → `66` (27% of the
   node suite asserts on source text, not behaviour). `tests/complianceInvariants.test.ts` (716
   lines, 16 describes, 55 its): `:16` "If one of these fails, treat it as a compliance incident,
@@ -199,8 +212,13 @@ flowchart TD
   in the gate — "it would go red on the day ASSUMPTIONS.md hits day 31 and block EVERY merge",
   `:10-13`), `preview-seed.yml` (dispatch only).
 - **The definition of done.** `knowledge-base/governance/TEAM_PRACTICES.md:93-138` — nine rules:
-  `pnpm check` clean; `pnpm test` green in both lanes (new server tests added to the allowlist; UI
-  behaviour gets a component test first); the integration suite green against a live worktree
+  `pnpm check` clean; `pnpm test` green in both lanes; UI
+  behaviour gets a component test first. ⚠️ Rule 2 there (`:96-97`) still reads "New server/logic
+  test files **must be added to `vitest.config.ts`'s include list**", which #725 made false on
+  2026-08-24 — the include is a glob, and the only hand-maintained list left is the `exclude`,
+  where adding a path *strands* the test instead of enrolling it. The definition of done binds
+  every PR, so this is the highest-traffic stale instruction the corpus knows of: LEDGER
+  **HO-0824-01**. Not fixed from here — this chapter reads siblings, it never edits them. the integration suite green against a live worktree
   server on 5002 with `RATE_LIMIT_RELAXED=true`; live verification on the worktree port with
   evidence in the PR body; regulated math carries a ledger citation in the same commit; schema
   changes are hand-authored SQL; new env vars land in `.env.example` **and** CICD.md; the PR-body
@@ -260,7 +278,7 @@ sed -n '63p' tests/cronSchedules.test.ts ; sed -n '/const SCHEDULES/,/^\];/p' te
 
 | Trap | Where | Caught by |
 |---|---|---|
-| A new server test in neither config never runs — the allowlist is deliberate, and for the life of the repo nothing detected an omission. | `vitest.config.ts:30-331`; `knowledge-base/runbooks/CICD.md:366-376` | **Closed `fd4a22c5` (#670).** `scripts/test-collection-guard.cjs` diffs the disk against every lane's `include` and fails on a non-empty result; the floor is zero, with no baseline to bump. Its first run found the live example, `tests/maintenanceMode.test.ts` — the `INTAKE_PAUSED` kill switch, five assertions that had never executed. |
+| A new server test in neither config never runs — the allowlist is deliberate, and for the life of the repo nothing detected an omission. | `vitest.config.ts:44-70` (the deleted list's own epitaph); `knowledge-base/runbooks/CICD.md:366-376` | **Closed `fd4a22c5` (#670).** `scripts/test-collection-guard.cjs` diffs the disk against every lane's `include` and fails on a non-empty result; the floor is zero, with no baseline to bump. Its first run found the live example, `tests/maintenanceMode.test.ts` — the `INTAKE_PAUSED` kill switch, five assertions that had never executed. |
 | `pnpm test` can run fewer files than exist and exit 0 — vitest globs via `tinyglobby` → `fdir`, whose default `suppressErrors: true` makes a directory that failed `readdir` read as an *empty* one. Seen three times under load: 111/118, 214/215, 113/119. | `package.json:15`; `scripts/test-collection-guard.cjs` | **Closed `fd4a22c5` (#670).** `pnpm test` is the guard: it runs each lane with `--reporter=json` and fails on any shortfall, naming the missing files. Its own enumeration is `fs.readdirSync` with no error suppression — counting with the same glob would shrink both sides together and pass. |
 | `main` requires zero checks; `enforce_admins: true` binds admins to an empty list. | `ci.yml:30-48` | No mechanism — the comment warns the previous version of itself said "✅ CONFIGURED" while false. LEDGER HO-0822-15. |
 | A pause on `migrate-prod` makes the journal run ahead of prod; this caused a 35-minute auth outage (migration 0057, `users.last_failed_login_at`). Re-armed 2026-08-22 — but a *future* pause is equally invisible. | `ci.yml:681`; `76c96751` | `tests/ciTriggers.test.ts:110` accepts LIVE **or** PAUSED, so it cannot tell you which you have. |
