@@ -4,7 +4,7 @@ import type { Express } from "express";
 import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { isInFlightLoanAppStatus, isLoanAppStatus, isStaffRole, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
+import { isInFlightLoanAppStatus, isLoanAppStatus, isStaffRole, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES, canSetConditionVerdict } from "@shared/schema";
 import type { User, LoanAppStatus } from "@shared/schema";
 import { toBorrowerConditionViews } from "@shared/borrowerConditionView";
 import { getLenderIdentifiers } from "../../services/lenderIdentifiers";
@@ -163,9 +163,12 @@ export function registerPipelineRoutes(
       const { status, clearanceNotes } = body;
       const callerRole = req.user!.role;
 
-      // Waiving a condition is restricted to underwriters and admins only
+      // Waiving a condition is restricted to underwriters and admins only.
+      // Role lists live in CONDITION_VERDICT_ROLES (shared/statusVocabularies)
+      // so ConditionsTab renders only the verdicts the caller may set —
+      // behavior-identical hoist of the former inline literals.
       if (status === "waived") {
-        if (callerRole !== "admin" && callerRole !== "underwriter") {
+        if (!canSetConditionVerdict(callerRole, "waived")) {
           return res.status(403).json({ error: "Only underwriters and admins can waive conditions" });
         }
 
@@ -193,7 +196,7 @@ export function registerPipelineRoutes(
 
       // Clearing a condition is restricted to underwriters, processors, closers, and admins
       if (status === "cleared") {
-        if (!["admin", "underwriter", "processor", "closer"].includes(callerRole)) {
+        if (!canSetConditionVerdict(callerRole, "cleared")) {
           return res.status(403).json({ error: "Only underwriters, processors, closers, and admins can clear conditions" });
         }
 
@@ -213,7 +216,7 @@ export function registerPipelineRoutes(
       }
 
       if (status === "not_applicable") {
-        if (!["admin", "underwriter", "processor"].includes(callerRole)) {
+        if (!canSetConditionVerdict(callerRole, "not_applicable")) {
           return res.status(403).json({ error: "Only underwriters, processors, and admins can mark conditions as not applicable" });
         }
 

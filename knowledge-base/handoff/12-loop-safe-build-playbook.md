@@ -25,7 +25,8 @@
 > floor was bypassed; the pre-push hook still does not run the unit lanes unless you set
 > `PREPUSH_TESTS=1` (`e49aab6d`, #660; `.githooks/pre-push:138-141`), so T1 is a step you run
 > deliberately *or* read off CI; no node test file is stranded any more —
-> `tests/maintenanceMode.test.ts` is listed (`vitest.config.ts:324`) and the zero is enforced
+> `tests/maintenanceMode.test.ts` runs — it was a listed line until #725 deleted the list on
+> 2026-08-24, and is now matched by the glob (`vitest.config.ts:71`) — and the zero is enforced
 > rather than observed (FACTS F-39). Later the same day three more tickets closed: `pnpm
 > harness:t0..t3` exist (`package.json:16-19` → `scripts/harness.sh`, #702, which also gitignored
 > the ralph state file, `.gitignore:56`, and added the seventh ledger check), pre-push and preflight
@@ -72,7 +73,7 @@ The tiers as a funnel — each one narrower than the last, and the three places 
 flowchart TD
   Tm1["T-1 standing - fresh and unclaimed - git rev-list, gh pr list, REGISTER.md"]
   T0["T0 static - tsc, node --check, nine guards - types and ratchets"]
-  T1["T1 unit - pnpm test is the collection floor - 230 node files, 124 client files, named on a shortfall"]
+  T1["T1 unit - pnpm test is the collection floor - 231 node files, 125 client files, named on a shortfall"]
   T2["T2 pnpm preflight --fast - T0 + T1 + pnpm audit + the section-9 guard as CI computes it"]
   T3["T3 pnpm preflight - build, bundle ratchet, prod-mode boot on 3999, integration lane on 4000"]
   T4["T4 browser - PORT=5002 pnpm dev in the worktree, browser-probe.cjs at 320, 768, 1280"]
@@ -176,7 +177,8 @@ at the **end** of its `index.ts`; a new domain appends one line to `registerRout
 "<entity>.<verb>", …)` on every mutation; PII through the vaults; never extend
 `RESPONSE_BODY_LOG_ALLOWLIST` without §9; a vendor through the `server/mcp/vendors.ts` template; a
 job through `/api/jobs/<name>` + `.github/workflows/cron-jobs.yml` + `tests/cronSchedules.test.ts`.
-Tests: pure logic → `tests/<name>.test.ts` + the allowlist (END); rule-shaped → a source-text test;
+Tests: pure logic → `tests/<name>.test.ts` (the node lane globs since 2026-08-24 — nothing to
+register); rule-shaped → a source-text test;
 HTTP → the integration config with `X-Forwarded-Proto: https`, `Origin`, `/api/test-login` with
 `<role>@test.com` / `DEV_TEST_PASSWORD`, a per-file session cache, the server booted with
 `RATE_LIMIT_RELAXED=true`. A new env var lands in `.env.example` **and** `CICD.md`. A schema change obliges, in the same
@@ -206,7 +208,7 @@ change is R6.
 
 | Template | Use it for | Its WRITE territory | Its proof |
 |---|---|---|---|
-| [new-test.md](prompts/new-test.md) | the first loop you ever run; a characterisation or regression test | one test file (+ the allowlist line for the node lane) | the file name appears in the lane output |
+| [new-test.md](prompts/new-test.md) | the first loop you ever run; a characterisation or regression test | one test file (the node lane globs since 2026-08-24 — no config line to add) | the file name appears in the lane output |
 | [bug-fix.md](prompts/bug-fix.md) | one defect with a reproducible input | the owning source file(s) + a test | red on `origin/main`, green after |
 | [feature.md](prompts/feature.md) | one seam in one layer | the layer's files + tests | neighbours' characterisation test green before and after; the feature test red → green |
 | [refactor.md](prompts/refactor.md) | a behaviour-preserving move | the moved files + every importer | tests green before and after; guards unchanged or lower |
@@ -238,8 +240,9 @@ destructive-operation categories were passed as disallowed tools. 83 turns, 22.5
 lines below are copied from its logs and its LOOP REPORT; the PR number lives only in the
 ledger's run log. **The counts in this table are the run's, not today's** — it executed at
 `074899e3`, when the allowlist held 218 entries and 120 client tests were tracked;
-`git rev-list --count 074899e3..origin/main` → 74 commits have landed since (23 at `6377727e`), and
-the tree now holds 228 allowlist entries and 124 tracked client tests (`d9e8f79d`). Do not read
+`git rev-list --count 074899e3..origin/main` → 93 commits have landed since (74 at `d9e8f79d`), and
+the allowlist it counted no longer exists — the node lane globs 231 files and 125 client tests are
+tracked (`49720133`). Do not read
 them as current facts; read them as what the harness printed on the day, which is the point of
 recording a run at all.
 
@@ -354,8 +357,8 @@ skipped, trusted, or asked a question adjacent to the one that mattered.
 | The integration lane never ran in CI — until 2026-08-23. | For the life of the repo a green gate proved typecheck + unit lanes + a boot to 200 and nothing more; the gate's Postgres served the boot probe only. `knowledge-base/runbooks/CICD.md:357-362` still says so (LEDGER HO-0823-05). | Since #704 (`d9e8f79d`) the gate re-boots the built bundle in development mode, seeds the grids and runs the 18 files (`.github/workflows/ci.yml:583-646`) — only when the change-scope step says code changed; T3 locally, only when a database answers. Ticket 4, closed. |
 | T4 never runs automatically. | A rendered regression ships behind a green workflow; the probe answers four questions and no contrast ratio (`knowledge-base/routines/CHARTER.md:838-847`). | A human pasting `browser-probe.cjs` output; the journey walkers, findings only. |
 | T5 cannot fail a merge. | Nine consecutive failed deploys behind a green check (`CICD.md:221-226`); a 35-minute auth outage from a migration the paused applier never ran, during which `verify-deploy` would have been **green throughout** because it compares commits (`.github/workflows/ci.yml:748-750`). | `verify-deploy` reddens without failing the workflow (`:770`), so a prod that never advanced still leaves a green run. The `gate` check IS required on `main` again (2026-08-23), so T0–T3 now bind a merge — but T5 still does not. Ticket 1. |
-| A stranded test. | `tests/changeOfCircumstance.test.ts` sat in neither config (`vitest.config.ts:145-146`); `tests/maintenanceMode.test.ts` — the intake kill switch — had five assertions that never ran until 2026-08-23. | The orphan floor in `scripts/test-collection-guard.cjs:462-469` — zero, no baseline. Closed. |
-| A collection that silently dropped files. | 36 of 118 client files dropped with no signal under load; `Test Files 111 passed (111)` with 118 on disk (`scripts/test-collection-guard.cjs:6-19`). | `SHORT BY N` with the names (`:406-415`). Closed — but only through `pnpm test`; `test:raw`, `test:unit`, `test:client` and any argument bypass it (`:354`). |
+| A stranded test. | `tests/changeOfCircumstance.test.ts` sat in neither config; `tests/maintenanceMode.test.ts` — the intake kill switch — had five assertions that never ran until 2026-08-23. (The config comment that recorded the first case was deleted with the allowlist on 2026-08-24; this row is now its only surviving record.) | The orphan floor in `scripts/test-collection-guard.cjs:515-534` — zero, no baseline, and it counts `exclude` as well as `include`, so a file globbed in and then excluded still counts as uncovered. Closed. |
+| A collection that silently dropped files. | 36 of 118 client files dropped with no signal under load; `Test Files 111 passed (111)` with 118 on disk (`scripts/test-collection-guard.cjs:6-19`). | `SHORT BY N` with the names (`:473`). Closed — but only through `pnpm test`; `test:raw`, `test:unit`, `test:client` and any argument bypass it, which the guard announces as `COLLECTION FLOOR DISABLED` (`:401-404`). |
 | A guard that could not run and whose silence read as CLEAN. | A syntax error in a guard shipped to `main` green (`.github/workflows/ci.yml:481-490`). | `node --check` on every `scripts/*.cjs` in T0 and preflight (`scripts/preflight.sh:95`). |
 | A baseline bumped to pass. | Five commits mention "baseline" (ch. 11 §C); a ratchet that is raised is a rubber stamp. | R5 and review; no guard can tell a legitimate tightening from a raise except by reading the PR body. |
 | A generated block that goes stale on trunk. | `main` itself red on `guard:ui` after a merge that skipped `--write-table`; every open PR and every local push inherited it (LEDGER HO-0822-26). | R1b: T0 on the untouched worktree first, red ⇒ `STOPPED(trunk-red)`. |

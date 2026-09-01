@@ -19,6 +19,7 @@ import {
   LOAN_APP_TRANSITIONS,
   isLoanAppStatus,
   isValidLoanAppTransition,
+  SETTLED_CONDITION_STATUSES,
   type LoanAppStatus,
 } from "@shared/schema";
 import {
@@ -777,40 +778,60 @@ export async function checkPipelineProgress(applicationId: string): Promise<{
 
   const currentStage = application.status || "draft";
 
+  // "Settled" is the shared verdict set (cleared | waived | not_applicable) —
+  // every branch derives from it so a waived or not-applicable condition can
+  // never false-block a stage (the pre-fix early branches exempted only
+  // cleared|waived; register F-0820-63).
+  const settled: ReadonlySet<string> = new Set(SETTLED_CONDITION_STATUSES);
+
   switch (currentStage) {
     case "pre_approved":
-    case "doc_collection":
-      const priorToApproval = conditions.filter(c => 
-        c.priority === "prior_to_approval" && c.status !== "cleared" && c.status !== "waived"
+    case "doc_collection": {
+      const priorToApproval = conditions.filter(c =>
+        c.priority === "prior_to_approval" && !settled.has(c.status)
       );
       if (priorToApproval.length > 0) {
         readyForNextStage = false;
         blockers.push(`${priorToApproval.length} prior-to-approval conditions outstanding`);
       }
       break;
+    }
 
     case "processing":
-    case "underwriting":
-      const priorToDocs = conditions.filter(c => 
-        (c.priority === "prior_to_approval" || c.priority === "prior_to_docs") && 
-        c.status !== "cleared" && c.status !== "waived"
+    case "underwriting": {
+      const priorToDocs = conditions.filter(c =>
+        (c.priority === "prior_to_approval" || c.priority === "prior_to_docs") &&
+        !settled.has(c.status)
       );
       if (priorToDocs.length > 0) {
         readyForNextStage = false;
         blockers.push(`${priorToDocs.length} conditions must be cleared before docs`);
       }
       break;
+    }
 
     case "conditional":
-    case "clear_to_close":
-      const allOutstanding = conditions.filter(c => 
-        c.status !== "cleared" && c.status !== "waived" && c.status !== "not_applicable"
-      );
+    case "clear_to_close": {
+      const allOutstanding = conditions.filter(c => !settled.has(c.status));
       if (allOutstanding.length > 0) {
         readyForNextStage = false;
         blockers.push(`${allOutstanding.length} conditions still outstanding`);
       }
       break;
+    }
+
+    case "closing": {
+      // Funding is the last exit: Selling Guide B3-2-05 conditions sale
+      // eligibility on every approval condition being met, and the lender's
+      // post-closing QC verifies exactly that (D1-3-02) — so anything
+      // un-settled, prior_to_funding included, blocks closing → funded.
+      const unsettledAtFunding = conditions.filter(c => !settled.has(c.status));
+      if (unsettledAtFunding.length > 0) {
+        readyForNextStage = false;
+        blockers.push(`${unsettledAtFunding.length} condition(s) must be settled before funding`);
+      }
+      break;
+    }
   }
 
   return {
