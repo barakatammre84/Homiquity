@@ -406,7 +406,7 @@ export default function BorrowerFile() {
                     <User className="mr-2 h-4 w-4" />
                     Overview
                   </TabsTrigger>
-                  {isInternalStaffRole(user?.role) && <TabsTrigger value="file-review" data-testid="tab-file-review">File review</TabsTrigger>}
+                  {isInternalStaffRole(user?.role ?? "") && <TabsTrigger value="file-review" data-testid="tab-file-review">File review</TabsTrigger>}
                   <TabsTrigger value="documents" data-testid="tab-documents">
                     <FileText className="mr-2 h-4 w-4" />
                     Documents
@@ -538,7 +538,7 @@ export default function BorrowerFile() {
                   <RiskBriefPanel applicationId={application.id} />
                 </TabsContent>
 
-                {isInternalStaffRole(user?.role) && <TabsContent value="file-review"><FileReviewTab applicationId={applicationId} onNavigate={setActiveTab} /></TabsContent>}
+                {isInternalStaffRole(user?.role ?? "") && <TabsContent value="file-review"><FileReviewTab applicationId={applicationId} onNavigate={setActiveTab} /></TabsContent>}
 
                 <TabsContent value="documents" className="space-y-4">
                   {/* Split workbench (roadmap A6): review list left, safe
