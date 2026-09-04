@@ -4,6 +4,7 @@ import pg from "pg";
 import { BASE_URL } from "./setup";
 
 const appId = randomUUID(), otherAppId = randomUUID(), documentId = randomUUID(), factId = randomUUID();
+const borrowerId = randomUUID();
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const cookies: Record<string, string> = {};
 const endpoint = `/api/loan-applications/${appId}/file-review`;
@@ -23,9 +24,12 @@ beforeAll(async () => {
     const response = await fetch(`${BASE_URL}/api/test-login`, { method: "POST", headers: { "Content-Type": "application/json", Origin: BASE_URL }, body: JSON.stringify({ email: `${role}@test.com`, password: process.env.DEV_TEST_PASSWORD || "test1234" }) });
     expect(response.status).toBe(200); cookies[role] = response.headers.get("set-cookie")!.split(";")[0];
   }
-  await pool.query("INSERT INTO loan_applications (id,user_id,status) VALUES ($1,'test-buyer','draft'),($2,'test-buyer','draft')", [appId, otherAppId]);
+  // Intake resumes the shared test buyer's newest draft. Give this suite its own
+  // borrower so parallel intake cannot resume a fixture that afterAll removes.
+  await pool.query("INSERT INTO users (id,email,role) VALUES ($1,$2,'buyer')", [borrowerId, `file-review-${borrowerId}@example.test`]);
+  await pool.query("INSERT INTO loan_applications (id,user_id,status) VALUES ($1,$3,'draft'),($2,$3,'draft')", [appId, otherAppId, borrowerId]);
   await pool.query("INSERT INTO deal_team_members (application_id,user_id,team_role,is_active) VALUES ($1,'test-lo','lo',true),($1,'test-closer','closer',true)", [appId]);
-  await pool.query("INSERT INTO documents (id,application_id,user_id,document_type,file_name,storage_path,status) VALUES ($1,$2,'test-buyer','bank_statement','Fictional statement.pdf','/objects/fictional-file-review','uploaded')", [documentId, appId]);
+  await pool.query("INSERT INTO documents (id,application_id,user_id,document_type,file_name,storage_path,status) VALUES ($1,$2,$3,'bank_statement','Fictional statement.pdf','/objects/fictional-file-review','uploaded')", [documentId, appId, borrowerId]);
   await pool.query("INSERT INTO extracted_fields (id,document_id,field_name,value_numeric,value_type,confidence,extraction_method) VALUES ($1,$2,'closing_balance','3000','currency','0.9','fixture')", [factId, documentId]);
 });
 afterAll(async () => {
@@ -35,6 +39,7 @@ afterAll(async () => {
   await pool.query("DELETE FROM documents WHERE id=$1", [documentId]);
   await pool.query("DELETE FROM deal_team_members WHERE application_id IN ($1,$2)", [appId, otherAppId]);
   await pool.query("DELETE FROM loan_applications WHERE id IN ($1,$2)", [appId, otherAppId]);
+  await pool.query("DELETE FROM users WHERE id=$1", [borrowerId]);
   await pool.end();
 });
 
@@ -88,12 +93,12 @@ describe.sequential("Core review inside the existing authenticated loan file", (
     const forms = Array.from({ length: 4 }, () => randomUUID());
     const facts = Array.from({ length: 4 }, () => randomUUID());
     try {
-      await pool.query("INSERT INTO documents (id,application_id,user_id,document_type,file_name,storage_path) VALUES ($1,$2,'test-buyer','other','Other file.pdf','/objects/fictional-other-review')", [foreignDoc, otherAppId]);
+      await pool.query("INSERT INTO documents (id,application_id,user_id,document_type,file_name,storage_path) VALUES ($1,$2,$3,'other','Other file.pdf','/objects/fictional-other-review')", [foreignDoc, otherAppId, borrowerId]);
       await pool.query(`INSERT INTO logical_documents (id,loan_id,source_document_id,borrower_id,document_type,aggregated_confidence) VALUES
-        ($1,$5,NULL,'test-buyer','w2','0.9'),
-        ($2,NULL,$7,'test-buyer','w2','0.9'),
-        ($3,$6,$7,'test-buyer','w2','0.9'),
-        ($4,$5,$8,'test-buyer','w2','0.9')`, [...forms, appId, otherAppId, documentId, foreignDoc]);
+        ($1,$5,NULL,$9,'w2','0.9'),
+        ($2,NULL,$7,$9,'w2','0.9'),
+        ($3,$6,$7,$9,'w2','0.9'),
+        ($4,$5,$8,$9,'w2','0.9')`, [...forms, appId, otherAppId, documentId, foreignDoc, borrowerId]);
       await pool.query(`INSERT INTO extracted_fields (id,document_id,logical_document_id,field_name,value_type,confidence,extraction_method) VALUES
         ($1,NULL,$5,'wages','currency','0.9','fixture'),
         ($2,$8,$6,'wages','currency','0.9','fixture'),
