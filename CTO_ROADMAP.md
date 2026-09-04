@@ -524,3 +524,12 @@ Its §0 preconditions are the ones people skip, and both have burned us: prove t
 **by `commit`, not by a green check** — a failed Railway build leaves the previous container serving
 — and prove the app is talking to the **right database** by hitting a data-backed route, because
 `/api/health` returns 200 from the wrong one.
+
+
+## Core integration into the existing Homiquity app
+
+Founder-directed on 2026-09-04. [Integration sequence and acceptance gates](knowledge-base/specs/CORE_INTEGRATION.md). Existing Homiquity remains the product host; reuse Core capabilities without duplicating accounts, applications or uploads.
+
+- First slice: the existing Borrower File gains application/evidence review checkpoints, change detection and links into the current review tools. Release requires persistence, access-control, stale-write, concurrency and browser verification.
+- Next: document version/subject mapping, then financial workpapers/memo, borrower corrections and retirement of proven overlap. These remain open until their scenario acceptance gates pass.
+- Real lender acceptance remains an external dependency; neither internal checkpoints nor simulated submissions close that gate.
