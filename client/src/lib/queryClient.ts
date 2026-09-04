@@ -196,6 +196,7 @@ export const getQueryFn: <T>(options: {
  * fails the build on one.
  */
 export const loanApplicationKeys = {
+  fileReview: (id: string) => ["/api/loan-applications", id, "file-review"] as const,
   /** The whole family — invalidates every application query, list included. */
   all: () => ["/api/loan-applications"] as const,
   /** One file and everything nested under it (the common invalidation prefix). */

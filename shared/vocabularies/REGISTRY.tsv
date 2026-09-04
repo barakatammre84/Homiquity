@@ -53,7 +53,7 @@ CURRENT_PROPERTY_DISPOSITIONS	shared/schema/lendingCore.ts	array	3	8c1cb5ed3f72	
 CYCLE_TIME_TERMINAL_STATUSES	shared/cycleTimeReport.ts	array	4	b201e6f0da34		1	internal	
 DOC_METHODS	shared/loanProducts.ts	array	6	5bd145cab526	DocMethod	2	internal	
 DOCUMENT_PACKAGE_TYPES	shared/schema/documents.ts	array	5	91571264c095	DocumentPackageType	0	internal	
-DOCUMENT_REVIEW_ROLES	shared/documentStatus.ts	array	5	8401e578170a		4	internal	
+DOCUMENT_REVIEW_ROLES	shared/documentStatus.ts	array	5	8401e578170a		5	internal	
 DOCUMENT_STATUSES	shared/documentStatus.ts	array	4	e24710fd8d36	DocumentStatus	3	internal	
 DOCUMENT_TYPE_TAXONOMY	shared/schema/documents.ts	array	46	926146f14c60	DocumentTypeTaxonomy	1	internal	
 EditSeverity	shared/fannieMae/loanDeliveryEdits.ts	union	2	aaecbabcc789		0	internal	
@@ -65,6 +65,7 @@ EXTENSION_FEE_PAYERS	shared/schema/lendingRatesOps.ts	array	3	f94ac7e5d1b9	Exten
 FATAL_FEE_TYPE_SECTIONS	shared/fannieMae/ucdFeeEnumerations.ts	array	2	83a23a4ab7ef		1	internal	
 FEE_PROVENANCE_TIERS	shared/compliance/feeProvenance.ts	array	3	b98b0a71e6bd	FeeProvenanceTier	0	internal	
 FIELD_VERIFICATION_STATUS	shared/schema/intelligence.ts	array	6	06ac8bf1bf2e	FieldVerificationStatus	1	internal	
+FILE_REVIEW_SECTIONS	shared/fileReview.ts	array	4	c238922a595e	FileReviewSection	2	internal	
 FINANCIAL_VERIFICATION_ROLES	shared/loanApplicationStatus.ts	array	5	8401e578170a		6	internal	
 FURNISHING_STATE	shared/schema/rent.ts	array	6	f288323799cf	FurnishingState	3	internal	
 GATED_SITEMAP_PATHS	shared/seo/routeMeta.ts	array	6	08397f1a3d99		1	internal	
@@ -75,7 +76,7 @@ IncomePathKind	shared/incomePaths.ts	union	2	12b65f52d50d		0	internal
 IncomePathRole	shared/incomePaths.ts	union	2	217d537e6161		0	internal	
 IncomePathStatus	shared/incomePaths.ts	union	3	8e3655838898		0	internal	
 INTENT_EVENT_TYPES	shared/schema/intelligence.ts	array	35	9501655d522e	IntentEventType	1	internal	
-INTERNAL_STAFF_ROLES	shared/roles.ts	array	6	0635acce74ba		7	internal	
+INTERNAL_STAFF_ROLES	shared/roles.ts	array	6	0635acce74ba		9	internal	
 JourneyStepId	shared/borrowerJourney.ts	union	7	608e57432bed		1	internal	
 K1_VARIANTS	shared/taxFormExtraction.ts	array	2	b978376fe176	K1Variant	1	internal	
 LEASE_STATUS	shared/schema/rent.ts	array	3	b317624de871	LeaseStatus	0	internal	

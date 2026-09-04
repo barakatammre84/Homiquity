@@ -1,3 +1,4 @@
+import { FileReviewTab } from "./borrowerFile/FileReviewTab";
 import { lazy, Suspense, useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearchParams, Link } from "wouter";
@@ -54,7 +55,7 @@ import { TimelineTab } from "./borrowerFile/TimelineTab";
 const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
 
 const TAB_PARAM = "tab";
-const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
+const TAB_VALUES = ["overview", "file-review", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
 
 // DATA FLOW — this page currently runs BOTH directions, and that is the known
 // debt, not a design.
@@ -183,7 +184,8 @@ export default function BorrowerFile() {
   const documents = appData?.documents || [];
   const activities = appData?.activities || [];
   const conditions = pipelineData?.conditions || [];
-  const progress = pipelineData?.progress;
+  const acceptedDocuments = documents.filter(document => document.status === "verified").length;
+  const conditionProgress = pipelineData?.progress.conditions;
   const personalInfo = urlaData?.personalInfo;
 
   if (!application) {
@@ -222,7 +224,7 @@ export default function BorrowerFile() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b bg-background px-6 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-4 py-3 sm:px-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" className="touch-target" asChild>
             <Link href="/staff-dashboard">
@@ -231,7 +233,7 @@ export default function BorrowerFile() {
             </Link>
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {preUwFlags.map((flag) => (
             <Badge
               key={flag.code}
@@ -368,10 +370,12 @@ export default function BorrowerFile() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="text-doc-count">
-                      {progress?.documentsReceived || 0}/{progress?.documentsRequired || 0}
+                      {documents.length} uploaded
                     </div>
+                    <p className="text-xs text-muted-foreground">{acceptedDocuments} accepted</p>
                     <Progress 
-                      value={progress?.documentsRequired ? (progress.documentsReceived / progress.documentsRequired) * 100 : 0} 
+                      value={documents.length ? (acceptedDocuments / documents.length) * 100 : 0}
+                      aria-label="Uploaded documents accepted"
                       className="mt-2 h-2" 
                     />
                   </CardContent>
@@ -384,10 +388,12 @@ export default function BorrowerFile() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="text-condition-count">
-                      {progress?.conditionsCleared || 0}/{progress?.conditionsTotal || 0}
+                      {conditionProgress ? `${conditionProgress.cleared}/${conditionProgress.total}` : "Unavailable"}
                     </div>
+                    <p className="text-xs text-muted-foreground">{conditionProgress?.total ? "Conditions cleared" : conditionProgress ? "No conditions recorded" : "Could not load conditions"}</p>
                     <Progress 
-                      value={progress?.conditionsTotal ? (progress.conditionsCleared / progress.conditionsTotal) * 100 : 0} 
+                      value={conditionProgress?.total ? (conditionProgress.cleared / conditionProgress.total) * 100 : 0}
+                      aria-label="Conditions cleared"
                       className="mt-2 h-2" 
                     />
                   </CardContent>
@@ -395,11 +401,12 @@ export default function BorrowerFile() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList>
+                <TabsList className="h-auto flex-wrap justify-start">
                   <TabsTrigger value="overview" data-testid="tab-overview">
                     <User className="mr-2 h-4 w-4" />
                     Overview
                   </TabsTrigger>
+                  {isInternalStaffRole(user?.role) && <TabsTrigger value="file-review" data-testid="tab-file-review">File review</TabsTrigger>}
                   <TabsTrigger value="documents" data-testid="tab-documents">
                     <FileText className="mr-2 h-4 w-4" />
                     Documents
@@ -530,6 +537,8 @@ export default function BorrowerFile() {
 
                   <RiskBriefPanel applicationId={application.id} />
                 </TabsContent>
+
+                {isInternalStaffRole(user?.role) && <TabsContent value="file-review"><FileReviewTab applicationId={applicationId} onNavigate={setActiveTab} /></TabsContent>}
 
                 <TabsContent value="documents" className="space-y-4">
                   {/* Split workbench (roadmap A6): review list left, safe

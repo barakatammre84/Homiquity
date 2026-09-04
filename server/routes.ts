@@ -1,3 +1,4 @@
+import { registerFileReviewRoutes } from "./routes/file-review";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -107,6 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   void (await import("./consentGate")).ensureComplianceTemplates();
 
   registerLendingRoutes(app, storage);
+  registerFileReviewRoutes(app);
   registerDocumentRoutes(app, storage);
   registerPropertyRoutes(app, storage);
   registerAgentBrokerRoutes(app, storage);

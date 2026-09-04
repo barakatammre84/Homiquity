@@ -421,6 +421,13 @@
       "when": 1786147200005,
       "tag": "0059_liability_paid_by_other_party",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1788508800000,
+      "tag": "0060_file_review_checkpoints",
+      "breakpoints": true
     }
   ]
 }

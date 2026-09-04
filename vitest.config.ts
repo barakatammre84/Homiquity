@@ -76,6 +76,7 @@ export default defineConfig({
     // its orphan floor fails if a file lands in neither.
     exclude: [
       ...configDefaults.exclude,
+      "tests/fileReviewRoutes.test.ts",
       "tests/api.test.ts",
       "tests/authRecovery.test.ts",
       "tests/leads.test.ts",

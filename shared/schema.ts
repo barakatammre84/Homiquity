@@ -21,3 +21,5 @@ export * from "./schema/partners";
 export * from "./schema/scenarioRuns";
 export * from "./schema/autopilot";
 export * from "./schema/rent";
+
+export * from "./schema/fileReview";
