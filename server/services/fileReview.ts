@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../db";
 import { loanApplications, dealTeamMembers, documents, logicalDocuments, extractedFields, fileReviewCheckpoints, auditLogs } from "@shared/schema";
-import { INTERNAL_STAFF_ROLES } from "@shared/roles";
+import { isAdmin, isInternalStaffRole } from "@shared/roles";
 import { isTerminalLoanAppStatus } from "@shared/loanApplicationStatus";
 import { canReviewDocuments } from "@shared/documentStatus";
 import { assessFileReview, type FileReviewWorkspace } from "@shared/fileReview";
@@ -13,11 +13,11 @@ export class FileReviewError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
 async function loadSources(tx: Transaction, applicationId: string, actor: FileReviewActor, lock = false) {
-  if (!(INTERNAL_STAFF_ROLES as readonly string[]).includes(actor.role)) throw new FileReviewError("Staff access required", 403);
+  if (!isInternalStaffRole(actor.role)) throw new FileReviewError("Staff access required", 403);
   const query = tx.select().from(loanApplications).where(eq(loanApplications.id, applicationId));
   const [application] = await (lock ? query.for("update") : query);
   if (!application) throw new FileReviewError("Application not found", 404);
-  if (actor.role !== "admin") {
+  if (!isAdmin(actor)) {
     const membershipQuery = tx.select({ id: dealTeamMembers.id }).from(dealTeamMembers).where(and(
       eq(dealTeamMembers.applicationId, applicationId), eq(dealTeamMembers.userId, actor.id), eq(dealTeamMembers.isActive, true),
     ));
