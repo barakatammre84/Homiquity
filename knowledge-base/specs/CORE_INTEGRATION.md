@@ -30,7 +30,7 @@ Source: `barakatammre84/Homiquity-Core`, commit `e8ebf5b9522137e3d5adf8ce8176e72
 
 | Core unit | Treatment in Homiquity | Contract |
 |---|---|---|
-| `shared/analysis-validity.ts` in the Core repository | `validityFromReasons` ported into [reviewValidity.ts](../../shared/core/reviewValidity.ts) | Deduplicate reasons; historical review stays recorded when current validity changes. The Core ruleset-policy function is not imported. |
+| [Core review validity source](https://github.com/barakatammre84/Homiquity-Core/blob/e8ebf5b9522137e3d5adf8ce8176e728d60047e0/shared/analysis-validity.ts) | `validityFromReasons` ported into [reviewValidity.ts](../../shared/core/reviewValidity.ts) | Deduplicate reasons; historical review stays recorded when current validity changes. The Core ruleset-policy function is not imported. |
 | Core package-review/workpaper version and freshness pattern | Adapted through [fileReview.ts](../../shared/fileReview.ts) and [fileReview.ts service](../../server/services/fileReview.ts) | Fingerprint existing application/evidence records; append review checkpoints; reject stale writes. No Core database or policy constants imported. |
 | Core auth, evidence storage and whole application shell | Deferred | Existing Homiquity identity and storage remain in use; any future port must preserve application scoping and document ownership. |
 
