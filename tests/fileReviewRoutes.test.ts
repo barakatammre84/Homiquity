@@ -109,6 +109,12 @@ describe.sequential("Core review inside the existing authenticated loan file", (
       await pool.query("DELETE FROM documents WHERE id=$1", [foreignDoc]);
     }
   });
+  it("preserves history but does not save new reviews on a closed application", async () => {
+    await pool.query("UPDATE loan_applications SET status='funded' WHERE id=$1", [appId]);
+    const view = await current();
+    expect(view.checkpoints).toHaveLength(3); expect(view.canSave).toBe(false);
+    expect((await save(view.revision)).status).toBe(409);
+  });
   it("revokes review access when the deal-team membership is removed", async () => {
     await pool.query("UPDATE deal_team_members SET is_active=false WHERE application_id=$1 AND user_id='test-lo'", [appId]);
     expect((await request("lo")).status).toBe(404); expect((await save("a".repeat(64))).status).toBe(404);
