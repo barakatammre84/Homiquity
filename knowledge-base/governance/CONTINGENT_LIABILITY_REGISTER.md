@@ -1,6 +1,6 @@
 # Contingent Liability Register
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-09-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **Purpose:** the one page that answers *"what could we owe, and is our reserve adequate?"* — a
 question that had no answer before 2026-08-04, because the exposures had never been enumerated.
@@ -42,6 +42,7 @@ part of the reserve number we can currently see.
 | **EPO compensation clawback** | A funded loan pays off inside the lender's early-payoff window | Funding → window close | Funded submissions × recorded remittance (F-8). |
 | **Honor exposure on unconfirmed quotes** | Rates move against a quote no lender committed to | Until confirmed, repriced, or withdrawn | Open locks with no lender confirmation (F-3 residual). |
 | **Rate-lock extension cost** | A file misses its lock expiry and the lender bills an extension | Until each lock expires | Confirmed locks expiring within 21 days. |
+| **Approved commission payable** | A funded file has an approved commission that has not been disbursed | Approval → disbursement | Approved `broker_commissions`; pending approvals remain an action, and paid commissions inside an open EPO window remain visible as added loss exposure. |
 
 ### What each one rests on
 
@@ -60,6 +61,11 @@ confirmed lock is the lender's obligation, not ours.
 
 **Extension cost** is sized at 1.5 bps/day over 15 days. Extension pricing comes from each
 executed agreement, and none exists.
+
+**Approved commissions** are cash payables rather than scenarios. Pending commissions are not
+included until approved; they remain an explicit action. A commission already paid on a loan still
+inside its EPO window is reported beside the clawback because the lender's clawback does not recover
+the commission from its recipient.
 
 > All four assumptions are ledger-tracked and must be replaced with contracted terms as
 > agreements land. Until then, treat these figures as order-of-magnitude, not accounting.
@@ -123,3 +129,7 @@ lender confirmation a recorded fact so an unconfirmed lock is distinguishable fr
 **Code:** `shared/contingentLiabilities.ts` (pure model),
 `server/services/contingentLiabilityRegister.ts` (live data), tests in
 `tests/contingentLiabilities.test.ts`.
+
+Re-verified 2026-09-04 against the pure model, live-data builder, admin-only route, Financial
+Reports consumer and tests. The commission-payable exposure added after the opening audit is now
+included above; the three policy exposures remain deliberately unquantified.

@@ -89,6 +89,11 @@ const storageStub = {
   getLoanApplication: async (id: string) => h.applications.find((a) => a.id === id),
 } as any;
 
+const registerDocumentVersion = async ({ document: input }: any) => ({
+  document: await storageStub.createDocument(input),
+  lineage: input.applicationId ? { documentId: `doc-${h.createdDocuments.length}` } : null,
+});
+
 describe("POST /api/documents/upload — closed-file guard", () => {
   let server: import("node:http").Server;
   let base: string;
@@ -104,7 +109,7 @@ describe("POST /api/documents/upload — closed-file guard", () => {
       (req as any).user = currentUser;
       next();
     });
-    registerDocumentRoutes(app, storageStub);
+    registerDocumentRoutes(app, storageStub, { registerDocumentVersion });
 
     server = app.listen(0);
     const { port } = server.address() as AddressInfo;

@@ -1,6 +1,6 @@
 # Unconsumed Capabilities
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-09-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **What this tracks:** capability built ahead of a consumer — endpoints, services and tables that
 work correctly and that nothing in the product actually calls yet.
@@ -34,8 +34,10 @@ cycles unconsumed, that is evidence it was built too early — freeze or remove 
 
 ## Open entries
 
-*(none — every entry from the register's opening day was consumed the same day. The next PR that
-ships capability ahead of a consumer adds the next row, with a decide-by date.)*
+*(No recorded open entry. The 2026-09-04 pass rechecked every closed row and the current Core
+integration; each has a named client consumer. This is a maintained register, not proof that an
+unknown zero-consumer capability cannot exist. The next discovery or PR that ships one adds a row
+with a decide-by date.)*
 
 ---
 
@@ -57,3 +59,8 @@ Opened 2026-08-04 by the financial architecture audit
 ([log](../logs/2026-08-04-financial-architecture-capital-structure-audit.md)). Its own author put
 the first entry here: the audit shipped five endpoints with no consumer while diagnosing a 1,482-line
 stack with no consumer. Recording that was cheaper than repeating it.
+
+Re-verified 2026-09-04: the five closed endpoints still have their named `FinancialsTab`,
+`FinancialReports`, or `CompensationCard` consumer. Core review checkpoints and document lineage
+are consumed by the Borrower File, borrower Documents page and borrower dashboard, so they do not
+open a row here.

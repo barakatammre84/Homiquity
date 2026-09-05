@@ -18,6 +18,8 @@ import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../../auditLog";
 import * as creditService from "../../services/creditService";
 import { routeParams } from "../../http/routeParams";
+import { DocumentLineageError, registerDocumentVersion } from "../../services/documentLineage";
+import { sha256LocalObject } from "../../integrations/object_storage";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -31,7 +33,11 @@ const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().
 export function registerDocumentRoutes(
   app: Express,
   storage: IStorage,
+  dependencies: {
+    registerDocumentVersion?: typeof registerDocumentVersion;
+  } = {},
 ) {
+  const persistDocumentVersion = dependencies.registerDocumentVersion ?? registerDocumentVersion;
   app.get("/api/loan-applications/:id/declarations", isAuthenticated, async (req, res) => {
     try {
       const { id } = routeParams(req);
@@ -102,6 +108,7 @@ export function registerDocumentRoutes(
     documentType: z.string().max(50).optional(),
     applicationId: z.string().optional(),
     description: z.string().max(500).optional(),
+    replacesDocumentId: z.string().min(1).max(100).optional(),
   });
 
   const rejectMultipart = (req: any, res: any, next: any) => {
@@ -211,21 +218,33 @@ export function registerDocumentRoutes(
         (d) => d.fileName === fileMeta.fileName && d.fileSize === fileMeta.fileSize,
       );
 
-      const document = await storage.createDocument({
-        userId,
-        applicationId,
-        documentType,
-        fileName: fileMeta.fileName,
-        fileSize: fileMeta.fileSize,
-        mimeType: fileMeta.mimeType,
-        storagePath: fileMeta.storagePath,
-        status: DOCUMENT_STATUS.UPLOADED,
-        // Borrower free text goes to its OWN column. It used to land in
-        // `notes`, which borrowerGraph and the coach parse as trusted
-        // extraction output — so a borrower could type JSON and have it read
-        // back as document-verified fact (F-027). `notes` is now written only
-        // by the extraction routes.
-        borrowerDescription: description || null,
+      // Hash the bytes after the server has verified the stored object. GCS is
+      // fail-closed in production; local integration fixtures that register a
+      // synthetic path retain a null fingerprint, while the real local PUT
+      // flow records the same SHA-256 used in production.
+      const contentSha256 = verification.configured && verification.ok
+        ? await objectStorage.sha256ObjectEntity(fileMeta.storagePath)
+        : sha256LocalObject(fileMeta.storagePath);
+      const { document } = await persistDocumentVersion({
+        actor: { id: userId, role: user.role },
+        contentSha256,
+        replacesDocumentId: parsed.data.replacesDocumentId,
+        document: {
+          userId,
+          applicationId,
+          documentType,
+          fileName: fileMeta.fileName,
+          fileSize: fileMeta.fileSize,
+          mimeType: fileMeta.mimeType,
+          storagePath: fileMeta.storagePath,
+          status: DOCUMENT_STATUS.UPLOADED,
+          // Borrower free text goes to its OWN column. It used to land in
+          // `notes`, which borrowerGraph and the coach parse as trusted
+          // extraction output — so a borrower could type JSON and have it read
+          // back as document-verified fact (F-027). `notes` is now written only
+          // by the extraction routes.
+          borrowerDescription: description || null,
+        },
       });
 
       // Handing over the document IS the completion of "we need your W-2".
@@ -244,6 +263,7 @@ export function registerDocumentRoutes(
         documentType,
         fileName: fileMeta.fileName,
         duplicateOf: similar?.id ?? null,
+        replacesDocumentId: parsed.data.replacesDocumentId ?? null,
       });
 
       if (applicationId) {
@@ -343,6 +363,9 @@ export function registerDocumentRoutes(
           : null,
       });
     } catch (error) {
+      if (error instanceof DocumentLineageError) {
+        return res.status(error.status).json({ error: error.message });
+      }
       console.error("Document upload error:", error);
       try {
         const { logFriction } = await import("../../services/frictionLog");

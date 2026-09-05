@@ -10,6 +10,7 @@ import {
   loanApplications,
   loanOptions,
   documents,
+  documentLineage,
   dealActivities,
   dealTeamMembers,
   isInternalStaffRole,
@@ -25,6 +26,40 @@ import {
 import { WRITER_CONTRACT_KEY, WRITER_CONTRACT_VERSION } from "@shared/borrowerActivityView";
 import { UsersStorage } from "./users";
 export class ApplicationsStorage extends UsersStorage {
+  /** Keep one current upload per explicit replacement lineage. If the caller's
+   * initial visibility includes any version, expand that exact application +
+   * lineage pair before choosing current so a staff-owned replacement cannot
+   * leave a borrower looking at the superseded upload. */
+  protected async currentDocuments(rows: Document[]): Promise<Document[]> {
+    if (!rows.length) return rows;
+    const visibleLineageRows = await db.select().from(documentLineage)
+      .where(inArray(documentLineage.documentId, rows.map(row => row.id)));
+    if (!visibleLineageRows.length) return rows;
+
+    const visibleKeys = new Set(visibleLineageRows.map(row => `${row.applicationId}:${row.lineageId}`));
+    const applicationIds = [...new Set(visibleLineageRows.map(row => row.applicationId))];
+    const lineageRows = (await db.select().from(documentLineage)
+      .where(inArray(documentLineage.applicationId, applicationIds)))
+      .filter(row => visibleKeys.has(`${row.applicationId}:${row.lineageId}`));
+    const byDocument = new Map(visibleLineageRows.map(row => [row.documentId, row]));
+    const latest = new Map<string, { documentId: string; versionNumber: number }>();
+    for (const row of lineageRows) {
+      const key = `${row.applicationId}:${row.lineageId}`;
+      const prior = latest.get(key);
+      if (!prior || row.versionNumber > prior.versionNumber) latest.set(key, row);
+    }
+    const currentIds = new Set([...latest.values()].map(row => row.documentId));
+    const current = rows.filter(row => !byDocument.has(row.id) || currentIds.has(row.id));
+    const includedIds = new Set(current.map(row => row.id));
+    const missingIds = [...currentIds].filter(id => !includedIds.has(id));
+    if (missingIds.length) {
+      current.push(...await db.select().from(documents).where(inArray(documents.id, missingIds)));
+    }
+    return current.sort((a, b) =>
+      String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")) || b.id.localeCompare(a.id),
+    );
+  }
+
   // Loan Applications
   async createLoanApplication(data: InsertLoanApplication): Promise<LoanApplication> {
     const [application] = await db.insert(loanApplications).values(data).returning();
@@ -200,19 +235,21 @@ export class ApplicationsStorage extends UsersStorage {
   }
 
   async getDocumentsByUser(userId: string): Promise<Document[]> {
-    return await db
+    const rows = await db
       .select()
       .from(documents)
       .where(eq(documents.userId, userId))
       .orderBy(desc(documents.createdAt));
+    return this.currentDocuments(rows);
   }
 
   async getDocumentsByApplication(applicationId: string): Promise<Document[]> {
-    return await db
+    const rows = await db
       .select()
       .from(documents)
       .where(eq(documents.applicationId, applicationId))
       .orderBy(desc(documents.createdAt));
+    return this.currentDocuments(rows);
   }
 
   // Batched variant of getDocumentsByApplication for list views — one query for
@@ -225,7 +262,7 @@ export class ApplicationsStorage extends UsersStorage {
       .from(documents)
       .where(inArray(documents.applicationId, applicationIds))
       .orderBy(desc(documents.createdAt));
-    return groupRowsByKeyDense(applicationIds, rows, (row) => row.applicationId!);
+    return groupRowsByKeyDense(applicationIds, await this.currentDocuments(rows), (row) => row.applicationId!);
   }
 
   async getDocumentsByStoragePath(storagePath: string): Promise<Document[]> {

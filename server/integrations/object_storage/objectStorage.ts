@@ -1,6 +1,7 @@
 import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { UPLOAD_CREATE_ONLY_HEADER, UPLOAD_CREATE_ONLY_VALUE } from "@shared/uploads";
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -131,7 +132,7 @@ export class ObjectStorageService {
   }
 
   // Gets the upload URL for an object entity.
-  async getObjectEntityUploadURL(): Promise<string> {
+  async getObjectEntityUploadURL(contentType: string): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -151,6 +152,8 @@ export class ObjectStorageService {
       objectName,
       method: "PUT",
       ttlSec: 900,
+      contentType,
+      extensionHeaders: { [UPLOAD_CREATE_ONLY_HEADER]: UPLOAD_CREATE_ONLY_VALUE },
     });
   }
 
@@ -179,6 +182,14 @@ export class ObjectStorageService {
       throw new ObjectNotFoundError();
     }
     return objectFile;
+  }
+
+  /** SHA-256 of the stored bytes, calculated server-side after upload. */
+  async sha256ObjectEntity(objectPath: string): Promise<string> {
+    const objectFile = await this.getObjectEntityFile(objectPath);
+    const hash = createHash("sha256");
+    for await (const chunk of objectFile.createReadStream()) hash.update(chunk as Buffer);
+    return hash.digest("hex");
   }
 
   normalizeObjectEntityPath(
@@ -321,11 +332,15 @@ async function signObjectURL({
   objectName,
   method,
   ttlSec,
+  contentType,
+  extensionHeaders,
 }: {
   bucketName: string;
   objectName: string;
   method: "GET" | "PUT" | "DELETE" | "HEAD";
   ttlSec: number;
+  contentType?: string;
+  extensionHeaders?: Record<string, string>;
 }): Promise<string> {
   const actionForMethod = {
     GET: "read",
@@ -341,7 +356,8 @@ async function signObjectURL({
       version: "v4",
       action: actionForMethod[method],
       expires: Date.now() + ttlSec * 1000,
+      ...(contentType ? { contentType } : {}),
+      ...(extensionHeaders ? { extensionHeaders } : {}),
     });
   return signedURL;
 }
-

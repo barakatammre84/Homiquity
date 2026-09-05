@@ -1,6 +1,6 @@
 # Channel Decision: Broker or Correspondent
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-09-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **Status: OPEN — founder-owned. Current declared channel: `broker`.**
 
@@ -32,7 +32,8 @@ Yet the repo contains a full seller/servicer delivery stack:
 | `shared/fannieMae/ucdFeeEnumerations.ts` | 196 |
 | **Total** | **1,482** |
 
-Plus ~690 lines of tests, the `loan_delivery_data` table, and a MERS org ID being pursued.
+The stack remains covered by dedicated channel, delivery-edit, authority and compliance tests, plus
+the `loan_delivery_data` table. MERS is explicitly not applicable while the channel is broker.
 
 **Reachable through one staff API route pair and no client surface at all** (verified: zero client
 callers). It is well-built, carefully cited work. The question is not its quality — it is whether
@@ -133,3 +134,7 @@ Opened 2026-08-04 by the financial architecture audit
 ([log](../logs/2026-08-04-financial-architecture-capital-structure-audit.md), finding F-14), which
 escalated rather than picking an interpretation per the CLAUDE.md rule on ambiguous requirements.
 This page exists so the escalation is actionable rather than merely recorded.
+
+Re-verified 2026-09-04: `BUSINESS_CHANNEL` remains `broker`, the freeze guard passes, the four
+tracked implementation files total 1,482 lines, the readiness route remains staff-only, and no
+client code calls the seller/servicer delivery-readiness endpoint.

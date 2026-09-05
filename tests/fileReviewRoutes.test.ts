@@ -4,7 +4,10 @@ import pg from "pg";
 import { BASE_URL } from "./setup";
 
 const appId = randomUUID(), otherAppId = randomUUID(), documentId = randomUUID(), factId = randomUUID();
-const borrowerId = randomUUID();
+let borrowerId = randomUUID();
+const coBorrowerId = randomUUID();
+const businessId = randomUUID(), propertyId = randomUUID();
+let replacementDocumentId: string | null = null;
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const cookies: Record<string, string> = {};
 const endpoint = `/api/loan-applications/${appId}/file-review`;
@@ -15,6 +18,13 @@ async function request(role: string, path = endpoint, body?: unknown) {
 }
 async function current() { const response = await request("lo"); expect(response.status).toBe(200); return response.json(); }
 async function save(revision: string, role = "lo") { return request(role, endpoint, { expectedRevision: revision, acknowledged: true }); }
+async function patchLineage(role: string, applicationId: string, targetDocumentId: string, body: unknown) {
+  return fetch(`${BASE_URL}/api/loan-applications/${applicationId}/documents/${targetDocumentId}/lineage`, {
+    method: "PATCH",
+    headers: { Cookie: cookies[role] ?? "", Origin: BASE_URL, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
 
 beforeAll(async () => {
   // This suite creates only fictional records in the disposable local/CI database.
@@ -26,20 +36,48 @@ beforeAll(async () => {
   }
   // Intake resumes the shared test buyer's newest draft. Give this suite its own
   // borrower so parallel intake cannot resume a fixture that afterAll removes.
-  await pool.query("INSERT INTO users (id,email,role) VALUES ($1,$2,'buyer')", [borrowerId, `file-review-${borrowerId}@example.test`]);
+  const registration = await fetch(`${BASE_URL}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: BASE_URL },
+    body: JSON.stringify({
+      email: `file-review-${borrowerId}@example.test`,
+      password: `Review-${borrowerId}`,
+      firstName: "Fictional",
+      lastName: "Borrower",
+    }),
+  });
+  expect(registration.status).toBe(200);
+  const registered = await registration.json();
+  borrowerId = registered.user.id;
+  cookies.borrower = registration.headers.get("set-cookie")!.split(";")[0];
+  await pool.query("INSERT INTO users (id,email,first_name,last_name,role) VALUES ($1,$2,'Casey','Co-borrower','buyer')", [coBorrowerId, `file-review-${coBorrowerId}@example.test`]);
+  await pool.query("INSERT INTO borrower_profiles (user_id,has_co_borrower,co_borrower_user_id) VALUES ($1,true,$2)", [borrowerId, coBorrowerId]);
   await pool.query("INSERT INTO loan_applications (id,user_id,status) VALUES ($1,$3,'draft'),($2,$3,'draft')", [appId, otherAppId, borrowerId]);
-  await pool.query("INSERT INTO deal_team_members (application_id,user_id,team_role,is_active) VALUES ($1,'test-lo','lo',true),($1,'test-closer','closer',true)", [appId]);
-  await pool.query("INSERT INTO documents (id,application_id,user_id,document_type,file_name,storage_path,status) VALUES ($1,$2,$3,'bank_statement','Fictional statement.pdf','/objects/fictional-file-review','uploaded')", [documentId, appId, borrowerId]);
+  await pool.query("INSERT INTO deal_team_members (application_id,user_id,team_role,is_active) VALUES ($1,'test-lo','lo',true),($1,'test-closer','closer',true),($1,'test-broker','broker',true),($1,'test-lender','lender',true)", [appId]);
+  await pool.query("INSERT INTO documents (id,application_id,user_id,document_type,file_name,storage_path,status) VALUES ($1,$2,$3,'business_bank_statement','Fictional statement.pdf','/objects/fictional-file-review','uploaded')", [documentId, appId, borrowerId]);
   await pool.query("INSERT INTO extracted_fields (id,document_id,field_name,value_numeric,value_type,confidence,extraction_method) VALUES ($1,$2,'closing_balance','3000','currency','0.9','fixture')", [factId, documentId]);
+  await pool.query("INSERT INTO borrower_business_entities (id,user_id,application_id,identity_key,entity_type,name) VALUES ($1,$2,$3,$4,'s_corporation','Fictional Consulting Inc.')", [businessId, borrowerId, appId, `name:fictional-${businessId}`]);
+  await pool.query("INSERT INTO application_properties (id,application_id,address,purchase_price) VALUES ($1,$2,'100 Fictional Way','500000')", [propertyId, appId]);
 });
 afterAll(async () => {
   await pool.query("DELETE FROM file_review_checkpoints WHERE application_id IN ($1,$2)", [appId, otherAppId]);
-  await pool.query("DELETE FROM audit_logs WHERE target_id IN ($1,$2)", [appId, otherAppId]);
+  await pool.query("DELETE FROM audit_logs WHERE target_id=ANY($1::varchar[])", [[appId, otherAppId, documentId, replacementDocumentId].filter(Boolean)]);
   await pool.query("DELETE FROM extracted_fields WHERE id=$1", [factId]);
+  await pool.query("DELETE FROM document_lineage WHERE application_id IN ($1,$2)", [appId, otherAppId]);
+  await pool.query("DELETE FROM deal_activities WHERE application_id IN ($1,$2)", [appId, otherAppId]);
+  await pool.query("DELETE FROM task_events WHERE application_id IN ($1,$2)", [appId, otherAppId]);
+  await pool.query("DELETE FROM task_documents WHERE task_id IN (SELECT id FROM tasks WHERE application_id IN ($1,$2))", [appId, otherAppId]);
+  await pool.query("DELETE FROM task_audit_log WHERE task_id IN (SELECT id FROM tasks WHERE application_id IN ($1,$2))", [appId, otherAppId]);
+  await pool.query("DELETE FROM tasks WHERE application_id IN ($1,$2)", [appId, otherAppId]);
+  await pool.query("DELETE FROM analytics_events WHERE application_id IN ($1,$2)", [appId, otherAppId]);
+  if (replacementDocumentId) await pool.query("DELETE FROM documents WHERE id=$1", [replacementDocumentId]);
   await pool.query("DELETE FROM documents WHERE id=$1", [documentId]);
+  await pool.query("DELETE FROM borrower_business_entities WHERE id=$1", [businessId]);
+  await pool.query("DELETE FROM application_properties WHERE id=$1", [propertyId]);
   await pool.query("DELETE FROM deal_team_members WHERE application_id IN ($1,$2)", [appId, otherAppId]);
   await pool.query("DELETE FROM loan_applications WHERE id IN ($1,$2)", [appId, otherAppId]);
-  await pool.query("DELETE FROM users WHERE id=$1", [borrowerId]);
+  await pool.query("DELETE FROM borrower_profiles WHERE user_id=$1", [borrowerId]);
+  await pool.query("DELETE FROM users WHERE id=ANY($1::varchar[])", [[borrowerId, coBorrowerId]]);
   await pool.end();
 });
 
@@ -51,9 +89,33 @@ describe.sequential("Core review inside the existing authenticated loan file", (
     expect((await request("lo", `/api/loan-applications/${otherAppId}/file-review`)).status).toBe(404);
     const view = await current(); expect(view.manifest.documents.count).toBe(1); expect(view.manifest.facts.count).toBe(1);
     expect(view.documents[0].name).toBe("Fictional statement.pdf");
+    expect(view.documents[0].lineage.needsAssignment).toBe(true);
+    expect(view.subjectOptions.map((row: { id: string }) => row.id)).toEqual(expect.arrayContaining([appId, borrowerId, coBorrowerId, businessId, propertyId]));
     expect(JSON.stringify(view)).not.toContain("/objects/fictional");
     const closer = await (await request("closer")).json(); expect(closer.canSave).toBe(false);
     expect((await save(view.revision, "closer")).status).toBe(403);
+  });
+  it("records an application-scoped subject and period with reviewer-only access", async () => {
+    const body = { subjectType: "business", subjectId: businessId, periodStart: "2026-01-01", periodEnd: "2026-06-30", taxYear: 2026 };
+    expect((await patchLineage("buyer", appId, documentId, body)).status).toBe(403);
+    expect((await patchLineage("loa", appId, documentId, body)).status).toBe(404);
+    expect((await patchLineage("lo", appId, documentId, { ...body, subjectType: "application", subjectId: otherAppId })).status).toBe(400);
+    expect((await patchLineage("lo", appId, documentId, { ...body, subjectType: "borrower", subjectId: coBorrowerId })).status).toBe(200);
+    expect((await current()).documents[0].lineage.subjectLabel).toBe("Casey Co-borrower");
+    expect((await patchLineage("lo", appId, documentId, { ...body, subjectType: "property", subjectId: propertyId })).status).toBe(200);
+    expect((await current()).documents[0].lineage.subjectLabel).toBe("100 Fictional Way");
+    expect((await patchLineage("lo", appId, documentId, body)).status).toBe(200);
+    const view = await current();
+    expect(view.documents[0].lineage).toMatchObject({
+      versionNumber: 1,
+      subjectType: "business",
+      subjectId: businessId,
+      subjectLabel: "Fictional Consulting Inc.",
+      periodStart: "2026-01-01",
+      periodEnd: "2026-06-30",
+      taxYear: 2026,
+      needsAssignment: false,
+    });
   });
   it("does not mistake an empty application for a reviewed file", async () => {
     const response = await request("admin", `/api/loan-applications/${otherAppId}/file-review`);
@@ -113,6 +175,89 @@ describe.sequential("Core review inside the existing authenticated loan file", (
       await pool.query("DELETE FROM logical_documents WHERE id=ANY($1::varchar[])", [forms]);
       await pool.query("DELETE FROM documents WHERE id=$1", [foreignDoc]);
     }
+  });
+  it.each(["broker", "lender"])("does not let an assigned %s replace borrower-owned evidence", async role => {
+    const fileName = `Unauthorized ${role} replacement.pdf`;
+    const response = await request(role, "/api/documents/upload", {
+      objectPath: `/objects/fictional-${role}-replacement-${randomUUID()}`,
+      fileName,
+      fileSize: 128,
+      mimeType: "application/pdf",
+      documentType: "business_bank_statement",
+      applicationId: appId,
+      replacesDocumentId: documentId,
+    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: "The document to replace is not available" });
+    const inserted = await pool.query("SELECT id FROM documents WHERE file_name=$1", [fileName]);
+    expect(inserted.rowCount).toBe(0);
+  });
+  it("keeps a replacement in the same lineage and invalidates only its current evidence", async () => {
+    const before = await current();
+    const bytes = Buffer.from("%PDF-1.4\nfictional replacement\n%%EOF");
+    const targetResponse = await request("lo", "/api/uploads/request-url", {
+      name: "Fictional statement replacement.pdf",
+      size: bytes.length,
+      contentType: "application/pdf",
+    });
+    expect(targetResponse.status).toBe(200);
+    const target = await targetResponse.json();
+    const stored = await fetch(`${BASE_URL}${target.uploadURL}`, {
+      method: "PUT",
+      headers: { Cookie: cookies.lo, Origin: BASE_URL, "Content-Type": "application/pdf" },
+      body: bytes,
+    });
+    expect(stored.status).toBe(200);
+    const registered = await request("lo", "/api/documents/upload", {
+      objectPath: target.objectPath,
+      fileName: "Fictional statement replacement.pdf",
+      fileSize: bytes.length,
+      mimeType: "application/pdf",
+      documentType: "business_bank_statement",
+      applicationId: appId,
+      replacesDocumentId: documentId,
+    });
+    expect(registered.status).toBe(201);
+    replacementDocumentId = (await registered.json()).id;
+
+    const changed = await current();
+    expect(changed.manifest.documents.count).toBe(1);
+    expect(changed.manifest.facts.count).toBe(0);
+    expect(changed.documents).toHaveLength(1);
+    expect(changed.documents[0]).toMatchObject({ id: replacementDocumentId, name: "Fictional statement replacement.pdf" });
+    expect(changed.documents[0].lineage).toMatchObject({
+      versionNumber: 2,
+      subjectType: "business",
+      subjectId: businessId,
+      contentFingerprintRecorded: true,
+      changedSinceLatestReview: true,
+    });
+    expect(changed.documents[0].lineage.history).toHaveLength(2);
+    expect(changed.checkpoints[0].isStale).toBe(true);
+    expect(changed.checkpoints[0].staleReasons).toEqual(expect.arrayContaining([
+      "Uploaded documents changed after this review.",
+      "Extracted values changed after this review.",
+    ]));
+    expect(changed.checkpoints[0].changedDocumentLineageIds).toEqual([documentId]);
+    expect((await save(before.revision)).status).toBe(409);
+    expect((await patchLineage("lo", appId, documentId, {
+      subjectType: "application", subjectId: appId, periodStart: null, periodEnd: null, taxYear: null,
+    })).status).toBe(409);
+    const applicationDetail = await (await request("lo", `/api/loan-applications/${appId}`)).json();
+    expect(applicationDetail.documents.map((row: { id: string }) => row.id)).toEqual([replacementDocumentId]);
+
+    // User-scoped reads start from borrower-owned rows. They must still expand
+    // the visible lineage and return the staff-owned current version. Resolve
+    // lineage before status filtering so an uploaded v1 cannot remain pending
+    // after a verified v2 replaces it.
+    await pool.query("UPDATE documents SET status='uploaded' WHERE id=$1", [documentId]);
+    await pool.query("UPDATE documents SET status='verified' WHERE id=$1", [replacementDocumentId]);
+    const dashboardResponse = await request("borrower", "/api/dashboard");
+    expect(dashboardResponse.status).toBe(200);
+    const dashboard = await dashboardResponse.json();
+    expect(dashboard.documents.map((row: { id: string }) => row.id)).toContain(replacementDocumentId);
+    expect(dashboard.documents.map((row: { id: string }) => row.id)).not.toContain(documentId);
+    expect(dashboard.stats.pendingDocuments).toBe(0);
   });
   it("preserves history but does not save new reviews on a closed application", async () => {
     await pool.query("UPDATE loan_applications SET status='funded' WHERE id=$1", [appId]);

@@ -23,3 +23,4 @@ export * from "./schema/autopilot";
 export * from "./schema/rent";
 
 export * from "./schema/fileReview";
+export * from "./schema/documentLineage";

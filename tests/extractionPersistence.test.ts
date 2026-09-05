@@ -136,6 +136,11 @@ const storageStub = {
   getLoanApplication: async () => undefined,
 } as any;
 
+const registerDocumentVersion = async ({ document: input }: any) => ({
+  document: await storageStub.createDocument(input),
+  lineage: input.applicationId ? { documentId: `doc-${h.createdDocuments.length}` } : null,
+});
+
 // ---------------------------------------------------------------------------
 // SYNCHRONISING ON A FIRE-AND-FORGET SIDE EFFECT
 //
@@ -204,7 +209,7 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
       (req as any).user = { id: "borrower-1", role: "borrower" };
       next();
     });
-    registerDocumentRoutes(app, storageStub);
+    registerDocumentRoutes(app, storageStub, { registerDocumentVersion });
 
     server = app.listen(0);
     const { port } = server.address() as AddressInfo;

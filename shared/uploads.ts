@@ -13,6 +13,12 @@
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const MAX_UPLOAD_LABEL = "10MB";
 
+// Cloud Storage's XML API treats generation-match zero as create-only. The
+// header is signed into every production upload URL and returned to the client,
+// so a successful PUT cannot be replayed to overwrite bytes after registration.
+export const UPLOAD_CREATE_ONLY_HEADER = "x-goog-if-generation-match";
+export const UPLOAD_CREATE_ONLY_VALUE = "0";
+
 /**
  * The accepted document MIME types — one list shared by the server allow-list
  * (server/routes/utils.ts re-exports it), the presigned-URL guard, and every
