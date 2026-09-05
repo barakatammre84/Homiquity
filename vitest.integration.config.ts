@@ -13,6 +13,7 @@ export default defineConfig({
     testTimeout: 15000,
     hookTimeout: 30000,
     include: [
+      "tests/fileReviewRoutes.test.ts",
       "tests/api.test.ts",
       "tests/authRecovery.test.ts",
       "tests/leads.test.ts",

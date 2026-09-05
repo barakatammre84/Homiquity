@@ -33,14 +33,15 @@ export interface PersonalInfoData {
 
 export interface PipelineData {
   progress: {
-    completionPercentage: number;
-    documentsReceived: number;
-    documentsRequired: number;
-    conditionsCleared: number;
-    conditionsTotal: number;
+    currentStage: string;
+    conditions: {
+      total: number;
+      outstanding: number;
+      cleared: number;
+      categories: Record<string, { total: number; cleared: number }>;
+    };
     readyForNextStage: boolean;
     blockers: string[];
-    nextSteps: string[];
   };
   summary: Record<string, unknown> | null;
   milestones: Record<string, Date | null>;
@@ -113,4 +114,3 @@ export const HMDA_DENIAL_REASONS = [
   "Mortgage insurance denied",
   "Other",
 ];
-

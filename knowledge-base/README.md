@@ -21,6 +21,8 @@ doc-drift bug to fix):
 
 ## Sections
 
+- [Core integration](specs/CORE_INTEGRATION.md) — founder-approved sequence for bringing Core review and evidence capabilities into the existing Homiquity app.
+
 ### Handbook — how the system is built · [`handbook/`](handbook/)
 - [FEATURE_MAP.md](handbook/FEATURE_MAP.md) — **what has actually been built**: all 41 shipped
   feature areas, what each does, its key files, and the `hq-*-owner` agent that owns it. Also
