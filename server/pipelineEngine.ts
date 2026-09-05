@@ -14,9 +14,6 @@ import { db } from "./db";
 import { inArray, desc, eq, max, and, count } from "drizzle-orm";
 import { computeFileHealth, daysSince, type FileHealth } from "./services/fileHealth";
 import { documentTypesMatch } from "@shared/documentTypes";
-import { DOCUMENT_STATUS } from "@shared/documentStatus";
-import { conditionsToRevertAfterRejection } from "./services/documentConditionWorkflow";
-export { conditionsToRevertAfterRejection } from "./services/documentConditionWorkflow";
 import {
   LOAN_APP_TRANSITIONS,
   isLoanAppStatus,
@@ -490,60 +487,6 @@ export async function matchUploadedDocumentToConditions(args: {
     `[pipeline] ${fileName} (${documentType}) matched ${matches.length} condition(s) on ${applicationId} → submitted`,
   );
   return { matchedConditionIds: matches.map((c) => c.id) };
-}
-
-/**
- * Which submitted conditions must fall back to "outstanding" after a document
- * of the given type is rejected. Pure so the decision is unit-testable: a
- * condition reverts only when it matched the rejected type AND no other
- * non-rejected document on the file still satisfies it (alias-aware on both
- * sides via shared/documentTypes.ts).
- */
-/**
- * Review-loop counterpart of matchUploadedDocumentToConditions: when a human
- * reviewer REJECTS a document, any condition that had moved to "submitted" on
- * the strength of that upload falls back to "outstanding" — otherwise the
- * matcher (which only considers outstanding conditions) could never re-arm
- * when the borrower uploads a replacement. Clearing/waiving stays a human
- * decision; this only un-submits. Call AFTER the document row is marked
- * rejected so the still-satisfied check sees the final state.
- */
-export async function revertConditionsForRejectedDocument(args: {
-  applicationId: string;
-  documentType: string;
-  fileName: string;
-  rejectedBy: string;
-}): Promise<{ revertedConditionIds: string[] }> {
-  const { applicationId, documentType, fileName, rejectedBy } = args;
-
-  const [conditions, documents] = await Promise.all([
-    storage.getLoanConditionsByApplication(applicationId),
-    storage.getDocumentsByApplication(applicationId),
-  ]);
-
-  const revertIds = conditionsToRevertAfterRejection({
-    conditions,
-    documents: documents.map((d) => ({ documentType: d.documentType, status: d.status })),
-    rejectedDocumentType: documentType,
-  });
-  if (revertIds.length === 0) return { revertedConditionIds: [] };
-
-  const byId = new Map(conditions.map((c) => [c.id, c]));
-  for (const conditionId of revertIds) {
-    await storage.updateLoanCondition(conditionId, { status: "outstanding" });
-    await storage.createDealActivity({
-      applicationId,
-      activityType: "note",
-      title: `Condition back to outstanding: ${byId.get(conditionId)?.title ?? conditionId}`,
-      description: `${fileName} (${documentType.replace(/_/g, " ")}) was rejected on review — a replacement document is needed.`,
-      performedBy: rejectedBy,
-    });
-  }
-
-  console.log(
-    `[pipeline] rejection of ${fileName} (${documentType}) reverted ${revertIds.length} condition(s) on ${applicationId} → outstanding`,
-  );
-  return { revertedConditionIds: revertIds };
 }
 
 /**

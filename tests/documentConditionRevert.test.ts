@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { conditionsToRevertAfterRejection } from "../server/pipelineEngine";
+import { conditionsToRevertAfterRejection } from "../server/services/documentConditionWorkflow";
 
 const condition = (
   id: string,

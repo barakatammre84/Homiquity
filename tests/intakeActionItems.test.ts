@@ -141,15 +141,22 @@ describe("under_review intake produces action items", () => {
 
     // (b) The borrower-tasks surface (dashboard card) is also non-empty —
     // the exact widget that used to say "You're all caught up".
-    const tasks = await getJson(
-      borrower,
-      `/api/task-engine/applications/${app.id}/borrower-tasks`,
-    );
-    expect(tasks.status).toBe(200);
-    const openTasks = (tasks.body.tasks ?? tasks.body ?? []).filter?.(
-      (t: any) => t.status !== "COMPLETED",
-    );
-    expect(openTasks?.length, "open borrower tasks exist").toBeGreaterThan(0);
+    // Pipeline initialization creates conditions, then tasks. A condition can
+    // therefore make the action-items surface ready a few milliseconds before
+    // the dashboard task query sees its rows. The 201 intentionally precedes
+    // both, so each promised borrower surface must be awaited independently.
+    const openTasks = await pollUntil(async () => {
+      const { status, body } = await getJson(
+        borrower,
+        `/api/task-engine/applications/${app.id}/borrower-tasks`,
+      );
+      if (status !== 200) return null;
+      const tasks = (body.tasks ?? body ?? []).filter?.(
+        (t: any) => t.status !== "COMPLETED",
+      );
+      return tasks?.length > 0 ? tasks : null;
+    }, "open borrower tasks for an under_review file");
+    expect(openTasks.length, "open borrower tasks exist").toBeGreaterThan(0);
 
     // (c) Loan options were generated for the under_review file too.
     const options = await pollUntil(async () => {

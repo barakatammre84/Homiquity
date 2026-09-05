@@ -145,7 +145,48 @@ describe.sequential("Core review inside the existing authenticated loan file", (
   });
   it("handles simultaneous saves without duplicate history or an internal error", async () => {
     await pool.query("UPDATE extracted_fields SET value_numeric='3700' WHERE id=$1", [factId]);
-    const view = await current(); const responses = await Promise.all([save(view.revision), save(view.revision)]);
+    const view = await current();
+
+    // Presence/login traffic updates users.last_active_at. A checkpoint insert
+    // references the reviewer row, so PostgreSQL aborts a repeatable-read
+    // transaction with 40001 when that update commits after its snapshot but
+    // before the FK check. Hold both saves at their application lock, commit a
+    // presence update, then release them to reproduce the exact CI collision.
+    const blocker = await pool.connect();
+    await blocker.query("BEGIN");
+    await blocker.query("SELECT id FROM loan_applications WHERE id=$1 FOR UPDATE", [appId]);
+    const saves = Promise.all([save(view.revision), save(view.revision)]);
+    let observedBlockedSave = false;
+    try {
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        const active = await pool.query<{ count: number }>(`
+          SELECT count(*)::int AS count
+          FROM pg_stat_activity
+          WHERE datname=current_database()
+            AND pid <> pg_backend_pid()
+            AND state <> 'idle'
+            AND wait_event_type='Lock'
+            -- pg_stat_activity truncates this wide SELECT before its FROM;
+            -- the stable leading projection identifies loadSources' app lock.
+            AND query LIKE 'select "id", "user_id", "status", "financial_data_provenance"%'
+        `);
+        if (active.rows[0].count > 0) {
+          observedBlockedSave = true;
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      await pool.query("UPDATE users SET last_active_at=now() WHERE id='test-lo'");
+    } finally {
+      await blocker.query("COMMIT");
+      blocker.release();
+    }
+    const responses = await saves;
+    expect(
+      observedBlockedSave,
+      "a save established its snapshot before presence changed",
+    ).toBe(true);
     expect(responses.map(response => response.status)).toContain(201);
     for (const response of responses) expect([200, 201, 409]).toContain(response.status);
     expect((await current()).checkpoints).toHaveLength(3);

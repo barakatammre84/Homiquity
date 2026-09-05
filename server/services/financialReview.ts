@@ -62,6 +62,7 @@ import {
   computeSelfEmploymentQualifyingIncome,
 } from "./selfEmploymentIncome";
 import { assessLiabilities, verifyAssets } from "../underwriting";
+import { withPostgresTransactionRetry } from "./transactionRetry";
 
 export type FinancialReviewActor = { id: string; role: string };
 
@@ -733,7 +734,7 @@ export async function getCurrentApprovedCreditMemo(applicationId: string): Promi
 }
 
 export async function prepareFinancialWorkpapers(applicationId: string, actor: FinancialReviewActor) {
-  return db.transaction(async tx => {
+  return withPostgresTransactionRetry(() => db.transaction(async tx => {
     const loaded = await loadCurrentAnalysis(tx, applicationId, actor);
     if (!FINANCIAL_VERIFICATION_ROLES.includes(actor.role)) throw new FinancialReviewError("Financial reviewer access required", 403);
     if (isTerminalLoanAppStatus(loaded.application.status)) throw new FinancialReviewError("This application is closed", 409);
@@ -779,7 +780,7 @@ export async function prepareFinancialWorkpapers(applicationId: string, actor: F
       metadata: { created, required: candidates.length, versionIds: [...resolved.values()].map(row => row.id) },
     });
     return { created, replayed: created === 0 };
-  }, { isolationLevel: "serializable" });
+  }, { isolationLevel: "serializable" }));
 }
 
 export async function reviewFinancialWorkpaper(
@@ -788,7 +789,7 @@ export async function reviewFinancialWorkpaper(
   actor: FinancialReviewActor,
   input: { action: "approve" | "reject"; reason: string; expectedFingerprint: string },
 ) {
-  return db.transaction(async tx => {
+  return withPostgresTransactionRetry(() => db.transaction(async tx => {
     if (!FINANCIAL_VERIFICATION_ROLES.includes(actor.role)) throw new FinancialReviewError("Financial reviewer access required", 403);
     const workspace = await assembleWorkspace(tx, applicationId, actor);
     const workpaper = workspace.workpapers.find(item => item.id === versionId);
@@ -803,11 +804,11 @@ export async function reviewFinancialWorkpaper(
     await tx.insert(financialWorkpaperReviews).values({ workpaperVersionId: versionId, action: input.action, reason: input.reason, reviewedBy: actor.id });
     await tx.insert(auditLogs).values({ actorUserId: actor.id, action: `financial_review.workpaper_${input.action}d`, targetType: "financial_workpaper_version", targetId: versionId, metadata: { applicationId, fingerprint: workpaper.inputFingerprint } });
     return { replayed: false };
-  }, { isolationLevel: "serializable" });
+  }, { isolationLevel: "serializable" }));
 }
 
 export async function buildCreditMemo(applicationId: string, actor: FinancialReviewActor) {
-  return db.transaction(async tx => {
+  return withPostgresTransactionRetry(() => db.transaction(async tx => {
     if (!FINANCIAL_VERIFICATION_ROLES.includes(actor.role)) throw new FinancialReviewError("Financial reviewer access required", 403);
     const workspace = await assembleWorkspace(tx, applicationId, actor);
     if (!workspace.canBuildMemo) throw new FinancialReviewError(workspace.memoBlockedReason!, 409);
@@ -830,7 +831,7 @@ export async function buildCreditMemo(applicationId: string, actor: FinancialRev
     }).returning({ id: creditMemoVersions.id });
     await tx.insert(auditLogs).values({ actorUserId: actor.id, action: "financial_review.memo_built", targetType: "credit_memo_version", targetId: saved.id, metadata: { applicationId, inputFingerprint, packageHash } });
     return { replayed: false, id: saved.id };
-  }, { isolationLevel: "serializable" });
+  }, { isolationLevel: "serializable" }));
 }
 
 export async function reviewCreditMemo(
@@ -839,7 +840,7 @@ export async function reviewCreditMemo(
   actor: FinancialReviewActor,
   input: { action: "approve" | "reject"; reason: string; expectedFingerprint: string },
 ) {
-  return db.transaction(async tx => {
+  return withPostgresTransactionRetry(() => db.transaction(async tx => {
     if (!FINANCIAL_VERIFICATION_ROLES.includes(actor.role)) throw new FinancialReviewError("Financial reviewer access required", 403);
     const workspace = await assembleWorkspace(tx, applicationId, actor);
     const memo = workspace.memo;
@@ -854,5 +855,5 @@ export async function reviewCreditMemo(
     await tx.insert(creditMemoReviews).values({ memoVersionId: memoId, action: input.action, reason: input.reason, reviewedBy: actor.id });
     await tx.insert(auditLogs).values({ actorUserId: actor.id, action: `financial_review.memo_${input.action}d`, targetType: "credit_memo_version", targetId: memoId, metadata: { applicationId, inputFingerprint: memo.inputFingerprint, packageHash: memo.packageHash } });
     return { replayed: false };
-  }, { isolationLevel: "serializable" });
+  }, { isolationLevel: "serializable" }));
 }

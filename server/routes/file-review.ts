@@ -7,6 +7,7 @@ import { updateDocumentLineageSchema } from "@shared/documentLineage";
 import { routeParam } from "../http/routeParams";
 import { FileReviewError, getFileReview, saveFileReview } from "../services/fileReview";
 import { DocumentLineageError, updateDocumentLineage } from "../services/documentLineage";
+import { postgresErrorCode } from "../services/transactionRetry";
 import { logAudit } from "../auditLog";
 
 function reviewError(error: unknown, res: Response, next: NextFunction) {
@@ -14,10 +15,11 @@ function reviewError(error: unknown, res: Response, next: NextFunction) {
     res.status(error.status).json({ error: error.message });
     return;
   }
-  const wrapped = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
-  const databaseError = wrapped?.cause ?? wrapped;
-  if (databaseError?.code === "40001" ||
-      (databaseError?.code === "23505" && databaseError.constraint === "file_review_application_version")) {
+  const databaseError = error as { constraint?: string; cause?: { constraint?: string } };
+  const constraint = databaseError.cause?.constraint ?? databaseError.constraint;
+  const code = postgresErrorCode(error);
+  if (code === "40001" || code === "40P01" ||
+      (code === "23505" && constraint === "file_review_application_version")) {
     res.status(409).json({ error: "The file or its review changed while saving. Refresh to see the current checkpoint." });
     return;
   }

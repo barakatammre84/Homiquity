@@ -532,5 +532,7 @@ Founder-directed on 2026-09-04. [Integration sequence and acceptance gates](know
 
 - ✅ Officer review checkpoints: the existing Borrower File records application/evidence checkpoints, detects later changes and links into the current review tools.
 - ✅ Document lineage and ownership: current evidence keeps immutable byte fingerprints, source attribution, borrower/business/property and period mapping, replacement history, focused checkpoint invalidation and consistent borrower/staff projections.
-- Next: financial workpapers and cited memo, followed by borrower corrections and retirement of proven overlap. Each remains open until its scenario acceptance gate passes.
-- Real lender acceptance remains an external dependency; neither internal checkpoints nor simulated submissions close that gate.
+- ✅ Financial workpapers and cited memo: reviewed calculations, exact evidence references, dependency versions and a current approved memo now travel with the existing lender package.
+- ✅ Borrower correction loop: one secure request carries upload, exact rejection, immutable replacement, condition re-arming and human acceptance without repeat application questions.
+- ✅ Proven overlap retired: the obsolete message-level request mutation and unused asynchronous condition writer are gone; legacy rows reconcile, transient review contention is retried safely, the full correction journey passes and the prior build remains rollback-compatible.
+- Next external gate: validate a real package and correction exchange against a lender's current receiver instructions once a lender relationship and submission workflow are available. Internal simulation does not close lender acceptance.

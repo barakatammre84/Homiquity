@@ -7,6 +7,7 @@ import { canReviewDocuments } from "@shared/documentStatus";
 import { assessFileReview, type FileReviewWorkspace } from "@shared/fileReview";
 import { fingerprintFileReview } from "./fileReviewFingerprint";
 import { currentDocumentVersions, subjectOptions } from "./documentLineage";
+import { withPostgresTransactionRetry } from "./transactionRetry";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type FileReviewActor = { id: string; role: string };
@@ -134,17 +135,19 @@ export async function getFileReview(applicationId: string, actor: FileReviewActo
   return db.transaction(tx => workspace(tx, applicationId, actor), { isolationLevel: "repeatable read" });
 }
 export async function saveFileReview(applicationId: string, actor: FileReviewActor, expectedRevision: string) {
-  return db.transaction(async tx => {
-    const loaded = await loadSources(tx, applicationId, actor, true);
-    if (!canReviewDocuments(actor.role)) throw new FileReviewError("Document reviewer access required", 403);
-    const current = await workspace(tx, applicationId, actor, loaded);
-    if (current.revision !== expectedRevision) throw new FileReviewError("The file changed while you were reviewing it. Refresh and review the changes before saving.", 409);
-    // A retry never creates a second checkpoint.
-    if (current.checkpoints[0] && !current.checkpoints[0].isStale) return { replayed: true };
-    if (!current.canSave) throw new FileReviewError(current.saveBlockedReason!, 409);
-    const [saved] = await tx.insert(fileReviewCheckpoints).values({ applicationId, version: (current.checkpoints[0]?.version ?? 0) + 1, revision: current.revision, manifest: current.manifest, reviewedBy: actor.id }).returning({ id: fileReviewCheckpoints.id });
-    // Same transaction: a checkpoint cannot survive a failed audit write.
-    await tx.insert(auditLogs).values({ actorUserId: actor.id, action: "file_review.checkpoint_recorded", targetType: "loan_application", targetId: applicationId, metadata: { checkpointId: saved.id, revision: current.revision } });
-    return { replayed: false };
-  }, { isolationLevel: "repeatable read" });
+  return withPostgresTransactionRetry(() =>
+    db.transaction(async tx => {
+      const loaded = await loadSources(tx, applicationId, actor, true);
+      if (!canReviewDocuments(actor.role)) throw new FileReviewError("Document reviewer access required", 403);
+      const current = await workspace(tx, applicationId, actor, loaded);
+      if (current.revision !== expectedRevision) throw new FileReviewError("The file changed while you were reviewing it. Refresh and review the changes before saving.", 409);
+      // A retry never creates a second checkpoint.
+      if (current.checkpoints[0] && !current.checkpoints[0].isStale) return { replayed: true };
+      if (!current.canSave) throw new FileReviewError(current.saveBlockedReason!, 409);
+      const [saved] = await tx.insert(fileReviewCheckpoints).values({ applicationId, version: (current.checkpoints[0]?.version ?? 0) + 1, revision: current.revision, manifest: current.manifest, reviewedBy: actor.id }).returning({ id: fileReviewCheckpoints.id });
+      // Same transaction: a checkpoint cannot survive a failed audit write.
+      await tx.insert(auditLogs).values({ actorUserId: actor.id, action: "file_review.checkpoint_recorded", targetType: "loan_application", targetId: applicationId, metadata: { checkpointId: saved.id, revision: current.revision } });
+      return { replayed: false };
+    }, { isolationLevel: "repeatable read" }),
+  );
 }

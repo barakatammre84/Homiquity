@@ -46,10 +46,10 @@ vi.mock("../server/services/taskEventEmitter", () => ({
 
 import {
   updatePipelineStage,
-  conditionsToRevertAfterRejection,
   checkPipelineProgress,
   PipelineTransitionError,
 } from "../server/pipelineEngine";
+import { conditionsToRevertAfterRejection } from "../server/services/documentConditionWorkflow";
 import { storage } from "../server/storage";
 import { graduateClosedLoan } from "../server/services/lifecycleEngine";
 import { taskEventEmitter } from "../server/services/taskEventEmitter";
