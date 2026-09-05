@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeSelfEmploymentQualifyingIncome } from "../server/services/selfEmploymentIncome";
+import { assessBusinessLiquidity, computeSelfEmploymentQualifyingIncome } from "../server/services/selfEmploymentIncome";
 import { qualifyIncome } from "../server/underwriting";
 import type { EmploymentHistory, SelfEmploymentWorksheet } from "../shared/schema";
 
@@ -122,6 +122,20 @@ describe("Schedule C sole proprietorship (Fannie B3-3.6-03 / B3-3.5-01)", () => 
 // --- K-1 partnership / S-corp (B3-3.6-07) ------------------------------------
 
 describe("Schedule K-1 partnership / S-corp (Fannie B3-3.6-07)", () => {
+  it("exposes the same liquidity result used by the officer workpaper", () => {
+    expect(assessBusinessLiquidity({ currentAssets: 50000, currentLiabilities: 25000, inventory: 10000 })).toMatchObject({
+      method: "quick_ratio",
+      currentRatio: 2,
+      quickRatio: 1.6,
+      supportsOrdinaryIncome: true,
+    });
+    expect(assessBusinessLiquidity({ currentAssets: 5000, currentLiabilities: 10000, inventory: 0 })).toMatchObject({
+      method: "current_ratio",
+      currentRatio: 0.5,
+      supportsOrdinaryIncome: false,
+    });
+  });
+
   it("uses full ordinary income when documented distributions cover it", () => {
     const wk = k1Worksheet(
       k1Year({ ordinaryBusinessIncome: 60000, distributionsReceived: 60000 }),

@@ -71,15 +71,52 @@ function scheduleCAnnual(y: NonNullable<SelfEmploymentWorksheet["scheduleC"]>["c
  *  distributions? Quick ratio for inventory-heavy businesses, current ratio
  *  otherwise; ≥ 1 is generally sufficient (B3-3.6-07). Returns null when it
  *  cannot be computed (no balance-sheet inputs). */
-function liquidityAdequate(
+export interface BusinessLiquidityAssessment {
+  method: "current_ratio" | "quick_ratio" | "unavailable";
+  currentAssets: number | null;
+  currentLiabilities: number | null;
+  inventory: number | null;
+  currentRatio: number | null;
+  quickRatio: number | null;
+  supportsOrdinaryIncome: boolean | null;
+  explanation: string;
+}
+
+/** The shared liquidity gate used by both qualifying-income math and the
+ * officer workpaper. Keeping this in one function prevents a reviewed memo
+ * from disagreeing with the number used by the decision engine. */
+export function assessBusinessLiquidity(
   liq: NonNullable<SelfEmploymentWorksheet["k1"]>["liquidity"],
-): boolean | null {
-  if (!liq || liq.currentLiabilities <= 0) return null;
-  const ratio =
-    liq.inventory > 0
-      ? (liq.currentAssets - liq.inventory) / liq.currentLiabilities // quick
-      : liq.currentAssets / liq.currentLiabilities; // current
-  return ratio >= 1;
+): BusinessLiquidityAssessment {
+  if (!liq || liq.currentLiabilities <= 0) {
+    return {
+      method: "unavailable",
+      currentAssets: liq?.currentAssets ?? null,
+      currentLiabilities: liq?.currentLiabilities ?? null,
+      inventory: liq?.inventory ?? null,
+      currentRatio: null,
+      quickRatio: null,
+      supportsOrdinaryIncome: null,
+      explanation: "A positive current-liability balance is required to calculate business liquidity.",
+    };
+  }
+  const currentRatio = round2(liq.currentAssets / liq.currentLiabilities);
+  const quickRatio = round2((liq.currentAssets - liq.inventory) / liq.currentLiabilities);
+  const method = liq.inventory > 0 ? "quick_ratio" as const : "current_ratio" as const;
+  const selectedRatio = method === "quick_ratio" ? quickRatio : currentRatio;
+  const supportsOrdinaryIncome = selectedRatio >= 1;
+  return {
+    method,
+    currentAssets: liq.currentAssets,
+    currentLiabilities: liq.currentLiabilities,
+    inventory: liq.inventory,
+    currentRatio,
+    quickRatio,
+    supportsOrdinaryIncome,
+    explanation: supportsOrdinaryIncome
+      ? `${method === "quick_ratio" ? "Quick" : "Current"} ratio is at least 1.00; the existing B3-3.6-07 calculation treats liquidity as adequate.`
+      : `${method === "quick_ratio" ? "Quick" : "Current"} ratio is below 1.00; the existing B3-3.6-07 calculation limits ordinary income to documented distributions.`,
+  };
 }
 
 // --- Two-year averaging + trend guard (B3-3.5-01) ----------------------------
@@ -180,7 +217,7 @@ export function computeSelfEmploymentQualifyingIncome(
   if (wk.businessStructure === "partnership" || wk.businessStructure === "s_corporation") {
     const k1 = wk.k1;
     if (!k1) return empty("insufficient_history", ["No K-1 figures captured."]);
-    const gate = liquidityAdequate(k1.liquidity);
+    const gate = assessBusinessLiquidity(k1.liquidity).supportsOrdinaryIncome;
     let gatedDown = false;
     let liquidityUnknown = false;
     let entityWithoutOwnership = false;

@@ -77,6 +77,7 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       "tests/fileReviewRoutes.test.ts",
+      "tests/financialReviewRoutes.test.ts",
       "tests/api.test.ts",
       "tests/authRecovery.test.ts",
       "tests/leads.test.ts",

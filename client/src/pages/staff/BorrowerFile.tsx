@@ -53,9 +53,12 @@ import { TimelineTab } from "./borrowerFile/TimelineTab";
 // Lazy so pdfjs-dist stays in a staff-only async chunk, off every borrower
 // bundle and off this page's own initial render.
 const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
+const FinancialReviewTab = lazy(() =>
+  import("./borrowerFile/FinancialReviewTab").then(module => ({ default: module.FinancialReviewTab })),
+);
 
 const TAB_PARAM = "tab";
-const TAB_VALUES = ["overview", "file-review", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
+const TAB_VALUES = ["overview", "file-review", "financial-review", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
 
 // DATA FLOW — this page currently runs BOTH directions, and that is the known
 // debt, not a design.
@@ -407,6 +410,7 @@ export default function BorrowerFile() {
                     Overview
                   </TabsTrigger>
                   {isInternalStaffRole(user?.role ?? "") && <TabsTrigger value="file-review" data-testid="tab-file-review">File review</TabsTrigger>}
+                  {isInternalStaffRole(user?.role ?? "") && <TabsTrigger value="financial-review" data-testid="tab-financial-review">Financial review</TabsTrigger>}
                   <TabsTrigger value="documents" data-testid="tab-documents">
                     <FileText className="mr-2 h-4 w-4" />
                     Documents
@@ -539,6 +543,14 @@ export default function BorrowerFile() {
                 </TabsContent>
 
                 {isInternalStaffRole(user?.role ?? "") && <TabsContent value="file-review"><FileReviewTab applicationId={applicationId} onNavigate={setActiveTab} /></TabsContent>}
+
+                {isInternalStaffRole(user?.role ?? "") && (
+                  <TabsContent value="financial-review">
+                    <Suspense fallback={<Skeleton className="h-72" />}>
+                      <FinancialReviewTab applicationId={applicationId} onNavigate={setActiveTab} />
+                    </Suspense>
+                  </TabsContent>
+                )}
 
                 <TabsContent value="documents" className="space-y-4">
                   {/* Split workbench (roadmap A6): review list left, safe
