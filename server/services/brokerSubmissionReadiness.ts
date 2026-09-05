@@ -98,6 +98,8 @@ export interface StageDerivationInputs {
     hasCurrentEvaluation: boolean;
     /** Open FLAGGED review-workbench items (P5) — contradictions a human must resolve. */
     openFlaggedReviewItems: number;
+    /** The full current workpaper set and its lender-facing memo were approved. */
+    hasCurrentApprovedMemo: boolean;
   };
   now?: Date;
 }
@@ -212,6 +214,11 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
         `${inputs.incomeAnalysis.openFlaggedReviewItems} flagged income review item(s) still open — resolve the extraction/tie-out contradictions before submitting`,
       );
     }
+    if (!inputs.incomeAnalysis.hasCurrentApprovedMemo) {
+      pkgBlockers.push(
+        "Financial review is incomplete — approve every current workpaper and the current credit memo before submitting",
+      );
+    }
   }
   stages.push({
     key: "lenderPackage",
@@ -293,6 +300,9 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
     !!latestEval?.recommendedPathId &&
     ["dscr", "bank_statement", "rental"].includes(latestEval.recommendedPathId);
   const requiresIncomePackage = employment.some((e) => e.isSelfEmployed) || selectedNonAgency;
+  const currentApprovedMemo = requiresIncomePackage
+    ? await import("./financialReview").then(module => module.getCurrentApprovedCreditMemo(applicationId))
+    : null;
   const openFlagged = await db
     .select({ id: reviewItems.id })
     .from(reviewItems)
@@ -338,6 +348,7 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
       requiresIncomePackage,
       hasCurrentEvaluation: !!latestEval,
       openFlaggedReviewItems: openFlagged.length,
+      hasCurrentApprovedMemo: !!currentApprovedMemo,
     },
   });
 

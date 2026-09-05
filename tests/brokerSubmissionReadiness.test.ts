@@ -44,6 +44,7 @@ function cleanInputs(overrides: Partial<StageDerivationInputs> = {}): StageDeriv
       requiresIncomePackage: false,
       hasCurrentEvaluation: false,
       openFlaggedReviewItems: 0,
+      hasCurrentApprovedMemo: false,
       ...(overrides.incomeAnalysis ?? {}),
     },
     now: overrides.now,

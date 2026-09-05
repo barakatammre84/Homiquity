@@ -1,4 +1,5 @@
 import { registerFileReviewRoutes } from "./routes/file-review";
+import { registerFinancialReviewRoutes } from "./routes/financial-review";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -109,6 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   registerLendingRoutes(app, storage);
   registerFileReviewRoutes(app);
+  registerFinancialReviewRoutes(app);
   registerDocumentRoutes(app, storage);
   registerPropertyRoutes(app, storage);
   registerAgentBrokerRoutes(app, storage);

@@ -235,20 +235,27 @@ export async function submitToWholesaleLender(
     );
   }
 
-  const ack = await submitToLenderPortal(lender, applicationId);
-
   // The income analysis package (UAL P6) — the broker's cited income narrative
-  // shipped alongside the MISMO package. Per-lender shaped (non-QM sections
-  // only for non-QM lenders), immutable snapshot + tamper-evident hash.
+  // shipped alongside the MISMO package. Build it before the portal handoff so
+  // a missing/stale financial review can never fail after an external send.
+  // It is per-lender shaped (non-QM sections only for non-QM lenders), with an
+  // immutable approved credit-memo snapshot and tamper-evident hash.
   const submittedAt = new Date();
-  const { buildIncomeAnalysisPackage } = await import("./incomeAnalysisPackage");
+  const { buildIncomeAnalysisPackage, IncomeAnalysisPackageBlockedError } = await import("./incomeAnalysisPackage");
   const incomePkg = await buildIncomeAnalysisPackage(
     applicationId,
     lenderId,
     submittedBy,
-    ack.simulated,
+    eligibility.simulated,
     submittedAt,
-  );
+  ).catch(error => {
+    if (error instanceof IncomeAnalysisPackageBlockedError) {
+      throw new SubmissionBlockedError(error.message, ["Complete the Financial Review step before lender submission."]);
+    }
+    throw error;
+  });
+
+  const ack = await submitToLenderPortal(lender, applicationId);
 
   // Snapshot what this file is expected to earn, from the comp plan elected on
   // the application (Reg Z §1026.36(d)(2) election) and the loan amount as

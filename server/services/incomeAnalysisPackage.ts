@@ -4,8 +4,10 @@ import { db } from "../db";
 import { storage } from "../storage";
 import {
   incomePathEvaluations,
+  documentLineage,
   situationProfiles,
   type Document,
+  type DocumentLineage,
   type EmploymentHistory,
   type IncomePathEvaluation,
   type SituationProfileRow,
@@ -18,6 +20,8 @@ import {
   type IncomeAnalysisPackage,
   type IncomePackageDocumentEntry,
 } from "@shared/incomePackage";
+import { currentDocumentVersions } from "./documentLineage";
+import { getCurrentApprovedCreditMemo } from "./financialReview";
 
 /**
  * Income analysis package builder (UAL P6) — the broker's cited income
@@ -54,12 +58,21 @@ export interface IncomePackageInputs {
   situation: SituationProfileRow | null;
   confirmedWorksheets: EmploymentHistory[];
   documents: Document[];
+  documentLineage: DocumentLineage[];
+  creditMemo: Awaited<ReturnType<typeof getCurrentApprovedCreditMemo>>;
 }
 
 /** Alternative (non-QM) paths ship only to non-QM lenders. */
 const NON_QM_PATH_IDS = new Set(["dscr", "bank_statement"]);
 
-function documentEntry(doc: Document): IncomePackageDocumentEntry {
+export class IncomeAnalysisPackageBlockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "IncomeAnalysisPackageBlockedError";
+  }
+}
+
+function documentEntry(doc: Document, lineage: DocumentLineage | undefined): IncomePackageDocumentEntry {
   // Extraction lineage lives on the document's notes JSON (P2a persists
   // modelId/promptVersion/responseHash there) plus the dedicated hash column.
   //
@@ -86,13 +99,16 @@ function documentEntry(doc: Document): IncomePackageDocumentEntry {
     }
   }
   const wasMachineRead = !!responseHash;
+  const humanConfirmed = doc.status === "verified";
   return {
     documentId: doc.id,
     fileName: doc.fileName,
     documentType: doc.documentType,
-    contentHash: responseHash,
+    contentHash: lineage?.contentSha256 ?? null,
     extraction: wasMachineRead ? { modelId, promptVersion, responseHash } : null,
-    label: "machine-read; human-confirmed",
+    label: wasMachineRead
+      ? humanConfirmed ? "machine-read; human-confirmed" : "machine-read; confirmation pending"
+      : humanConfirmed ? "source-file; human-confirmed" : "source-file; confirmation pending",
   };
 }
 
@@ -168,7 +184,17 @@ export function assembleIncomePackage(inputs: IncomePackageInputs): IncomeAnalys
     },
     confirmedWorksheets,
     situation,
-    documentManifest: inputs.documents.map(documentEntry),
+    documentManifest: inputs.documents.map(document =>
+      documentEntry(document, inputs.documentLineage.find(lineage => lineage.documentId === document.id)),
+    ),
+    creditMemo: inputs.creditMemo ? {
+      id: inputs.creditMemo.id,
+      versionNumber: inputs.creditMemo.versionNumber,
+      packageHash: inputs.creditMemo.packageHash,
+      sections: inputs.creditMemo.sections,
+      references: inputs.creditMemo.references,
+      approvedAt: inputs.creditMemo.review!.reviewedAt,
+    } : null,
     omittedSections,
   };
 
@@ -196,7 +222,7 @@ export async function buildIncomeAnalysisPackage(
   // The lender row drives the display name and whether non-QM sections ship.
   // Read here (IO) and handed to the pure assembler, which stays synchronous.
   const lenderRow = await storage.getWholesaleLenderByLenderId(lenderId);
-  const [[evaluation], employment, documents, situationRow] = await Promise.all([
+  const [[evaluation], employment, allDocuments, lineageRows, situationRow, creditMemo] = await Promise.all([
     db
       .select()
       .from(incomePathEvaluations)
@@ -205,6 +231,7 @@ export async function buildIncomeAnalysisPackage(
       .limit(1),
     storage.getEmploymentHistory(applicationId),
     storage.getDocumentsByApplication(applicationId),
+    db.select().from(documentLineage).where(eq(documentLineage.applicationId, applicationId)),
     app?.userId
       ? db
           .select()
@@ -214,7 +241,16 @@ export async function buildIncomeAnalysisPackage(
           .limit(1)
           .then((rows) => rows[0] ?? null)
       : Promise.resolve(null),
+    getCurrentApprovedCreditMemo(applicationId),
   ]);
+  const documents = currentDocumentVersions(allDocuments, lineageRows).map(group => group.current.document);
+  const requiresApprovedMemo = employment.some(row => row.isSelfEmployed)
+    || !!(evaluation?.recommendedPathId && ["dscr", "bank_statement", "rental"].includes(evaluation.recommendedPathId));
+  if (requiresApprovedMemo && !creditMemo) {
+    throw new IncomeAnalysisPackageBlockedError(
+      "Financial review changed before package assembly — refresh, approve the current workpapers and memo, then submit again.",
+    );
+  }
 
   const pkg = assembleIncomePackage({
     applicationId,
@@ -229,6 +265,8 @@ export async function buildIncomeAnalysisPackage(
     situation: situationRow,
     confirmedWorksheets: employment,
     documents,
+    documentLineage: lineageRows,
+    creditMemo,
   });
 
   const hash = createHash("sha256").update(JSON.stringify(pkg)).digest("hex");

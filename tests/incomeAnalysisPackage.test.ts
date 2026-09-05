@@ -6,7 +6,8 @@ import {
 import { deriveSubmissionStages, type StageDerivationInputs } from "../server/services/brokerSubmissionReadiness";
 import { incomeAnalysisPackageSchema } from "../shared/incomePackage";
 import type { IncomePathResult } from "../shared/incomePaths";
-import type { IncomePathEvaluation, Document, EmploymentHistory, SituationProfileRow } from "@shared/schema";
+import type { IncomePathEvaluation, Document, DocumentLineage, EmploymentHistory, SituationProfileRow } from "@shared/schema";
+import type { CreditMemoView } from "@shared/financialReview";
 
 /**
  * UAL P6 — the income analysis package on lender submissions, and the
@@ -56,10 +57,34 @@ const documents = [
     fileName: "2025-tax-return.pdf",
     documentType: "tax_return",
     extractionResponseHash: "c".repeat(64),
+    status: "verified",
     notes: JSON.stringify({ modelId: "claude-opus-4-8", promptVersion: "2026-07-v3", responseHash: "c".repeat(64) }),
   },
-  { id: "doc-2", fileName: "id.png", documentType: "government_id", extractionResponseHash: null, notes: null },
+  { id: "doc-2", fileName: "id.png", documentType: "government_id", extractionResponseHash: null, notes: null, status: "uploaded" },
 ] as unknown as Document[];
+
+const documentLineage = documents.map((document, index) => ({
+  id: `lineage-row-${index + 1}`,
+  applicationId: "app-1",
+  documentId: document.id,
+  lineageId: document.id,
+  versionNumber: 1,
+  contentSha256: index === 0 ? "c".repeat(64) : "d".repeat(64),
+})) as unknown as DocumentLineage[];
+
+const creditMemo = {
+  id: "memo-1",
+  versionNumber: 1,
+  packageHash: "e".repeat(64),
+  sections: [{ key: "income", title: "Household income", body: "$10,000 monthly", referenceIds: ["workpaper:wp-1"] }],
+  references: [{ type: "workpaper", id: "wp-1", label: "Household qualifying income · v1" }],
+  review: { action: "approve", reason: "Reviewed complete file.", reviewedBy: "user-lo", reviewedAt: "2026-07-11T11:00:00.000Z" },
+  inputFingerprint: "f".repeat(64),
+  workpaperVersionIds: ["wp-1"],
+  createdAt: "2026-07-11T10:00:00.000Z",
+  isCurrent: true,
+  blockers: [],
+} as CreditMemoView;
 
 const situation = {
   id: "sit-1",
@@ -90,6 +115,8 @@ function baseInputs(over: Partial<IncomePackageInputs> = {}): IncomePackageInput
     situation,
     confirmedWorksheets: [worksheetEmployment],
     documents,
+    documentLineage,
+    creditMemo,
     ...over,
   };
 }
@@ -141,6 +168,9 @@ describe("assembleIncomePackage", () => {
     expect(taxDoc.extraction?.modelId).toBe("claude-opus-4-8");
     const idDoc = pkg.documentManifest.find((d) => d.documentId === "doc-2")!;
     expect(idDoc.extraction).toBeNull(); // not machine-read
+    expect(idDoc.contentHash).toBe("d".repeat(64));
+    expect(idDoc.label).toBe("source-file; confirmation pending");
+    expect(pkg.creditMemo).toMatchObject({ id: "memo-1", versionNumber: 1, approvedAt: "2026-07-11T11:00:00.000Z" });
   });
 
   it("never leaks raw model output or a full identifier", () => {
@@ -155,6 +185,11 @@ describe("assembleIncomePackage", () => {
   it("carries honest simulated labeling", () => {
     expect(assembleIncomePackage(baseInputs({ simulated: true })).simulated).toBe(true);
     expect(assembleIncomePackage(baseInputs({ simulated: false })).simulated).toBe(false);
+  });
+
+  it("represents an unavailable approved memo explicitly", () => {
+    const pkg = assembleIncomePackage(baseInputs({ creditMemo: null }));
+    expect(pkg.creditMemo).toBeNull();
   });
 
   it("degrades cleanly when no evaluation exists yet", () => {
@@ -178,7 +213,7 @@ function cleanStage(over: Partial<StageDerivationInputs> = {}): StageDerivationI
     consents: { eDisclosure: true, antiSteering: true },
     changeOfCircumstance: { openCount: 0, overdueRevisedLe: false },
     deliveryEdits: { deliverable: true, fatalCount: 0, warningCount: 0, notEvaluatedCount: 0 },
-    incomeAnalysis: { requiresIncomePackage: false, hasCurrentEvaluation: false, openFlaggedReviewItems: 0 },
+    incomeAnalysis: { requiresIncomePackage: false, hasCurrentEvaluation: false, openFlaggedReviewItems: 0, hasCurrentApprovedMemo: false },
     ...over,
   };
 }
@@ -193,7 +228,7 @@ describe("income-analysis submission gate", () => {
 
   it("blocks an SE/non-agency file with no income evaluation", () => {
     const r = deriveSubmissionStages(
-      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: false, openFlaggedReviewItems: 0 } }),
+      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: false, openFlaggedReviewItems: 0, hasCurrentApprovedMemo: false } }),
     );
     expect(pkgStage(r).status).toBe("blocked");
     expect(pkgStage(r).blockers.join(" ")).toMatch(/Income analysis not yet run/i);
@@ -202,15 +237,23 @@ describe("income-analysis submission gate", () => {
 
   it("blocks when flagged review items are still open", () => {
     const r = deriveSubmissionStages(
-      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: true, openFlaggedReviewItems: 2 } }),
+      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: true, openFlaggedReviewItems: 2, hasCurrentApprovedMemo: true } }),
     );
     expect(pkgStage(r).status).toBe("blocked");
     expect(pkgStage(r).blockers.join(" ")).toMatch(/2 flagged income review item/i);
   });
 
-  it("passes an SE file once evaluation exists and no flagged items remain", () => {
+  it("blocks an SE file until the current memo is approved", () => {
     const r = deriveSubmissionStages(
-      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: true, openFlaggedReviewItems: 0 } }),
+      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: true, openFlaggedReviewItems: 0, hasCurrentApprovedMemo: false } }),
+    );
+    expect(pkgStage(r).status).toBe("blocked");
+    expect(pkgStage(r).blockers.join(" ")).toMatch(/Financial review is incomplete/i);
+  });
+
+  it("passes an SE file once evaluation, exceptions, workpapers, and memo are complete", () => {
+    const r = deriveSubmissionStages(
+      cleanStage({ incomeAnalysis: { requiresIncomePackage: true, hasCurrentEvaluation: true, openFlaggedReviewItems: 0, hasCurrentApprovedMemo: true } }),
     );
     expect(pkgStage(r).status).toBe("ready");
     expect(r.readyToSubmitToLender).toBe(true);

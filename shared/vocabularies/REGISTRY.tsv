@@ -67,7 +67,8 @@ FATAL_FEE_TYPE_SECTIONS	shared/fannieMae/ucdFeeEnumerations.ts	array	2	83a23a4ab
 FEE_PROVENANCE_TIERS	shared/compliance/feeProvenance.ts	array	3	b98b0a71e6bd	FeeProvenanceTier	0	internal	
 FIELD_VERIFICATION_STATUS	shared/schema/intelligence.ts	array	6	06ac8bf1bf2e	FieldVerificationStatus	1	internal	
 FILE_REVIEW_SECTIONS	shared/fileReview.ts	array	4	c238922a595e	FileReviewSection	2	internal	
-FINANCIAL_VERIFICATION_ROLES	shared/loanApplicationStatus.ts	array	5	8401e578170a		6	internal	
+FINANCIAL_VERIFICATION_ROLES	shared/loanApplicationStatus.ts	array	5	8401e578170a		8	internal	
+FINANCIAL_WORKPAPER_KINDS	shared/financialReview.ts	array	6	163348536342	FinancialWorkpaperKind	2	internal	
 FURNISHING_STATE	shared/schema/rent.ts	array	6	f288323799cf	FurnishingState	3	internal	
 GATED_SITEMAP_PATHS	shared/seo/routeMeta.ts	array	6	08397f1a3d99		1	internal	
 HOUSING_STATUS_TYPES	shared/schema/intelligence.ts	array	4	93ca79ca9101		0	internal	
@@ -77,7 +78,7 @@ IncomePathKind	shared/incomePaths.ts	union	2	12b65f52d50d		0	internal
 IncomePathRole	shared/incomePaths.ts	union	2	217d537e6161		0	internal	
 IncomePathStatus	shared/incomePaths.ts	union	3	8e3655838898		0	internal	
 INTENT_EVENT_TYPES	shared/schema/intelligence.ts	array	35	9501655d522e	IntentEventType	1	internal	
-INTERNAL_STAFF_ROLES	shared/roles.ts	array	6	0635acce74ba		8	internal	
+INTERNAL_STAFF_ROLES	shared/roles.ts	array	6	0635acce74ba		9	internal	
 JourneyStepId	shared/borrowerJourney.ts	union	7	608e57432bed		1	internal	
 K1_VARIANTS	shared/taxFormExtraction.ts	array	2	b978376fe176	K1Variant	1	internal	
 LEASE_STATUS	shared/schema/rent.ts	array	3	b317624de871	LeaseStatus	0	internal	

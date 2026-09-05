@@ -11,22 +11,22 @@ import { incomePathResultSchema } from "./incomePaths";
  * Discipline:
  *  - Every path carries its math trace + citation (the same cited calculators
  *    P3/P4 use). No figure without a source (L2 I2).
- *  - The document manifest is hashes + lineage, NEVER content or ciphertext,
- *    and every extracted value is labeled "machine-read, human-confirmed" —
- *    the lender sees provenance, not raw model output.
+ *  - The document manifest is hashes + lineage, NEVER content or ciphertext.
+ *    Machine extraction and human review are labeled independently so the
+ *    lender never receives a stronger provenance claim than the file earned.
  *  - Honest `simulated` labeling: submissions to a not-yet-contracted lender
  *    are marked, per the vendor-adapter rule (L2 I10).
  *  - No full SSN or EIN: identifiers are last-4 only (they arrive that way
  *    from the vault / extraction schemas; the package never widens them).
  */
 
-export const INCOME_PACKAGE_VERSION = 1 as const;
+export const INCOME_PACKAGE_VERSION = 2 as const;
 
 const documentManifestEntrySchema = z.object({
   documentId: z.string(),
   fileName: z.string(),
   documentType: z.string(),
-  /** SHA-256 of the stored file / extraction response, for tamper-evident audit. */
+  /** SHA-256 of the stored source file bytes, for tamper-evident audit. */
   contentHash: z.string().nullable(),
   /** Extraction lineage (model + prompt), when the doc was machine-read. */
   extraction: z
@@ -36,8 +36,12 @@ const documentManifestEntrySchema = z.object({
       responseHash: z.string().nullable(),
     })
     .nullable(),
-  /** Always true for machine-read docs in this package: values were human-confirmed downstream. */
-  label: z.literal("machine-read; human-confirmed"),
+  label: z.enum([
+    "machine-read; human-confirmed",
+    "machine-read; confirmation pending",
+    "source-file; human-confirmed",
+    "source-file; confirmation pending",
+  ]),
 });
 
 const confirmedWorksheetSchema = z.object({
@@ -89,6 +93,25 @@ export const incomeAnalysisPackageSchema = z.object({
   confirmedWorksheets: z.array(confirmedWorksheetSchema),
   situation: situationSummarySchema.nullable(),
   documentManifest: z.array(documentManifestEntrySchema),
+
+  /** Exact approved memo snapshot that grounded a complex-income submission. */
+  creditMemo: z.object({
+    id: z.string(),
+    versionNumber: z.number().int().positive(),
+    packageHash: z.string().regex(/^[a-f0-9]{64}$/),
+    sections: z.array(z.object({
+      key: z.enum(["transaction", "income", "business", "assets", "liabilities_reo", "risks", "conclusion"]),
+      title: z.string(),
+      body: z.string(),
+      referenceIds: z.array(z.string()),
+    })),
+    references: z.array(z.object({
+      type: z.enum(["workpaper", "document", "verified_fact"]),
+      id: z.string(),
+      label: z.string(),
+    })),
+    approvedAt: z.string(),
+  }).nullable(),
 
   /** Sections omitted for this lender (e.g. non-QM paths for an agency-only lender). */
   omittedSections: z.array(z.string()),
