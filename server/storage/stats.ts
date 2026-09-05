@@ -6,7 +6,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 // branch — main leaves account numbers plaintext).
 import { AMOUNT_BEARING_STATUSES } from "@shared/stageRequirements";
 
-import { users, loanApplications, loanOptions, documents, lenderSubmissions, wholesaleLenders, isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { users, loanApplications, loanOptions, lenderSubmissions, wholesaleLenders, isApprovedGradeLoanAppStatus } from "@shared/schema";
 import { summarizeCompensation } from "@shared/compensationLedger";
 import { buildClawbackRegister } from "@shared/compensationClawback";
 import { approvedLenderCount, isLenderApprovalStatus } from "@shared/wholesaleLenders";
@@ -162,17 +162,14 @@ export class StatsStorage extends PropertiesStorage {
         )
       );
 
-    const [pendingDocs] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(documents)
-      .where(
-        and(eq(documents.userId, userId), eq(documents.status, "uploaded"))
-      );
+    // Resolve complete visible lineages first. Filtering by status before this
+    // step can count an uploaded v1 after its verified/rejected v2 replaced it.
+    const currentDocuments = await this.getDocumentsByUser(userId);
 
     return {
       totalApplications: appCount.count,
       preApprovedAmount: preApproved.total,
-      pendingDocuments: pendingDocs.count,
+      pendingDocuments: currentDocuments.filter(document => document.status === "uploaded").length,
     };
   }
 

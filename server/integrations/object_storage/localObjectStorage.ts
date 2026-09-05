@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import type { Response } from "express";
 
 /**
@@ -67,6 +67,15 @@ export function localObjectExists(objectPath: string): boolean {
   const id = objectIdFromPath(objectPath);
   if (!id) return false;
   return fs.existsSync(path.join(localDir(), id));
+}
+
+/** Hash the bytes that the local presigned-upload substitute actually stored. */
+export function sha256LocalObject(objectPath: string): string | null {
+  const id = objectIdFromPath(objectPath);
+  if (!id) return null;
+  const filePath = path.join(localDir(), id);
+  if (!fs.existsSync(filePath)) return null;
+  return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
 export function writeLocalObject(objectId: string, buf: Buffer): void {

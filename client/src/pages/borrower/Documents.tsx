@@ -39,7 +39,7 @@ export default function Documents() {
   const queryClient = useQueryClient();
   const { isLoading: authLoading } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["income", "assets"]);
-  const [activeDocType, setActiveDocType] = useState<{ type: string; rowKey: string } | null>(null);
+  const [activeDocType, setActiveDocType] = useState<{ type: string; rowKey: string; replacesDocumentId?: string } | null>(null);
   // The row whose file is in flight — it swaps its dropzone for the live
   // progress card. One upload at a time keeps the page state honest.
   // rowKey identifies the ROW (two personalized items can accept one type).
@@ -130,8 +130,8 @@ export default function Documents() {
     }
   }, [focusedCondition?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleUploadClick = (docType: string, rowKey: string = docType) => {
-    setActiveDocType({ type: docType, rowKey });
+  const handleUploadClick = (docType: string, rowKey: string = docType, replacesDocumentId?: string) => {
+    setActiveDocType({ type: docType, rowKey, replacesDocumentId });
     fileInputRef.current?.click();
   };
 
@@ -143,7 +143,7 @@ export default function Documents() {
   // ./documents/ — uploads are a TEAM_PRACTICES §9 security-review trigger, and
   // splitting validation from registration across files makes the fail-closed
   // behaviour below harder to review as one piece.
-  const startUpload = async (docType: string, file: File, rowKey: string = docType) => {
+  const startUpload = async (docType: string, file: File, rowKey: string = docType, replacesDocumentId?: string) => {
     if (isUploading) {
       toast({
         title: "One upload at a time",
@@ -179,6 +179,7 @@ export default function Documents() {
           mimeType: file.type,
           documentType: docType,
           ...(focusAppId ? { applicationId: focusAppId } : {}),
+          ...(replacesDocumentId ? { replacesDocumentId } : {}),
         });
       } catch {
         // Never claim success on a failed registration — that's how files get lost.
@@ -212,7 +213,7 @@ export default function Documents() {
     }
     setActiveDocType(null);
     if (!file || !picked) return;
-    await startUpload(picked.type, file, picked.rowKey);
+    await startUpload(picked.type, file, picked.rowKey, picked.replacesDocumentId);
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -272,8 +273,8 @@ export default function Documents() {
     activeUpload,
     progress,
     anyUploadBusy: isUploading,
-    onFile: (row, file) => startUpload(row.uploadType, file, row.uploadKey),
-    onBrowse: (row) => handleUploadClick(row.uploadType, row.uploadKey),
+    onFile: (row, file) => startUpload(row.uploadType, file, row.uploadKey, row.documentId),
+    onBrowse: (row) => handleUploadClick(row.uploadType, row.uploadKey, row.documentId),
     onCancel: () => {
       cancelledRef.current = true;
       cancel();

@@ -89,6 +89,8 @@ step "UI standard ratchet"            node scripts/ui-standard-guard.cjs
 step "knowledge-base index"           node scripts/kb-index-guard.cjs
 step "doc staleness ratchet"          node scripts/doc-staleness-guard.cjs
 step "routine seat roster"            node scripts/seat-roster-guard.cjs --no-freshness
+step "gating reality"                  pnpm guard:gating
+step "vocabulary registry"             pnpm guard:vocab
 # tsc covers the app; nothing covered scripts/*.cjs. #594 shipped a syntax error
 # in browser-probe.cjs to main green, and every probe run crashed while a sweep
 # grepping its output reported the pages clean. A parse is not a test — but it is
@@ -122,6 +124,13 @@ security_review() {
   CHANGED_FILES_FILE="$tmp/files.txt" CHANGED_LINES_FILE="$tmp/lines.diff" \
     PR_BODY="$(git log -1 --pretty=%B)" node scripts/security-review-guard.cjs
 }
+selling_guide_authority() {
+  local tmp; tmp="$(mktemp -d)"
+  git diff --name-only origin/main...HEAD > "$tmp/files.txt" 2>/dev/null || return 2
+  git diff -U0 origin/main...HEAD > "$tmp/lines.diff" 2>/dev/null || return 2
+  CHANGED_FILES_FILE="$tmp/files.txt" CHANGED_LINES_FILE="$tmp/lines.diff" \
+    PR_BODY="$(git log -1 --pretty=%B)" pnpm guard:authority
+}
 if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
   skip "security review (§9 triggers)" "origin/main not fetched — run: git fetch origin"
 elif [ -z "$(git diff --name-only origin/main...HEAD 2>/dev/null)" ]; then
@@ -134,6 +143,13 @@ elif [ -z "$(git diff --name-only origin/main...HEAD 2>/dev/null)" ]; then
   skip "security review (§9 triggers)" "nothing committed on this branch yet — commit, then re-run"
 else
   step "security review (§9 triggers)" security_review
+fi
+
+if git rev-parse --verify origin/main >/dev/null 2>&1 \
+  && [ -n "$(git diff --name-only origin/main...HEAD 2>/dev/null)" ]; then
+  step "selling-guide authority (§10)" selling_guide_authority
+else
+  skip "selling-guide authority (§10)" "no committed diff against origin/main"
 fi
 
 step "unit tests + collection floor" pnpm test

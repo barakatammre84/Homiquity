@@ -530,6 +530,7 @@ Its §0 preconditions are the ones people skip, and both have burned us: prove t
 
 Founder-directed on 2026-09-04. [Integration sequence and acceptance gates](knowledge-base/specs/CORE_INTEGRATION.md). Existing Homiquity remains the product host; reuse Core capabilities without duplicating accounts, applications or uploads.
 
-- First slice: the existing Borrower File gains application/evidence review checkpoints, change detection and links into the current review tools. Release requires persistence, access-control, stale-write, concurrency and browser verification.
-- Next: document version/subject mapping, then financial workpapers/memo, borrower corrections and retirement of proven overlap. These remain open until their scenario acceptance gates pass.
+- ✅ Officer review checkpoints: the existing Borrower File records application/evidence checkpoints, detects later changes and links into the current review tools.
+- ✅ Document lineage and ownership: current evidence keeps immutable byte fingerprints, source attribution, borrower/business/property and period mapping, replacement history, focused checkpoint invalidation and consistent borrower/staff projections.
+- Next: financial workpapers and cited memo, followed by borrower corrections and retirement of proven overlap. Each remains open until its scenario acceptance gate passes.
 - Real lender acceptance remains an external dependency; neither internal checkpoints nor simulated submissions close that gate.

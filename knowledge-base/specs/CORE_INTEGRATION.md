@@ -20,9 +20,21 @@ Access uses the existing internal-staff roles and active deal-team membership (a
 
 The Borrower File header counts its actual uploaded documents and accepted documents. Condition counts use the existing pipeline response's nested condition totals. Neither count represents the complete evidence required for lender submission.
 
+## Second integration: document lineage and ownership
+
+Every newly registered application document now records a server-calculated content fingerprint, an evidence subject and a stable lineage/version. A replacement keeps the original borrower, business, property or whole-file subject and reporting period, while preserving each earlier version for review history. Existing documents remain usable and receive a legacy lineage only when they are first replaced; the officer can assign their subject and period from File Review.
+
+The borrower document journey uses the existing rejected-document and replace actions. A successful replacement becomes the single current version across the borrower dashboard, document checklist, application detail and File Review, even when a loan officer supplied the new version. Superseded extracted values leave the current review, and a prior checkpoint identifies the affected evidence lineage as changed. Pending-document counts resolve the current lineage before testing status.
+
+Internal staff with active file access may replace evidence on the file. Assigned brokers and lenders may add documents and replace only documents they supplied; they cannot supersede borrower-owned evidence. Production upload URLs bind the accepted content type and a create-only object-storage condition. The browser sends the signed condition, so a URL that completed its first upload cannot overwrite the bytes later fingerprinted by the server.
+
+This slice records evidence identity and history. It does not decide whether a document satisfies a lender rule, verify its contents, or turn a review checkpoint into underwriting approval.
+
 ## Deployment and rollback
 
 Migration `0060_file_review_checkpoints.sql` adds one table with application/reviewer references and a unique application/version constraint. It changes no existing records and introduces no environment variables or external providers. Deploy through the existing migration and application release gates. To roll back the feature, restore the previous application build and retain the additive table and checkpoint records; dropping review history is not part of rollback.
+
+Migration `0061_document_lineage.sql` adds the application-scoped lineage table, replacement/version constraints and lookup indexes. It changes no existing document rows and introduces no environment variables or providers. Rollback restores the previous application build while retaining the additive lineage table and its audit history. Production object storage must permit the signed `Content-Type` and `x-goog-if-generation-match` request headers already returned by the upload-target endpoint.
 
 ## Reuse record
 
@@ -36,9 +48,9 @@ Source: `barakatammre84/Homiquity-Core`, commit `e8ebf5b9522137e3d5adf8ce8176e72
 
 ## Integration sequence and acceptance gates
 
-1. **Officer review checkpoints:** existing application → existing documents → explicit checkpoint → document/value change → changed-review warning → fresh checkpoint. Persistence, role boundaries, concurrent saves and browser interaction must pass before release.
-2. **Document lineage and ownership:** immutable bytes/version references, subject/period mapping and explicit borrower/business/property associations. Reuse existing entity and extraction tables after checking their application scope. Exit: replacement evidence invalidates the affected review and remains attributable to its original source.
-3. **Financial workpapers and memo:** compare Core's reviewed-fact, dependency and memo contracts against existing income workbench and analysis packages. Port only missing controls. Exit: a supported complex borrower scenario reproduces its reviewed calculations and cited memo from recorded versions.
+1. ✅ **Officer review checkpoints:** existing application → existing documents → explicit checkpoint → document/value change → changed-review warning → fresh checkpoint. Persistence, role boundaries, concurrent saves and browser interaction pass.
+2. ✅ **Document lineage and ownership:** immutable byte fingerprints/version references, subject/period mapping and explicit borrower/business/property associations use the existing application and entity records. Replacement evidence invalidates the affected review, preserves history and remains attributable to its source.
+3. **Next — financial workpapers and memo:** compare Core's reviewed-fact, dependency and memo contracts against existing income workbench and analysis packages. Port only missing controls. Exit: a supported complex borrower scenario reproduces its reviewed calculations and cited memo from recorded versions.
 4. **Borrower correction loop:** connect officer requests, borrower corrections and document replacements through the existing portal. Exit: one login, one application, preserved answers and no duplicate upload requests.
 5. **Retire overlap:** retire a redundant implementation only after the same fictional borrower journey passes through its replacement, rollback is rehearsed, and existing records reconcile. Keep real lender acceptance as a separate external gate.
 

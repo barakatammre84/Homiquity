@@ -55,6 +55,7 @@ DOC_METHODS	shared/loanProducts.ts	array	6	5bd145cab526	DocMethod	2	internal
 DOCUMENT_PACKAGE_TYPES	shared/schema/documents.ts	array	5	91571264c095	DocumentPackageType	0	internal	
 DOCUMENT_REVIEW_ROLES	shared/documentStatus.ts	array	5	8401e578170a		5	internal	
 DOCUMENT_STATUSES	shared/documentStatus.ts	array	4	e24710fd8d36	DocumentStatus	3	internal	
+DOCUMENT_SUBJECT_TYPES	shared/documentLineage.ts	array	4	7fb7640d846a	DocumentSubjectType	2	internal	
 DOCUMENT_TYPE_TAXONOMY	shared/schema/documents.ts	array	46	926146f14c60	DocumentTypeTaxonomy	1	internal	
 EditSeverity	shared/fannieMae/loanDeliveryEdits.ts	union	2	aaecbabcc789		0	internal	
 EditSource	shared/fannieMae/loanDeliveryEdits.ts	union	4	22a54bcd93dc		0	internal	

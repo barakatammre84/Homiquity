@@ -23,7 +23,7 @@
 #      this repo is developed on, with several sessions pushing at once, that
 #      is the difference between a usable machine and a swapping one.
 #
-# WHAT IT RUNS. Typecheck, then the twelve guards — fail-fastest-first, ~30 s all
+# WHAT IT RUNS. Typecheck, then the cheap guards — fail-fastest-first, ~30 s all
 # in. The unit suite is OPT-IN here and mandatory in CI:
 #
 #   PREPUSH_TESTS=1 git push      # also run both vitest lanes before pushing
@@ -129,6 +129,8 @@ step "selling-guide coverage"    node scripts/selling-guide-coverage.cjs --check
 # for a reason no push caused. The structural half — tables match the roster, definitions
 # exist, no doc names an unknown seat — is deterministic and belongs here.
 step "routine seat roster"       node scripts/seat-roster-guard.cjs --no-freshness
+step "gating reality"            pnpm guard:gating
+step "vocabulary registry"       pnpm guard:vocab
 
 # UNIT TESTS — opt-in locally, mandatory in CI. See the header for why: both
 # lanes cost ~1-2 GB and every core for minutes, which on a shared 8 GB laptop

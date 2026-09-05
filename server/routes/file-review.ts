@@ -3,12 +3,14 @@ import { requireRole } from "../auth";
 import { INTERNAL_STAFF_ROLES } from "@shared/roles";
 import { DOCUMENT_REVIEW_ROLES } from "@shared/documentStatus";
 import { saveFileReviewSchema } from "@shared/fileReview";
+import { updateDocumentLineageSchema } from "@shared/documentLineage";
 import { routeParam } from "../http/routeParams";
 import { FileReviewError, getFileReview, saveFileReview } from "../services/fileReview";
+import { DocumentLineageError, updateDocumentLineage } from "../services/documentLineage";
 import { logAudit } from "../auditLog";
 
 function reviewError(error: unknown, res: Response, next: NextFunction) {
-  if (error instanceof FileReviewError) {
+  if (error instanceof FileReviewError || error instanceof DocumentLineageError) {
     res.status(error.status).json({ error: error.message });
     return;
   }
@@ -49,4 +51,28 @@ export function registerFileReviewRoutes(app: Express) {
       reviewError(error, res, next);
     }
   });
+
+  app.patch(
+    "/api/loan-applications/:id/documents/:documentId/lineage",
+    requireRole(...DOCUMENT_REVIEW_ROLES),
+    async (req, res, next) => {
+      try {
+        res.set("Cache-Control", "private, no-store");
+        const parsed = updateDocumentLineageSchema.safeParse(req.body);
+        if (!parsed.success) {
+          res.status(400).json({ error: "Choose a subject and use a valid document period." });
+          return;
+        }
+        await updateDocumentLineage(
+          routeParam(req, "id"),
+          routeParam(req, "documentId"),
+          req.user!,
+          parsed.data,
+        );
+        res.json({ updated: true });
+      } catch (error) {
+        reviewError(error, res, next);
+      }
+    },
+  );
 }

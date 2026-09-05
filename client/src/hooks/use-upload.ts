@@ -12,6 +12,17 @@ interface UploadResponse {
   uploadURL: string;
   objectPath: string;
   metadata: UploadMetadata;
+  uploadHeaders?: Record<string, string>;
+}
+
+export function headersForPresignedUpload(
+  file: Pick<File, "type">,
+  uploadHeaders: Record<string, string> = {},
+) {
+  return {
+    "Content-Type": file.type || "application/octet-stream",
+    ...uploadHeaders,
+  };
 }
 
 interface UseUploadOptions {
@@ -86,18 +97,19 @@ export function useUpload(options: UseUploadOptions = {}): UseUploadReturn {
 
   /**
    * PUT the file directly to the presigned URL, reporting real progress.
-   * The Content-Type header must match what /api/uploads/request-url signed
-   * (it is part of the V4 signature) — keep it identical to the metadata sent
-   * above. No credentials flag: the storage PUT is cross-origin (GCS); the dev
-   * local fallback is same-origin, where cookies flow by default anyway.
+   * The returned headers are part of the V4 signature. They bind Content-Type
+   * and make the object create-only, so a successful upload URL cannot later
+   * overwrite the bytes that document review fingerprinted.
    */
   const uploadToPresignedUrl = useCallback(
-    (file: File, uploadURL: string): Promise<void> => {
+    (file: File, uploadURL: string, uploadHeaders?: Record<string, string>): Promise<void> => {
       return new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhrRef.current = xhr;
         xhr.open("PUT", uploadURL);
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        for (const [name, value] of Object.entries(headersForPresignedUpload(file, uploadHeaders))) {
+          xhr.setRequestHeader(name, value);
+        }
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable && event.total > 0) {
             setProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
@@ -140,7 +152,7 @@ export function useUpload(options: UseUploadOptions = {}): UseUploadReturn {
         const uploadResponse = await requestUploadUrl(file);
 
         // Step 2: PUT the file to the presigned URL (real progress + cancel)
-        await uploadToPresignedUrl(file, uploadResponse.uploadURL);
+        await uploadToPresignedUrl(file, uploadResponse.uploadURL, uploadResponse.uploadHeaders);
 
         setProgress(100);
         options.onSuccess?.(uploadResponse);

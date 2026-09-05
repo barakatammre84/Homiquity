@@ -1,6 +1,6 @@
 # Assumptions & Facts Register
 
-> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+> **Freshness:** last verified 2026-09-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
 
 **Purpose:** one honest page separating what is **real**, what is **simulated**, and what
 is **assumed/pending** — so nobody joining a sprint builds on a fact that isn't one.
@@ -31,6 +31,15 @@ disproves it), and `/api/health`'s `SELECT 1` succeeds against *any* reachable P
 green health check does not prove `DATABASE_URL` points at the intended Neon branch (it did not
 — data routes 500'd while health stayed 200). See
 [TEAM_PRACTICES](./TEAM_PRACTICES.md) §5 known-traps index.
+
+**2026-09-04 repository verification pass.** The code-verifiable claims below were checked again.
+`main` has 61 migration files through `0060`; the Core lineage release adds `0061`.
+`BUSINESS_CHANNEL` remains `broker`, the delivery-stack ratchet still passes, and the required CI
+gate now runs the integration lane as well as unit/client tests. The company NMLS id is no longer
+pending, so an unset prelaunch flag no longer gates production automatically; an explicit
+`PRELAUNCH_GATED=true` can still do so. Railway variables, vendor credentials, executed lender
+agreements and other account state were not re-verified from the repository. Those rows retain
+their last-observed dates and must not be read as current account evidence.
 
 Last full verification pass: **2026-07-04** (source-of-truth audit). Spot-updated **2026-07-08**
 for migration HEAD and the pre-license gated-launch state, and **2026-07-12** (docs-hygiene pass)
@@ -65,11 +74,11 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | Assumption | Reality (verified 2026-07-04) | Unblocks |
 |---|---|---|
 | "Homiquity is a licensed broker" | **True at company level** *(corrected 2026-07-19)*: `shared/companyIdentity.ts` carries NMLS **#427468** with an Illinois-only `LICENSED_STATES` footprint (#154/#201), plus IL Residential Mortgage License **#3423789** (#419). *(Corrected 2026-08-06: `mersOrgId` is **no longer `PENDING`** — the F-14 channel declaration set `BUSINESS_CHANNEL = "broker"`, so `mersOrgIdApplicable()` is false and `server/config/company.ts` resolves it to `NOT_APPLICABLE_BROKER_CHANNEL`. MERS registration is the wholesale lender's obligation in the broker channel.)* Go-live remains behind the founder's pre-launch-gate flips — nothing commercial is real until those flip. | Go-live flips |
-| "The app sends email" | **False in prod.** Code is complete (SendGrid + SMTP fallback) but no `SENDGRID_API_KEY` in the Railway service variables → emails log to console | LS-2 |
-| "Production errors are visible" | **False.** Sentry-style reporter built, no-op until `SENTRY_DSN` is set; no uptime monitor | LS-2 |
-| "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials as Railway service variables, then the prod acceptance test | LS-2 |
-| "CI runs on every push" | **True** *(re-verified 2026-07-19 evening)*: `.github/workflows/ci.yml` runs the required **`gate`** check (typecheck · unit tests · blocking prod audit · schema guard · design-token ratchet) on every PR, branch protection enforces it with `enforce_admins` on, and the `migrate-prod` job auto-applies migrations on merge ([CICD.md](../runbooks/CICD.md)). Added 2026-08-06: a `verify-deploy` job polls `/api/health` after every push to `main` and fails if prod is not serving that commit — the control for the silent-failed-deploy class above. Scheduled jobs are **not** platform cron: `.github/workflows/cron-jobs.yml` curls `/api/jobs/*` with `Authorization: Bearer $CRON_SECRET`, so `CRON_SECRET` must match between the GitHub **repository secret** and the **Railway service variable** or every job 401s silently. ⚠️ Enforcement follows plan/visibility: a 2026-07-19 private flip silently **deleted** the rule for ~2½ hours (#252–#259 merged pre-green; re-applied when the repo went public again) — verify protection is live before trusting `--auto` ([TEAM_PRACTICES](./TEAM_PRACTICES.md) §6). Integration tests stay manual — CI never runs them. | — |
-| "Live mortgage rates" | **False everywhere as of 2026-08-06.** The vendor leg (realty-us RapidAPI) is real in code, but `RAPIDAPI_KEY` is set in no environment — it died with the Vercel project and was not re-created in Railway — so prod and local both fall back to the simulated survey | — |
+| "The app sends email" | **Account state not re-verified.** Code supports SendGrid + SMTP and otherwise logs in development; the last recorded production check found no `SENDGRID_API_KEY` in Railway (2026-08-17). | LS-2 |
+| "Production errors are visible" | **Account state not re-verified.** The reporter is a no-op without `SENTRY_DSN`; the last recorded check found neither that variable nor an uptime monitor (2026-08-17). | LS-2 |
+| "Uploaded documents persist in prod" | **Account state not re-verified.** Code is fail-closed: the presigned flow is the only persistent upload path and production returns `UPLOADS_UNCONFIGURED` without GCS. The last recorded Railway check found the GCS variables absent (2026-08-17); a real upload → redeploy → download acceptance test is still required. | LS-2 |
+| "CI runs on every push" | **True in repository configuration (re-verified 2026-09-04):** `.github/workflows/ci.yml` runs the required `gate` on every PR, including typecheck, unit/client tests, production build, self-host boot, and the HTTP integration lane. `migrate-prod` applies migrations after merge and `verify-deploy` checks that production serves the merged commit. Branch-protection and secret values remain external account state and must be checked before relying on auto-merge. Scheduled jobs curl `/api/jobs/*`, so `CRON_SECRET` must match in GitHub and Railway. | — |
+| "Live mortgage rates" | **Account state not re-verified.** The RapidAPI adapter exists and falls back to the simulated survey without `RAPIDAPI_KEY`; the last recorded Railway check found the key absent (2026-08-17). | — |
 | "Homiquity is heading to correspondent" | **UNDECIDED — the largest open question about the capital structure.** The repo carried a full Fannie Mae seller/servicer delivery stack (1,482 lines) that a broker never uses. As of 2026-08-04 the channel is DECLARED `broker` in `shared/businessChannel.ts`, the stack is frozen by `pnpm guard:channel` (may shrink, not grow), and `mersOrgId` reads `NOT_APPLICABLE_BROKER_CHANNEL` rather than `PENDING`. Flipping to correspondent invalidates the asset-light finding (F-16) and makes the contingent-liability register incomplete. Checklist + consequences: [CHANNEL_DECISION.md](./CHANNEL_DECISION.md) | Founder decision |
 
 ## 3. Uncited policy values — live code, unverified provenance
@@ -88,23 +97,22 @@ items; the "no citation → not implemented" contract in knowledge-base/complian
   open verification: the Eligibility Matrix 95/97 LTV split needs a human pass (source PDF
   is bot-protected).
 
-## 4. Facts verified against code this audit (2026-07-04)
+## 4. Facts verified against code (latest repository pass 2026-09-04)
 
 - Auth is **email/password (scrypt)** with account lockout — not Replit OIDC (that era is
   over). `server/auth.ts`.
 - Encryption **fails closed in production**: startup refuses to boot without
   `CREDIT_ENCRYPTION_KEY`; SSNs go through `ssnVault.ts`. The Feb-2026
   INFRASTRUCTURE_RISKS findings are resolved (doc archived).
-- Migrations are versioned SQL on `main` — **39 files through `0038` as of 2026-08-04** (the
-  figures below are the 2026-07-11 snapshot, superseded). Prod HEAD
+- Migrations are versioned SQL on `main` — **61 files through `0060` as of 2026-09-04**; the
+  Core document-lineage release adds `0061`. The figures below are the 2026-07-11 snapshot. Prod HEAD
   confirmed **`0023`** on **2026-07-11** (`0013`–`0023`: income engine, scenario_runs, partner
   spine/consents, halal lane — applied via the Neon-pooler raw-`pg` workaround; per-wave rows in
   the [CICD.md](../runbooks/CICD.md) ledger). After any main merge, diff
   `drizzle.__drizzle_migrations` against the journal — migrations slip silently.
-- The public site deploys in **pre-license gated mode**: `server/services/prelaunchGate.ts`
-  fail-safes to gated in prod while the company NMLS id is `PENDING`, so a stranger sees only
-  educational content + a waitlist. The full commercial funnel is built and behind the flag
-  (roadmap armed-launch state).
+- The company NMLS id is issued in `shared/companyIdentity.ts`. With no explicit environment
+  override, `server/services/prelaunchGate.ts` therefore leaves the commercial surfaces open;
+  `PRELAUNCH_GATED=true` can still gate them. The current Railway value is not repository-verifiable.
 - Dev test login: **11 fixture accounts**, single shared `DEV_TEST_PASSWORD` env var, endpoint
   404s in production. No credentials live in the repo (TEST_ACCOUNTS.md matches
   `setupDevTestLogin`). Note (2026-07-12): the `realtor` partner role added by PH-1 has **no

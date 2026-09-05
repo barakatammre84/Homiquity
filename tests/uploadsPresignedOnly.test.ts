@@ -4,6 +4,12 @@ import {
   verifyFileSignature,
   upload,
 } from "../server/routes/utils";
+import { headersForPresignedUpload } from "../client/src/hooks/use-upload";
+import { UPLOAD_CREATE_ONLY_HEADER, UPLOAD_CREATE_ONLY_VALUE } from "../shared/uploads";
+import {
+  ObjectStorageService,
+  objectStorageClient,
+} from "../server/integrations/object_storage";
 
 /**
  * Roadmap #1: uploads must never land on serverless disk. The multer layer is
@@ -34,6 +40,41 @@ describe("upload multer instance", () => {
     const storage = (upload as any).storage;
     expect(storage).toBeDefined();
     expect(storage.getDestination).toBeUndefined();
+  });
+});
+
+describe("presigned object immutability", () => {
+  it("binds the content type and create-only condition into the GCS signature", async () => {
+    const getSignedUrl = vi.fn().mockResolvedValue(["https://storage.example.test/signed"]);
+    const file = vi.fn().mockReturnValue({ getSignedUrl });
+    const bucket = vi.spyOn(objectStorageClient, "bucket").mockReturnValue({ file } as any);
+    const service = new ObjectStorageService();
+    vi.spyOn(service, "getPrivateObjectDir").mockReturnValue("/test-bucket/private");
+
+    try {
+      await expect(service.getObjectEntityUploadURL("application/pdf"))
+        .resolves.toBe("https://storage.example.test/signed");
+      expect(getSignedUrl).toHaveBeenCalledWith(expect.objectContaining({
+        action: "write",
+        version: "v4",
+        contentType: "application/pdf",
+        extensionHeaders: {
+          [UPLOAD_CREATE_ONLY_HEADER]: UPLOAD_CREATE_ONLY_VALUE,
+        },
+      }));
+    } finally {
+      bucket.mockRestore();
+    }
+  });
+
+  it("sends the server-provided create-only condition with the storage PUT", () => {
+    expect(headersForPresignedUpload(
+      { type: "application/pdf" },
+      { [UPLOAD_CREATE_ONLY_HEADER]: UPLOAD_CREATE_ONLY_VALUE },
+    )).toEqual({
+      "Content-Type": "application/pdf",
+      "x-goog-if-generation-match": "0",
+    });
   });
 });
 

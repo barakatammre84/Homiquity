@@ -24,8 +24,8 @@ export {
   isValidObjectId,
   createLocalUpload,
   localObjectExists,
+  sha256LocalObject,
   writeLocalObject,
   streamLocalObject,
 } from "./localObjectStorage";
-
 

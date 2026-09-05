@@ -12,10 +12,25 @@ function canonical(value: unknown): unknown {
   return value;
 }
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
-export function fingerprintFileReview(sources: Record<FileReviewSection, { id: string }[]>) {
-  const manifest = Object.fromEntries(FILE_REVIEW_SECTIONS.map(section => [section, {
-    count: sources[section].length,
-    digest: digest([...sources[section]].sort((a, b) => compareKeys(a.id, b.id))),
-  }])) as FileReviewManifest;
-  return { manifest, revision: digest(manifest) };
+type FingerprintRow = { id: string; fingerprintKey?: string };
+function material(row: FingerprintRow) {
+  const { fingerprintKey: _key, ...rest } = row;
+  return rest;
+}
+export function fingerprintFileReview(sources: Record<FileReviewSection, FingerprintRow[]>) {
+  const manifest = Object.fromEntries(FILE_REVIEW_SECTIONS.map(section => {
+    const sorted = [...sources[section]].sort((a, b) => compareKeys(a.id, b.id));
+    return [section, {
+      count: sorted.length,
+      digest: digest(sorted.map(material)),
+      items: Object.fromEntries(sorted.map(row => [row.fingerprintKey ?? row.id, digest(material(row))])),
+    }];
+  })) as FileReviewManifest;
+  // Item digests add precision while the revision keeps the original
+  // count/digest contract used by Phase-1 checkpoints.
+  const revisionBasis = Object.fromEntries(FILE_REVIEW_SECTIONS.map(section => [section, {
+    count: manifest[section].count,
+    digest: manifest[section].digest,
+  }]));
+  return { manifest, revision: digest(revisionBasis) };
 }

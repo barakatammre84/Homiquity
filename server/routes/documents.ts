@@ -11,7 +11,12 @@ import {
 import type { ExtractedDocumentData, ExtractedTaxReturnData } from "../extractionCore";
 import { markHumanReviewCompleted } from "../services/documentConfidence";
 import { allowedUploadTypes, bufferMatchesAllowedSignature } from "./utils";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
+import {
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
+  UPLOAD_CREATE_ONLY_HEADER,
+  UPLOAD_CREATE_ONLY_VALUE,
+} from "@shared/uploads";
 import {
   ObjectStorageService,
   ObjectNotFoundError,
@@ -96,13 +101,17 @@ export function registerDocumentRoutes(
         return res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
       }
 
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const signedContentType = contentType || "application/octet-stream";
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL(signedContentType);
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
       res.json({
         uploadURL,
         objectPath,
-        metadata: { name, size, contentType },
+        metadata: { name, size, contentType: signedContentType },
+        uploadHeaders: {
+          [UPLOAD_CREATE_ONLY_HEADER]: UPLOAD_CREATE_ONLY_VALUE,
+        },
       });
     } catch (error) {
       console.error("Error generating upload URL:", error);

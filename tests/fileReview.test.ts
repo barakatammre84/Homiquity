@@ -39,4 +39,11 @@ describe("Core review validity adapted to the existing Homiquity file", () => {
     expect(saveFileReviewSchema.safeParse({ expectedRevision, acknowledged: true }).success).toBe(true);
     for (const body of [{ expectedRevision }, { expectedRevision, acknowledged: false }, { expectedRevision, acknowledged: true, userId: "admin" }]) expect(saveFileReviewSchema.safeParse(body).success).toBe(false);
   });
+  it("identifies the exact document lineage that changed", () => {
+    const recorded = fingerprintFileReview({ ...sources(), documents: [{ id: "old", fingerprintKey: "lineage-1", status: "verified" }] });
+    const current = fingerprintFileReview({ ...sources(), documents: [{ id: "new", fingerprintKey: "lineage-1", status: "uploaded" }] });
+    const result = assessFileReview(recorded.manifest, current.manifest);
+    expect(result.changedItems.documents).toEqual(["lineage-1"]);
+    expect(result.changedItems.application).toEqual([]);
+  });
 });

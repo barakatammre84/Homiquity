@@ -10,13 +10,102 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Icons } from "@/lib/icons";
 import { FILE_REVIEW_LABELS, FILE_REVIEW_SECTIONS, type FileReviewWorkspace } from "@shared/fileReview";
+import type { DocumentSubjectOption } from "@shared/documentLineage";
+
+type ReviewDocument = FileReviewWorkspace["documents"][number];
+const DOCUMENT_PAGE_SIZE = 25;
+
+function periodLabel(document: ReviewDocument) {
+  const lineage = document.lineage;
+  if (lineage.taxYear) return `Tax year ${lineage.taxYear}`;
+  if (lineage.periodStart && lineage.periodEnd) return `${lineage.periodStart} through ${lineage.periodEnd}`;
+  if (lineage.periodStart) return `From ${lineage.periodStart}`;
+  if (lineage.periodEnd) return `Through ${lineage.periodEnd}`;
+  return "No period recorded";
+}
+
+function LineageEditor({
+  applicationId,
+  document,
+  options,
+}: {
+  applicationId: string;
+  document: ReviewDocument;
+  options: DocumentSubjectOption[];
+}) {
+  const cache = useQueryClient();
+  const currentSubject = document.lineage.subjectType && document.lineage.subjectId
+    ? `${document.lineage.subjectType}:${document.lineage.subjectId}`
+    : "";
+  const [open, setOpen] = useState(false);
+  const [subject, setSubject] = useState(currentSubject);
+  const [periodStart, setPeriodStart] = useState(document.lineage.periodStart ?? "");
+  const [periodEnd, setPeriodEnd] = useState(document.lineage.periodEnd ?? "");
+  const [taxYear, setTaxYear] = useState(document.lineage.taxYear?.toString() ?? "");
+  const save = useMutation({
+    mutationFn: async () => {
+      const [subjectType, ...subjectIdParts] = subject.split(":");
+      return apiRequest("PATCH", `/api/loan-applications/${applicationId}/documents/${document.id}/lineage`, {
+        subjectType,
+        subjectId: subjectIdParts.join(":"),
+        periodStart: periodStart || null,
+        periodEnd: periodEnd || null,
+        taxYear: taxYear ? Number(taxYear) : null,
+      });
+    },
+    onSuccess: async () => {
+      setOpen(false);
+      await cache.invalidateQueries({ queryKey: loanApplicationKeys.fileReview(applicationId) });
+    },
+  });
+  return <Dialog open={open} onOpenChange={setOpen}>
+    <DialogTrigger asChild>
+      <Button variant="outline" size="sm" className="touch-target" data-testid={`file-review-edit-lineage-${document.id}`}>Edit evidence details</Button>
+    </DialogTrigger>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Evidence details</DialogTitle>
+        <DialogDescription>Identify who or what this document supports and the period it covers.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor={`lineage-subject-${document.id}`}>Applies to</Label>
+          <Select value={subject} onValueChange={setSubject}>
+            <SelectTrigger id={`lineage-subject-${document.id}`} data-testid={`file-review-lineage-subject-${document.id}`}><SelectValue placeholder="Choose a borrower, business, property, or the whole file" /></SelectTrigger>
+            <SelectContent>{options.map(option => <SelectItem key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>{option.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2"><Label htmlFor={`lineage-start-${document.id}`}>Period start</Label><Input id={`lineage-start-${document.id}`} type="date" value={periodStart} onChange={event => setPeriodStart(event.target.value)} /></div>
+          <div className="space-y-2"><Label htmlFor={`lineage-end-${document.id}`}>Period end</Label><Input id={`lineage-end-${document.id}`} type="date" value={periodEnd} onChange={event => setPeriodEnd(event.target.value)} /></div>
+        </div>
+        <div className="space-y-2"><Label htmlFor={`lineage-tax-year-${document.id}`}>Tax year, when applicable</Label><Input id={`lineage-tax-year-${document.id}`} inputMode="numeric" value={taxYear} onChange={event => setTaxYear(event.target.value.replace(/\D/g, "").slice(0, 4))} /></div>
+        {save.isError && <p role="alert" data-testid={`file-review-lineage-error-${document.id}`}>{friendlyApiError(save.error, "The evidence details were not saved.")}</p>}
+      </div>
+      <DialogFooter><Button disabled={!subject || save.isPending} onClick={() => save.mutate()} data-testid={`file-review-save-lineage-${document.id}`}>{save.isPending ? "Saving…" : "Save evidence details"}</Button></DialogFooter>
+    </DialogContent>
+  </Dialog>;
+}
 
 export function FileReviewTab({ applicationId, onNavigate }: { applicationId: string; onNavigate: (tab: string) => void }) {
   const cache = useQueryClient();
   const [acknowledgedRevision, setAcknowledgedRevision] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [documentQuery, setDocumentQuery] = useState("");
+  const [visibleDocumentCount, setVisibleDocumentCount] = useState(DOCUMENT_PAGE_SIZE);
   const query = useQuery<FileReviewWorkspace>({
     queryKey: loanApplicationKeys.fileReview(applicationId), enabled: !!applicationId,
     staleTime: 0, refetchOnMount: "always", refetchInterval: 30000,
@@ -35,6 +124,16 @@ export function FileReviewTab({ applicationId, onNavigate }: { applicationId: st
   const data = query.data;
   const latest = data.checkpoints[0];
   const acknowledged = acknowledgedRevision === data.revision;
+  const normalizedDocumentQuery = documentQuery.trim().toLocaleLowerCase();
+  const matchingDocuments = normalizedDocumentQuery
+    ? data.documents.filter(document => [
+        document.name,
+        document.documentType,
+        document.status,
+        document.lineage.subjectLabel ?? "",
+      ].some(value => value.toLocaleLowerCase().includes(normalizedDocumentQuery)))
+    : data.documents;
+  const visibleDocuments = matchingDocuments.slice(0, visibleDocumentCount);
   return <div className="space-y-6" data-testid="file-review-tab">
     <Card>
       <CardHeader>
@@ -67,13 +166,62 @@ export function FileReviewTab({ applicationId, onNavigate }: { applicationId: st
       </CardContent>
     </Card>
     <Card>
-      <CardHeader><CardTitle>Supporting documents</CardTitle><CardDescription>These are the documents already attached to this application.</CardDescription></CardHeader>
-      <CardContent>
+      <CardHeader>
+        <CardTitle>Supporting documents</CardTitle>
+        <CardDescription>Search the current versions already attached to this application.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
         {!data.documents.length ? <EmptyState bordered={false} icon={Icons.document} title="No documents attached" description="Use the existing Documents area to collect supporting evidence." data-testid="file-review-empty" /> :
-          <ul className="divide-y">{data.documents.map(doc => <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 py-4">
-            <span className="min-w-0 break-words font-medium">{doc.name}</span>
-            <Badge variant={doc.status === "verified" ? "info" : "warning"}>{doc.status === "verified" ? "Document accepted" : doc.status === "rejected" ? "Replacement requested" : "Needs document review"}</Badge>
+          <>
+          <div className="space-y-2">
+            <Label htmlFor="file-review-document-search">Find a document</Label>
+            <Input
+              id="file-review-document-search"
+              type="search"
+              value={documentQuery}
+              placeholder="Search by file, type, status, or evidence subject"
+              onChange={event => {
+                setDocumentQuery(event.target.value);
+                setVisibleDocumentCount(DOCUMENT_PAGE_SIZE);
+              }}
+              data-testid="file-review-document-search"
+            />
+            <p className="text-sm text-muted-foreground" role="status">
+              Showing {visibleDocuments.length} of {matchingDocuments.length} matching current documents
+            </p>
+          </div>
+          {!matchingDocuments.length ? <EmptyState bordered={false} icon={Icons.document} title="No matching documents" description="Try a filename, document type, status, borrower, business, or property." data-testid="file-review-no-matches" /> :
+          <ul className="divide-y">{visibleDocuments.map(doc => <li key={doc.id} className="space-y-3 py-4" data-testid={`file-review-document-${doc.id}`}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 space-y-1">
+                <p className="break-words font-medium">{doc.name}</p>
+                <p className="text-sm text-muted-foreground" data-testid={`file-review-lineage-summary-${doc.id}`}>
+                  Version {doc.lineage.versionNumber} of {doc.lineage.history.length} · {doc.lineage.subjectLabel ?? "Needs evidence assignment"} · {periodLabel(doc)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {doc.lineage.changedSinceLatestReview && <Badge variant="warning">Changed since last review</Badge>}
+                {doc.lineage.needsAssignment && <Badge variant="warning">Needs assignment</Badge>}
+                <Badge variant={doc.status === "verified" ? "info" : "warning"}>{doc.status === "verified" ? "Document accepted" : doc.status === "rejected" ? "Replacement requested" : "Needs document review"}</Badge>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span>{doc.lineage.contentFingerprintRecorded ? "Content fingerprint recorded" : "Fingerprint unavailable for this older upload"}</span>
+              <LineageEditor applicationId={applicationId} document={doc} options={data.subjectOptions} />
+            </div>
+            {doc.lineage.history.length > 1 && <details className="text-sm" data-testid={`file-review-history-${doc.id}`}>
+              <summary className="cursor-pointer font-medium">Version history</summary>
+              <ol className="mt-2 space-y-2 border-l pl-4">{[...doc.lineage.history].reverse().map(version => <li key={version.documentId}>
+                <a className="underline underline-offset-4" href={`/api/documents/${version.documentId}/download`} target="_blank" rel="noreferrer">Version {version.versionNumber}: {version.fileName}</a>{version.isCurrent ? " · current" : " · replaced"}
+              </li>)}</ol>
+            </details>}
           </li>)}</ul>}
+          {visibleDocuments.length < matchingDocuments.length && <Button
+            variant="outline"
+            onClick={() => setVisibleDocumentCount(count => count + DOCUMENT_PAGE_SIZE)}
+            data-testid="file-review-show-more"
+          >Show {Math.min(DOCUMENT_PAGE_SIZE, matchingDocuments.length - visibleDocuments.length)} more documents</Button>}
+          </>}
       </CardContent>
     </Card>
     <Card>
