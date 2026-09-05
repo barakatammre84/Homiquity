@@ -58,12 +58,14 @@ const TYPE_ALIASES: Record<string, string> = {
   bank_statement_checking: "bank_statement",
   bank_statement_savings: "bank_statement",
   drivers_license: "id",
+  government_id: "id",
   homeowners_insurance_binder: "homeowners_insurance",
 };
 
 /**
  * Resolves a requested document type to a value the type <Select> can actually
- * show, falling back to "other" so an unknown request still uploads.
+ * show. Unknown/custom request types are preserved and added to the selector
+ * dynamically so the upload still fulfills the exact request.
  *
  * NOT interchangeable with `canonicalDocumentType` in @shared/documentTypes:
  * that one canonicalizes to the *pipeline-engine* vocabulary for condition
@@ -82,6 +84,8 @@ interface ChecklistItem {
   label: string;
   status: "needed" | "uploaded" | "verifying" | "verified" | "rejected";
   instructions?: string;
+  documentId?: string;
+  rejectionReason?: string | null;
 }
 
 interface ChecklistResponse {
@@ -97,8 +101,8 @@ function useDocumentChecklist(applicationId: string | null | undefined, enabled 
   });
 }
 
-// Borrower-actionable outstanding items only: internal review tasks surface in
-// the checklist with documentType "other" and are staff work, not uploads.
+// Borrower-actionable outstanding items only. "Other" remains a free-form
+// upload choice, not a useful one-tap request label.
 function outstandingItems(checklist: ChecklistResponse | undefined): ChecklistItem[] {
   return (checklist?.documents ?? []).filter(
     (d) => (d.status === "needed" || d.status === "rejected") && d.documentType !== "other",
@@ -109,6 +113,7 @@ export function UploadDocumentDialog({
   applicationId,
   defaultDocumentType,
   requestMessageId,
+  replacesDocumentId,
   confirmToRecipientId,
   trigger,
   onUploaded,
@@ -119,6 +124,8 @@ export function UploadDocumentDialog({
   defaultDocumentType?: string;
   /** When the upload fulfills a chat document request, its message id. */
   requestMessageId?: string;
+  /** Exact rejected version this response supersedes. */
+  replacesDocumentId?: string;
   /** When set, posts an upload confirmation into this chat thread. */
   confirmToRecipientId?: string;
   trigger: React.ReactNode;
@@ -135,11 +142,35 @@ export function UploadDocumentDialog({
 
   const { data: checklist } = useDocumentChecklist(applicationId, open);
   const neededItems = outstandingItems(checklist);
+  const uploadTypeOptions = [...UPLOADABLE_DOCUMENT_TYPES];
+  const optionValues = new Set(uploadTypeOptions.map((option) => option.value));
+  for (const item of neededItems) {
+    const value = toUploadableDocumentType(item.documentType);
+    if (!optionValues.has(value)) {
+      uploadTypeOptions.push({ value, label: item.label, category: "Requested" });
+      optionValues.add(value);
+    }
+  }
+  const defaultValue = toUploadableDocumentType(defaultDocumentType);
+  if (defaultDocumentType && !optionValues.has(defaultValue)) {
+    uploadTypeOptions.push({
+      value: defaultValue,
+      label: defaultDocumentType.replace(/_/g, " ").replace(/^./, (letter) => letter.toUpperCase()),
+      category: "Requested",
+    });
+  }
+  const selectedChecklistItem = neededItems.find(
+    (item) => toUploadableDocumentType(item.documentType) === selectedType,
+  );
+  const effectiveReplacementId =
+    replacesDocumentId ??
+    (selectedChecklistItem?.status === "rejected"
+      ? selectedChecklistItem.documentId
+      : undefined);
 
   const busy = phase !== "idle";
   const typeLabel =
-    UPLOADABLE_DOCUMENT_TYPES.find((t) => t.value === selectedType)?.label ??
-    neededItems.find((d) => d.documentType === selectedType)?.label ??
+    uploadTypeOptions.find((t) => t.value === selectedType)?.label ??
     "Document";
 
   const reset = () => {
@@ -166,42 +197,48 @@ export function UploadDocumentDialog({
         documentType: selectedType,
         applicationId: applicationId || undefined,
         description: description || undefined,
+        replacesDocumentId: effectiveReplacementId,
+        requestMessageId,
       });
       const document = await res.json();
 
-      // Fulfilling a chat document request: flip its card to Submitted.
-      if (requestMessageId) {
-        await apiRequest("PATCH", `/api/messages/${requestMessageId}/document-request`, {
-          status: "submitted",
-          documentId: document.id,
-        });
-      }
-
       // Confirm in the thread so the team sees it instantly (and gets the
       // standard message notification).
+      let confirmationFailed = false;
       if (confirmToRecipientId) {
-        await apiRequest("POST", "/api/messages", {
-          recipientId: confirmToRecipientId,
-          message: `📎 Uploaded: ${file.name} (${typeLabel})`,
-        });
+        try {
+          await apiRequest("POST", "/api/messages", {
+            recipientId: confirmToRecipientId,
+            message: `📎 Uploaded: ${file.name} (${typeLabel})`,
+            applicationId: applicationId || undefined,
+          });
+        } catch {
+          // Registration already succeeded and the request card is already
+          // submitted. Do not tell the borrower the upload failed or invite a
+          // duplicate retry just because the optional chat receipt failed.
+          confirmationFailed = true;
+        }
       }
 
-      return document;
+      return { ...document, confirmationFailed };
     },
     onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: applicationResourceKeys.documentChecklist(applicationId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
-      if (confirmToRecipientId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/messages", confirmToRecipientId] });
+      if (confirmToRecipientId || requestMessageId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       }
+      const confirmationCopy = document?.confirmationFailed
+        ? " Your document is filed; the separate chat receipt could not be sent."
+        : "";
       if (document?.similarDocument) {
         toast({
           title: "Heads up: possible duplicate",
-          description: `This looks similar to ${document.similarDocument.fileName} you uploaded earlier. We kept both — your team can remove one if needed.`,
+          description: `This looks similar to ${document.similarDocument.fileName} you uploaded earlier. We kept both — your team can remove one if needed.${confirmationCopy}`,
         });
       } else {
-        toast({ title: "Document uploaded", description: `${typeLabel} is with your loan team.` });
+        toast({ title: "Document uploaded", description: `${typeLabel} is with your loan team.${confirmationCopy}` });
       }
       reset();
       setOpen(false);
@@ -248,8 +285,8 @@ export function UploadDocumentDialog({
                     key={item.id}
                     type="button"
                     size="sm" className="touch-target"
-                    variant={selectedType === item.documentType ? "default" : "outline"}
-                    onClick={() => setSelectedType(item.documentType)}
+                    variant={selectedType === toUploadableDocumentType(item.documentType) ? "default" : "outline"}
+                    onClick={() => setSelectedType(toUploadableDocumentType(item.documentType))}
                     data-testid={`chip-needed-${item.documentType}`}
                   >
                     <FileText className="mr-1.5 h-3.5 w-3.5" />
@@ -270,7 +307,7 @@ export function UploadDocumentDialog({
                 <SelectValue placeholder="What is this document?" />
               </SelectTrigger>
               <SelectContent>
-                {UPLOADABLE_DOCUMENT_TYPES.map((t) => (
+                {uploadTypeOptions.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     <div className="flex items-center gap-2">
                       <span>{t.label}</span>

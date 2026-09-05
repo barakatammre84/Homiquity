@@ -239,7 +239,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later" },
-  skip: (req) => !req.path.startsWith("/api"),
+  skip: (req) => !req.path.startsWith("/api") || isRateLimitRelaxed(),
 });
 
 const authLimiter = rateLimit({

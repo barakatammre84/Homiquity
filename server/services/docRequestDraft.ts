@@ -49,6 +49,7 @@ function humanize(documentType: string): string {
 export function buildDocRequestDraft(
   conditions: DraftConditionRow[],
   documents: DraftDocumentRow[],
+  openDocumentTypes: string[] = [],
 ): DocRequestDraftItem[] {
   const usableUploads = documents.filter((d) => d.status !== DOCUMENT_STATUS.REJECTED);
 
@@ -57,6 +58,11 @@ export function buildDocRequestDraft(
     if (condition.status !== "outstanding") continue;
     const required = condition.requiredDocumentTypes ?? [];
     if (required.length === 0) continue;
+
+    const alreadyRequested = required.some((requestedType) =>
+      openDocumentTypes.some((openType) => documentTypesMatch(requestedType, openType)),
+    );
+    if (alreadyRequested) continue;
 
     const satisfied = required.some((req) =>
       usableUploads.some((up) => documentTypesMatch(req, up.documentType)),

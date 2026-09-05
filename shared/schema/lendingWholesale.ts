@@ -608,5 +608,8 @@ export interface DocumentRequestData {
   dueDate?: string;
   status: "pending" | "submitted" | "approved" | "rejected";
   documentId?: string;
+  /** Exact borrower-visible correction. Kept inside the authenticated portal. */
+  rejectionReason?: string;
+  respondedAt?: string;
+  reviewedAt?: string;
 }
-

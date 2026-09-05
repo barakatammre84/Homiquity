@@ -242,8 +242,9 @@ pnpm check     # TypeScript
 pnpm test          # unit suite (no DB or server needed)
 ```
 Integration tests need a running server. Boot it with `RATE_LIMIT_RELAXED=true` — the
-suite makes ~30 auth calls, which would otherwise trip the auth rate limiter (20 per
-15 min; the flag is ignored in production builds):
+suite exceeds both the auth rate limiter (20 per 15 min) and the general API limiter
+(500 per 15 min) in one pass. The flag is ignored in production builds; endpoint-specific
+upload, extraction, vendor and other cost controls remain active:
 ```bash
 RATE_LIMIT_RELAXED=true PORT=5002 pnpm dev   # in one terminal
 set -a; source .env; set +a

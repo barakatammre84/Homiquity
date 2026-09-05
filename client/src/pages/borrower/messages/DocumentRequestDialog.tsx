@@ -28,10 +28,12 @@ import { DOCUMENT_TYPES } from "./types";
 // Document Request Dialog Component
 export function DocumentRequestDialog({
   recipientId,
-  recipientName
+  recipientName,
+  applicationId,
 }: {
   recipientId: string;
   recipientName: string;
+  applicationId: string | null;
 }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -44,15 +46,26 @@ export function DocumentRequestDialog({
       recipientId: string;
       message: string;
       messageType: string;
+      applicationId?: string;
       documentRequestData: DocumentRequestData;
     }) => {
       const response = await apiRequest("POST", "/api/messages", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result: { deduplicated?: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", recipientId] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
-      toast({ title: "Document requested", description: "Your request has been sent to the team." });
+      toast(
+        result.deduplicated
+          ? {
+              title: "Already requested",
+              description: "The borrower already has this open request on the loan file.",
+            }
+          : {
+              title: "Document requested",
+              description: "The borrower can now upload it from this conversation.",
+            },
+      );
       setOpen(false);
       setSelectedDocType("");
       setDescription("");
@@ -77,6 +90,7 @@ export function DocumentRequestDialog({
 
     sendDocRequestMutation.mutate({
       recipientId,
+      applicationId: applicationId || undefined,
       message: `Document Request: ${docType.label}`,
       messageType: "document_request",
       documentRequestData,

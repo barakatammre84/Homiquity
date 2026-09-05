@@ -1,11 +1,16 @@
 import { db } from "../db";
-import { eq } from "drizzle-orm";
-import { borrowerBusinessEntities, type BorrowerBusinessEntity } from "@shared/schema";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import {
+  borrowerBusinessEntities,
+  logicalDocuments,
+  type BorrowerBusinessEntity,
+} from "@shared/schema";
 import { normalizeEntityName, type TaxFormType } from "@shared/taxFormExtraction";
 import {
   getLatestInstancesForUser,
   type PublicTaxFormInstance,
 } from "./taxDocumentIntelligence";
+import { resolveBusinessEntities } from "./borrowerEntityResolution";
 
 /**
  * Cross-form tie-out engine (UAL P2b) — the deterministic accuracy layer on
@@ -83,6 +88,42 @@ export interface TaxReconciliationReport {
   >;
   checks: TieOutCheck[];
   summary: { pass: number; variance: number; notEvaluable: number; info: number };
+}
+
+type ReconciliationEntity = TaxReconciliationReport["entities"][number];
+
+/**
+ * Build an application-scoped entity summary only from that application's
+ * current form instances. Persisted rows contribute their stable id and the
+ * human/automatic marker; tax-derived fields never cross loan files.
+ */
+export function projectApplicationReconciliationEntities(
+  instances: PublicTaxFormInstance[],
+  persistedEntities: Array<Pick<BorrowerBusinessEntity, "id" | "autoResolved">>,
+  linkedEntityIdByDocument: Map<string, string>,
+): ReconciliationEntity[] {
+  const persistedById = new Map(persistedEntities.map((entity) => [entity.id, entity]));
+  return resolveBusinessEntities(instances).flatMap((entity) => {
+    const entityId = entity.sourceForms
+      .map((form) => linkedEntityIdByDocument.get(form.logicalDocumentId))
+      .find((id): id is string => Boolean(id && persistedById.has(id)));
+    if (!entityId) return [];
+    const persisted = persistedById.get(entityId)!;
+    return [{
+      id: persisted.id,
+      identityKey: entity.identityKey,
+      entityType: entity.entityType,
+      name: entity.name,
+      einLast4: entity.einLast4,
+      ownershipPercent:
+        entity.ownershipPercent === null ? null : entity.ownershipPercent.toFixed(2),
+      firstTaxYear: entity.firstTaxYear,
+      lastTaxYear: entity.lastTaxYear,
+      sourceFormCount: entity.sourceForms.length,
+      resolutionNotes: entity.notes.length ? entity.notes.join("; ") : null,
+      autoResolved: persisted.autoResolved,
+    }];
+  });
 }
 
 /** Whole-dollar rounding bound for a sum of n rounded components vs a rounded total. */
@@ -475,40 +516,83 @@ export function runTieOuts(instances: PublicTaxFormInstance[]): TieOutCheck[] {
 }
 
 /** IO wrapper: latest instances + persisted entities → full reconciliation report. */
-export async function buildTaxReconciliation(userId: string): Promise<TaxReconciliationReport> {
-  const instances = await getLatestInstancesForUser(userId);
+export async function buildTaxReconciliation(
+  userId: string,
+  applicationId?: string,
+): Promise<TaxReconciliationReport> {
+  const instances = await getLatestInstancesForUser(userId, applicationId);
   const checks = runTieOuts(instances);
-  const entities = await db
-    .select({
-      id: borrowerBusinessEntities.id,
-      identityKey: borrowerBusinessEntities.identityKey,
-      entityType: borrowerBusinessEntities.entityType,
-      name: borrowerBusinessEntities.name,
-      einLast4: borrowerBusinessEntities.einLast4,
-      ownershipPercent: borrowerBusinessEntities.ownershipPercent,
-      firstTaxYear: borrowerBusinessEntities.firstTaxYear,
-      lastTaxYear: borrowerBusinessEntities.lastTaxYear,
-      sourceFormCount: borrowerBusinessEntities.sourceFormCount,
-      resolutionNotes: borrowerBusinessEntities.resolutionNotes,
-      autoResolved: borrowerBusinessEntities.autoResolved,
-    })
-    .from(borrowerBusinessEntities)
-    .where(eq(borrowerBusinessEntities.userId, userId));
+  const taxYears = [
+    ...new Set(instances.map((i) => i.taxYear).filter((y): y is number => y !== null)),
+  ].sort((a, b) => b - a);
+  const summary = {
+    pass: checks.filter((c) => c.status === "pass").length,
+    variance: checks.filter((c) => c.status === "variance").length,
+    notEvaluable: checks.filter((c) => c.status === "not_evaluable").length,
+    info: checks.filter((c) => c.status === "info").length,
+  };
+  const logicalDocumentIds = instances.map((instance) => instance.logicalDocumentId);
+  const linkedEntities = logicalDocumentIds.length === 0
+    ? []
+    : await db
+        .select({
+          logicalDocumentId: logicalDocuments.id,
+          id: logicalDocuments.businessEntityId,
+        })
+        .from(logicalDocuments)
+        .where(
+          and(
+            inArray(logicalDocuments.id, logicalDocumentIds),
+            isNotNull(logicalDocuments.businessEntityId),
+          ),
+        );
+  const currentEntityIds = [
+    ...new Set(linkedEntities.map((row) => row.id).filter((id): id is string => Boolean(id))),
+  ];
+  const linkedEntityIdByDocument = new Map(
+    linkedEntities.flatMap((row) =>
+      row.id ? [[row.logicalDocumentId, row.id] as const] : [],
+    ),
+  );
+
+  const entityScope = [eq(borrowerBusinessEntities.userId, userId)];
+  if (currentEntityIds.length) {
+    entityScope.push(inArray(borrowerBusinessEntities.id, currentEntityIds));
+  }
+  const persistedEntities: TaxReconciliationReport["entities"] =
+    currentEntityIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: borrowerBusinessEntities.id,
+            identityKey: borrowerBusinessEntities.identityKey,
+            entityType: borrowerBusinessEntities.entityType,
+            name: borrowerBusinessEntities.name,
+            einLast4: borrowerBusinessEntities.einLast4,
+            ownershipPercent: borrowerBusinessEntities.ownershipPercent,
+            firstTaxYear: borrowerBusinessEntities.firstTaxYear,
+            lastTaxYear: borrowerBusinessEntities.lastTaxYear,
+            sourceFormCount: borrowerBusinessEntities.sourceFormCount,
+            resolutionNotes: borrowerBusinessEntities.resolutionNotes,
+            autoResolved: borrowerBusinessEntities.autoResolved,
+          })
+          .from(borrowerBusinessEntities)
+          .where(and(...entityScope));
+  const entities = applicationId
+    ? projectApplicationReconciliationEntities(
+        instances,
+        persistedEntities,
+        linkedEntityIdByDocument,
+      )
+    : persistedEntities;
 
   return {
     userId,
     generatedAt: new Date().toISOString(),
-    taxYears: [...new Set(instances.map((i) => i.taxYear).filter((y): y is number => y !== null))].sort(
-      (a, b) => b - a,
-    ),
+    taxYears,
     formCount: instances.length,
     entities,
     checks,
-    summary: {
-      pass: checks.filter((c) => c.status === "pass").length,
-      variance: checks.filter((c) => c.status === "variance").length,
-      notEvaluable: checks.filter((c) => c.status === "not_evaluable").length,
-      info: checks.filter((c) => c.status === "info").length,
-    },
+    summary,
   };
 }

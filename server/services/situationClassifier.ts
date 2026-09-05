@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { loanApplications, situationProfiles, type SituationProfileRow } from "@shared/schema";
 import {
   situationProfileSchema,
@@ -356,16 +356,22 @@ export function situationInputsFingerprint(input: SituationClassifierInput): str
  * Classify the user's current situation from their latest extractions and
  * persist it (append-only; skipped when the inputs fingerprint is unchanged).
  */
-export async function classifyAndPersistSituation(userId: string): Promise<SituationProfileRow> {
-  const instances = await getLatestInstancesForUser(userId);
+export async function classifyAndPersistSituation(
+  userId: string,
+  applicationId?: string,
+): Promise<SituationProfileRow> {
+  const instances = await getLatestInstancesForUser(userId, applicationId);
   const entities = resolveBusinessEntities(instances);
   const checks = runTieOuts(instances);
   // UAL P7: join the borrower's declared routing preference from their most
   // recent application (null when never asked/answered).
+  const applicationScope = applicationId
+    ? eq(loanApplications.id, applicationId)
+    : eq(loanApplications.userId, userId);
   const [latestApplication] = await db
     .select({ avoidsInterestFinancing: loanApplications.avoidsInterestFinancing })
     .from(loanApplications)
-    .where(eq(loanApplications.userId, userId))
+    .where(applicationScope)
     .orderBy(desc(loanApplications.createdAt))
     .limit(1);
   const input: SituationClassifierInput = {
@@ -376,10 +382,13 @@ export async function classifyAndPersistSituation(userId: string): Promise<Situa
   };
 
   const fingerprint = situationInputsFingerprint(input);
+  const profileScope = applicationId
+    ? and(eq(situationProfiles.userId, userId), eq(situationProfiles.applicationId, applicationId))
+    : and(eq(situationProfiles.userId, userId), isNull(situationProfiles.applicationId));
   const [latest] = await db
     .select()
     .from(situationProfiles)
-    .where(eq(situationProfiles.userId, userId))
+    .where(profileScope)
     .orderBy(desc(situationProfiles.generatedAt))
     .limit(1);
   if (latest && latest.inputsFingerprint === fingerprint) {
@@ -391,6 +400,7 @@ export async function classifyAndPersistSituation(userId: string): Promise<Situa
     .insert(situationProfiles)
     .values({
       userId,
+      applicationId: applicationId ?? null,
       profile,
       inputsFingerprint: fingerprint,
       entityCount: profile.entityCount,
@@ -406,11 +416,17 @@ export async function classifyAndPersistSituation(userId: string): Promise<Situa
 }
 
 /** Latest persisted profile for a user (null when nothing has been classified). */
-export async function getLatestSituationProfile(userId: string): Promise<SituationProfileRow | null> {
+export async function getLatestSituationProfile(
+  userId: string,
+  applicationId?: string,
+): Promise<SituationProfileRow | null> {
+  const scope = applicationId
+    ? and(eq(situationProfiles.userId, userId), eq(situationProfiles.applicationId, applicationId))
+    : and(eq(situationProfiles.userId, userId), isNull(situationProfiles.applicationId));
   const [row] = await db
     .select()
     .from(situationProfiles)
-    .where(eq(situationProfiles.userId, userId))
+    .where(scope)
     .orderBy(desc(situationProfiles.generatedAt))
     .limit(1);
   return row ?? null;

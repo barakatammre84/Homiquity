@@ -735,11 +735,11 @@ jobs:
         # when a row is absent — an unseeded database would fail this lane for a reason that
         # is not the code.
         #
-        # RATE LIMITS. RATE_LIMIT_RELAXED lifts the AUTH limiter (20/15min, which the suite's
-        # ~30 auth calls blow through in one pass) and nothing else: generalLimiter still
-        # applies 500 requests per 15 minutes to /api and does NOT consult the flag. A fresh
-        # process per run is what keeps the suite inside that budget. If this step ever starts
-        # failing with 429s, that is the first thing to look at, not the tests.
+        # RATE LIMITS. RATE_LIMIT_RELAXED lifts the auth limiter (20/15min) and the general
+        # API limiter (500/15min) for this integration server. The full suite exceeds both
+        # budgets in one pass. server/services/rateLimitPolicy.ts ignores the flag when
+        # NODE_ENV=production, and the endpoint-specific upload, extraction, vendor, lead,
+        # webhook, telemetry and email limiters remain active here.
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
         run: |

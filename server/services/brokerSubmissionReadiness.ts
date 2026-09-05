@@ -287,8 +287,8 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
   // and is it complete? A file needs it when the borrower has self-employment,
   // or the selected income path is non-agency (DSCR / bank-statement).
   const { db } = await import("../db");
-  const { incomePathEvaluations, reviewItems } = await import("@shared/schema");
-  const { eq, and, desc } = await import("drizzle-orm");
+  const { incomePathEvaluations } = await import("@shared/schema");
+  const { eq, desc } = await import("drizzle-orm");
   const employment = await storage.getEmploymentHistory(applicationId);
   const [latestEval] = await db
     .select()
@@ -303,16 +303,8 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
   const currentApprovedMemo = requiresIncomePackage
     ? await import("./financialReview").then(module => module.getCurrentApprovedCreditMemo(applicationId))
     : null;
-  const openFlagged = await db
-    .select({ id: reviewItems.id })
-    .from(reviewItems)
-    .where(
-      and(
-        eq(reviewItems.applicationId, applicationId),
-        eq(reviewItems.status, "open"),
-        eq(reviewItems.tier, "flagged"),
-      ),
-    );
+  const { countOpenReviewItems } = await import("./income/reviewTriage");
+  const openFlaggedReviewItems = await countOpenReviewItems(applicationId, "flagged");
 
   const derived = deriveSubmissionStages({
     urla: {
@@ -347,7 +339,7 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
     incomeAnalysis: {
       requiresIncomePackage,
       hasCurrentEvaluation: !!latestEval,
-      openFlaggedReviewItems: openFlagged.length,
+      openFlaggedReviewItems,
       hasCurrentApprovedMemo: !!currentApprovedMemo,
     },
   });

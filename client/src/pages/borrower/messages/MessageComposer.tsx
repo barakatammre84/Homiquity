@@ -41,6 +41,7 @@ export function MessageComposer({
     mutationFn: async (data: {
       recipientId: string;
       message: string;
+      applicationId?: string;
       acknowledgeComplianceWarning?: boolean;
     }) => {
       const response = await apiRequest("POST", "/api/messages", data);
@@ -81,6 +82,7 @@ export function MessageComposer({
     sendMessageMutation.mutate({
       recipientId: memberId,
       message: message.trim(),
+      applicationId: threadApplicationId || undefined,
       // Tier 2 (Reg N §1014.3) warns with the banner visible above; sending
       // with it shown is a conscious, server-logged override.
       acknowledgeComplianceWarning: outboundLint?.requiresOverride ? true : undefined,
@@ -136,6 +138,7 @@ export function MessageComposer({
           <DocumentRequestDialog
             recipientId={memberId}
             recipientName={recipientName}
+            applicationId={threadApplicationId}
           />
         )}
         <Input

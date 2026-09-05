@@ -120,9 +120,10 @@ export function registerCockpitRoutes(app: Express, storage: IStorage) {
           return res.status(404).json({ error: "Application not found" });
         }
 
-        const [conditions, documents] = await Promise.all([
+        const [conditions, documents, openRequests] = await Promise.all([
           storage.getLoanConditionsByApplication(applicationId),
           storage.getDocumentsByApplication(applicationId),
+          storage.getOpenDocumentRequestsForApplication(applicationId, application.userId),
         ]);
 
         const { buildDocRequestDraft } = await import("../services/docRequestDraft");
@@ -134,6 +135,12 @@ export function registerCockpitRoutes(app: Express, storage: IStorage) {
             requiredDocumentTypes: c.requiredDocumentTypes ?? null,
           })),
           documents.map((d) => ({ documentType: d.documentType, status: d.status })),
+          openRequests.map((message) =>
+            String(
+              (message.documentRequestData as { documentType?: string } | null)
+                ?.documentType ?? "",
+            ),
+          ),
         );
 
         res.json({

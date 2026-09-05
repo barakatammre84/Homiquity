@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddressInfo } from "node:net";
 
+const workflowGate = vi.hoisted(() => ({
+  status: "uploaded" as string,
+  isCurrentVersion: true,
+}));
+
 // ---------------------------------------------------------------------------
 // The borrower's own upload must persist what the model read — not just the
 // field NAMES.
@@ -44,6 +49,20 @@ vi.mock("../server/auth", () => ({
 }));
 
 vi.mock("../server/auditLog", () => ({ logAudit: vi.fn() }));
+
+vi.mock("../server/services/documentLineage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../server/services/documentLineage")>();
+  return {
+    ...actual,
+    withDocumentWorkflowLock: async (
+      _documentId: string,
+      run: (document: any, isCurrentVersion: boolean) => Promise<any>,
+    ) => run(
+      { id: _documentId, status: workflowGate.status },
+      workflowGate.isCurrentVersion,
+    ),
+  };
+});
 
 vi.mock("../server/services/taskEventEmitter", () => ({
   taskEventEmitter: { emitDocumentEvent: vi.fn() },
@@ -222,6 +241,8 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
 
   beforeEach(() => {
     h.reset();
+    workflowGate.status = "uploaded";
+    workflowGate.isCurrentVersion = true;
     persistDocumentFacts.mockClear();
     wireExtractionToReadiness.mockClear();
   });
@@ -317,5 +338,43 @@ describe("POST /api/documents/upload — the borrower's upload keeps what the mo
     // The document is still updated — the failed read is recorded, not silently dropped.
     expect(h.updates).toHaveLength(1);
     expect(h.updates[0].patch.status).toBe("uploaded");
+  });
+
+  it("publishes no extraction output after a terminal human verdict", async () => {
+    workflowGate.status = "verified";
+    const { applyExtractionToDocument } = await import("../server/services/extractionPersistence");
+
+    const result = await applyExtractionToDocument({
+      storage: storageStub,
+      userId: "borrower-1",
+      documentId: "reviewed-doc",
+      documentType: "pay_stub",
+      applicationId: "app-1",
+      extracted: PAY_STUB,
+    });
+
+    expect(result.skipReason).toBe("reviewed");
+    expect(h.updates).toEqual([]);
+    expect(persistDocumentFacts).not.toHaveBeenCalled();
+    expect(wireExtractionToReadiness).not.toHaveBeenCalled();
+  });
+
+  it("publishes no extraction output from a superseded document version", async () => {
+    workflowGate.isCurrentVersion = false;
+    const { applyExtractionToDocument } = await import("../server/services/extractionPersistence");
+
+    const result = await applyExtractionToDocument({
+      storage: storageStub,
+      userId: "borrower-1",
+      documentId: "superseded-doc",
+      documentType: "pay_stub",
+      applicationId: "app-1",
+      extracted: PAY_STUB,
+    });
+
+    expect(result.skipReason).toBe("replaced");
+    expect(h.updates).toEqual([]);
+    expect(persistDocumentFacts).not.toHaveBeenCalled();
+    expect(wireExtractionToReadiness).not.toHaveBeenCalled();
   });
 });

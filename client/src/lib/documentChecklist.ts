@@ -12,6 +12,7 @@ export interface ChecklistItemView {
   id: string;
   source: "condition" | "standard" | "task";
   conditionId?: string;
+  conditionIds?: string[];
   category: string;
   documentType: string;
   acceptedTypes: string[];
@@ -82,7 +83,9 @@ export function rowFromChecklistItem(item: ChecklistItemView, focusedConditionId
     uploadedAt: item.uploadedAt,
     documentId: item.documentId,
     rejectionReason: item.rejectionReason,
-    focused: !!focusedConditionId && item.conditionId === focusedConditionId,
+    focused:
+      !!focusedConditionId &&
+      (item.conditionIds?.includes(focusedConditionId) || item.conditionId === focusedConditionId),
   };
 }
 

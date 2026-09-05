@@ -96,6 +96,9 @@ export default defineConfig({
       "tests/cpaPartnerRoutes.test.ts",
       "tests/partnerRoutes.test.ts",
       "tests/partnerConsent.test.ts",
+      "tests/documentCorrectionJourney.test.ts",
+      "tests/applicationSignalIsolation.test.ts",
+      "tests/staleEvidenceIsolation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

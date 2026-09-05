@@ -22,6 +22,11 @@ import { publishReviewing, publishCurrentStatus } from "./events";
 import type { PreUwFlag } from "../preUnderwriting";
 import type { LoanApplication } from "@shared/schema";
 import { toNum } from "@shared/lib/number";
+import {
+  documentProcessingBlockReason,
+  getDocumentProcessingBlockReason,
+  withDocumentWorkflowLock,
+} from "../documentLineage";
 
 /**
  * Autopilot document orchestrator — the always-on agent's reaction to a borrower
@@ -212,6 +217,11 @@ export async function runAutopilotForDocument(params: AutopilotDocumentParams): 
     // gates; this makes the orchestrator safe to invoke from anywhere).
     if (!(await isAutopilotEnabled(application.loanOfficerId))) return;
 
+    // Avoid model work when this upload was already reviewed or replaced
+    // before the detached job started. Persistence repeats the check because
+    // the state can still change while the model is running.
+    if (await getDocumentProcessingBlockReason(documentId)) return;
+
     // Live banner: flip the borrower's status to "We're reviewing your
     // information…" for anyone watching the SSE stream in this process.
     await publishReviewing(applicationId);
@@ -227,41 +237,54 @@ export async function runAutopilotForDocument(params: AutopilotDocumentParams): 
     }
 
     if (outcome) {
-      const { humanReviewRequired } = await recordCoarseExtraction({
+      const persisted = await withDocumentWorkflowLock(
         documentId,
-        documentType,
-        applicationId,
-        confidence: outcome.confidence,
-        extractedFields: outcome.extractedFields,
-        fileSize: fileSize ?? undefined,
-      });
-      await storage.updateDocument(documentId, {
-        // MR-2: a doc that clears the review threshold is staged "verifying" for a
-        // human to confirm; AI confidence never auto-sets "verified".
-        status: !humanReviewRequired ? "verifying" : "uploaded",
-        notes: JSON.stringify({
-          extractedAt: new Date().toISOString(),
-          extractedFields: outcome.extractedFields,
-          confidence: outcome.confidence,
-          humanReviewRequired,
-          warnings: outcome.warnings,
-          modelId: outcome.modelId ?? EXTRACTION_MODEL_ID,
-        }),
-      });
+        async (currentDocument, isCurrentVersion) => {
+          if (documentProcessingBlockReason(currentDocument, isCurrentVersion)) {
+            return false;
+          }
+          const { humanReviewRequired } = await recordCoarseExtraction({
+            documentId,
+            documentType,
+            applicationId,
+            confidence: outcome!.confidence,
+            extractedFields: outcome!.extractedFields,
+            fileSize: fileSize ?? undefined,
+          });
+          await storage.updateDocument(documentId, {
+            // MR-2: a doc that clears the review threshold is staged "verifying" for a
+            // human to confirm; AI confidence never auto-sets "verified".
+            status: !humanReviewRequired ? "verifying" : "uploaded",
+            notes: JSON.stringify({
+              extractedAt: new Date().toISOString(),
+              extractedFields: outcome!.extractedFields,
+              confidence: outcome!.confidence,
+              humanReviewRequired,
+              warnings: outcome!.warnings,
+              modelId: outcome!.modelId ?? EXTRACTION_MODEL_ID,
+            }),
+          });
 
-      // Governance: extraction previously logged only to the document row.
-      await logAiInteraction({
-        applicationId,
-        userId: triggeredBy,
-        workflow: "autopilot_extraction",
-        provider: "claude",
-        model: outcome.modelId ?? EXTRACTION_MODEL_ID,
-        systemPrompt: EXTRACTION_PROMPT_VERSION,
-        prompt: `Autopilot document extraction: ${documentType} (${documentId})`,
-        response: outcome.extractedFields.join(", "),
-        classification: "internal_only",
-        latencyMs: Date.now() - startedAt,
-      });
+          // Governance: extraction previously logged only to the document row.
+          await logAiInteraction({
+            applicationId,
+            userId: triggeredBy,
+            workflow: "autopilot_extraction",
+            provider: "claude",
+            model: outcome!.modelId ?? EXTRACTION_MODEL_ID,
+            systemPrompt: EXTRACTION_PROMPT_VERSION,
+            prompt: `Autopilot document extraction: ${documentType} (${documentId})`,
+            response: outcome!.extractedFields.join(", "),
+            classification: "internal_only",
+            latencyMs: Date.now() - startedAt,
+          });
+          return true;
+        },
+      );
+      if (!persisted) {
+        await publishCurrentStatus(applicationId);
+        return;
+      }
     }
 
     // 3. COGNIZE — refresh the pre-qualification snapshot (append-only, safe). --

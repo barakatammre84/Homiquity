@@ -15,6 +15,8 @@ import { inArray, desc, eq, max, and, count } from "drizzle-orm";
 import { computeFileHealth, daysSince, type FileHealth } from "./services/fileHealth";
 import { documentTypesMatch } from "@shared/documentTypes";
 import { DOCUMENT_STATUS } from "@shared/documentStatus";
+import { conditionsToRevertAfterRejection } from "./services/documentConditionWorkflow";
+export { conditionsToRevertAfterRejection } from "./services/documentConditionWorkflow";
 import {
   LOAN_APP_TRANSITIONS,
   isLoanAppStatus,
@@ -497,29 +499,6 @@ export async function matchUploadedDocumentToConditions(args: {
  * non-rejected document on the file still satisfies it (alias-aware on both
  * sides via shared/documentTypes.ts).
  */
-export function conditionsToRevertAfterRejection(input: {
-  conditions: Array<Pick<LoanCondition, "id" | "status" | "requiredDocumentTypes">>;
-  documents: Array<{ documentType: string; status: string | null }>;
-  rejectedDocumentType: string;
-}): string[] {
-  const { conditions, documents, rejectedDocumentType } = input;
-  return conditions
-    .filter(
-      (c) =>
-        c.status === "submitted" &&
-        (c.requiredDocumentTypes ?? []).some((rt) => documentTypesMatch(rt, rejectedDocumentType)),
-    )
-    .filter(
-      (c) =>
-        !documents.some(
-          (d) =>
-            d.status !== DOCUMENT_STATUS.REJECTED &&
-            (c.requiredDocumentTypes ?? []).some((rt) => documentTypesMatch(rt, d.documentType)),
-        ),
-    )
-    .map((c) => c.id);
-}
-
 /**
  * Review-loop counterpart of matchUploadedDocumentToConditions: when a human
  * reviewer REJECTS a document, any condition that had moved to "submitted" on
@@ -1072,17 +1051,10 @@ export async function getPipelineSummaries(
   // One grouped query for the P5 workbench counts (keeps the inArray batching
   // pattern — no per-app round trips). Best-effort: health signals never break
   // the pipeline list.
-  const openReviewByApp = new Map<string, number>();
+  let openReviewByApp = new Map<string, number>();
   try {
-    const { reviewItems } = await import("@shared/schema");
-    const countRows = await db
-      .select({ applicationId: reviewItems.applicationId, n: count() })
-      .from(reviewItems)
-      .where(and(inArray(reviewItems.applicationId, applications.map(a => a.id)), eq(reviewItems.status, "open")))
-      .groupBy(reviewItems.applicationId);
-    for (const row of countRows) {
-      if (row.applicationId) openReviewByApp.set(row.applicationId, Number(row.n));
-    }
+    const { currentOpenReviewItemsForApplications } = await import("./services/income/reviewTriage");
+    openReviewByApp = await currentOpenReviewItemsForApplications(applications.map(a => a.id));
   } catch {
     // non-fatal
   }

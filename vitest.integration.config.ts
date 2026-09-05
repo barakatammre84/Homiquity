@@ -33,6 +33,9 @@ export default defineConfig({
       "tests/cpaPartnerRoutes.test.ts",
       "tests/partnerRoutes.test.ts",
       "tests/partnerConsent.test.ts",
+      "tests/documentCorrectionJourney.test.ts",
+      "tests/applicationSignalIsolation.test.ts",
+      "tests/staleEvidenceIsolation.test.ts",
     ],
   },
   resolve: {

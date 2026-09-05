@@ -2,7 +2,7 @@
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
 import { groupRowsByKeyDense } from "./batchGroup";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 
@@ -24,6 +24,7 @@ import {
   type InsertDealActivity,
 } from "@shared/schema";
 import { WRITER_CONTRACT_KEY, WRITER_CONTRACT_VERSION } from "@shared/borrowerActivityView";
+import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { UsersStorage } from "./users";
 export class ApplicationsStorage extends UsersStorage {
   /** Keep one current upload per explicit replacement lineage. If the caller's
@@ -274,9 +275,22 @@ export class ApplicationsStorage extends UsersStorage {
   }
 
   async updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined> {
+    const update: Record<string, unknown> = { ...data, updatedAt: new Date() };
+    if (
+      data.status === DOCUMENT_STATUS.UPLOADED ||
+      data.status === DOCUMENT_STATUS.VERIFYING
+    ) {
+      // Extraction may finish after a human review. Preserve the terminal
+      // verdict while still recording the extracted metadata in this update.
+      update.status = sql`CASE
+        WHEN ${documents.status} IN (${DOCUMENT_STATUS.VERIFIED}, ${DOCUMENT_STATUS.REJECTED})
+          THEN ${documents.status}
+        ELSE ${data.status}
+      END`;
+    }
     const [doc] = await db
       .update(documents)
-      .set({ ...data, updatedAt: new Date() })
+      .set(update)
       .where(eq(documents.id, id))
       .returning();
     return doc;

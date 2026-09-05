@@ -11,6 +11,9 @@ import { isStaffRole, pickWorkableLoanApplication, type User } from "@shared/sch
 import { z } from "zod";
 import { sendNotificationEmail } from "../../services/emailService";
 import { routeParams } from "../../http/routeParams";
+import { canonicalDocumentType } from "@shared/documentTypes";
+import { toMessageViewForApplicationAccess } from "../../services/messageVisibility";
+import { isInternalStaffRole } from "@shared/roles";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -70,8 +73,18 @@ export function registerMessagingRoutes(
   // Get all conversations for current user
   app.get("/api/messages/conversations", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const user = req.user as User;
+      const userId = user.id;
       const conversations = await storage.getConversations(userId);
+      const accessibleApplicationIds = new Set(
+        await storage.getAccessibleMessageApplicationIds(
+          userId,
+          user.role,
+          conversations
+            .map((conversation) => conversation.lastMessage.applicationId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
       
       const partnerIds = [...new Set(conversations.map(c => c.partnerId).filter(Boolean))];
       const partners = await storage.getUsersByIds(partnerIds);
@@ -81,6 +94,10 @@ export function registerMessagingRoutes(
         const partner = partnerMap.get(conv.partnerId) || null;
         return {
           ...conv,
+          lastMessage: toMessageViewForApplicationAccess(
+            conv.lastMessage,
+            accessibleApplicationIds,
+          ),
           partner: partner ? {
             id: partner.id,
             name: `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email || 'User',
@@ -102,15 +119,28 @@ export function registerMessagingRoutes(
   // Get messages with a specific user
   app.get("/api/messages/:otherUserId", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const user = req.user as User;
+      const userId = user.id;
       const { otherUserId } = routeParams(req);
       
       const messages = await storage.getMessages(userId, otherUserId);
+      const accessibleApplicationIds = new Set(
+        await storage.getAccessibleMessageApplicationIds(
+          userId,
+          user.role,
+          messages
+            .map((message) => message.applicationId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const messageViews = messages.map((message) =>
+        toMessageViewForApplicationAccess(message, accessibleApplicationIds),
+      );
       
       // Mark messages as read
       await storage.markMessagesAsRead(userId, otherUserId);
       
-      res.json(messages);
+      res.json(messageViews);
     } catch (error) {
       console.error("Get messages error:", error);
       res.status(500).json({ error: "Failed to get messages" });
@@ -189,6 +219,7 @@ export function registerMessagingRoutes(
       // otherwise derive the borrower's most recent application.
       const borrowerParty = senderIsStaff ? recipient : user;
       let applicationId: string | null = null;
+      let borrowerHasAnyApplication = false;
       if (parsed.data.applicationId) {
         const application = await storage.getLoanApplication(parsed.data.applicationId);
         if (!application || application.userId !== borrowerParty.id) {
@@ -204,7 +235,49 @@ export function registerMessagingRoutes(
         // workable file the message is stored unattached (as it already is
         // pre-application) rather than misfiled on a closed record.
         const apps = await storage.getLoanApplicationsByUser(borrowerParty.id);
+        borrowerHasAnyApplication = apps.length > 0;
         applicationId = pickWorkableLoanApplication(apps)?.id ?? null;
+      }
+      if (messageType === "document_request" && !applicationId) {
+        return res.status(409).json({
+          error: "Choose an active loan application before requesting a document",
+        });
+      }
+      if (
+        senderIsStaff &&
+        !applicationId &&
+        (borrowerHasAnyApplication || !isInternalStaffRole(user.role))
+      ) {
+        return res.status(403).json({
+          error: borrowerHasAnyApplication
+            ? "Choose a loan application you are assigned to before messaging this borrower"
+            : "Only Homiquity staff can contact a borrower before a loan application exists",
+        });
+      }
+      // Staff messages attached to a loan file must come from someone who can
+      // actually work that file. Knowing a borrower/application id is not
+      // enough to open a communication channel or create a document request.
+      if (senderIsStaff && applicationId) {
+        const staffApplication = await storage.getLoanApplicationWithAccess(
+          applicationId,
+          user.id,
+          user.role,
+        );
+        if (!staffApplication) {
+          return res.status(403).json({ error: "You do not have access to this loan application" });
+        }
+      }
+      if (!senderIsStaff && recipientIsStaff && applicationId) {
+        const recipientApplication = await storage.getLoanApplicationWithAccess(
+          applicationId,
+          recipient.id,
+          recipient.role || "",
+        );
+        if (!recipientApplication) {
+          return res.status(403).json({
+            error: "That loan-team member no longer has access to this application",
+          });
+        }
       }
 
       // LO-5 comms compliance lint on STAFF → borrower outbound free text.
@@ -256,15 +329,33 @@ export function registerMessagingRoutes(
         }
       }
 
-      const newMessage = await storage.sendMessage({
+      const messageInput = {
         senderId: user.id,
         recipientId,
         message,
         applicationId,
         messageType,
-        documentRequestData: documentRequestData || null,
+        documentRequestData: documentRequestData
+          ? {
+              ...documentRequestData,
+              documentType: canonicalDocumentType(documentRequestData.documentType),
+            }
+          : null,
         isRead: false,
-      });
+      };
+      const sent = messageType === "document_request"
+        ? await storage.sendDocumentRequestOnce({
+            ...messageInput,
+            applicationId: applicationId!,
+          })
+        : { message: await storage.sendMessage(messageInput), created: true };
+      const newMessage = sent.message;
+
+      // An open request for this document already exists on this file. Return
+      // that request without another message, email, notification, or audit row.
+      if (!sent.created) {
+        return res.status(200).json({ ...newMessage, deduplicated: true });
+      }
 
       logAudit(req, "message.sent", "team_message", newMessage.id, {
         recipientId,
@@ -339,91 +430,16 @@ export function registerMessagingRoutes(
     }
   });
   
-  // Update document request status (when borrower uploads or staff approves)
-  app.patch("/api/messages/:messageId/document-request", isAuthenticated, async (req, res) => {
-    try {
-      const { messageId } = routeParams(req);
-      const { status, documentId } = req.body;
-      const user = req.user as User;
-
-      if (!status || !['pending', 'submitted', 'approved', 'rejected'].includes(status)) {
-        return res.status(400).json({ error: "Valid status is required" });
-      }
-
-      // Fetch the message so we can enforce participant and role-based transition checks
-      // before mutating anything.
-      const message = await storage.getMessageById(messageId);
-      if (!message || message.messageType !== 'document_request') {
-        return res.status(404).json({ error: "Document request not found" });
-      }
-
-      const isSender = message.senderId === user.id;
-      const isRecipient = message.recipientId === user.id;
-
-      // Caller must be a participant in the conversation.
-      if (!isSender && !isRecipient) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      // Verify access to the associated loan file when one is present.
-      if (message.applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(message.applicationId, user.id, user.role);
-        if (!application) {
-          return res.status(403).json({ error: "Access denied" });
-        }
-      }
-
-      // Enforce which side of the conversation may perform each transition:
-      //   submitted  → only the recipient (borrower) may mark a request as submitted
-      //   approved / rejected / pending (reset) → only the sender (staff who made the request)
-      if (status === 'submitted') {
-        if (!isRecipient) {
-          return res.status(403).json({ error: "Only the document recipient may mark a request as submitted" });
-        }
-      } else {
-        // approved, rejected, pending — only the original requesting staff member
-        if (!isSender || !isStaffRole(user.role)) {
-          return res.status(403).json({ error: "Only the requesting staff member may approve, reject, or reset a document request" });
-        }
-      }
-
-      // State-machine guard (prevents lost updates when borrower + staff act
-      // concurrently, e.g. borrower re-submits while staff approves). Only the
-      // listed prior states may transition to the target; the update below is
-      // conditional on the current state, so a stale writer gets a 409.
-      const LEGAL_FROM: Record<string, string[]> = {
-        submitted: ["pending", "rejected"],       // borrower (re)uploads
-        approved: ["submitted"],                   // staff clears a submitted doc
-        rejected: ["submitted"],                   // staff bounces a submitted doc
-        pending: ["submitted", "approved", "rejected"], // staff resets
-      };
-      const currentStatus = (message.documentRequestData as { status?: string } | null)?.status ?? "pending";
-      if (currentStatus === status) {
-        return res.json(message); // idempotent no-op
-      }
-      if (!LEGAL_FROM[status]?.includes(currentStatus)) {
-        return res.status(409).json({
-          error: `Cannot move a "${currentStatus}" request to "${status}".`,
-          currentStatus,
-        });
-      }
-
-      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId, LEGAL_FROM[status]);
-
-      if (!updated) {
-        // 0 rows matched the expected prior state — another writer beat us.
-        const fresh = await storage.getMessageById(messageId);
-        return res.status(409).json({
-          error: "This request was just updated by someone else. Refresh to see the latest status.",
-          currentStatus: (fresh?.documentRequestData as { status?: string } | null)?.status ?? null,
-        });
-      }
-
-      res.json(updated);
-    } catch (error) {
-      console.error("Update document request error:", error);
-      res.status(500).json({ error: "Failed to update document request" });
-    }
+  // Retired compatibility endpoint. Submission now happens only inside the
+  // atomic upload transaction, and approval/rejection only inside the human
+  // document-review transaction. Keeping a non-mutating 410 gives stale
+  // browser bundles a clear refresh signal without preserving a second source
+  // of truth.
+  app.patch("/api/messages/:messageId/document-request", isAuthenticated, (_req, res) => {
+    res.status(410).json({
+      error: "This document-request action has been replaced. Refresh and use the current loan-file workflow.",
+      code: "DOCUMENT_REQUEST_ACTION_RETIRED",
+    });
   });
   
   // Get pending document requests for current user

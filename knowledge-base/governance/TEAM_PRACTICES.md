@@ -101,9 +101,10 @@ coherent push once — one CI cycle, one deploy, one review.
    pass is for what a component test can't prove (visuals, full E2E).
 3. Integration suite green against a live worktree server
    (`set -a; source .env; set +a; TEST_BASE_URL=http://localhost:5002 pnpm test:integration`).
-   Boot the test server with `RATE_LIMIT_RELAXED=true` so the suite's ~30 auth calls don't
-   trip the 20/15-min auth limiter; fallback if you can't set env: run in 3 groups with a
-   server restart between (restarts clear the in-memory counters).
+   Boot the test server with `RATE_LIMIT_RELAXED=true` so the suite's auth and full HTTP
+   traffic do not trip the 20/15-min auth or 500/15-min general API limiters; fallback if
+   you can't set env: run in 3 groups with a server restart between (restarts clear the
+   in-memory counters). The flag is ignored when `NODE_ENV=production`.
 4. Live verification on the worktree port (5002+) when a running server proves the
    behavior — capture the evidence in the PR body. For client UI, do this *after* the
    point-2 component tests: the browser pass proves visuals and end-to-end wiring, not

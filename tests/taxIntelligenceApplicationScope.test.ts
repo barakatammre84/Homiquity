@@ -1,0 +1,102 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AddressInfo } from "node:net";
+
+const serviceMocks = vi.hoisted(() => ({
+  buildTaxReconciliation: vi.fn(),
+  getLatestSituationProfile: vi.fn(),
+  classifyAndPersistSituation: vi.fn(),
+}));
+
+vi.mock("../server/auth", () => ({
+  isAuthenticated: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+vi.mock("../server/auditLog", () => ({ logAudit: vi.fn() }));
+vi.mock("../server/services/frictionLog", () => ({ logFriction: vi.fn() }));
+vi.mock("../server/consentGate", () => ({ hasUserConsent: vi.fn(async () => true) }));
+vi.mock("../server/services/taxDocumentIntelligence", () => ({
+  runTaxDocumentIntelligence: vi.fn(),
+  getLatestTaxIntelligence: vi.fn(),
+  TaxDocumentIntelligenceError: class TaxDocumentIntelligenceError extends Error {},
+}));
+vi.mock("../server/services/borrowerEntityResolution", () => ({
+  resolveAndPersistEntities: vi.fn(),
+}));
+vi.mock("../server/services/taxReconciliation", () => ({
+  buildTaxReconciliation: serviceMocks.buildTaxReconciliation,
+}));
+vi.mock("../server/services/situationClassifier", () => ({
+  classifyAndPersistSituation: serviceMocks.classifyAndPersistSituation,
+  getLatestSituationProfile: serviceMocks.getLatestSituationProfile,
+}));
+vi.mock("../server/services/worksheetPrefill", () => ({ buildSeWorksheetDrafts: vi.fn() }));
+vi.mock("../server/services/income/reviewTriage", () => ({
+  syncReviewItems: vi.fn(),
+  resolveReviewItem: vi.fn(),
+}));
+vi.mock("../server/services/decisionEngine", () => ({ recalculateDecision: vi.fn() }));
+
+const application = { id: "app-1", userId: "borrower-1" };
+const storage = {
+  getDealTeamMembers: async () => [{ userId: "lo-1" }],
+  getLoanApplication: async (id: string) => (id === application.id ? application : undefined),
+} as any;
+
+describe("staff tax intelligence application scope", () => {
+  let server: import("node:http").Server;
+  let base: string;
+
+  beforeAll(async () => {
+    const express = (await import("express")).default;
+    const { registerTaxIntelligenceRoutes } = await import("../server/routes/taxIntelligence");
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: "lo-1", role: "lo" };
+      next();
+    });
+    registerTaxIntelligenceRoutes(app, storage);
+    server = app.listen(0);
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(() => server?.close());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    serviceMocks.buildTaxReconciliation.mockResolvedValue({
+      userId: "borrower-1",
+      generatedAt: new Date().toISOString(),
+      taxYears: [],
+      formCount: 0,
+      entities: [],
+      checks: [],
+      summary: { pass: 0, variance: 0, notEvaluable: 0, info: 0 },
+    });
+    serviceMocks.getLatestSituationProfile.mockResolvedValue({
+      id: "profile-1",
+      userId: "borrower-1",
+      applicationId: "app-1",
+      generatedAt: new Date(),
+      inputsFingerprint: "fingerprint",
+      profile: {},
+    });
+  });
+
+  it("limits a loan officer's reconciliation to the assigned application", async () => {
+    const response = await fetch(
+      `${base}/api/tax-intelligence/reconciliation?userId=borrower-1&applicationId=app-1`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(serviceMocks.buildTaxReconciliation).toHaveBeenCalledWith("borrower-1", "app-1");
+  });
+
+  it("limits a loan officer's situation profile to the assigned application", async () => {
+    const response = await fetch(
+      `${base}/api/tax-intelligence/situation?userId=borrower-1&applicationId=app-1`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(serviceMocks.getLatestSituationProfile).toHaveBeenCalledWith("borrower-1", "app-1");
+    expect(serviceMocks.classifyAndPersistSituation).not.toHaveBeenCalled();
+  });
+});

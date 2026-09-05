@@ -25,6 +25,10 @@
 import type { ExtractedDocumentData } from "../extractionCore";
 import { recordCoarseExtraction } from "./documentConfidence";
 import { DOCUMENT_STATUS } from "@shared/documentStatus";
+import {
+  documentProcessingBlockReason,
+  withDocumentWorkflowLock,
+} from "./documentLineage";
 
 /** The slice of IStorage this needs — keeps the unit testable without a DB. */
 interface DocumentUpdater {
@@ -33,6 +37,8 @@ interface DocumentUpdater {
 
 export interface ApplyExtractionResult {
   humanReviewRequired: boolean;
+  /** Why an extraction result was discarded instead of becoming current file state. */
+  skipReason: "reviewed" | "replaced" | null;
   /** Number of `extracted_fields` rows written (0 when the read was low-confidence). */
   factsPersisted: number;
   /** Readiness fields credited from the values (empty when low-confidence). */
@@ -51,78 +57,100 @@ export async function applyExtractionToDocument(params: {
 }): Promise<ApplyExtractionResult> {
   const { storage, userId, documentId, documentType, applicationId, fileSize, extracted } = params;
 
-  const { humanReviewRequired } = await recordCoarseExtraction({
-    documentId,
-    documentType,
-    applicationId,
-    confidence: extracted.confidence,
-    extractedFields: extracted.extractedFields,
-    fileSize,
-  });
+  return withDocumentWorkflowLock(documentId, async (currentDocument, isCurrentVersion) => {
+    const skipReason = documentProcessingBlockReason(currentDocument, isCurrentVersion);
+    if (skipReason) {
+      return {
+        humanReviewRequired: false,
+        skipReason,
+        factsPersisted: 0,
+        readinessFieldsUpdated: [],
+      };
+    }
 
-  await storage.updateDocument(documentId, {
-    // MR-2: AI confidence never auto-verifies. "verified" is reserved for
-    // POST /api/documents/:id/verify — a human on the deal team. A read that
-    // clears the type's confidence threshold is staged "verifying" for that
-    // human to confirm; everything else stays "uploaded".
-    status: !humanReviewRequired ? DOCUMENT_STATUS.VERIFYING : DOCUMENT_STATUS.UPLOADED,
-    notes: JSON.stringify({
-      extractedAt: new Date().toISOString(),
-      extractedFields: extracted.extractedFields,
+    const { humanReviewRequired } = await recordCoarseExtraction({
+      documentId,
+      documentType,
+      applicationId,
       confidence: extracted.confidence,
+      extractedFields: extracted.extractedFields,
+      fileSize,
+    });
+
+    await storage.updateDocument(documentId, {
+      // MR-2: AI confidence never auto-verifies. "verified" is reserved for
+      // POST /api/documents/:id/verify — a human on the deal team. A read that
+      // clears the type's confidence threshold is staged "verifying" for that
+      // human to confirm; everything else stays "uploaded".
+      status: !humanReviewRequired ? DOCUMENT_STATUS.VERIFYING : DOCUMENT_STATUS.UPLOADED,
+      notes: JSON.stringify({
+        extractedAt: new Date().toISOString(),
+        extractedFields: extracted.extractedFields,
+        confidence: extracted.confidence,
+        humanReviewRequired,
+        warnings: extracted.warnings,
+        modelId: extracted.modelId,
+        promptVersion: extracted.promptVersion,
+        responseHash: extracted.rawResponseHash,
+      }),
+      extractionResponseHash: extracted.rawResponseHash,
+      extractionRawEncrypted: extracted.rawResponseEncrypted,
+      extractionRawIv: extracted.rawResponseIv,
+      extractionRawKeyId: extracted.rawResponseKeyId,
+    });
+
+    // A low-confidence read is a guess, and a guess is not a fact: it is recorded
+    // on the document (above) for a human to look at, and it feeds nothing.
+    if (extracted.confidence === "low") {
+      return {
+        humanReviewRequired,
+        skipReason: null,
+        factsPersisted: 0,
+        readinessFieldsUpdated: [],
+      };
+    }
+
+    // Both of the below are non-fatal by contract: a lost downstream signal must
+    // never turn into a failed extraction, and on path (B) the caller is a
+    // fire-and-forget task whose rejection nobody surfaces.
+    let factsPersisted = 0;
+    try {
+      const { persistDocumentFacts } = await import("./documentFacts");
+      factsPersisted = await persistDocumentFacts(
+        documentId,
+        documentType,
+        extracted as unknown as Record<string, any>,
+        extracted.confidence,
+        extracted.modelId,
+      );
+    } catch (factErr) {
+      console.warn("[DocumentFacts] persist failed (non-fatal):", factErr);
+    }
+
+    let readinessFieldsUpdated: string[] = [];
+    try {
+      const { wireExtractionToReadiness } = await import("./optimizationEngine");
+      // Pass the extraction RESULT, not `extractedFields` — the latter is a
+      // string[] of field NAMES, and handing it to a value-reading map is what
+      // made every value-bearing readiness row silently skip (F-030).
+      const readinessResult = await wireExtractionToReadiness(
+        userId,
+        documentId,
+        documentType,
+        extracted as unknown as Record<string, any>,
+        extracted.confidence,
+      );
+      readinessFieldsUpdated = readinessResult.fieldsUpdated;
+      console.log(`[OPT-1] Readiness fields updated: ${readinessFieldsUpdated.join(", ") || "none"}`);
+    } catch (readinessErr) {
+      console.warn("[OPT-1] Readiness wiring failed (non-fatal):", readinessErr);
+    }
+
+    return {
       humanReviewRequired,
-      warnings: extracted.warnings,
-      modelId: extracted.modelId,
-      promptVersion: extracted.promptVersion,
-      responseHash: extracted.rawResponseHash,
-    }),
-    extractionResponseHash: extracted.rawResponseHash,
-    extractionRawEncrypted: extracted.rawResponseEncrypted,
-    extractionRawIv: extracted.rawResponseIv,
-    extractionRawKeyId: extracted.rawResponseKeyId,
+      skipReason: null,
+      factsPersisted,
+      readinessFieldsUpdated,
+    };
   });
-
-  // A low-confidence read is a guess, and a guess is not a fact: it is recorded
-  // on the document (above) for a human to look at, and it feeds nothing.
-  if (extracted.confidence === "low") {
-    return { humanReviewRequired, factsPersisted: 0, readinessFieldsUpdated: [] };
-  }
-
-  // Both of the below are non-fatal by contract: a lost downstream signal must
-  // never turn into a failed extraction, and on path (B) the caller is a
-  // fire-and-forget task whose rejection nobody surfaces.
-  let factsPersisted = 0;
-  try {
-    const { persistDocumentFacts } = await import("./documentFacts");
-    factsPersisted = await persistDocumentFacts(
-      documentId,
-      documentType,
-      extracted as unknown as Record<string, any>,
-      extracted.confidence,
-      extracted.modelId,
-    );
-  } catch (factErr) {
-    console.warn("[DocumentFacts] persist failed (non-fatal):", factErr);
-  }
-
-  let readinessFieldsUpdated: string[] = [];
-  try {
-    const { wireExtractionToReadiness } = await import("./optimizationEngine");
-    // Pass the extraction RESULT, not `extractedFields` — the latter is a
-    // string[] of field NAMES, and handing it to a value-reading map is what
-    // made every value-bearing readiness row silently skip (F-030).
-    const readinessResult = await wireExtractionToReadiness(
-      userId,
-      documentId,
-      documentType,
-      extracted as unknown as Record<string, any>,
-      extracted.confidence,
-    );
-    readinessFieldsUpdated = readinessResult.fieldsUpdated;
-    console.log(`[OPT-1] Readiness fields updated: ${readinessFieldsUpdated.join(", ") || "none"}`);
-  } catch (readinessErr) {
-    console.warn("[OPT-1] Readiness wiring failed (non-fatal):", readinessErr);
-  }
-
-  return { humanReviewRequired, factsPersisted, readinessFieldsUpdated };
 }

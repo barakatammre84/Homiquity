@@ -9,6 +9,11 @@ import { logAudit } from "../auditLog";
 import { logFriction } from "../services/frictionLog";
 import { publicExtraction } from "./documents";
 import type { TaxInsight, User } from "@shared/schema";
+import {
+  documentProcessingBlockReason,
+  getDocumentProcessingBlockReason,
+  withDocumentWorkflowLock,
+} from "../services/documentLineage";
 
 /**
  * Tax Return Insight — consumer-direct: the borrower processes their OWN
@@ -79,45 +84,80 @@ export function registerTaxInsightRoutes(app: Express, storage: IStorage) {
         });
       }
 
+      const preflightBlock = await getDocumentProcessingBlockReason(documentId);
+      if (preflightBlock) {
+        return res.status(409).json({
+          error:
+            preflightBlock === "replaced"
+              ? "This tax return has been replaced. Process the current version instead."
+              : "This tax return already has a final human review.",
+          code:
+            preflightBlock === "replaced"
+              ? "DOCUMENT_VERSION_REPLACED"
+              : "DOCUMENT_ALREADY_REVIEWED",
+        });
+      }
+
       const extractedData = await extractTaxReturnData(document.storagePath, year);
 
-      // Same persistence contract as POST /api/documents/:id/extract: coarse
-      // confidence recording + lineage columns; AI never sets "verified" (MR-2).
-      const { humanReviewRequired } = await recordCoarseExtraction({
+      const persistence = await withDocumentWorkflowLock(
         documentId,
-        documentType: document.documentType,
-        applicationId: document.applicationId,
-        confidence: extractedData.confidence,
-        extractedFields: extractedData.extractedFields,
-        fileSize: document.fileSize ?? undefined,
-      });
-      await storage.updateDocument(documentId, {
-        status: !humanReviewRequired ? "verifying" : "uploaded",
-        notes: JSON.stringify({
-          extractedAt: new Date().toISOString(),
-          extractedFields: extractedData.extractedFields,
+        async (currentDocument, isCurrentVersion) => {
+        const blockReason = documentProcessingBlockReason(currentDocument, isCurrentVersion);
+        if (blockReason) {
+          return { insight: null, blockReason };
+        }
+        // Same persistence contract as POST /api/documents/:id/extract: coarse
+        // confidence recording + lineage columns; AI never sets "verified" (MR-2).
+        const { humanReviewRequired } = await recordCoarseExtraction({
+          documentId,
+          documentType: document.documentType,
+          applicationId: document.applicationId,
           confidence: extractedData.confidence,
-          humanReviewRequired,
-          warnings: extractedData.warnings,
-          modelId: extractedData.modelId,
-          promptVersion: extractedData.promptVersion,
-          responseHash: extractedData.rawResponseHash,
-        }),
-        extractionResponseHash: extractedData.rawResponseHash,
-        extractionRawEncrypted: extractedData.rawResponseEncrypted,
-        extractionRawIv: extractedData.rawResponseIv,
-        extractionRawKeyId: extractedData.rawResponseKeyId,
-      });
+          extractedFields: extractedData.extractedFields,
+          fileSize: document.fileSize ?? undefined,
+        });
+        await storage.updateDocument(documentId, {
+          status: !humanReviewRequired ? "verifying" : "uploaded",
+          notes: JSON.stringify({
+            extractedAt: new Date().toISOString(),
+            extractedFields: extractedData.extractedFields,
+            confidence: extractedData.confidence,
+            humanReviewRequired,
+            warnings: extractedData.warnings,
+            modelId: extractedData.modelId,
+            promptVersion: extractedData.promptVersion,
+            responseHash: extractedData.rawResponseHash,
+          }),
+          extractionResponseHash: extractedData.rawResponseHash,
+          extractionRawEncrypted: extractedData.rawResponseEncrypted,
+          extractionRawIv: extractedData.rawResponseIv,
+          extractionRawKeyId: extractedData.rawResponseKeyId,
+        });
 
-      const insight = await saveTaxInsightForDocument(user.id, documentId, extractedData);
-
-      logAudit(req, "tax_insight.generated", "tax_insight", insight.id, {
-        documentId,
-        taxYear: insight.taxYear,
-        dscrCandidate: insight.dscrCandidate,
-        selfEmployed: insight.selfEmployed,
-        confidence: insight.confidence,
+        const persistedInsight = await saveTaxInsightForDocument(user.id, documentId, extractedData);
+        logAudit(req, "tax_insight.generated", "tax_insight", persistedInsight.id, {
+          documentId,
+          taxYear: persistedInsight.taxYear,
+          dscrCandidate: persistedInsight.dscrCandidate,
+          selfEmployed: persistedInsight.selfEmployed,
+          confidence: persistedInsight.confidence,
+        });
+        return { insight: persistedInsight, blockReason: null };
       });
+      if (persistence.blockReason) {
+        return res.status(409).json({
+          error:
+            persistence.blockReason === "replaced"
+              ? "This tax return was replaced while extraction was running. The result was discarded."
+              : "This tax return was reviewed while extraction was running. The human decision was kept.",
+          code:
+            persistence.blockReason === "replaced"
+              ? "DOCUMENT_VERSION_REPLACED"
+              : "DOCUMENT_ALREADY_REVIEWED",
+        });
+      }
+      const insight = persistence.insight!;
 
       res.json({
         insight: publicInsight(insight),

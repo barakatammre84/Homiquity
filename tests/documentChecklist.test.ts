@@ -37,6 +37,7 @@ const task = (over: Partial<ChecklistTask> & { id: string }): ChecklistTask => (
   requestingTeam: null,
   isCustomRequest: true,
   documentInstructions: null,
+  ownerRole: "BORROWER",
   ...over,
 });
 
@@ -119,6 +120,34 @@ describe("buildDocumentChecklist — personalized (condition-driven) path", () =
     expect(documents[0].status).toBe("verifying");
   });
 
+  it("does not resurrect the legacy standard list after every personalized condition is settled", () => {
+    const result = buildDocumentChecklist({
+      conditions: [
+        condition({ id: "c-cleared", status: "cleared", requiredDocumentTypes: ["pay_stub"] }),
+        condition({ id: "c-waived", status: "waived", requiredDocumentTypes: ["bank_statement"] }),
+      ],
+      documents: [],
+      tasks: [],
+    });
+    expect(result.documents).toEqual([]);
+    expect(result.personalized).toBe(true);
+    expect(result.stats.needed).toBe(0);
+  });
+
+  it("collapses overlapping conditions into one upload action that names every cleared item", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [
+        condition({ id: "c-2023", title: "2023 personal return", requiredDocumentTypes: ["tax_return"] }),
+        condition({ id: "c-2024", title: "2024 personal return", requiredDocumentTypes: ["tax_return_1040"] }),
+      ],
+      documents: [],
+      tasks: [],
+    });
+    expect(documents).toHaveLength(1);
+    expect(documents[0].conditionIds).toEqual(["c-2023", "c-2024"]);
+    expect(documents[0].description).toContain("2 loan items");
+  });
+
   it("narrative conditions (no requiredDocumentTypes) never become checklist items", () => {
     const { documents } = buildDocumentChecklist({
       conditions: [
@@ -143,18 +172,32 @@ describe("buildDocumentChecklist — standard fallback path", () => {
     expect(documents.every((d) => d.source === "standard")).toBe(true);
   });
 
-  it("standard items match uploads through the bridge and honor submitted tasks", () => {
+  it("standard items match uploads through the bridge", () => {
     const { documents } = buildDocumentChecklist({
       conditions: [],
       documents: [doc({ id: "d1", documentType: "tax_return_1040", status: "verified" })],
+      tasks: [],
+    });
+    const byType = Object.fromEntries(documents.map((d) => [d.documentType, d]));
+    expect(byType["tax_return"].status).toBe("verified");
+    expect(byType["w2"].status).toBe("needed");
+  });
+
+  it("uses one exact task checklist instead of mixing in five generic asks", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [],
+      documents: [],
       tasks: [
         task({ id: "t1", documentCategory: "pay_stub", status: "IN_PROGRESS", verificationStatus: "pending" }),
       ],
     });
-    const byType = Object.fromEntries(documents.map((d) => [d.documentType, d]));
-    expect(byType["tax_return"].status).toBe("verified");
-    expect(byType["pay_stub"].status).toBe("verifying");
-    expect(byType["w2"].status).toBe("needed");
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      id: "t1",
+      source: "task",
+      documentType: "pay_stub",
+      status: "verifying",
+    });
   });
 });
 
@@ -181,6 +224,22 @@ describe("buildDocumentChecklist — custom document-request tasks", () => {
     });
     expect(documents.every((d) => d.source === "standard")).toBe(true);
   });
+
+  it("does not turn a staff document-review task into a borrower upload request", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [condition({ id: "c1", status: "cleared", requiredDocumentTypes: ["drivers_license"] })],
+      documents: [],
+      tasks: [
+        task({
+          id: "staff-review",
+          ownerRole: "PROCESSOR",
+          documentCategory: null,
+          title: "Review uploaded drivers license",
+        }),
+      ],
+    });
+    expect(documents).toEqual([]);
+  });
 });
 
 describe("buildDocumentChecklist — stats", () => {
@@ -204,6 +263,18 @@ describe("buildDocumentChecklist — stats", () => {
 });
 
 describe("buildDocumentChecklist — borrower-facing context (year + instructions, no staff notes)", () => {
+  it("never renders completed or expired document tasks as a new borrower ask", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [],
+      documents: [],
+      tasks: [
+        task({ id: "done", status: "COMPLETED", documentCategory: "profit_loss_statement" }),
+        task({ id: "expired", status: "EXPIRED", documentCategory: "business_bank_statement" }),
+      ],
+    });
+    expect(documents.some((item) => item.source === "task")).toBe(false);
+  });
+
   it("task items carry documentYear so the checklist can say WHICH year's document", () => {
     const { documents } = buildDocumentChecklist({
       conditions: [],

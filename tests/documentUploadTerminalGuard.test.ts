@@ -1,6 +1,15 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddressInfo } from "node:net";
 
+const workflowGate = vi.hoisted(() => ({
+  status: "uploaded" as string,
+  isCurrentVersion: true,
+}));
+const uploadFanout = vi.hoisted(() => ({
+  emitDocumentEvent: vi.fn(async () => undefined),
+  matchUploadedDocumentToConditions: vi.fn(async () => ({ matchedConditionIds: [] })),
+}));
+
 // ---------------------------------------------------------------------------
 // POST /api/documents/upload must never file a document against a CLOSED loan.
 //
@@ -37,14 +46,28 @@ vi.mock("../server/auth", () => ({
 // about the document record, not the audit row.
 vi.mock("../server/auditLog", () => ({ logAudit: vi.fn() }));
 
+vi.mock("../server/services/documentLineage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../server/services/documentLineage")>();
+  return {
+    ...actual,
+    withDocumentWorkflowLock: async (
+      _documentId: string,
+      run: (document: any, isCurrentVersion: boolean) => Promise<any>,
+    ) => run(
+      { id: _documentId, status: workflowGate.status },
+      workflowGate.isCurrentVersion,
+    ),
+  };
+});
+
 // Downstream fan-out on the attached path (task events, condition matching,
 // autopilot) all reach the database. Stub them out — this test pins WHICH
 // application the document lands on, not what happens afterwards.
 vi.mock("../server/services/taskEventEmitter", () => ({
-  taskEventEmitter: { emitDocumentEvent: vi.fn() },
+  taskEventEmitter: { emitDocumentEvent: uploadFanout.emitDocumentEvent },
 }));
 vi.mock("../server/pipelineEngine", () => ({
-  matchUploadedDocumentToConditions: vi.fn(),
+  matchUploadedDocumentToConditions: uploadFanout.matchUploadedDocumentToConditions,
 }));
 vi.mock("../server/services/autopilot/config", () => ({
   getAutopilotConfig: vi.fn(async () => ({ enabled: false })),
@@ -57,10 +80,12 @@ const h = {
   applications: [] as StubApp[],
   createdDocuments: [] as any[],
   dealActivities: [] as any[],
+  requestedRegistrations: [] as any[],
   reset() {
     this.applications = [];
     this.createdDocuments = [];
     this.dealActivities = [];
+    this.requestedRegistrations = [];
   },
 };
 
@@ -93,6 +118,10 @@ const registerDocumentVersion = async ({ document: input }: any) => ({
   document: await storageStub.createDocument(input),
   lineage: input.applicationId ? { documentId: `doc-${h.createdDocuments.length}` } : null,
 });
+const registerRequestedDocumentVersion = async (input: any) => {
+  h.requestedRegistrations.push(input);
+  return registerDocumentVersion(input);
+};
 
 describe("POST /api/documents/upload — closed-file guard", () => {
   let server: import("node:http").Server;
@@ -109,7 +138,10 @@ describe("POST /api/documents/upload — closed-file guard", () => {
       (req as any).user = currentUser;
       next();
     });
-    registerDocumentRoutes(app, storageStub, { registerDocumentVersion });
+    registerDocumentRoutes(app, storageStub, {
+      registerDocumentVersion,
+      registerRequestedDocumentVersion,
+    });
 
     server = app.listen(0);
     const { port } = server.address() as AddressInfo;
@@ -123,6 +155,10 @@ describe("POST /api/documents/upload — closed-file guard", () => {
   beforeEach(() => {
     h.reset();
     currentUser = { id: "borrower-1", role: "borrower" };
+    workflowGate.status = "uploaded";
+    workflowGate.isCurrentVersion = true;
+    uploadFanout.emitDocumentEvent.mockClear();
+    uploadFanout.matchUploadedDocumentToConditions.mockClear();
   });
 
   const upload = (body: Record<string, unknown> = {}) =>
@@ -222,5 +258,43 @@ describe("POST /api/documents/upload — closed-file guard", () => {
     expect(res.status).toBe(201);
     expect(h.createdDocuments[0].applicationId).toBeNull();
     expect(h.dealActivities).toHaveLength(0);
+  });
+
+  it("registers a chat response and its replacement through the atomic request path", async () => {
+    h.applications = [{ id: "app-open", status: "underwriting", userId: "borrower-1" }];
+
+    const res = await upload({
+      applicationId: "app-open",
+      documentType: "pay_stub",
+      requestMessageId: "request-1",
+      replacesDocumentId: "doc-rejected",
+    });
+
+    expect(res.status).toBe(201);
+    expect(h.requestedRegistrations).toHaveLength(1);
+    expect(h.requestedRegistrations[0]).toMatchObject({
+      requestMessageId: "request-1",
+      replacesDocumentId: "doc-rejected",
+      document: {
+        applicationId: "app-open",
+        userId: "borrower-1",
+        documentType: "pay_stub",
+      },
+    });
+  });
+
+  it("does not resurrect upload tasks or conditions after review wins the race", async () => {
+    h.applications = [{ id: "app-open", status: "underwriting", userId: "borrower-1" }];
+    workflowGate.status = "rejected";
+
+    const res = await upload({
+      applicationId: "app-open",
+      documentType: "pay_stub",
+    });
+
+    expect(res.status).toBe(201);
+    expect(h.createdDocuments).toHaveLength(1);
+    expect(uploadFanout.emitDocumentEvent).not.toHaveBeenCalled();
+    expect(uploadFanout.matchUploadedDocumentToConditions).not.toHaveBeenCalled();
   });
 });

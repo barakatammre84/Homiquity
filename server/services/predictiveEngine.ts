@@ -58,7 +58,7 @@ export async function computePrediction(
 }> {
   let graph;
   try {
-    graph = await buildBorrowerGraph(userId);
+    graph = await buildBorrowerGraph(userId, applicationId);
   } catch (e) {
     return getDefaultPrediction();
   }
@@ -99,12 +99,14 @@ export async function computePrediction(
 
   const inputHash = hashInput(input);
 
+  const cacheScope = [
+    eq(predictiveSnapshots.userId, userId),
+    eq(predictiveSnapshots.inputHash, inputHash),
+    gte(predictiveSnapshots.expiresAt, sql`now()`),
+  ];
+  if (activeApp) cacheScope.push(eq(predictiveSnapshots.applicationId, activeApp.id));
   const [cached] = await db.select().from(predictiveSnapshots)
-    .where(and(
-      eq(predictiveSnapshots.userId, userId),
-      eq(predictiveSnapshots.inputHash, inputHash),
-      gte(predictiveSnapshots.expiresAt, sql`now()`)
-    ))
+    .where(and(...cacheScope))
     .limit(1);
 
   if (cached) {

@@ -16,6 +16,7 @@ import {
 import {
   users,
   loanApplications,
+  dealTeamMembers,
   teamMessages,
   isStaffRole,
   LOAN_APP_STATUSES,
@@ -24,6 +25,11 @@ import {
   type TeamMessage,
   type InsertTeamMessage,
 } from "@shared/schema";
+import { canonicalDocumentType } from "@shared/documentTypes";
+import {
+  findOpenDocumentRequest,
+  isOpenDocumentRequest,
+} from "../services/documentRequestWorkflow";
 import { OpsAnalyticsStorage } from "./opsAnalytics";
 export class MessagingStorage extends OpsAnalyticsStorage {
   // ============================================
@@ -114,9 +120,73 @@ export class MessagingStorage extends OpsAnalyticsStorage {
     return message;
   }
 
+  /**
+   * Send one open request for a document type on a loan file. The transaction
+   * lock makes two staff tabs racing the same ask converge on the first row.
+   */
+  async sendDocumentRequestOnce(
+    data: InsertTeamMessage & { applicationId: string },
+  ): Promise<{ message: TeamMessage; created: boolean }> {
+    return db.transaction(async (transaction) => {
+      const requestData = data.documentRequestData as {
+        documentType?: string;
+        status?: string;
+      } | null;
+      if (!requestData?.documentType) throw new Error("Document request data is required");
+      const documentType = canonicalDocumentType(requestData.documentType);
+      const lockKey = [data.applicationId, data.recipientId, documentType].join(":");
+      await transaction.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+      );
+      const candidates = await transaction
+        .select()
+        .from(teamMessages)
+        .where(
+          and(
+            eq(teamMessages.applicationId, data.applicationId),
+            eq(teamMessages.recipientId, data.recipientId),
+            eq(teamMessages.messageType, "document_request"),
+          ),
+        )
+        .orderBy(desc(teamMessages.createdAt));
+      const existing = findOpenDocumentRequest(candidates, {
+        applicationId: data.applicationId,
+        recipientId: data.recipientId,
+        documentType,
+      });
+      if (existing) return { message: existing, created: false };
+      const [message] = await transaction
+        .insert(teamMessages)
+        .values({
+          ...data,
+          documentRequestData: { ...requestData, documentType },
+        })
+        .returning();
+      return { message, created: true };
+    });
+  }
+
   async getMessageById(messageId: string): Promise<TeamMessage | null> {
     const [message] = await db.select().from(teamMessages).where(eq(teamMessages.id, messageId)).limit(1);
     return message ?? null;
+  }
+
+  async getOpenDocumentRequestsForApplication(
+    applicationId: string,
+    recipientId: string,
+  ): Promise<TeamMessage[]> {
+    const rows = await db
+      .select()
+      .from(teamMessages)
+      .where(
+        and(
+          eq(teamMessages.applicationId, applicationId),
+          eq(teamMessages.recipientId, recipientId),
+          eq(teamMessages.messageType, "document_request"),
+        ),
+      )
+      .orderBy(desc(teamMessages.createdAt));
+    return rows.filter(isOpenDocumentRequest);
   }
 
   async getMessages(userId: string, otherUserId: string): Promise<TeamMessage[]> {
@@ -135,6 +205,42 @@ export class MessagingStorage extends OpsAnalyticsStorage {
         )
       )
       .orderBy(asc(teamMessages.createdAt));
+  }
+
+  /**
+   * Resolve message application visibility in one query. Conversation history
+   * remains participant-visible, but callers use this set to withhold review
+   * details written after loan-file access is removed.
+   */
+  async getAccessibleMessageApplicationIds(
+    userId: string,
+    userRole: string,
+    applicationIds: string[],
+  ): Promise<string[]> {
+    const uniqueIds = [...new Set(applicationIds)];
+    if (uniqueIds.length === 0) return [];
+    if (userRole === "admin") return uniqueIds;
+
+    if (isStaffRole(userRole)) {
+      const rows = await db
+        .select({ applicationId: dealTeamMembers.applicationId })
+        .from(dealTeamMembers)
+        .where(and(
+          inArray(dealTeamMembers.applicationId, uniqueIds),
+          eq(dealTeamMembers.userId, userId),
+          eq(dealTeamMembers.isActive, true),
+        ));
+      return [...new Set(rows.map((row) => row.applicationId))];
+    }
+
+    const rows = await db
+      .select({ id: loanApplications.id })
+      .from(loanApplications)
+      .where(and(
+        inArray(loanApplications.id, uniqueIds),
+        eq(loanApplications.userId, userId),
+      ));
+    return rows.map((row) => row.id);
   }
   
   async getConversations(userId: string): Promise<{
@@ -304,48 +410,6 @@ export class MessagingStorage extends OpsAnalyticsStorage {
   // Document Request Integration
   // ============================================
   
-  async updateDocumentRequestStatus(
-    messageId: string,
-    status: 'pending' | 'submitted' | 'approved' | 'rejected',
-    documentId?: string,
-    expectedFromStatuses?: string[],
-  ): Promise<TeamMessage | null> {
-    const [message] = await db.select().from(teamMessages).where(eq(teamMessages.id, messageId));
-
-    if (!message || message.messageType !== 'document_request') {
-      return null;
-    }
-
-    const requestData = message.documentRequestData as any;
-    if (!requestData) return null;
-
-    const updatedData = {
-      ...requestData,
-      status,
-      documentId: documentId || requestData.documentId,
-    };
-
-    // Conditional update: when an expected-prior-state set is supplied, the
-    // WHERE clause also matches on the current JSON status, so a concurrent
-    // writer that already changed it yields 0 rows (caller treats as 409).
-    const whereClause = expectedFromStatuses && expectedFromStatuses.length > 0
-      ? and(
-          eq(teamMessages.id, messageId),
-          inArray(
-            sql`COALESCE(${teamMessages.documentRequestData}->>'status', 'pending')`,
-            expectedFromStatuses,
-          ),
-        )
-      : eq(teamMessages.id, messageId);
-
-    const [updated] = await db.update(teamMessages)
-      .set({ documentRequestData: updatedData })
-      .where(whereClause)
-      .returning();
-
-    return updated ?? null;
-  }
-  
   async getPendingDocumentRequests(userId: string): Promise<TeamMessage[]> {
     const messages = await db.select()
       .from(teamMessages)
@@ -357,10 +421,14 @@ export class MessagingStorage extends OpsAnalyticsStorage {
       )
       .orderBy(desc(teamMessages.createdAt));
     
-    // Filter to only pending requests
+    // Rejected requests are actionable again: the borrower must upload the
+    // corrected replacement. Keep them in this legacy "pending" feed until
+    // the replacement is submitted so dashboard badges do not disappear at
+    // the moment action is most urgent.
     return messages.filter(msg => {
       const data = msg.documentRequestData as any;
-      return data?.status === 'pending';
+      const status = data?.status ?? "pending";
+      return status === "pending" || status === "rejected";
     });
   }
 

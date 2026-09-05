@@ -1,9 +1,11 @@
 import { db } from "../db";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import {
   taxExtractionRuns,
   logicalDocuments,
+  documentLineage,
   extractedFields,
+  documents,
   type Document,
   type TaxExtractionRun,
 } from "@shared/schema";
@@ -26,6 +28,12 @@ import {
   type TaxFormInstanceExtraction,
 } from "../extractionService";
 import { getReviewThreshold, recordExtractionConfidence } from "./documentConfidence";
+import { DOCUMENT_STATUS } from "@shared/documentStatus";
+import {
+  documentProcessingBlockReason,
+  withDocumentWorkflowLock,
+} from "./documentLineage";
+import { currentDocumentEvidencePredicate } from "./currentDocumentEvidence";
 
 /**
  * Tax Document Intelligence orchestrator (UAL P2a — Situation Identification
@@ -47,6 +55,18 @@ import { getReviewThreshold, recordExtractionConfidence } from "./documentConfid
 
 /** Per-form extraction calls run a few at a time — a 100-page package can hold dozens of instances. */
 const EXTRACTION_CONCURRENCY = 3;
+const RUN_IN_FLIGHT_WINDOW_MS = 5 * 60 * 1000;
+
+export class TaxDocumentIntelligenceError extends Error {
+  constructor(
+    message: string,
+    readonly status = 409,
+    readonly code = "TAX_EXTRACTION_UNAVAILABLE",
+    readonly runId?: string,
+  ) {
+    super(message);
+  }
+}
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -133,16 +153,57 @@ function toTaxFormInstances(persisted: PersistedInstance[]): TaxFormInstance[] {
  * queryable outcome, not an exception.
  */
 export async function runTaxDocumentIntelligence(document: Document): Promise<TaxIntelligenceRunSummary> {
-  const [run] = await db
-    .insert(taxExtractionRuns)
-    .values({
-      documentId: document.id,
-      userId: document.userId,
-      applicationId: document.applicationId ?? null,
-      status: "running",
-      promptVersion: EXTRACTION_PROMPT_VERSION,
-    })
-    .returning();
+  // Eligibility and the one-running-job claim share the document workflow
+  // lock. Two requests cannot both pass a read-then-insert window, and known
+  // reviewed/replaced versions are rejected before any paid model work.
+  const run = await withDocumentWorkflowLock(
+    document.id,
+    async (currentDocument, isCurrentVersion) => {
+      const blockReason = documentProcessingBlockReason(currentDocument, isCurrentVersion);
+      if (blockReason) {
+        throw new TaxDocumentIntelligenceError(
+          blockReason === "replaced"
+            ? "This tax return has been replaced. Process the current version instead."
+            : "This tax return already has a final human review.",
+          409,
+          blockReason === "replaced"
+            ? "DOCUMENT_VERSION_REPLACED"
+            : "DOCUMENT_ALREADY_REVIEWED",
+        );
+      }
+      const [inFlight] = await db
+        .select({ id: taxExtractionRuns.id })
+        .from(taxExtractionRuns)
+        .where(and(
+          eq(taxExtractionRuns.documentId, document.id),
+          eq(taxExtractionRuns.status, "running"),
+          gte(
+            taxExtractionRuns.startedAt,
+            new Date(Date.now() - RUN_IN_FLIGHT_WINDOW_MS),
+          ),
+        ))
+        .limit(1);
+      if (inFlight) {
+        throw new TaxDocumentIntelligenceError(
+          "An extraction is already running for this document.",
+          409,
+          "TAX_EXTRACTION_ALREADY_RUNNING",
+          inFlight.id,
+        );
+      }
+      const [claimed] = await db
+        .insert(taxExtractionRuns)
+        .values({
+          documentId: document.id,
+          userId: document.userId,
+          applicationId: document.applicationId ?? null,
+          status: "running",
+          promptVersion: EXTRACTION_PROMPT_VERSION,
+        })
+        .returning();
+      return claimed;
+    },
+  );
 
   const failRun = async (error: string, extra?: Partial<typeof taxExtractionRuns.$inferInsert>) => {
     await db
@@ -181,165 +242,198 @@ export async function runTaxDocumentIntelligence(document: Document): Promise<Ta
         simulated: cls.simulated,
       });
     }
+    const classification = cls.classification;
 
-    const instances = cls.classification.forms.slice(0, MAX_FORM_INSTANCES);
+    const instances = classification.forms.slice(0, MAX_FORM_INSTANCES);
 
     // Pass 2 — per-instance field extraction (bounded concurrency).
     const extractions = await mapWithConcurrency(instances, EXTRACTION_CONCURRENCY, (instance) =>
       extractTaxFormInstanceFields(document.storagePath, instance, document.mimeType ?? undefined),
     );
 
-    // Persist run results atomically: logical documents + their fields.
-    const persisted: PersistedInstance[] = [];
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < instances.length; i++) {
-        const instance = instances[i];
-        const extraction = extractions[i];
-
-        const fieldConfidences = Object.values(extraction.fields).map((f) => f.confidence);
-        const aggregated =
-          fieldConfidences.length > 0
-            ? fieldConfidences.reduce((s, c) => s + c, 0) / fieldConfidences.length
-            : instance.confidence;
-
-        const [logicalDoc] = await tx
-          .insert(logicalDocuments)
-          .values({
-            loanId: document.applicationId ?? null,
-            borrowerId: document.userId,
-            documentType: instance.formType,
-            aggregatedConfidence: aggregated.toFixed(4),
-            status: "needs_review",
-            taxYear: extraction.taxYear ?? instance.taxYear ?? null,
-            institutionName: extraction.entityName ?? instance.entityName ?? null,
-            sourceDocumentId: document.id,
-            extractionRunId: run.id,
-            pageStart: instance.pageStart ?? null,
-            pageEnd: instance.pageEnd ?? null,
-            k1Variant: instance.k1Variant ?? null,
-            modelId: extraction.lineage.modelId ?? null,
-            promptVersion: extraction.lineage.promptVersion ?? null,
-            rawResponseHash: extraction.lineage.rawResponseHash ?? null,
-            rawResponseEncrypted: extraction.lineage.rawResponseEncrypted ?? null,
-            rawResponseIv: extraction.lineage.rawResponseIv ?? null,
-            rawResponseKeyId: extraction.lineage.rawResponseKeyId ?? null,
-          })
-          .returning({ id: logicalDocuments.id });
-
-        const catalog = TAX_FORM_FIELD_CATALOG[instance.formType];
-        const fieldRows = Object.entries(extraction.fields)
-          // Only cataloged fields persist — the Zod schema already enforces
-          // this, but the persistence layer must not trust its caller either.
-          .filter(([name]) => catalog[name] !== undefined)
-          .map(([name, fv]) => {
-            const kind = catalog[name].kind;
-            const valueType = taxFieldValueType(kind);
-            return {
-              logicalDocumentId: logicalDoc.id,
-              pageId: null,
-              pageNumber: instance.pageStart ?? null,
-              fieldName: name,
-              fieldCategory: taxFieldCategory(name, kind),
-              valueString: valueType === "string" ? String(fv.value) : null,
-              valueNumeric:
-                valueType === "currency" || valueType === "number" ? String(fv.value) : null,
-              valueBoolean: valueType === "boolean" ? Boolean(fv.value) : null,
-              valueType,
-              confidence: fv.confidence.toFixed(4),
-              extractionMethod: extraction.simulated ? "simulated" : "claude",
-              modelVersion: extraction.lineage.modelId ?? null,
-            };
-          });
-        if (fieldRows.length > 0) {
-          await tx.insert(extractedFields).values(fieldRows);
-        }
-
-        persisted.push({
-          logicalDocumentId: logicalDoc.id,
-          instanceMeta: {
-            formType: instance.formType,
-            taxYear: instance.taxYear ?? null,
-            entityName: instance.entityName ?? null,
-            k1Variant: instance.k1Variant ?? null,
-            pageStart: instance.pageStart ?? null,
-            pageEnd: instance.pageEnd ?? null,
-            confidence: instance.confidence,
-          },
-          extraction,
-        });
+    return withDocumentWorkflowLock(document.id, async (currentDocument, isCurrentVersion) => {
+      const blockReason = documentProcessingBlockReason(currentDocument, isCurrentVersion);
+      if (blockReason) {
+        return failRun(
+          blockReason === "replaced"
+            ? "Document was replaced before extraction results could be filed"
+            : "Document review completed before extraction results could be filed",
+        );
       }
-    });
 
-    const taxFormInstances = toTaxFormInstances(persisted);
-    const overall = aggregateFieldConfidence(taxFormInstances);
-    const simulated = cls.simulated || extractions.some((e) => e.simulated);
+      // Persist run results atomically: logical documents + their fields.
+      const persisted: PersistedInstance[] = [];
+      await db.transaction(async (tx) => {
+        for (let i = 0; i < instances.length; i++) {
+          const instance = instances[i];
+          const extraction = extractions[i];
 
-    // Quality gate: real per-field confidences feed the existing
-    // document-confidence machinery (which decides human review — MR-2).
-    const { humanReviewRequired } = await recordExtractionConfidence({
-      documentId: document.id,
-      documentType: document.documentType,
-      applicationId: document.applicationId ?? undefined,
-      overallConfidence: overall,
-      fieldConfidences: persisted.flatMap((p) =>
-        Object.entries(p.extraction.fields).map(([name, fv]) => ({
-          fieldName: `${p.instanceMeta.formType}.${name}`,
-          value: fv.value,
-          confidence: fv.confidence,
-          needsReview: fv.confidence < 0.7,
-        })),
-      ),
-      fileSize: document.fileSize ?? undefined,
-      pageCount: cls.classification.pageCount ?? undefined,
-      extractionEngine: simulated ? "simulated" : "claude",
-      extractionVersion: EXTRACTION_PROMPT_VERSION,
-    });
+          const fieldConfidences = Object.values(extraction.fields).map((f) => f.confidence);
+          const aggregated =
+            fieldConfidences.length > 0
+              ? fieldConfidences.reduce((s, c) => s + c, 0) / fieldConfidences.length
+              : instance.confidence;
 
-    const completedAt = new Date();
-    await db
-      .update(taxExtractionRuns)
-      .set({
+          const [logicalDoc] = await tx
+            .insert(logicalDocuments)
+            .values({
+              loanId: document.applicationId ?? null,
+              borrowerId: document.userId,
+              documentType: instance.formType,
+              aggregatedConfidence: aggregated.toFixed(4),
+              status: "needs_review",
+              taxYear: extraction.taxYear ?? instance.taxYear ?? null,
+              institutionName: extraction.entityName ?? instance.entityName ?? null,
+              sourceDocumentId: document.id,
+              extractionRunId: run.id,
+              pageStart: instance.pageStart ?? null,
+              pageEnd: instance.pageEnd ?? null,
+              k1Variant: instance.k1Variant ?? null,
+              modelId: extraction.lineage.modelId ?? null,
+              promptVersion: extraction.lineage.promptVersion ?? null,
+              rawResponseHash: extraction.lineage.rawResponseHash ?? null,
+              rawResponseEncrypted: extraction.lineage.rawResponseEncrypted ?? null,
+              rawResponseIv: extraction.lineage.rawResponseIv ?? null,
+              rawResponseKeyId: extraction.lineage.rawResponseKeyId ?? null,
+            })
+            .returning({ id: logicalDocuments.id });
+
+          const catalog = TAX_FORM_FIELD_CATALOG[instance.formType];
+          const fieldRows = Object.entries(extraction.fields)
+            // Only cataloged fields persist — the Zod schema already enforces
+            // this, but the persistence layer must not trust its caller either.
+            .filter(([name]) => catalog[name] !== undefined)
+            .map(([name, fv]) => {
+              const kind = catalog[name].kind;
+              const valueType = taxFieldValueType(kind);
+              return {
+                logicalDocumentId: logicalDoc.id,
+                pageId: null,
+                pageNumber: instance.pageStart ?? null,
+                fieldName: name,
+                fieldCategory: taxFieldCategory(name, kind),
+                valueString: valueType === "string" ? String(fv.value) : null,
+                valueNumeric:
+                  valueType === "currency" || valueType === "number" ? String(fv.value) : null,
+                valueBoolean: valueType === "boolean" ? Boolean(fv.value) : null,
+                valueType,
+                confidence: fv.confidence.toFixed(4),
+                extractionMethod: extraction.simulated ? "simulated" : "claude",
+                modelVersion: extraction.lineage.modelId ?? null,
+              };
+            });
+          if (fieldRows.length > 0) {
+            await tx.insert(extractedFields).values(fieldRows);
+          }
+
+          persisted.push({
+            logicalDocumentId: logicalDoc.id,
+            instanceMeta: {
+              formType: instance.formType,
+              taxYear: instance.taxYear ?? null,
+              entityName: instance.entityName ?? null,
+              k1Variant: instance.k1Variant ?? null,
+              pageStart: instance.pageStart ?? null,
+              pageEnd: instance.pageEnd ?? null,
+              confidence: instance.confidence,
+            },
+            extraction,
+          });
+        }
+      });
+
+      const taxFormInstances = toTaxFormInstances(persisted);
+      const overall = aggregateFieldConfidence(taxFormInstances);
+      const simulated = cls.simulated || extractions.some((e) => e.simulated);
+
+      // Quality gate: real per-field confidences feed the existing
+      // document-confidence machinery (which decides human review — MR-2).
+      const { humanReviewRequired } = await recordExtractionConfidence({
+        documentId: document.id,
+        documentType: document.documentType,
+        applicationId: document.applicationId ?? undefined,
+        overallConfidence: overall,
+        fieldConfidences: persisted.flatMap((p) =>
+          Object.entries(p.extraction.fields).map(([name, fv]) => ({
+            fieldName: `${p.instanceMeta.formType}.${name}`,
+            value: fv.value,
+            confidence: fv.confidence,
+            needsReview: fv.confidence < 0.7,
+          })),
+        ),
+        fileSize: document.fileSize ?? undefined,
+        pageCount: classification.pageCount ?? undefined,
+        extractionEngine: simulated ? "simulated" : "claude",
+        extractionVersion: EXTRACTION_PROMPT_VERSION,
+      });
+
+      const completedAt = new Date();
+      await db
+        .update(taxExtractionRuns)
+        .set({
+          status: "completed",
+          simulated,
+          modelId: cls.lineage.modelId ?? null,
+          classificationResponseHash: cls.lineage.rawResponseHash ?? null,
+          classificationRawEncrypted: cls.lineage.rawResponseEncrypted ?? null,
+          classificationRawIv: cls.lineage.rawResponseIv ?? null,
+          classificationRawKeyId: cls.lineage.rawResponseKeyId ?? null,
+          pageCount: classification.pageCount ?? null,
+          formCount: persisted.length,
+          overallConfidence: overall.toFixed(4),
+          completedAt,
+        })
+        .where(eq(taxExtractionRuns.id, run.id));
+
+      await db
+        .update(documents)
+        .set({
+          status: !humanReviewRequired
+            ? DOCUMENT_STATUS.VERIFYING
+            : DOCUMENT_STATUS.UPLOADED,
+          notes: JSON.stringify({
+            taxIntelligenceRunId: run.id,
+            extractedAt: completedAt.toISOString(),
+            formCount: persisted.length,
+            pageCount: classification.pageCount ?? null,
+            overallConfidence: overall,
+            humanReviewRequired,
+            simulated,
+            modelId: cls.lineage.modelId ?? null,
+            promptVersion: EXTRACTION_PROMPT_VERSION,
+          }),
+          updatedAt: completedAt,
+        })
+        .where(eq(documents.id, document.id));
+
+      return {
+        runId: run.id,
+        documentId: document.id,
         status: "completed",
         simulated,
         modelId: cls.lineage.modelId ?? null,
-        classificationResponseHash: cls.lineage.rawResponseHash ?? null,
-        classificationRawEncrypted: cls.lineage.rawResponseEncrypted ?? null,
-        classificationRawIv: cls.lineage.rawResponseIv ?? null,
-        classificationRawKeyId: cls.lineage.rawResponseKeyId ?? null,
-        pageCount: cls.classification.pageCount ?? null,
+        promptVersion: EXTRACTION_PROMPT_VERSION,
+        pageCount: classification.pageCount ?? null,
         formCount: persisted.length,
-        overallConfidence: overall.toFixed(4),
-        completedAt,
-      })
-      .where(eq(taxExtractionRuns.id, run.id));
-
-    return {
-      runId: run.id,
-      documentId: document.id,
-      status: "completed",
-      simulated,
-      modelId: cls.lineage.modelId ?? null,
-      promptVersion: EXTRACTION_PROMPT_VERSION,
-      pageCount: cls.classification.pageCount ?? null,
-      formCount: persisted.length,
-      overallConfidence: overall,
-      humanReviewRequired,
-      forms: persisted.map((p) => ({
-        logicalDocumentId: p.logicalDocumentId,
-        formType: p.instanceMeta.formType,
-        taxYear: p.extraction.taxYear,
-        entityName: p.extraction.entityName,
-        k1Variant: p.instanceMeta.k1Variant,
-        pageStart: p.instanceMeta.pageStart,
-        pageEnd: p.instanceMeta.pageEnd,
-        classificationConfidence: p.instanceMeta.confidence,
-        fields: p.extraction.fields,
-        warnings: p.extraction.warnings,
-      })),
-      warnings: cls.classification.warnings ?? [],
-      startedAt: run.startedAt.toISOString(),
-      completedAt: completedAt.toISOString(),
-    };
+        overallConfidence: overall,
+        humanReviewRequired,
+        forms: persisted.map((p) => ({
+          logicalDocumentId: p.logicalDocumentId,
+          formType: p.instanceMeta.formType,
+          taxYear: p.extraction.taxYear,
+          entityName: p.extraction.entityName,
+          k1Variant: p.instanceMeta.k1Variant,
+          pageStart: p.instanceMeta.pageStart,
+          pageEnd: p.instanceMeta.pageEnd,
+          classificationConfidence: p.instanceMeta.confidence,
+          fields: p.extraction.fields,
+          warnings: p.extraction.warnings,
+        })),
+        warnings: classification.warnings ?? [],
+        startedAt: run.startedAt.toISOString(),
+        completedAt: completedAt.toISOString(),
+      };
+    });
   } catch (error) {
     console.error("Tax document intelligence run failed:", error);
     return failRun(error instanceof Error ? error.message : "Tax document intelligence run failed");
@@ -390,12 +484,21 @@ export async function getLatestTaxIntelligence(
  * year's package — resolves to the most recent run's copy). This is the input
  * surface for P2b entity resolution and the tie-out engine.
  */
-export async function getLatestInstancesForUser(userId: string): Promise<PublicTaxFormInstance[]> {
-  const runs = await db
-    .select()
+export async function getLatestInstancesForUser(
+  userId: string,
+  applicationId?: string,
+): Promise<PublicTaxFormInstance[]> {
+  const scope = [eq(taxExtractionRuns.userId, userId), eq(taxExtractionRuns.status, "completed")];
+  if (applicationId) scope.push(eq(taxExtractionRuns.applicationId, applicationId));
+
+  const runRows = await db
+    .select({ run: taxExtractionRuns })
     .from(taxExtractionRuns)
-    .where(and(eq(taxExtractionRuns.userId, userId), eq(taxExtractionRuns.status, "completed")))
+    .innerJoin(documents, eq(taxExtractionRuns.documentId, documents.id))
+    .leftJoin(documentLineage, eq(documentLineage.documentId, documents.id))
+    .where(and(...scope, currentDocumentEvidencePredicate()))
     .orderBy(desc(taxExtractionRuns.startedAt));
+  const runs = runRows.map((row) => row.run);
 
   // Latest run per document; `runs` is newest-first so first wins.
   const latestByDoc = new Map<string, TaxExtractionRun>();
