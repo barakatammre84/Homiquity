@@ -159,6 +159,24 @@ describe("triageExtractionAndTieOuts", () => {
     const b = triageExtractionAndTieOuts(simInstances(), runTieOuts(simInstances()));
     expect(b.map((i) => i.naturalKey)).toEqual(a.map((i) => i.naturalKey));
   });
+
+  it("gives replacement forms new keys even when the extracted findings are identical", () => {
+    const original = simInstances();
+    const replacement = original.map((instance) => ({
+      ...instance,
+      logicalDocumentId: `replacement-${instance.logicalDocumentId}`,
+    }));
+    const originalItems = triageExtractionAndTieOuts(original, runTieOuts(original));
+    const replacementItems = triageExtractionAndTieOuts(
+      replacement,
+      runTieOuts(replacement),
+    );
+
+    expect(replacementItems).toHaveLength(originalItems.length);
+    expect(replacementItems.map((item) => item.naturalKey)).not.toEqual(
+      originalItems.map((item) => item.naturalKey),
+    );
+  });
 });
 
 describe("triageIncomePaths", () => {

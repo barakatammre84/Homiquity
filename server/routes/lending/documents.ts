@@ -18,7 +18,13 @@ import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../../auditLog";
 import * as creditService from "../../services/creditService";
 import { routeParams } from "../../http/routeParams";
-import { DocumentLineageError, registerDocumentVersion } from "../../services/documentLineage";
+import {
+  DocumentLineageError,
+  documentProcessingBlockReason,
+  registerDocumentVersion,
+  registerRequestedDocumentVersion,
+  withDocumentWorkflowLock,
+} from "../../services/documentLineage";
 import { sha256LocalObject } from "../../integrations/object_storage";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -35,9 +41,12 @@ export function registerDocumentRoutes(
   storage: IStorage,
   dependencies: {
     registerDocumentVersion?: typeof registerDocumentVersion;
+    registerRequestedDocumentVersion?: typeof registerRequestedDocumentVersion;
   } = {},
 ) {
   const persistDocumentVersion = dependencies.registerDocumentVersion ?? registerDocumentVersion;
+  const persistRequestedDocumentVersion =
+    dependencies.registerRequestedDocumentVersion ?? registerRequestedDocumentVersion;
   app.get("/api/loan-applications/:id/declarations", isAuthenticated, async (req, res) => {
     try {
       const { id } = routeParams(req);
@@ -109,6 +118,7 @@ export function registerDocumentRoutes(
     applicationId: z.string().optional(),
     description: z.string().max(500).optional(),
     replacesDocumentId: z.string().min(1).max(100).optional(),
+    requestMessageId: z.string().min(1).max(100).optional(),
   });
 
   const rejectMultipart = (req: any, res: any, next: any) => {
@@ -225,7 +235,7 @@ export function registerDocumentRoutes(
       const contentSha256 = verification.configured && verification.ok
         ? await objectStorage.sha256ObjectEntity(fileMeta.storagePath)
         : sha256LocalObject(fileMeta.storagePath);
-      const { document } = await persistDocumentVersion({
+      const registrationInput = {
         actor: { id: userId, role: user.role },
         contentSha256,
         replacesDocumentId: parsed.data.replacesDocumentId,
@@ -245,7 +255,13 @@ export function registerDocumentRoutes(
           // by the extraction routes.
           borrowerDescription: description || null,
         },
-      });
+      };
+      const { document } = parsed.data.requestMessageId
+        ? await persistRequestedDocumentVersion({
+            ...registrationInput,
+            requestMessageId: parsed.data.requestMessageId,
+          })
+        : await persistDocumentVersion(registrationInput);
 
       // Handing over the document IS the completion of "we need your W-2".
       // Credited at tier 3 (the borrower's assertion about what they attached);
@@ -275,28 +291,38 @@ export function registerDocumentRoutes(
           performedBy: userId,
         });
 
-        // Emit document uploaded event for Task Engine
-        const { taskEventEmitter } = await import("../../services/taskEventEmitter");
-        await taskEventEmitter.emitDocumentEvent("DOCUMENT_UPLOADED", {
-          applicationId,
-          documentId: document.id,
-          documentType,
-          triggeredBy: userId,
-        });
+        // Keep task creation and condition matching in the same serialized
+        // workflow as review. If a reviewer already returned the document (or
+        // a replacement won), delayed upload fan-out must not resurrect work
+        // or mark rejected evidence as submitted.
+        await withDocumentWorkflowLock(
+          document.id,
+          async (currentDocument, isCurrentVersion) => {
+            if (documentProcessingBlockReason(currentDocument, isCurrentVersion)) return;
 
-        // Zero-touch: move matching outstanding conditions to "submitted"
-        // and notify the deal team (clearing stays a human decision).
-        try {
-          const { matchUploadedDocumentToConditions } = await import("../../pipelineEngine");
-          await matchUploadedDocumentToConditions({
-            applicationId,
-            documentType,
-            fileName: fileMeta.fileName,
-            uploadedBy: userId,
-          });
-        } catch (matchErr) {
-          console.error("[Documents] Condition matching failed (non-fatal):", matchErr);
-        }
+            const { taskEventEmitter } = await import("../../services/taskEventEmitter");
+            await taskEventEmitter.emitDocumentEvent("DOCUMENT_UPLOADED", {
+              applicationId,
+              documentId: document.id,
+              documentType,
+              triggeredBy: userId,
+            });
+
+            // Zero-touch: move matching outstanding conditions to "submitted"
+            // and notify the deal team (clearing stays a human decision).
+            try {
+              const { matchUploadedDocumentToConditions } = await import("../../pipelineEngine");
+              await matchUploadedDocumentToConditions({
+                applicationId,
+                documentType,
+                fileName: fileMeta.fileName,
+                uploadedBy: userId,
+              });
+            } catch (matchErr) {
+              console.error("[Documents] Condition matching failed (non-fatal):", matchErr);
+            }
+          },
+        );
       }
 
       // Autopilot gate: when the agent is active (and this file is in pilot

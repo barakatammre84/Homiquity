@@ -94,7 +94,10 @@ export default function Documents() {
   // built from the pipeline engine's loan_conditions (self-employed borrowers
   // see P&L/business items). Falls back to the static catalog below when the
   // application has no document-bearing conditions or there's no application.
-  const { data: checklistData } = useQuery<{ documents: ChecklistItemView[] }>({
+  const { data: checklistData } = useQuery<{
+    documents: ChecklistItemView[];
+    personalized: boolean;
+  }>({
     queryKey: applicationResourceKeys.documentChecklist(focusAppId),
     enabled: !!focusAppId && !authLoading,
   });
@@ -107,11 +110,17 @@ export default function Documents() {
       // UploadDocumentDialog.
       (i.source === "task" && i.documentType !== "other"),
   );
-  const personalized = personalizedItems.some((i) => i.source === "condition");
+  const personalized = checklistData?.personalized ?? personalizedItems.length > 0;
 
   const focusedCondition = conditionId
     ? (focusPipeline?.conditions ?? []).find((c) => c.id === conditionId) ?? null
     : null;
+  const focusedChecklistItem = conditionId
+    ? personalizedItems.find(
+        (item) =>
+          item.conditionIds?.includes(conditionId) || item.conditionId === conditionId,
+      )
+    : undefined;
   // Canonical set so catalog types ("paystub") match condition requirements
   // ("pay_stub") — same bridge the server-side auto-matcher uses.
   const focusTypes = new Set(
@@ -294,7 +303,15 @@ export default function Documents() {
         {conditionId && focusedCondition && (
           <ConditionFocusBanner
             condition={focusedCondition}
-            onUploadType={(type) => handleUploadClick(type)}
+            onUploadType={(type) =>
+              handleUploadClick(
+                type,
+                focusedChecklistItem?.id ?? type,
+                focusedChecklistItem?.status === "rejected"
+                  ? focusedChecklistItem.documentId
+                  : undefined,
+              )
+            }
             isUploading={isUploading}
           />
         )}

@@ -102,7 +102,7 @@ export async function assembleRiskBriefFacts(applicationId: string): Promise<Ris
 
   let situation: RiskBriefFacts["situation"] = null;
   try {
-    const row = await getLatestSituationProfile(application.userId);
+    const row = await getLatestSituationProfile(application.userId, applicationId);
     if (row) {
       situation = {
         selfEmployed: row.selfEmployed,

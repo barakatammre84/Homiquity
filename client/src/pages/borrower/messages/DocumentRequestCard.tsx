@@ -54,11 +54,21 @@ export function DocumentRequestCard({
             {data.description && (
               <p className="text-xs text-muted-foreground mb-2">{data.description}</p>
             )}
+            {data.status === "rejected" && data.rejectionReason && (
+              <div
+                className="mb-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs"
+                data-testid="document-request-correction"
+              >
+                <span className="block font-semibold text-destructive">What to fix</span>
+                <span className="text-foreground">{data.rejectionReason}</span>
+              </div>
+            )}
             {canUpload && (
               <UploadDocumentDialog
                 applicationId={applicationId}
                 defaultDocumentType={toUploadableDocumentType(data.documentType)}
                 requestMessageId={messageId}
+                replacesDocumentId={data.status === "rejected" ? data.documentId : undefined}
                 confirmToRecipientId={partnerId}
                 trigger={
                   <Button size="sm" className="touch-target w-full mt-2" data-testid="button-upload-doc">

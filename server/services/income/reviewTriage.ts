@@ -1,11 +1,13 @@
 import { db } from "../../db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   reviewItems,
   extractedFields,
   incomePathEvaluations,
   logicalDocuments,
   loanApplications,
+  documentLineage,
+  documents,
   type ReviewItem,
   type ReviewItemTier,
   type ReviewItemType,
@@ -18,6 +20,8 @@ import {
 } from "../taxDocumentIntelligence";
 import { runTieOuts, type TieOutCheck } from "../taxReconciliation";
 import { recalculateDecision } from "../decisionEngine";
+import { currentDocumentEvidencePredicate } from "../currentDocumentEvidence";
+import { lockDocumentWorkflow } from "../documentLineage";
 
 /**
  * Exception-only review triage (UAL P5). Deterministically turns the accuracy
@@ -56,6 +60,129 @@ export interface CandidateReviewItem {
 
 const keyHash = (parts: unknown[]) => computeHash(JSON.stringify(parts)).slice(0, 16);
 
+type ReviewItemEvidence = {
+  logicalDocumentId?: unknown;
+  sourceRefs?: unknown;
+};
+
+function evidenceLogicalDocumentIds(item: Pick<ReviewItem, "evidence">): string[] {
+  const evidence = (item.evidence ?? {}) as ReviewItemEvidence;
+  const ids: string[] = [];
+  if (typeof evidence.logicalDocumentId === "string" && evidence.logicalDocumentId) {
+    ids.push(evidence.logicalDocumentId);
+  }
+  if (Array.isArray(evidence.sourceRefs)) {
+    for (const ref of evidence.sourceRefs) {
+      if (
+        ref &&
+        typeof ref === "object" &&
+        "logicalDocumentId" in ref &&
+        typeof ref.logicalDocumentId === "string" &&
+        ref.logicalDocumentId
+      ) {
+        ids.push(ref.logicalDocumentId);
+      }
+    }
+  }
+  return [...new Set(ids)];
+}
+
+function requiresDocumentEvidence(item: Pick<ReviewItem, "itemType">): boolean {
+  return item.itemType === "extraction_low_confidence" || item.itemType === "tieout_variance";
+}
+
+/** Latest completed extraction for a still-current physical document. */
+function currentLogicalExtractionEvidencePredicate() {
+  return sql<boolean>`
+    (
+      ${logicalDocuments.extractionRunId} IS NULL
+      OR EXISTS (
+        SELECT 1
+          FROM tax_extraction_runs AS current_tax_run
+         WHERE current_tax_run.id = ${logicalDocuments.extractionRunId}
+           AND current_tax_run.status = 'completed'
+           AND NOT EXISTS (
+             SELECT 1
+               FROM tax_extraction_runs AS newer_tax_run
+              WHERE newer_tax_run.document_id = ${documents.id}
+                AND newer_tax_run.status = 'completed'
+                AND (
+                  newer_tax_run.started_at > current_tax_run.started_at
+                  OR (
+                    newer_tax_run.started_at = current_tax_run.started_at
+                    AND newer_tax_run.id > current_tax_run.id
+                  )
+                )
+           )
+      )
+    )
+  `;
+}
+
+type LogicalEvidenceScope = {
+  id: string;
+  applicationId: string | null;
+  borrowerId: string;
+  documentApplicationId: string | null;
+};
+
+function keepItemsWithCurrentApplicationEvidence(
+  items: ReviewItem[],
+  rows: LogicalEvidenceScope[],
+  applicationId?: string,
+): ReviewItem[] {
+  const evidenceScope = new Map(rows.map((row) => [row.id, row]));
+
+  return items.filter((item) => {
+    const ids = evidenceLogicalDocumentIds(item);
+    if (requiresDocumentEvidence(item) && ids.length === 0) return false;
+    const expectedApplicationId = applicationId ?? item.applicationId;
+    return ids.every((id) => {
+      const evidence = evidenceScope.get(id);
+      const effectiveApplicationId = evidence?.applicationId ?? evidence?.documentApplicationId;
+      return (
+        !!evidence &&
+        evidence.borrowerId === item.userId &&
+        (!evidence.applicationId || evidence.applicationId === evidence.documentApplicationId) &&
+        (!expectedApplicationId || effectiveApplicationId === expectedApplicationId)
+      );
+    });
+  });
+}
+
+async function currentLogicalEvidenceScope(items: ReviewItem[]): Promise<LogicalEvidenceScope[]> {
+  const referencedIds = [...new Set(items.flatMap(evidenceLogicalDocumentIds))];
+  if (referencedIds.length === 0) return [];
+  return db
+    .select({
+      id: logicalDocuments.id,
+      applicationId: logicalDocuments.loanId,
+      borrowerId: logicalDocuments.borrowerId,
+      documentApplicationId: documents.applicationId,
+    })
+    .from(logicalDocuments)
+    .innerJoin(documents, eq(documents.id, logicalDocuments.sourceDocumentId))
+    .leftJoin(documentLineage, eq(documentLineage.documentId, documents.id))
+    .where(and(
+      inArray(logicalDocuments.id, referencedIds),
+      currentDocumentEvidencePredicate(),
+      // Re-extraction can create another logical form for the same physical
+      // file. Only the latest completed run is current review evidence.
+      currentLogicalExtractionEvidencePredicate(),
+    ));
+}
+
+async function keepCurrentOpenItems(
+  items: ReviewItem[],
+  applicationId?: string,
+): Promise<ReviewItem[]> {
+  return keepItemsWithCurrentApplicationEvidence(
+    items,
+    await currentLogicalEvidenceScope(items),
+    applicationId,
+  );
+}
+
 /** Pure core: candidates from extraction instances + tie-out checks. */
 export function triageExtractionAndTieOuts(
   instances: PublicTaxFormInstance[],
@@ -78,7 +205,7 @@ export function triageExtractionAndTieOuts(
       if (fv.confidence >= REVIEW_CONFIDENCE_THRESHOLD) continue;
       const inVariance = varianceFieldRefs.has(`${inst.logicalDocumentId}|${fieldName}`);
       items.push({
-        naturalKey: `xlc:${inst.formType}:${inst.taxYear ?? ""}:${fieldName}:${keyHash([inst.entityName, fv.value, fv.confidence])}`,
+        naturalKey: `xlc:${inst.logicalDocumentId}:${inst.formType}:${inst.taxYear ?? ""}:${fieldName}:${keyHash([inst.entityName, fv.value, fv.confidence])}`,
         itemType: "extraction_low_confidence",
         tier: inVariance ? "flagged" : "one_click",
         title: `Confirm ${fieldName} on the ${inst.taxYear ?? ""} ${inst.formType}`.trim(),
@@ -101,7 +228,13 @@ export function triageExtractionAndTieOuts(
   for (const c of checks) {
     if (c.status !== "variance") continue;
     items.push({
-      naturalKey: `tov:${c.checkId}:${c.taxYear}:${c.entityName ?? ""}:${keyHash([c.expected, c.actual])}`,
+      naturalKey: `tov:${c.checkId}:${c.taxYear}:${c.entityName ?? ""}:${keyHash([
+        c.expected,
+        c.actual,
+        c.sourceRefs
+          .map((ref) => `${ref.logicalDocumentId}|${ref.fieldName}`)
+          .sort(),
+      ])}`,
       itemType: "tieout_variance",
       tier: "flagged",
       title: `Cross-form variance: ${c.checkId.replace(/_/g, " ")} (${c.taxYear})`,
@@ -170,31 +303,28 @@ export async function syncReviewItems(
   userId: string,
   applicationId?: string | null,
 ): Promise<ReviewItem[]> {
-  const instances = await getLatestInstancesForUser(userId);
-  const checks = runTieOuts(instances);
-  const candidates = [...triageExtractionAndTieOuts(instances, checks)];
-
   if (applicationId) {
-    // Ownership guard: the income-path evaluation must belong to an application
-    // owned by `userId`. Without this, a caller could pass any applicationId
-    // (the route treats userId===self as "owner" and skips the deal-team gate)
-    // and read another borrower's income figures via their evaluation. The
-    // evaluations table has no userId, so verify through the application.
-    const [app] = await db
+    const [application] = await db
       .select({ userId: loanApplications.userId })
       .from(loanApplications)
       .where(eq(loanApplications.id, applicationId))
       .limit(1);
-    if (app?.userId === userId) {
-      const [evaluation] = await db
-        .select()
-        .from(incomePathEvaluations)
-        .where(eq(incomePathEvaluations.applicationId, applicationId))
-        .orderBy(desc(incomePathEvaluations.createdAt))
-        .limit(1);
-      if (evaluation) {
-        candidates.push(...triageIncomePaths(evaluation.paths as IncomePathResult[]));
-      }
+    if (application?.userId !== userId) return [];
+  }
+
+  const instances = await getLatestInstancesForUser(userId, applicationId ?? undefined);
+  const checks = runTieOuts(instances);
+  const candidates = [...triageExtractionAndTieOuts(instances, checks)];
+
+  if (applicationId) {
+    const [evaluation] = await db
+      .select()
+      .from(incomePathEvaluations)
+      .where(eq(incomePathEvaluations.applicationId, applicationId))
+      .orderBy(desc(incomePathEvaluations.createdAt))
+      .limit(1);
+    if (evaluation) {
+      candidates.push(...triageIncomePaths(evaluation.paths as IncomePathResult[]));
     }
   }
 
@@ -205,7 +335,12 @@ export async function syncReviewItems(
         candidates.map((c) => ({
           userId,
           applicationId: applicationId ?? null,
-          naturalKey: c.naturalKey,
+          // The table's legacy uniqueness key is borrower-wide. Prefix scoped
+          // candidates so the same field/value on two applications cannot make
+          // one file suppress or inherit the other's review item.
+          naturalKey: applicationId
+            ? `app:${applicationId}:${keyHash([c.naturalKey])}`
+            : c.naturalKey,
           itemType: c.itemType,
           tier: c.tier,
           title: c.title.slice(0, 300),
@@ -216,15 +351,21 @@ export async function syncReviewItems(
       .onConflictDoNothing({ target: [reviewItems.userId, reviewItems.naturalKey] });
   }
 
-  return db
+  const filters = [eq(reviewItems.userId, userId), eq(reviewItems.status, "open")];
+  if (applicationId) filters.push(eq(reviewItems.applicationId, applicationId));
+  const openItems = await db
     .select()
     .from(reviewItems)
-    .where(and(eq(reviewItems.userId, userId), eq(reviewItems.status, "open")))
+    .where(and(...filters))
     .orderBy(desc(reviewItems.createdAt));
+  return applicationId
+    ? keepCurrentOpenItems(openItems, applicationId)
+    : keepCurrentOpenItems(openItems);
 }
 
 export interface ResolveReviewItemInput {
   itemId: string;
+  applicationId: string;
   actorId: string;
   action: "confirmed" | "overridden" | "dismissed";
   correctedValue?: string;
@@ -238,63 +379,132 @@ export interface ResolveReviewItemInput {
  * triggers a decision recalc.
  */
 export async function resolveReviewItem(input: ResolveReviewItemInput): Promise<ReviewItem | null> {
-  const [item] = await db.select().from(reviewItems).where(eq(reviewItems.id, input.itemId)).limit(1);
-  if (!item || item.status !== "open") return null;
+  const updated = await db.transaction(async (transaction) => {
+    // Replacement registration takes the same lock before it creates a newer
+    // lineage row. Whichever operation wins is therefore visible to the other,
+    // and obsolete evidence can never be attested during a replacement race.
+    await lockDocumentWorkflow(transaction, input.applicationId);
+    const [item] = await transaction
+      .select()
+      .from(reviewItems)
+      .where(and(
+        eq(reviewItems.id, input.itemId),
+        eq(reviewItems.applicationId, input.applicationId),
+      ))
+      .for("update")
+      .limit(1);
+    if (!item || item.status !== "open") return null;
 
-  const [updated] = await db
-    .update(reviewItems)
-    .set({
-      status: input.action,
-      correctedValue: input.action === "overridden" ? (input.correctedValue ?? null) : null,
-      resolutionNote: input.note ?? null,
-      resolvedBy: input.actorId,
-      resolvedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(reviewItems.id, input.itemId))
-    .returning();
+    const evidenceIds = evidenceLogicalDocumentIds(item);
+    if (requiresDocumentEvidence(item) && evidenceIds.length === 0) return null;
+    if (evidenceIds.length > 0) {
+      const evidenceRows = await transaction
+        .select({
+          id: logicalDocuments.id,
+          applicationId: logicalDocuments.loanId,
+          borrowerId: logicalDocuments.borrowerId,
+          documentApplicationId: documents.applicationId,
+        })
+        .from(logicalDocuments)
+        .innerJoin(documents, eq(documents.id, logicalDocuments.sourceDocumentId))
+        .leftJoin(documentLineage, eq(documentLineage.documentId, documents.id))
+        .where(and(
+          inArray(logicalDocuments.id, evidenceIds),
+          currentDocumentEvidencePredicate(),
+          currentLogicalExtractionEvidencePredicate(),
+        ));
+      if (
+        keepItemsWithCurrentApplicationEvidence(
+          [item],
+          evidenceRows,
+          input.applicationId,
+        ).length !== 1
+      ) return null;
+    }
 
-  // Ground-truth stamp on the extracted field, when the item points at one.
-  const ev = (item.evidence ?? {}) as { logicalDocumentId?: string; fieldName?: string };
-  if (
-    (input.action === "confirmed" || input.action === "overridden") &&
-    ev.logicalDocumentId &&
-    ev.fieldName
-  ) {
-    await db
-      .update(extractedFields)
+    const [resolved] = await transaction
+      .update(reviewItems)
       .set({
-        humanVerified: true,
-        humanCorrectedValue: input.action === "overridden" ? (input.correctedValue ?? null) : null,
-        verifiedByUserId: input.actorId,
-        verifiedAt: new Date(),
+        status: input.action,
+        correctedValue: input.action === "overridden" ? (input.correctedValue ?? null) : null,
+        resolutionNote: input.note ?? null,
+        resolvedBy: input.actorId,
+        resolvedAt: new Date(),
+        updatedAt: new Date(),
       })
-      .where(
-        and(
+      .where(and(
+        eq(reviewItems.id, input.itemId),
+        eq(reviewItems.applicationId, input.applicationId),
+        eq(reviewItems.status, "open"),
+      ))
+      .returning();
+    if (!resolved) return null;
+
+    // Ground-truth stamp on the extracted field, when the item points at one.
+    const ev = (item.evidence ?? {}) as { logicalDocumentId?: string; fieldName?: string };
+    if (
+      (input.action === "confirmed" || input.action === "overridden") &&
+      ev.logicalDocumentId &&
+      ev.fieldName
+    ) {
+      await transaction
+        .update(extractedFields)
+        .set({
+          humanVerified: true,
+          humanCorrectedValue: input.action === "overridden" ? (input.correctedValue ?? null) : null,
+          verifiedByUserId: input.actorId,
+          verifiedAt: new Date(),
+        })
+        .where(and(
           eq(extractedFields.logicalDocumentId, ev.logicalDocumentId),
           eq(extractedFields.fieldName, ev.fieldName),
-        ),
-      );
-    // A fully human-verified form instance may leave needs_review.
-    await db
-      .update(logicalDocuments)
-      .set({ verifiedByUserId: input.actorId, verifiedAt: new Date() })
-      .where(eq(logicalDocuments.id, ev.logicalDocumentId));
-  }
+        ));
+      await transaction
+        .update(logicalDocuments)
+        .set({ verifiedByUserId: input.actorId, verifiedAt: new Date() })
+        .where(and(
+          eq(logicalDocuments.id, ev.logicalDocumentId),
+          eq(logicalDocuments.borrowerId, item.userId),
+        ));
+    }
+    return resolved;
+  });
 
-  if (item.applicationId) {
+  if (updated) {
     // Fire-and-forget by contract (recalculateDecision never throws upward).
-    void recalculateDecision(item.applicationId, "review_item_resolved");
+    void recalculateDecision(updated.applicationId!, "review_item_resolved");
   }
-
   return updated;
 }
 
 /** Open-item count per application — the LO Command Center file-health input. */
-export async function countOpenReviewItems(applicationId: string): Promise<number> {
+export async function countOpenReviewItems(
+  applicationId: string,
+  tier?: ReviewItemTier,
+): Promise<number> {
+  return (await currentOpenReviewItemsForApplications([applicationId], tier)).get(applicationId) ?? 0;
+}
+
+/** Batched current-evidence counts for pipeline and lender-readiness views. */
+export async function currentOpenReviewItemsForApplications(
+  applicationIds: string[],
+  tier?: ReviewItemTier,
+): Promise<Map<string, number>> {
+  if (applicationIds.length === 0) return new Map();
+  const filters = [
+    inArray(reviewItems.applicationId, applicationIds),
+    eq(reviewItems.status, "open"),
+  ];
+  if (tier) filters.push(eq(reviewItems.tier, tier));
   const rows = await db
-    .select({ id: reviewItems.id })
+    .select()
     .from(reviewItems)
-    .where(and(eq(reviewItems.applicationId, applicationId), eq(reviewItems.status, "open")));
-  return rows.length;
+    .where(and(...filters));
+  const currentRows = await keepCurrentOpenItems(rows);
+  const counts = new Map<string, number>();
+  for (const row of currentRows) {
+    if (!row.applicationId) continue;
+    counts.set(row.applicationId, (counts.get(row.applicationId) ?? 0) + 1);
+  }
+  return counts;
 }

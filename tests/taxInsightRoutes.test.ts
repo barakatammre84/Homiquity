@@ -110,6 +110,25 @@ describe("Tax insight routes", () => {
     expect(me.body.insights[0].taxYear).toBeTypeOf("number");
   });
 
+  it("rejects reviewed documents before starting more model work", async () => {
+    const adminCookie = await loginCookie("admin@test.com", TEST_PASSWORD);
+    expect(adminCookie).toBeTruthy();
+    const reviewed = await apiPost(
+      `/api/documents/${documentId}/verify`,
+      { status: "verified" },
+      { headers: { Cookie: adminCookie } },
+    );
+    expect(reviewed.status).toBe(200);
+
+    const processAgain = await apiPost(
+      "/api/tax-insights/process",
+      { documentId },
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(processAgain.status).toBe(409);
+    expect(processAgain.body?.code).toBe("DOCUMENT_ALREADY_REVIEWED");
+  });
+
   it("refuses to process another user's document", async () => {
     const buyerCookie = await loginCookie("buyer@test.com", TEST_PASSWORD);
     expect(buyerCookie).toBeTruthy();

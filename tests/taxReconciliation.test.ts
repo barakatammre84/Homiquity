@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { resolveBusinessEntities } from "../server/services/borrowerEntityResolution";
-import { runTieOuts, roundingTolerance } from "../server/services/taxReconciliation";
+import {
+  projectApplicationReconciliationEntities,
+  runTieOuts,
+  roundingTolerance,
+} from "../server/services/taxReconciliation";
 import type { PublicTaxFormInstance } from "../server/services/taxDocumentIntelligence";
 
 /**
@@ -106,6 +110,25 @@ describe("resolveBusinessEntities", () => {
     const forward = resolveBusinessEntities(simInstances());
     const reversed = resolveBusinessEntities([...simInstances()].reverse());
     expect(reversed).toEqual(forward);
+  });
+
+  it("projects application entity fields only from that application's forms", () => {
+    const consultingForms = simInstances().filter(
+      (instance) => instance.entityName === "Simworth Consulting",
+    );
+    const newest = consultingForms.sort((a, b) => (b.taxYear ?? 0) - (a.taxYear ?? 0))[0];
+    const projected = projectApplicationReconciliationEntities(
+      [newest],
+      [{ id: "entity-global", autoResolved: true }],
+      new Map([[newest.logicalDocumentId, "entity-global"]]),
+    );
+
+    expect(projected).toMatchObject([{
+      id: "entity-global",
+      firstTaxYear: newest.taxYear,
+      lastTaxYear: newest.taxYear,
+      sourceFormCount: 1,
+    }]);
   });
 });
 

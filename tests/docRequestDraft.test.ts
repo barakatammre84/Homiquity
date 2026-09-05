@@ -75,6 +75,15 @@ describe("buildDocRequestDraft", () => {
     );
     expect(items[0].documentName).toBe("Bank statement");
   });
+
+  it("does not draft a second ask while an alias-equivalent request is open", () => {
+    const items = buildDocRequestDraft(
+      [outstanding("c1", "Recent income", ["pay_stub"])],
+      [],
+      ["paystub"],
+    );
+    expect(items).toEqual([]);
+  });
 });
 
 describe("route + send-path wiring", () => {

@@ -4,18 +4,18 @@ import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { db } from "../db";
 import {
-  taxExtractionRuns,
   bankStatementAnalyses,
   bankStatementAnalysisInputSchema,
   reviewItems,
   type User,
 } from "@shared/schema";
 import { isAdmin, isInternalStaffRole } from "@shared/roles";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { hasUserConsent } from "../consentGate";
 import {
   runTaxDocumentIntelligence,
   getLatestTaxIntelligence,
+  TaxDocumentIntelligenceError,
 } from "../services/taxDocumentIntelligence";
 import { resolveAndPersistEntities } from "../services/borrowerEntityResolution";
 import { buildTaxReconciliation } from "../services/taxReconciliation";
@@ -81,9 +81,6 @@ async function staffCanAccessBorrower(
   return { allowed: true };
 }
 
-/** A run in flight recently enough that a second one would double-bill the model. */
-const RUN_IN_FLIGHT_WINDOW_MS = 5 * 60 * 1000;
-
 export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
   app.post("/api/documents/:id/tax-intelligence", isAuthenticated, async (req, res) => {
     try {
@@ -112,47 +109,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         });
       }
 
-      // One run at a time per document: a multi-form run makes many model
-      // calls, so a double-click must not double the spend.
-      const [inFlight] = await db
-        .select({ id: taxExtractionRuns.id })
-        .from(taxExtractionRuns)
-        .where(
-          and(
-            eq(taxExtractionRuns.documentId, document.id),
-            eq(taxExtractionRuns.status, "running"),
-            gte(taxExtractionRuns.startedAt, new Date(Date.now() - RUN_IN_FLIGHT_WINDOW_MS)),
-          ),
-        )
-        .limit(1);
-      if (inFlight) {
-        return res.status(409).json({
-          error: "An extraction is already running for this document.",
-          runId: inFlight.id,
-        });
-      }
-
       const summary = await runTaxDocumentIntelligence(document);
-
-      if (summary.status === "completed") {
-        // Same MR-2 staging contract as the legacy extract routes: clearing the
-        // confidence gate stages the document "verifying" for a human; it can
-        // never mark itself "verified".
-        await storage.updateDocument(document.id, {
-          status: !summary.humanReviewRequired ? "verifying" : "uploaded",
-          notes: JSON.stringify({
-            taxIntelligenceRunId: summary.runId,
-            extractedAt: summary.completedAt,
-            formCount: summary.formCount,
-            pageCount: summary.pageCount,
-            overallConfidence: summary.overallConfidence,
-            humanReviewRequired: summary.humanReviewRequired,
-            simulated: summary.simulated,
-            modelId: summary.modelId,
-            promptVersion: summary.promptVersion,
-          }),
-        });
-      }
 
       // P2b/P2c: refresh the borrower's resolved entities and situation
       // profile from the new extraction (non-fatal — both are derived views,
@@ -187,6 +144,13 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         .status(summary.status === "failed" ? 502 : 200)
         .json({ ...summary, entityCount, situationProfileId });
     } catch (error) {
+      if (error instanceof TaxDocumentIntelligenceError) {
+        return res.status(error.status).json({
+          error: error.message,
+          code: error.code,
+          ...(error.runId ? { runId: error.runId } : {}),
+        });
+      }
       console.error("Tax intelligence run error:", error);
       res.status(500).json({ error: "Failed to process tax document" });
     }
@@ -244,12 +208,13 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       const user = req.user as User;
       const requestedUserId =
         typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
+      const applicationId = firstQueryValue(req.query.applicationId);
       const isOwner = requestedUserId === user.id;
       if (!isOwner) {
         const access = await staffCanAccessBorrower(
           user,
           requestedUserId,
-          firstQueryValue(req.query.applicationId),
+          applicationId,
           storage,
         );
         if (!access.allowed) {
@@ -257,7 +222,10 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         }
       }
 
-      const report = await buildTaxReconciliation(requestedUserId);
+      const report = await buildTaxReconciliation(
+        requestedUserId,
+        isOwner ? undefined : applicationId,
+      );
 
       if (!isOwner) {
         logAudit(req, "tax_intelligence.reconciliation_viewed", "user", requestedUserId, {
@@ -284,12 +252,13 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       const user = req.user as User;
       const requestedUserId =
         typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
+      const applicationId = firstQueryValue(req.query.applicationId);
       const isOwner = requestedUserId === user.id;
       if (!isOwner) {
         const access = await staffCanAccessBorrower(
           user,
           requestedUserId,
-          firstQueryValue(req.query.applicationId),
+          applicationId,
           storage,
         );
         if (!access.allowed) {
@@ -297,9 +266,10 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         }
       }
 
-      let row = await getLatestSituationProfile(requestedUserId);
+      const situationApplicationId = isOwner ? undefined : applicationId;
+      let row = await getLatestSituationProfile(requestedUserId, situationApplicationId);
       if (!row) {
-        row = await classifyAndPersistSituation(requestedUserId);
+        row = await classifyAndPersistSituation(requestedUserId, situationApplicationId);
       }
 
       if (!isOwner) {
@@ -417,10 +387,15 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       if (!item) {
         return res.status(404).json({ error: "Review item not found" });
       }
+      if (!item.applicationId) {
+        return res.status(409).json({
+          error: "Open this review item from a loan application before resolving it",
+        });
+      }
       const access = await staffCanAccessBorrower(
         user,
         item.userId,
-        item.applicationId ?? firstQueryValue(req.query.applicationId),
+        item.applicationId,
         storage,
       );
       if (!access.allowed) {
@@ -429,6 +404,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
 
       const resolved = await resolveReviewItem({
         itemId: item.id,
+        applicationId: item.applicationId,
         actorId: user.id,
         action: parsed.data.action,
         correctedValue: parsed.data.correctedValue,

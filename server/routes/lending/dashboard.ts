@@ -286,14 +286,11 @@ export function registerDashboardRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
 
-      // Get all tasks for this application that are borrower-relevant
-      // Include tasks assigned to borrower OR unassigned tasks OR document request tasks
+      // Only borrower-owned tasks are actions for the borrower. Staff review
+      // tasks may be visible as progress elsewhere, but they must never turn
+      // into a second "Upload" button in this action list.
       const allTasks = await storage.getTasksByApplication(applicationId);
-      const borrowerTasks = allTasks.filter(t => 
-        t.assignedToUserId === user.id || 
-        !t.assignedToUserId || 
-        t.taskType === "document_request"
-      );
+      const borrowerTasks = allTasks.filter((task) => task.ownerRole === "BORROWER");
 
       // Get conditions that need attention
       const conditions = await storage.getLoanConditionsByApplication(applicationId);

@@ -19,7 +19,13 @@
  *  - rejected items expose rejectionReason/reviewedAt so the portal can say
  *    WHY and invite a re-upload.
  */
-import { SETTLED_CONDITION_STATUSES as SHARED_SETTLED_CONDITION_STATUSES, type Document, type LoanCondition, type Task } from "@shared/schema";
+import {
+  SETTLED_CONDITION_STATUSES as SHARED_SETTLED_CONDITION_STATUSES,
+  TERMINAL_TASK_STATUSES,
+  type Document,
+  type LoanCondition,
+  type Task,
+} from "@shared/schema";
 import { documentTypesMatch } from "@shared/documentTypes";
 import {
   DOCUMENT_STATUS,
@@ -48,6 +54,7 @@ export type ChecklistTask = Pick<
   | "requestingTeam"
   | "isCustomRequest"
   | "documentInstructions"
+  | "ownerRole"
 >;
 
 /**
@@ -65,6 +72,8 @@ export interface ChecklistItemDto {
   id: string;
   source: "condition" | "standard" | "task";
   conditionId?: string;
+  /** Every condition cleared by this one upload action. */
+  conditionIds?: string[];
   /** CONDITION_CATEGORIES value ("income", "assets", …) or "other". */
   category: string;
   /** Primary type to POST on upload. */
@@ -133,13 +142,18 @@ export function buildDocumentChecklist(input: {
   conditions: ChecklistCondition[];
   documents: ChecklistDocument[];
   tasks: ChecklistTask[];
-}): { documents: ChecklistItemDto[]; stats: ChecklistStats } {
+}): { documents: ChecklistItemDto[]; stats: ChecklistStats; personalized: boolean } {
   // Newest-first regardless of fetch order — the latest upload of a type is
   // the one whose review status the borrower is living with.
   const docs = [...input.documents].sort(
     (a, b) => (toIso(b.createdAt) ?? "").localeCompare(toIso(a.createdAt) ?? ""),
   );
-  const docTasks = input.tasks.filter((t) => t.taskType === "document_request");
+  const docTasks = input.tasks.filter(
+    (t) =>
+      t.taskType === "document_request" &&
+      t.ownerRole === "BORROWER" &&
+      !TERMINAL_TASK_STATUSES.includes(t.status),
+  );
 
   const latestDocFor = (acceptedTypes: string[]): ChecklistDocument | undefined =>
     docs.find((d) => acceptedTypes.some((rt) => documentTypesMatch(rt, d.documentType)));
@@ -167,36 +181,69 @@ export function buildDocumentChecklist(input: {
   const documentConditions = input.conditions.filter(
     (c) => (c.requiredDocumentTypes ?? []).length > 0,
   );
-  for (const condition of documentConditions) {
+  const activeConditions = documentConditions.filter(
+    (condition) => !SETTLED_CONDITION_STATUSES.has(condition.status),
+  );
+  const conditionGroups: Array<{
+    conditions: ChecklistCondition[];
+    acceptedTypes: string[];
+  }> = [];
+  for (const condition of activeConditions) {
     // Settled to-dos leave the checklist; their documents stay visible in the
     // full document history. (A doc still merely "uploaded" under a cleared
     // condition would otherwise show "Under Review" forever — a review that
     // may never happen.)
-    if (SETTLED_CONDITION_STATUSES.has(condition.status)) continue;
     const acceptedTypes = condition.requiredDocumentTypes ?? [];
-    const doc = latestDocFor(acceptedTypes);
+    const existing = conditionGroups.find((group) =>
+      group.acceptedTypes.some((left) =>
+        acceptedTypes.some((right) => documentTypesMatch(left, right)),
+      ),
+    );
+    if (existing) {
+      existing.conditions.push(condition);
+      for (const type of acceptedTypes) {
+        if (!existing.acceptedTypes.some((current) => documentTypesMatch(current, type))) {
+          existing.acceptedTypes.push(type);
+        }
+      }
+    } else {
+      conditionGroups.push({ conditions: [condition], acceptedTypes: [...acceptedTypes] });
+    }
+  }
+  for (const group of conditionGroups) {
+    const primary = group.conditions[0];
+    const conditionIds = group.conditions.map((condition) => condition.id);
+    const doc = latestDocFor(group.acceptedTypes);
     items.push(
       withDocFields(
         {
-          id: condition.id,
+          id: conditionIds.join("+"),
           source: "condition",
-          conditionId: condition.id,
-          category: condition.category || "other",
-          documentType: acceptedTypes[0],
-          acceptedTypes,
-          label: condition.title,
-          description: condition.description ?? undefined,
+          conditionId: primary.id,
+          conditionIds,
+          category: primary.category || "other",
+          documentType: group.acceptedTypes[0],
+          acceptedTypes: group.acceptedTypes,
+          label: primary.title,
+          description:
+            group.conditions.length > 1
+              ? `One upload will be applied to ${group.conditions.length} loan items: ${group.conditions
+                  .map((condition) => condition.title)
+                  .join("; ")}.`
+              : primary.description ?? undefined,
           required: true,
-          priority: condition.priority ?? undefined,
+          priority: primary.priority ?? undefined,
         },
         doc,
-        condition.status === "submitted" ? "verifying" : "needed",
+        group.conditions.every((condition) => condition.status === "submitted")
+          ? "verifying"
+          : "needed",
       ),
     );
   }
 
   // 2) Fallback: no document-bearing conditions → the legacy standard list.
-  if (items.length === 0) {
+  if (documentConditions.length === 0 && docTasks.length === 0) {
     for (const std of STANDARD_DOCS) {
       const doc = latestDocFor([std.type]);
       const task = docTasks.find((t) =>
@@ -264,5 +311,9 @@ export function buildDocumentChecklist(input: {
     rejected: items.filter((d) => d.status === "rejected").length,
   };
 
-  return { documents: items, stats };
+  return {
+    documents: items,
+    stats,
+    personalized: documentConditions.length > 0 || docTasks.length > 0,
+  };
 }

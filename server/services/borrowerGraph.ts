@@ -4,6 +4,7 @@ import {
   users,
   loanApplications,
   documents,
+  documentLineage,
   employmentHistory,
   coachConversations,
   coachMessages,
@@ -25,6 +26,7 @@ import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 import { computeNextAction } from "./nextAction";
 import { pickActiveLoanApplication } from "@shared/schema";
 import { annuityFactor, monthlyPrincipalAndInterest } from "@shared/lib/amortization";
+import { currentDocumentEvidencePredicate } from "./currentDocumentEvidence";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -235,13 +237,22 @@ function parseNum(val: string | number | null | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
-export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph> {
+export async function buildBorrowerGraph(
+  userId: string,
+  applicationId?: string,
+): Promise<BorrowerGraph> {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new Error("User not found");
 
+  const documentScope = [eq(documents.userId, userId)];
+  if (applicationId) documentScope.push(eq(documents.applicationId, applicationId));
+  const reoScope = [eq(realEstateOwned.userId, userId)];
+  if (applicationId) reoScope.push(eq(realEstateOwned.applicationId, applicationId));
+
   const [
-    apps,
+    allApps,
     docs,
+    currentEvidenceDocs,
     coachConvs,
     goalRows,
     recentActivities,
@@ -253,7 +264,14 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     intentCounts,
   ] = await Promise.all([
     storage.getLoanApplicationsByUser(userId),
-    db.select().from(documents).where(eq(documents.userId, userId)).orderBy(desc(documents.createdAt)),
+    db.select().from(documents).where(and(...documentScope)).orderBy(desc(documents.createdAt)),
+    db.select({ id: documents.id })
+      .from(documents)
+      .leftJoin(documentLineage, eq(documentLineage.documentId, documents.id))
+      .where(and(
+        ...documentScope,
+        currentDocumentEvidencePredicate(),
+      )),
     db.select().from(coachConversations).where(eq(coachConversations.userId, userId)).orderBy(desc(coachConversations.updatedAt)),
     db.select().from(homeownershipGoals).where(eq(homeownershipGoals.userId, userId)).limit(1),
     db.select({
@@ -279,7 +297,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       .orderBy(sql`count(*) desc`)
       .limit(10),
     db.select().from(borrowerProfiles).where(eq(borrowerProfiles.userId, userId)).limit(1),
-    db.select().from(realEstateOwned).where(eq(realEstateOwned.userId, userId)),
+    db.select().from(realEstateOwned).where(and(...reoScope)),
     db.select().from(borrowerStateHistory)
       .where(eq(borrowerStateHistory.userId, userId))
       .orderBy(desc(borrowerStateHistory.transitionedAt)),
@@ -294,6 +312,17 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       ))
       .groupBy(intentEvents.eventType),
   ]);
+
+  const apps = applicationId
+    ? allApps.filter((application) => application.id === applicationId)
+    : allApps;
+  if (applicationId && apps.length === 0) {
+    throw new Error("Application does not belong to borrower");
+  }
+  const currentEvidenceIds = new Set(
+    currentEvidenceDocs.map((document) => document.id),
+  );
+  const eligibleDocs = docs.filter((document) => currentEvidenceIds.has(document.id));
 
   const activeApp = pickActiveLoanApplication(apps) || apps[0] || null;
 
@@ -343,7 +372,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   const extractedDocs: DocumentStatus[] = [];
   const docsMissing: string[] = [];
 
-  for (const doc of docs) {
+  for (const doc of eligibleDocs) {
     const docStatus: DocumentStatus = {
       documentType: doc.documentType,
       fileName: doc.fileName,
@@ -392,7 +421,12 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   if (!incomeSources.some((s) => s.type === "tax_return_agi" || s.type === "tax_return_gross")) {
     try {
       const insights = await storage.getTaxInsightsByUser(userId);
-      const latest = insights.find((i) => i.confidence !== "low");
+      const latest = insights.find(
+        (insight) =>
+          !!insight.documentId &&
+          currentEvidenceIds.has(insight.documentId) &&
+          insight.confidence !== "low",
+      );
       if (latest) {
         const annual = parseNum(latest.adjustedGrossIncome) || parseNum(latest.grossIncome) || 0;
         if (annual > 0) {
@@ -425,7 +459,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   // and scenarios, never the binding decision path.
   try {
     const { getFactsForDocuments } = await import("./documentFacts");
-    const facts = await getFactsForDocuments(docs.map(d => d.id));
+    const facts = await getFactsForDocuments(currentEvidenceDocs.map((document) => document.id));
 
     const employerByDoc = new Map<string, string>();
     for (const f of facts) {
@@ -812,7 +846,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   }
 
   const requiredDocs = ["pay_stub", "w2", "tax_return", "bank_statement", "government_id"];
-  const uploadedTypes = new Set(docs.map(d => d.documentType));
+  const uploadedTypes = new Set(eligibleDocs.map(d => d.documentType));
   const documentsMissing = requiredDocs.filter(t => !uploadedTypes.has(t));
 
   const readiness: ReadinessSnapshot = {
@@ -1138,8 +1172,8 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     totalMonthlyDebts,
 
     documents: extractedDocs,
-    documentsUploaded: docs.length,
-    documentsVerified: docs.filter(d => d.status === "verified").length,
+    documentsUploaded: eligibleDocs.length,
+    documentsVerified: eligibleDocs.filter(d => d.status === "verified").length,
     documentsMissing,
 
     readiness,

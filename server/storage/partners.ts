@@ -37,8 +37,11 @@ import {
   partnerProgressConsents,
   type PartnerProgressConsent,
   partnerWaitlist,
+  documents,
+  documentLineage,
 } from "@shared/schema";
 import { LocksAndConsentsStorage } from "./locksAndConsents";
+import { currentDocumentEvidencePredicate } from "../services/currentDocumentEvidence";
 export class PartnersStorage extends LocksAndConsentsStorage {
   // ===== TAX INSIGHTS =====
   async upsertTaxInsight(data: InsertTaxInsight): Promise<TaxInsight> {
@@ -54,11 +57,14 @@ export class PartnersStorage extends LocksAndConsentsStorage {
   }
 
   async getTaxInsightsByUser(userId: string): Promise<TaxInsight[]> {
-    return await db
-      .select()
+    const rows = await db
+      .select({ insight: taxInsights })
       .from(taxInsights)
-      .where(eq(taxInsights.userId, userId))
+      .innerJoin(documents, eq(taxInsights.documentId, documents.id))
+      .leftJoin(documentLineage, eq(documentLineage.documentId, documents.id))
+      .where(and(eq(taxInsights.userId, userId), currentDocumentEvidencePredicate()))
       .orderBy(desc(taxInsights.taxYear));
+    return rows.map((row) => row.insight);
   }
 
   async getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null; cpaFirm: string | null }>> {
@@ -71,10 +77,16 @@ export class PartnersStorage extends LocksAndConsentsStorage {
         cpaFirm: cpaPartners.firmName,
       })
       .from(taxInsights)
+      .innerJoin(documents, eq(taxInsights.documentId, documents.id))
+      .leftJoin(documentLineage, eq(documentLineage.documentId, documents.id))
       .innerJoin(users, eq(taxInsights.userId, users.id))
       .leftJoin(cpaReferrals, eq(cpaReferrals.referredUserId, taxInsights.userId))
       .leftJoin(cpaPartners, eq(cpaPartners.id, cpaReferrals.cpaPartnerId))
-      .where(and(eq(taxInsights.dscrCandidate, true), gte(taxInsights.updatedAt, since)))
+      .where(and(
+        eq(taxInsights.dscrCandidate, true),
+        gte(taxInsights.updatedAt, since),
+        currentDocumentEvidencePredicate(),
+      ))
       .orderBy(desc(taxInsights.updatedAt))
       .limit(limit);
     return rows.map((r) => ({

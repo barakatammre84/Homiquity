@@ -415,7 +415,7 @@ export function DocumentReviewPanel({
             </Button>
             <Button
               variant="destructive"
-              disabled={verifyMutation.isPending || !rejectReason.trim()}
+              disabled={verifyMutation.isPending || rejectReason.trim().length < 12}
               onClick={() =>
                 rejectTarget &&
                 verifyMutation.mutate({ id: rejectTarget.id, status: "rejected", reason: rejectReason.trim() })

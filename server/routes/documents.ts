@@ -32,6 +32,13 @@ import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 import { routeParam, routeParams } from "../http/routeParams";
+import {
+  documentProcessingBlockReason,
+  DocumentLineageError,
+  getDocumentProcessingBlockReason,
+  reviewCurrentDocument,
+  withDocumentWorkflowLock,
+} from "../services/documentLineage";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -314,6 +321,20 @@ export function registerDocumentRoutes(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
+      const processingBlock = await getDocumentProcessingBlockReason(id);
+      if (processingBlock) {
+        return res.status(409).json({
+          error:
+            processingBlock === "replaced"
+              ? "This document has been replaced. Process the current version instead."
+              : "This document already has a final human review.",
+          code:
+            processingBlock === "replaced"
+              ? "DOCUMENT_VERSION_REPLACED"
+              : "DOCUMENT_ALREADY_REVIEWED",
+        });
+      }
+
       const { documentYear } = req.body;
       // Typed, not `any`: the readiness wiring below reads real fields off this
       // object, and an `any` here is exactly what hid F-030 from tsc — a map
@@ -345,7 +366,7 @@ export function registerDocumentRoutes(
       // lineage, document facts (F-028) and readiness wiring (F-030) all live
       // in one place so the two paths cannot drift apart again.
       const { applyExtractionToDocument } = await import("../services/extractionPersistence");
-      await applyExtractionToDocument({
+      const extractionResult = await applyExtractionToDocument({
         storage,
         userId: document.userId,
         documentId: id,
@@ -354,6 +375,18 @@ export function registerDocumentRoutes(
         fileSize: document.fileSize ?? undefined,
         extracted: extractedData,
       });
+      if (extractionResult.skipReason) {
+        return res.status(409).json({
+          error:
+            extractionResult.skipReason === "replaced"
+              ? "This document was replaced while extraction was running. The result was discarded."
+              : "This document was reviewed while extraction was running. The human decision was kept.",
+          code:
+            extractionResult.skipReason === "replaced"
+              ? "DOCUMENT_VERSION_REPLACED"
+              : "DOCUMENT_ALREADY_REVIEWED",
+        });
+      }
 
       if (document.documentType === "tax_return") {
         // Keep the derived tax-insight row in sync when a tax return is
@@ -370,11 +403,14 @@ export function registerDocumentRoutes(
             // Safe by construction: this branch is guarded on
             // documentType === "tax_return", which is exactly the case that
             // selected extractTaxReturnData in the switch above.
-            await saveTaxInsightForDocument(
-              document.userId,
-              id,
-              extractedData as ExtractedTaxReturnData,
-            );
+            await withDocumentWorkflowLock(id, async (currentDocument, isCurrentVersion) => {
+              if (documentProcessingBlockReason(currentDocument, isCurrentVersion)) return;
+              await saveTaxInsightForDocument(
+                document.userId,
+                id,
+                extractedData as ExtractedTaxReturnData,
+              );
+            });
           }
         } catch (insightErr) {
           console.warn("[TaxInsight] Insight derivation failed (non-fatal):", insightErr);
@@ -450,38 +486,63 @@ export function registerDocumentRoutes(
           return res.status(400).json({ error: 'status must be "verified" or "rejected"' });
         }
         const trimmedReason = typeof reason === "string" ? reason.trim() : "";
-        if (status === DOCUMENT_STATUS.REJECTED && !trimmedReason) {
-          return res.status(400).json({ error: "A reason is required when rejecting a document" });
+        if (status === DOCUMENT_STATUS.REJECTED && trimmedReason.length < 12) {
+          return res.status(400).json({
+            error: "Explain exactly what the borrower needs to fix (at least 12 characters)",
+          });
+        }
+        if (trimmedReason.length > 1000) {
+          return res.status(400).json({ error: "The review reason is too long" });
         }
 
-        const document = await storage.getDocument(id);
-        if (!document) {
-          return res.status(404).json({ error: "Document not found" });
-        }
-
-        // Non-admin staff must be active deal-team members on the application.
-        if (!isAdmin(user)) {
-          if (!document.applicationId) {
-            return res.status(403).json({ error: "Unauthorized" });
-          }
-          const app = await storage.getLoanApplicationWithAccess(
-            document.applicationId, user.id, user.role
-          );
-          if (!app) {
-            return res.status(403).json({ error: "Unauthorized" });
-          }
-        }
-
-        // Persist the full review decision. rejectionReason is borrower-visible
-        // (shown on the Documents page); a verify clears any prior reason so a
-        // reversed bounce doesn't keep scolding the borrower. `notes` stays
-        // reserved for extraction lineage.
-        const updated = await storage.updateDocument(id, {
+        const review = await reviewCurrentDocument({
+          actor: user,
+          documentId: id,
           status,
-          rejectionReason: status === DOCUMENT_STATUS.REJECTED ? trimmedReason : null,
-          reviewedByUserId: user.id,
-          reviewedAt: new Date(),
+          rejectionReason:
+            status === DOCUMENT_STATUS.REJECTED ? trimmedReason : undefined,
         });
+        const document = review.document;
+
+        // Same-decision retries are successful reads of the committed verdict.
+        // They must not duplicate tasks, readiness credit, audits, condition
+        // changes, or borrower notifications.
+        if (!review.decisionApplied) {
+          return res.json(toStaffDocumentView(document));
+        }
+
+        // The upload event creates a staff-owned DOC_REVIEW task. This human
+        // decision completes that task on both outcomes; a rejected document's
+        // replacement will create its own review task. Without this, the
+        // borrower-facing progress view says "we're reviewing" forever after
+        // the chat card already says approved or rejected.
+        if (document.applicationId) {
+          try {
+            const reviewTasks = (await storage.getTasksByApplication(document.applicationId)).filter(
+              (task) =>
+                task.taskTypeCode === "DOC_REVIEW" &&
+                !["COMPLETED", "EXPIRED"].includes(task.status) &&
+                (task.triggerMetadata as { documentId?: string } | null)?.documentId === id,
+            );
+            if (reviewTasks.length > 0) {
+              const { taskEngine } = await import("../services/taskEngine");
+              await Promise.all(
+                reviewTasks.map((task) =>
+                  taskEngine.updateTaskStatus(
+                    task.id,
+                    "COMPLETED",
+                    user.id,
+                    status === DOCUMENT_STATUS.VERIFIED
+                      ? "Document accepted"
+                      : "Document returned for correction",
+                  ),
+                ),
+              );
+            }
+          } catch (taskErr) {
+            console.warn(`[Documents] Review task completion failed for ${id} (non-fatal):`, taskErr);
+          }
+        }
 
         // A human confirmed this really is the document it claims to be, so the
         // presence credit granted at upload climbs from tier 3 to tier 1. Only
@@ -512,23 +573,6 @@ export function registerDocumentRoutes(
           reviewedBy: user.id,
           ...(trimmedReason ? { reason: trimmedReason } : {}),
         });
-
-        // A rejection un-satisfies whatever condition this upload had moved to
-        // "submitted" — revert it to "outstanding" so the auto-matcher re-arms
-        // when the borrower uploads a replacement (non-fatal).
-        if (status === DOCUMENT_STATUS.REJECTED && document.applicationId) {
-          try {
-            const { revertConditionsForRejectedDocument } = await import("../pipelineEngine");
-            await revertConditionsForRejectedDocument({
-              applicationId: document.applicationId,
-              documentType: document.documentType,
-              fileName: document.fileName,
-              rejectedBy: user.id,
-            });
-          } catch (revertErr) {
-            console.error("[Documents] Condition revert failed (non-fatal):", revertErr);
-          }
-        }
 
         // Close the loop with the borrower: in-app notification (carries the
         // reason — it stays behind login) plus a content-free email nudge (the
@@ -562,8 +606,11 @@ export function registerDocumentRoutes(
 
         // Staff-only route, but the ciphertext trio still never ships to a
         // browser — see shared/borrowerDocumentView.ts.
-        res.json(updated ? toStaffDocumentView(updated) : updated);
+        res.json(toStaffDocumentView(document));
       } catch (error) {
+        if (error instanceof DocumentLineageError) {
+          return res.status(error.status).json({ error: error.message });
+        }
         console.error("Document verify error:", error);
         res.status(500).json({ error: "Failed to update document status" });
       }
