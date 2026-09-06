@@ -113,23 +113,6 @@ describe("document request routes", () => {
   afterAll(() => server?.close());
   beforeEach(() => state.reset());
 
-  const patch = (body: Record<string, unknown>) =>
-    fetch(`${base}/api/messages/request-1/document-request`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-  it("retires the second request-status mutation path without changing the request", async () => {
-    const response = await patch({ status: "approved", documentId: "doc-1" });
-    expect(response.status).toBe(410);
-    expect(await response.json()).toMatchObject({
-      code: "DOCUMENT_REQUEST_ACTION_RETIRED",
-    });
-    expect(state.request.documentRequestData).toMatchObject({ status: "pending" });
-    expect(state.updates).toHaveLength(0);
-  });
-
   it("returns the existing open request without sending another notification", async () => {
     state.actor = { id: "lo-1", role: "lo", firstName: "Lee" };
     const response = await fetch(`${base}/api/messages`, {

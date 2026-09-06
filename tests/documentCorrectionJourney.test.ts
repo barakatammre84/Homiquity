@@ -256,6 +256,7 @@ describe.sequential("borrower correction journey", () => {
     const createdBody = firstSend.status === 201 ? firstSendBody : secondSendBody;
     const duplicateBody = firstSend.status === 200 ? firstSendBody : secondSendBody;
     requestMessageId = createdBody.id;
+    expect(createdBody.documentRequestData).toMatchObject({ documentType: "government_id" });
     expect(duplicateBody).toMatchObject({ id: requestMessageId, deduplicated: true });
     const requestCount = await pool.query(
       "SELECT count(*) FROM team_messages WHERE application_id=$1 AND message_type='document_request'",

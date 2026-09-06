@@ -430,18 +430,6 @@ export function registerMessagingRoutes(
     }
   });
   
-  // Retired compatibility endpoint. Submission now happens only inside the
-  // atomic upload transaction, and approval/rejection only inside the human
-  // document-review transaction. Keeping a non-mutating 410 gives stale
-  // browser bundles a clear refresh signal without preserving a second source
-  // of truth.
-  app.patch("/api/messages/:messageId/document-request", isAuthenticated, (_req, res) => {
-    res.status(410).json({
-      error: "This document-request action has been replaced. Refresh and use the current loan-file workflow.",
-      code: "DOCUMENT_REQUEST_ACTION_RETIRED",
-    });
-  });
-  
   // Get pending document requests for current user
   app.get("/api/messages/document-requests/pending", isAuthenticated, async (req, res) => {
     try {

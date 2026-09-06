@@ -13,6 +13,7 @@ import {
   reviewFinancialWorkpaper,
 } from "../services/financialReview";
 import { DocumentLineageError } from "../services/documentLineage";
+import { postgresErrorCode } from "../services/transactionRetry";
 import { logAudit } from "../auditLog";
 
 function financialReviewError(error: unknown, res: Response, next: NextFunction) {
@@ -20,9 +21,8 @@ function financialReviewError(error: unknown, res: Response, next: NextFunction)
     res.status(error.status).json({ error: error.message });
     return;
   }
-  const wrapped = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
-  const databaseError = wrapped?.cause ?? wrapped;
-  if (databaseError?.code === "40001" || databaseError?.code === "23505") {
+  const code = postgresErrorCode(error);
+  if (code === "40001" || code === "40P01" || code === "23505") {
     res.status(409).json({ error: "Financial review changed while saving. Refresh and try again." });
     return;
   }

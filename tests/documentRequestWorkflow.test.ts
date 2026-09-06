@@ -3,6 +3,7 @@ import type { InsertDocument, TeamMessage } from "@shared/schema";
 import {
   DocumentRequestWorkflowError,
   findOpenDocumentRequest,
+  isOpenDocumentRequest,
   validateRequestedDocumentResponse,
 } from "../server/services/documentRequestWorkflow";
 
@@ -41,6 +42,24 @@ function document(overrides: Partial<InsertDocument> = {}): InsertDocument {
 }
 
 describe("document request workflow", () => {
+  it("keeps a legacy request with no stored status actionable as pending", () => {
+    const legacy = request({
+      documentRequestData: {
+        documentType: "pay_stub",
+        documentName: "Recent Pay Stubs",
+      },
+    });
+
+    expect(isOpenDocumentRequest(legacy)).toBe(true);
+    expect(() =>
+      validateRequestedDocumentResponse({
+        message: legacy,
+        actorId: "borrower-1",
+        document: document(),
+      }),
+    ).not.toThrow();
+  });
+
   it("accepts an alias-equivalent borrower response on the same application", () => {
     expect(
       validateRequestedDocumentResponse({

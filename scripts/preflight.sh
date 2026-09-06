@@ -220,7 +220,7 @@ else
         DEV_TEST_PASSWORD="${DEV_TEST_PASSWORD:-test1234}" pnpm test:integration
       local r=$?; stop "$INT_PORT"; return $r
     }
-    step "integration lane (18 files)"      integration
+    step "integration lane"                 integration
   fi
 fi
 

@@ -56,6 +56,14 @@ Document processing stops before model work when a version is already reviewed o
 
 The disposable-database acceptance journey runs two equivalent staff requests concurrently, uploads and rejects one fictional ID with a precise correction, uploads a same-lineage replacement, accepts it, settles both overlapping conditions and compares the application answers before and after. It proves one request, two immutable versions, no duplicate borrower action, completed review work and unchanged application data. It remains an internal broker workflow and does not represent lender acceptance.
 
+## Fifth integration: retire proven overlap
+
+The completed correction journey now owns document-request submission and review state. The obsolete message-level request-status endpoint is removed after a repository-wide caller check found no client consumer, leaving upload registration and human document review as the only writers. The unused asynchronous condition-revert implementation and its pipeline-engine re-export are also removed; the transactional document-lineage writer and focused tests import the shared pure rule directly.
+
+Compatibility stays at the record boundary. A request written before status stamping is treated as pending, alias-equivalent document types converge on the canonical request, and a rejected request still requires a replacement of its exact document. The full fictional correction journey passes after the removal. A rollback rehearsal runs the Phase 4 build against the same no-migration database and confirms that the previous build can still read the resulting request, lineage and review records.
+
+Core review writes also tolerate ordinary staff-presence churn. File checkpoints, financial workpapers and credit-memo decisions replay the entire transaction a bounded number of times after PostgreSQL serialization or deadlock aborts; permanent database errors still fail immediately. The file-review concurrency journey deliberately commits a presence update after the review snapshot and proves that simultaneous saves leave exactly one current checkpoint instead of rejecting both.
+
 ## Deployment and rollback
 
 Migration `0060_file_review_checkpoints.sql` adds one table with application/reviewer references and a unique application/version constraint. It changes no existing records and introduces no environment variables or external providers. Deploy through the existing migration and application release gates. To roll back the feature, restore the previous application build and retain the additive table and checkpoint records; dropping review history is not part of rollback.
@@ -65,6 +73,8 @@ Migration `0061_document_lineage.sql` adds the application-scoped lineage table,
 Migration [0062_financial_workpapers_memo.sql](../../migrations/0062_financial_workpapers_memo.sql) adds immutable workpaper versions, workpaper reviews, memo versions and memo reviews with application/reviewer references, unique version constraints, fingerprint checks and database append-only triggers. It changes no existing rows and introduces no environment variables or providers. Rollback restores the previous build while retaining the additive financial-review history; dropping reviewed financial records is not part of rollback.
 
 The borrower correction loop requires no database migration, environment variable or external provider. It extends the existing request JSON with optional timestamps and a borrower-safe correction reason; older rows remain readable. Rollback restores the previous application build while retaining document versions, messages and audit history already written through the existing tables.
+
+The overlap retirement and bounded review retry require no migration, data rewrite, environment variable or provider. Rollback restores the Phase 4 build, which remains compatible with the same request, lineage and review rows.
 
 ## Reuse record
 
@@ -85,6 +95,6 @@ Source: `barakatammre84/Homiquity-Core`, commit `e8ebf5b9522137e3d5adf8ce8176e72
 2. ✅ **Document lineage and ownership:** immutable byte fingerprints/version references, subject/period mapping and explicit borrower/business/property associations use the existing application and entity records. Replacement evidence invalidates the affected review, preserves history and remains attributable to its source.
 3. ✅ **Financial workpapers and memo:** Core's dependency, review and memo controls now bridge the existing financial calculators, reviewed documents and lender package. The supported complex borrower scenario reproduces reviewed calculations and a cited memo from immutable versions; stale or wrong-business evidence fails closed.
 4. ✅ **Borrower correction loop:** one existing login and application now carry an access-scoped officer request through borrower upload, exact correction, immutable replacement and human acceptance. Concurrent equivalent asks deduplicate; application answers remain unchanged; settled personalized work stays settled.
-5. **Next — retire overlap:** retire a redundant implementation only after the same fictional borrower journey passes through its replacement, rollback is rehearsed, and existing records reconcile. Keep real lender acceptance as a separate external gate.
+5. ✅ **Retire overlap:** the redundant message-level request mutation and unused asynchronous condition-revert writer are removed. Legacy request rows reconcile, the fictional borrower journey passes through the remaining atomic workflow, concurrent review writes survive transient database contention, and the prior build passes the rollback rehearsal against the same database.
 
-The reference journey is an S-corporation owner with W-2/K-1 income, distributions, business liquidity, a co-borrower and rental property. Measure repeat questions, repeat uploads, officer corrections and time to reviewed evidence. Implementation and test completion are not evidence of a working lender relationship.
+The five internal Core integrations are complete. The next acceptance gate is external: validate a real package and correction exchange against a lender's current receiver instructions when a lender relationship is available. The reference journey is an S-corporation owner with W-2/K-1 income, distributions, business liquidity, a co-borrower and rental property. Measure repeat questions, repeat uploads, officer corrections and time to reviewed evidence. Implementation and test completion are not evidence of a working lender relationship.
